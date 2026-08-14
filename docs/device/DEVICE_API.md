@@ -205,6 +205,9 @@ erDiagram
 |------|------|------------|
 | 장비 없음 | 404 | `Device not found: {id}` |
 | name 중복 (자기 제외) | 400 | `device name already exists at this location` |
+| `modelId` 변경 + 기존 endpoint가 새 모델 프로토콜에 없음 | 409 | `device has endpoints not supported by new model: snmp` |
+
+`modelId`가 바뀔 때만 endpoint 정합성을 검사합니다. endpoint가 없거나, 새 모델이 기존 endpoint 프로토콜을 모두 지원하면 변경이 허용됩니다. 충돌 시 endpoint·snmp_instance를 자동 삭제하지 않습니다 — endpoint를 먼저 삭제한 뒤 모델을 변경하세요.
 
 ---
 

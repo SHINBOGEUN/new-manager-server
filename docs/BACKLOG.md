@@ -72,7 +72,7 @@ device C → POWER
 | 1.1 | 모델 point 성격 메타 (선택) | 중 | 측정값 성격(온습도/전력) — **페이지 배정과 별개**. 나중에 capabilities용 |
 | 1.2 | `device_snmp_point` (SRC형) | 나중에 | 사용자 결정: SRC 보류 |
 | 1.3 | Device Modbus 확장 | 중 | unit_id / slave |
-| 1.4 | Device 모델 변경 vs endpoint 정합성 | 중 | |
+| 1.4 | Device 모델 변경 vs endpoint 정합성 | 중 | ✅ 409 거부 |
 | 1.5 | host 형식 검증 | 낮 | |
 | 1.6 | Device nested `endpoints[]` | 낮 | |
 
