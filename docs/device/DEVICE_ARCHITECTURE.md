@@ -403,7 +403,7 @@ flowchart LR
 - [x] DeviceModel 삭제 시 devices 참조 409 검증
 - [x] 2.1차: device_snmp_instance CRUD (V011)
 - [x] 모델 snmp point OID UK (V012)
-- [ ] **Device ↔ Page 매핑** (어느 화면에 이 장비를 올릴지) — [BACKLOG](../BACKLOG.md) D1~D5 / 브랜치 `feat/device-page`
+- [x] **Device ↔ Page 매핑** (어느 화면에 이 장비를 올릴지) — [DEVICE_PAGE_API.md](./DEVICE_PAGE_API.md) / V013
 - [ ] SRC형 device_snmp_point — 보류
 - [ ] Device Modbus 확장 (unit_id 등)
 - [ ] Device 등록 nested `endpoints[]` (선택, 낮음)

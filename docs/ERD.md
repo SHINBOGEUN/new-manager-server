@@ -602,7 +602,8 @@ erDiagram
 | 테이블 | 역할 | 상태 |
 |--------|------|------|
 | `device_snmp_instance` | `{instanceId}` 치환 (PDU형) | ✅ V011 |
-| `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ V013 후보 — [BACKLOG](./BACKLOG.md) |
+| `device_page` | 장비↔노출 페이지 (DEVICE_PAGE) | ✅ V013 |
+| `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
 | `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ |
 | community / version | 앱 기본값. DB 의도적 제외 | 보류 |
 | `devices.parent_device_id` | 장비 계층 | ⬜ (V011 아님) |

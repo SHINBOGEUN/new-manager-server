@@ -53,11 +53,11 @@ device C → POWER
 
 | ID | 항목 | 내용 |
 |----|------|------|
-| D1 | 페이지 코드 | `common_code` 그룹 예: `DEVICE_PAGE` — ENVIRONMENT, COOLING, ANALYSIS, POWER … (페이지 추가 = 코드 행 추가) |
-| D2 | 매핑 테이블 | `device_page` (가칭): `(device_id, page_code_id)` UK. N:M |
-| D3 | API | Device에 pages 조회/등록/수정 (또는 `/devices/{id}/pages`) |
-| D4 | 목록 필터 | `GET /devices?pageCode=ENVIRONMENT` — 해당 페이지용 장비만 |
-| D5 | DDL·문서·테스트 | V013, DEVICE_PAGE_API.md, ARCHITECTURE/ERD/BACKLOG 갱신 |
+| D1 | 페이지 코드 | `common_code` 그룹 예: `DEVICE_PAGE` — ENVIRONMENT, COOLING, ANALYSIS, POWER … (페이지 추가 = 코드 행 추가) | ✅ |
+| D2 | 매핑 테이블 | `device_page`: `(device_id, page_code_id)` UK. N:M | ✅ V013 |
+| D3 | API | `/devices/{deviceId}/pages` GET/POST/PUT/DELETE | ✅ |
+| D4 | 목록 필터 | `GET /devices?pageCode=ENVIRONMENT` | ✅ |
+| D5 | DDL·문서·테스트 | V013, DEVICE_PAGE_API.md, 통합 테스트 | ✅ |
 
 **하지 않음 (이 브랜치):** point↔page, SRC snmp_point, capabilities/telemetry 구현.
 
@@ -144,5 +144,5 @@ Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록**
 
 ## 다음 한 줄
 
-**지금:** `feat/device-page` — **장비별 노출 페이지(N:M) DDL + API**.  
-**아님:** point별 페이지.
+**완료(이 브랜치):** Device ↔ Page 매핑 (V013 + API).  
+**다음:** Modbus device 확장 / 모델 변경 정합성 / capabilities.
