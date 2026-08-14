@@ -538,7 +538,7 @@ erDiagram
 
 ### `device_protocol_endpoint` — 프로토콜 엔드포인트 (공통 전송층)
 
-**구현 상태:** ✅ 구현됨 (공통 테이블만 — snmp/modbus 확장 제외)
+**구현 상태:** ✅ 구현됨 (공통 테이블 + SNMP instance V011. Modbus device 확장 제외)
 
 > 4층 아키텍처 **③ 엔드포인트층** — host/port.  
 > API: [DEVICE_ENDPOINT_API.md](device/DEVICE_ENDPOINT_API.md)  
@@ -601,9 +601,12 @@ erDiagram
 
 | 테이블 | 역할 | 상태 |
 |--------|------|------|
-| `device_endpoint_snmp` | community, instanceId, version | ⬜ |
+| `device_snmp_instance` | `{instanceId}` 치환 (PDU형) | ✅ V011 |
+| `device_page` | 장비↔노출 페이지 (DEVICE_PAGE) | ✅ V013 |
+| `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
 | `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ |
-| `devices.parent_device_id` | 장비 계층 | ⬜ V011+ |
+| community / version | 앱 기본값. DB 의도적 제외 | 보류 |
+| `devices.parent_device_id` | 장비 계층 | ⬜ (V011 아님) |
 
 ---
 

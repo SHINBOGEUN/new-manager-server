@@ -1,7 +1,8 @@
 # manager-server 기능 정리
 
 기존 `manager-server` 프로젝트의 기능·API·인프라 구성을 정리한 문서입니다.  
-`new-manager-server` 재작성 시 참고용으로 사용합니다.
+`new-manager-server` 재작성 시 참고용으로 사용합니다.  
+다음 개발 대기열은 [BACKLOG.md](./BACKLOG.md)를 본다. 이 문서는 구 기능 인벤토리일 뿐, API를 그대로 옮기지 않는다.
 
 > 기준 프로젝트: `manager-server` v1.0.90  
 > API prefix: `/api/manager`

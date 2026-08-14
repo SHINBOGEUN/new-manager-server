@@ -29,12 +29,19 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
             "AND (:locationNodeCode IS NULL OR d.locationNode.code = :locationNodeCode) " +
             "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%'))) " +
-            "AND (:enabled IS NULL OR d.enabled = :enabled)")
+            "AND (:enabled IS NULL OR d.enabled = :enabled) " +
+            "AND (:pageCode IS NULL OR EXISTS (" +
+            "  SELECT 1 FROM DevicePage dp " +
+            "  WHERE dp.device = d " +
+            "    AND dp.pageCode.code = :pageCode " +
+            "    AND dp.pageCode.codeGroup.groupKey = 'DEVICE_PAGE'" +
+            "))")
     Page<Device> findAllWithFilters(
             @Param("modelId") Integer modelId,
             @Param("locationNodeCode") String locationNodeCode,
             @Param("name") String name,
             @Param("enabled") Boolean enabled,
+            @Param("pageCode") String pageCode,
             Pageable pageable
     );
 

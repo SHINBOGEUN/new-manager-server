@@ -26,6 +26,7 @@ public interface DeviceRepository {
             String locationNodeCode,
             String name,
             Boolean enabled,
+            String pageCode,
             Pageable pageable
     );
 

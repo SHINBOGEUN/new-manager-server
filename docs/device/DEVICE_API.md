@@ -222,6 +222,7 @@ erDiagram
 | `locationNodeCode` | 위치 code 일치 (내부 필터) |
 | `name` | 표시명 부분 일치 |
 | `enabled` | `true` / `false` |
+| `pageCode` | 노출 페이지 code (`DEVICE_PAGE`, 예: `ENVIRONMENT`) — [DEVICE_PAGE_API](./DEVICE_PAGE_API.md) |
 | `page` | 페이지 번호 (**1부터**, 기본 `1`) |
 | `size` | 페이지 크기 (기본 `20`, 최대 `100`) |
 

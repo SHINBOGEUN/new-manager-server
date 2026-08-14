@@ -369,12 +369,15 @@ sequenceDiagram
 
 ## 7. 구현 로드맵
 
-현재 [DEVICE_API.md](./DEVICE_API.md) + V007은 **② 인스턴스 본체**, [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md) + V009는 **③ 공통 전송층**까지 구현.
+현재 [DEVICE_API.md](./DEVICE_API.md) + V007은 **② 인스턴스 본체**, [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md) + V009는 **③ 공통 전송층**, [DEVICE_SNMP_INSTANCE_API.md](./DEVICE_SNMP_INSTANCE_API.md) + V011은 **PDU형 instance**까지 구현.
+
+대기열 전체: [BACKLOG.md](../BACKLOG.md)
 
 ```mermaid
 flowchart LR
     P1[1차 devices CRUD] --> P2[2차 endpoint]
-    P2 --> P25[2.5차 point 카탈로그]
+    P2 --> P21[2.1차 snmp_instance]
+    P21 --> P25[2.5차 point 카탈로그 메타]
     P25 --> P3[3차 capabilities]
     P3 --> P35[3.5차 telemetry]
     P35 --> P4[4차 analysis]
@@ -384,24 +387,30 @@ flowchart LR
 | 단계 | 작업 | 산출물 | 상태 |
 |------|------|--------|------|
 | **1차** | `devices` CRUD — model, location, name, enabled | V007, [DEVICE_API.md](./DEVICE_API.md) | ✅ |
-| **2차** | `device_protocol_endpoint` 공통 전송층 CRUD | V009, [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md) | ✅ (확장 테이블 제외) |
-| **2.5차** | snmp/modbus 확장 + point 카탈로그 | V010+, 문서 | ⬜ 예정 |
-| **3차** | `GET /devices/capabilities` | DEVICE_CAPABILITY_API.md | ⬜ 예정 |
-| **3.5차** | 범용 telemetry query API | TELEMETRY_API.md | ⬜ 예정 |
-| **4차** | analysis API 재설계 | ANALYSIS_API.md | ⬜ 예정 |
-| **5차** | site layout, display alias | dashboard 모듈 | ⬜ 예정 |
-| **6차** | parent_device_id, collection_script | V011+ | ⬜ 예정 |
+| **2차** | `device_protocol_endpoint` 공통 전송층 CRUD | V009, [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md) | ✅ (modbus device 확장 제외) |
+| **2.1차** | `device_snmp_instance` CRUD (PDU `{instanceId}`) | V011, [DEVICE_SNMP_INSTANCE_API.md](./DEVICE_SNMP_INSTANCE_API.md) | ✅ |
+| **2.5차** | point 카탈로그 메타 + SRC `device_snmp_point` + Modbus device | V013 후보, 문서 | ⬜ [BACKLOG Phase 1](../BACKLOG.md) |
+| **3차** | `GET /devices/capabilities` | DEVICE_CAPABILITY_API.md | ⬜ |
+| **3.5차** | 범용 telemetry query API | TELEMETRY_API.md | ⬜ |
+| **4차** | analysis API 재설계 | ANALYSIS_API.md | ⬜ |
+| **5차** | site layout, display alias | dashboard 모듈 | ⬜ |
+| **6차** | parent_device_id, collection_script | **V011 아님** (V011=snmp_instance) | ⬜ |
 
 ### 7.1 지금 할 일 (체크리스트)
 
 - [x] 1차: devices 엔티티·Repository·Service·Controller·통합테스트 (V007)
 - [x] 2차(공통): device_protocol_endpoint CRUD (V009, DEVICE_ENDPOINT_API.md)
 - [x] DeviceModel 삭제 시 devices 참조 409 검증
-- [ ] 2차(확장): device_endpoint_snmp / modbus
-- [ ] Device 등록 nested `endpoints[]` (선택)
-- [ ] point 카탈로그 확장 (category, influx_field …)
-- [ ] DeviceCapabilityProfile 조회 API 설계
+- [x] 2.1차: device_snmp_instance CRUD (V011)
+- [x] 모델 snmp point OID UK (V012)
+- [x] **Device ↔ Page 매핑** (어느 화면에 이 장비를 올릴지) — [DEVICE_PAGE_API.md](./DEVICE_PAGE_API.md) / V013
+- [ ] SRC형 device_snmp_point — 보류
+- [ ] Device Modbus 확장 (unit_id 등)
+- [ ] Device 등록 nested `endpoints[]` (선택, 낮음)
+- [ ] DeviceCapabilityProfile 조회 API 설계 (pageCode + location으로 장비 필터)
 - [ ] 범용 telemetry / analysis API 설계
+
+> **페이지 배정은 device 단위.** point에 ENVIRONMENT/COOLING을 붙이지 않는다. 구 codeKey·zone ID·analysisYn 하드코딩 대체.
 
 ---
 
