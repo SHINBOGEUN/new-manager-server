@@ -372,6 +372,84 @@ class DeviceControllerIntegrationTest {
     }
 
     @Test
+    void updateDevice_whenModelChangeHasUnsupportedEndpoint_returnsConflict() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-endpoint-conflict", "password123");
+        Integer snmpId = snmpProtocolTypeId(accessToken);
+        Integer modbusId = modbusProtocolTypeId(accessToken);
+        Integer snmpModelId = createDeviceModelWithProtocol(accessToken, "SNMP-ONLY", "APC", snmpId);
+        Integer modbusModelId = createDeviceModelWithProtocol(accessToken, "MODBUS-ONLY", "Vendor", modbusId);
+        String locationCode = createRootLocation(accessToken, "Rack-Model-Conflict");
+        int deviceId = createDevice(accessToken, snmpModelId, locationCode, "PDU-좌", "before");
+        createEndpoint(accessToken, deviceId, snmpId, "192.168.1.10", 161);
+
+        mockMvc.perform(put("/api/manager/devices/{id}", deviceId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "modelId": %d,
+                                  "locationNodeCode": "%s",
+                                  "name": "PDU-좌"
+                                }
+                                """.formatted(modbusModelId, locationCode)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error")
+                        .value("device has endpoints not supported by new model: snmp"));
+    }
+
+    @Test
+    void updateDevice_whenModelChangeWithMatchingEndpoint_succeeds() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-endpoint-ok", "password123");
+        Integer snmpId = snmpProtocolTypeId(accessToken);
+        Integer sourceModelId = createDeviceModelWithProtocol(accessToken, "AP8959-A", "APC", snmpId);
+        Integer targetModelId = createDeviceModelWithProtocol(accessToken, "AP8959-B", "APC", snmpId);
+        String locationCode = createRootLocation(accessToken, "Rack-Model-Ok");
+        int deviceId = createDevice(accessToken, sourceModelId, locationCode, "PDU-좌", "before");
+        createEndpoint(accessToken, deviceId, snmpId, "192.168.1.10", 161);
+
+        mockMvc.perform(put("/api/manager/devices/{id}", deviceId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "modelId": %d,
+                                  "locationNodeCode": "%s",
+                                  "name": "PDU-좌",
+                                  "description": "after"
+                                }
+                                """.formatted(targetModelId, locationCode)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.modelId").value(targetModelId))
+                .andExpect(jsonPath("$.data.description").value("after"));
+    }
+
+    @Test
+    void updateDevice_whenModelChangeToDualProtocolModelWithSingleEndpoint_succeeds() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-dual-model", "password123");
+        Integer snmpId = snmpProtocolTypeId(accessToken);
+        Integer modbusId = modbusProtocolTypeId(accessToken);
+        Integer snmpOnlyModelId = createDeviceModelWithProtocol(accessToken, "SNMP-ONLY-2", "APC", snmpId);
+        Integer dualModelId = createDeviceModelWithProtocols(
+                accessToken, "SNMP-MODBUS", "Vendor", snmpId, modbusId);
+        String locationCode = createRootLocation(accessToken, "Rack-Dual-Model");
+        int deviceId = createDevice(accessToken, snmpOnlyModelId, locationCode, "PDU-좌", "before");
+        createEndpoint(accessToken, deviceId, snmpId, "192.168.1.10", 161);
+
+        mockMvc.perform(put("/api/manager/devices/{id}", deviceId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "modelId": %d,
+                                  "locationNodeCode": "%s",
+                                  "name": "PDU-좌"
+                                }
+                                """.formatted(dualModelId, locationCode)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.modelId").value(dualModelId));
+    }
+
+    @Test
     void createDevice_withoutModelId_returnsBadRequest() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-null-model", "password123");
         String locationCode = createRootLocation(accessToken, "Rack-NullModel");
@@ -453,6 +531,108 @@ class DeviceControllerIntegrationTest {
                 .getContentAsString();
 
         return objectMapper.readTree(response).path("data").path("id").asInt();
+    }
+
+    private Integer snmpProtocolTypeId(String accessToken) throws Exception {
+        return findOrCreateCommonCode(
+                accessToken,
+                findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type"),
+                "snmp",
+                "SNMP",
+                1
+        );
+    }
+
+    private Integer modbusProtocolTypeId(String accessToken) throws Exception {
+        return findOrCreateCommonCode(
+                accessToken,
+                findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type"),
+                "modbus",
+                "Modbus",
+                2
+        );
+    }
+
+    private Integer createDeviceModelWithProtocol(
+            String accessToken,
+            String name,
+            String manufacturer,
+            Integer protocolTypeId
+    ) throws Exception {
+        Integer modelTypeGroupId = findOrCreateCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
+        Integer deviceTypeId = findOrCreateCommonCode(accessToken, modelTypeGroupId, "PDU", "PDU", 1);
+
+        String response = mockMvc.perform(post("/api/manager/device-models")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "manufacturer": "%s",
+                                  "deviceTypeId": %d,
+                                  "protocols": [
+                                    { "protocolTypeId": %d }
+                                  ]
+                                }
+                                """.formatted(name, manufacturer, deviceTypeId, protocolTypeId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path("data").path("id").asInt();
+    }
+
+    private Integer createDeviceModelWithProtocols(
+            String accessToken,
+            String name,
+            String manufacturer,
+            Integer protocolTypeId1,
+            Integer protocolTypeId2
+    ) throws Exception {
+        Integer modelTypeGroupId = findOrCreateCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
+        Integer deviceTypeId = findOrCreateCommonCode(accessToken, modelTypeGroupId, "PDU", "PDU", 1);
+
+        String response = mockMvc.perform(post("/api/manager/device-models")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s",
+                                  "manufacturer": "%s",
+                                  "deviceTypeId": %d,
+                                  "protocols": [
+                                    { "protocolTypeId": %d },
+                                    { "protocolTypeId": %d }
+                                  ]
+                                }
+                                """.formatted(name, manufacturer, deviceTypeId, protocolTypeId1, protocolTypeId2)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(response).path("data").path("id").asInt();
+    }
+
+    private void createEndpoint(
+            String accessToken,
+            int deviceId,
+            Integer protocolTypeId,
+            String host,
+            int port
+    ) throws Exception {
+        mockMvc.perform(post("/api/manager/devices/{deviceId}/endpoints", deviceId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "protocolTypeId": %d,
+                                  "host": "%s",
+                                  "port": %d
+                                }
+                                """.formatted(protocolTypeId, host, port)))
+                .andExpect(status().isOk());
     }
 
     private String createRootLocation(String accessToken, String name) throws Exception {
