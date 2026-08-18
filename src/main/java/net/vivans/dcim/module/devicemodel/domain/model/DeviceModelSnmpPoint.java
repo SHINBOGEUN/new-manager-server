@@ -99,6 +99,16 @@ public class DeviceModelSnmpPoint extends BaseEntity {
         this.enabled = enabled;
     }
 
+    public String resolveOid(Integer instanceId) {
+        if (!requiresInstance) {
+            return oid;
+        }
+        if (instanceId == null) {
+            return null;
+        }
+        return oid.replace(INSTANCE_ID_PLACEHOLDER, String.valueOf(instanceId));
+    }
+
     private static void validateModelProtocol(DeviceModelProtocol modelProtocol) {
         if (modelProtocol == null) {
             throw new IllegalArgumentException("modelProtocol is required");

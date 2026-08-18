@@ -81,6 +81,11 @@ public class DeviceJpaRepository implements DeviceRepository {
     }
 
     @Override
+    public List<Device> findAllEnabledForCapabilities(Collection<String> locationNodeCodes, String pageCode) {
+        return springDataRepository.findAllEnabledForCapabilities(locationNodeCodes, blankToNull(pageCode));
+    }
+
+    @Override
     public void delete(Device device) {
         springDataRepository.delete(device);
     }

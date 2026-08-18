@@ -131,6 +131,36 @@ class DeviceModelSnmpPointTest {
     }
 
     @Test
+    void resolveOid_withFixedOid_returnsOid() {
+        DeviceModelSnmpPoint point = DeviceModelSnmpPoint.create(
+                snmpProtocol(),
+                "temp",
+                "1.3.6.1.4.1.12345.10.1.0",
+                false,
+                "C",
+                true
+        );
+
+        assertThat(point.resolveOid(null)).isEqualTo("1.3.6.1.4.1.12345.10.1.0");
+        assertThat(point.resolveOid(1)).isEqualTo("1.3.6.1.4.1.12345.10.1.0");
+    }
+
+    @Test
+    void resolveOid_withTemplateOid_replacesInstanceId() {
+        DeviceModelSnmpPoint point = DeviceModelSnmpPoint.create(
+                snmpProtocol(),
+                "V",
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.{instanceId}.3",
+                true,
+                "V",
+                true
+        );
+
+        assertThat(point.resolveOid(1)).isEqualTo("1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.1.3");
+        assertThat(point.resolveOid(null)).isNull();
+    }
+
+    @Test
     void update_replacesFields() {
         DeviceModelSnmpPoint point = DeviceModelSnmpPoint.create(
                 snmpProtocol(),

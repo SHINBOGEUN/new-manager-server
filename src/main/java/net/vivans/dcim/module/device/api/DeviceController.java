@@ -5,8 +5,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.device.api.dto.DeviceCapabilityResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
+import net.vivans.dcim.module.device.application.DeviceCapabilityQueryService;
 import net.vivans.dcim.module.device.application.DeviceQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import net.vivans.dcim.shared.api.PageResponse;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/manager/devices")
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceController {
 
     private final DeviceQueryService deviceQueryService;
+    private final DeviceCapabilityQueryService deviceCapabilityQueryService;
 
     @GetMapping
     @Operation(summary = "장비 목록 조회 API", description = "필터·페이징 지원. 정렬은 id 오름차순.")
@@ -40,6 +45,20 @@ public class DeviceController {
             @Parameter(description = "페이지 번호 (1부터)") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기 (기본 20, 최대 100)") @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.getDevices(modelId, locationNodeCode, name, enabled, pageCode, page, size)));
+    }
+
+    @GetMapping("/capabilities")
+    @Operation(
+            summary = "장비 capabilities 조회 API",
+            description = "pageCode·location으로 장비를 고르고 SNMP point OID·endpoint를 합성합니다."
+    )
+    public ResponseEntity<ApiResponse<List<DeviceCapabilityResponse>>> getCapabilities(
+            @Parameter(description = "노출 페이지 code (DEVICE_PAGE, 예: ENVIRONMENT)") @RequestParam(required = false) String pageCode,
+            @Parameter(description = "위치 code") @RequestParam(required = false) String locationNodeCode,
+            @Parameter(description = "locationNodeCode 하위 트리 포함 여부") @RequestParam(required = false) Boolean includeSubtree
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                deviceCapabilityQueryService.getCapabilities(pageCode, locationNodeCode, includeSubtree)));
     }
 
     @GetMapping("/{id}")

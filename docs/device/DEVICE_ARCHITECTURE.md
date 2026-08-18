@@ -390,7 +390,7 @@ flowchart LR
 | **2차** | `device_protocol_endpoint` 공통 전송층 CRUD | V009, [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md) | ✅ (modbus device 확장 제외) |
 | **2.1차** | `device_snmp_instance` CRUD (PDU `{instanceId}`) | V011, [DEVICE_SNMP_INSTANCE_API.md](./DEVICE_SNMP_INSTANCE_API.md) | ✅ |
 | **2.5차** | point 카탈로그 메타 + SRC `device_snmp_point` + Modbus device | V013 후보, 문서 | ⬜ [BACKLOG Phase 1](../BACKLOG.md) |
-| **3차** | `GET /devices/capabilities` | DEVICE_CAPABILITY_API.md | ⬜ |
+| **3차** | `GET /devices/capabilities` | [DEVICE_CAPABILITY_API.md](./DEVICE_CAPABILITY_API.md) | ✅ |
 | **3.5차** | 범용 telemetry query API | TELEMETRY_API.md | ⬜ |
 | **4차** | analysis API 재설계 | ANALYSIS_API.md | ⬜ |
 | **5차** | site layout, display alias | dashboard 모듈 | ⬜ |
@@ -407,7 +407,7 @@ flowchart LR
 - [ ] SRC형 device_snmp_point — 보류
 - [ ] Device Modbus 확장 (unit_id 등)
 - [ ] Device 등록 nested `endpoints[]` (선택, 낮음)
-- [ ] DeviceCapabilityProfile 조회 API 설계 (pageCode + location으로 장비 필터)
+- [x] `GET /devices/capabilities` (pageCode + location, SNMP OID 합성) — [DEVICE_CAPABILITY_API.md](./DEVICE_CAPABILITY_API.md)
 - [ ] 범용 telemetry / analysis API 설계
 
 > **페이지 배정은 device 단위.** point에 ENVIRONMENT/COOLING을 붙이지 않는다. 구 codeKey·zone ID·analysisYn 하드코딩 대체.

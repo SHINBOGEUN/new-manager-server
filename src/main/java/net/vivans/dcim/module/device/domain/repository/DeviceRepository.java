@@ -30,6 +30,8 @@ public interface DeviceRepository {
             Pageable pageable
     );
 
+    List<Device> findAllEnabledForCapabilities(Collection<String> locationNodeCodes, String pageCode);
+
     boolean existsByLocationNodeAndName(LocationNode locationNode, String name);
 
     boolean existsByLocationNodeAndNameAndIdNot(LocationNode locationNode, String name, Integer id);
