@@ -45,6 +45,7 @@ endpoint는 Device 등록 시 **필수가 아닙니다.** 장비만 먼저 등�
 | `protocolTypeId` | 필수. `PROTOCOL_TYPE` common_code만 |
 | 모델 지원 | 해당 device의 model이 `device_model_protocol`에 그 프로토콜을 가져야 함 |
 | UK | `(device_id, protocol_type_id)` — 장비당 프로토콜 1엔드포인트 |
+| UK | `(host, port)` — 수집 목적지 중복 불가 |
 | `host` | 필수. 비어 있지 않은 문자열 (IP 또는 hostname). **형식 정규식 검증은 하지 않음** |
 | `port` | 필수. 1~65535 |
 | `enabled` | boolean. 기본 `true` |
@@ -67,7 +68,7 @@ endpoint는 Device 등록 시 **필수가 아닙니다.** 장비만 먼저 등�
 | `created_dt` | TIMESTAMP(6) | Y | | | |
 | `updated_dt` | TIMESTAMP(6) | Y | | | |
 
-**UK:** `(device_id, protocol_type_id)`
+**UK:** `(device_id, protocol_type_id)`, `(host, port)`
 
 **FK 제약**
 
@@ -155,7 +156,8 @@ erDiagram
 | protocolType 없음 | 404 | `CommonCode not found: {id}` |
 | PROTOCOL_TYPE 아님 | 400 | `protocolType must belong to PROTOCOL_TYPE group` |
 | 모델 미지원 프로토콜 | 400 | `protocol not supported by device model` |
-| UK 중복 | 409 | `endpoint already exists for this protocol` |
+| UK 중복 (장비+프로토콜) | 409 | `endpoint already exists for this protocol` |
+| UK 중복 (host+port) | 409 | `endpoint already exists for this host and port` |
 | host 공백 / port 범위 | 400 | Bean validation 메시지 |
 
 ---
@@ -174,6 +176,7 @@ erDiagram
 | endpoint 없음(또는 다른 device) | 404 | `DeviceProtocolEndpoint not found: {endpointId}` |
 | 모델 미지원 / PROTOCOL_TYPE 아님 | 400 | (등록과 동일) |
 | 다른 endpoint와 protocol 중복 | 409 | `endpoint already exists for this protocol` |
+| 다른 endpoint와 host+port 중복 | 409 | `endpoint already exists for this host and port` |
 
 ---
 
@@ -242,7 +245,7 @@ erDiagram
 | 구분 | 내용 |
 |------|------|
 | 문서 | 본 문서 |
-| DDL | V009 ✅ |
+| DDL | V009 ✅ / V015 `(host, port)` UK ✅ |
 | 도메인 | `DeviceProtocolEndpoint` ✅ |
 | Application | `DeviceProtocolEndpointQueryService` CRUD ✅ |
 | API | 목록·단건·등록·수정·삭제 ✅ |
@@ -256,3 +259,4 @@ erDiagram
 | 날짜 | 변경 |
 |------|------|
 | 2026-07-23 | 최초 작성 — 공통 전송층 CRUD·V009 (확장 테이블 제외) |
+| 2026-08-18 | `(host, port)` 중복 방지 (V015, 409) |

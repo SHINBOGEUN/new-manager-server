@@ -21,4 +21,8 @@ public interface DeviceProtocolEndpointSpringDataRepository extends JpaRepositor
     boolean existsByDevice_IdAndProtocolType_Id(Integer deviceId, Integer protocolTypeId);
 
     boolean existsByDevice_IdAndProtocolType_IdAndIdNot(Integer deviceId, Integer protocolTypeId, Integer id);
+
+    boolean existsByHostAndPort(String host, int port);
+
+    boolean existsByHostAndPortAndIdNot(String host, int port, Integer id);
 }

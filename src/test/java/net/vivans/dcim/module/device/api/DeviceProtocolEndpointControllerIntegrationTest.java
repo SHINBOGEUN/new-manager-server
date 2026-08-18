@@ -161,6 +161,29 @@ class DeviceProtocolEndpointControllerIntegrationTest {
     }
 
     @Test
+    void createEndpoint_whenHostPortAlreadyUsedByAnotherDevice_returnsConflict() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-host-port-dup", "password123");
+        Integer snmpId = snmpProtocolTypeId(accessToken);
+        Integer modelId = createDeviceModel(accessToken, "AP8959-HOST-DUP", "APC", snmpId);
+        int deviceA = createDevice(accessToken, modelId, "PDU-host-a");
+        int deviceB = createDevice(accessToken, modelId, "PDU-host-b");
+        createEndpoint(accessToken, deviceA, snmpId, "192.168.1.10", 161);
+
+        mockMvc.perform(post("/api/manager/devices/{deviceId}/endpoints", deviceB)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "protocolTypeId": %d,
+                                  "host": "192.168.1.10",
+                                  "port": 161
+                                }
+                                """.formatted(snmpId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("endpoint already exists for this host and port"));
+    }
+
+    @Test
     void createEndpoint_withNonProtocolType_returnsBadRequest() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-bad-type", "password123");
         Integer modelTypeGroupId = findOrCreateCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
@@ -346,6 +369,30 @@ class DeviceProtocolEndpointControllerIntegrationTest {
                                 """.formatted(snmpId)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("endpoint already exists for this protocol"));
+    }
+
+    @Test
+    void updateEndpoint_whenHostPortAlreadyUsedByAnotherDevice_returnsConflict() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-host-port-dup", "password123");
+        Integer snmpId = snmpProtocolTypeId(accessToken);
+        Integer modelId = createDeviceModel(accessToken, "AP8959-UPD-HOST-DUP", "APC", snmpId);
+        int deviceA = createDevice(accessToken, modelId, "PDU-upd-host-a");
+        int deviceB = createDevice(accessToken, modelId, "PDU-upd-host-b");
+        createEndpoint(accessToken, deviceA, snmpId, "192.168.1.10", 161);
+        int endpointB = createEndpoint(accessToken, deviceB, snmpId, "192.168.1.11", 161);
+
+        mockMvc.perform(put("/api/manager/devices/{deviceId}/endpoints/{endpointId}", deviceB, endpointB)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "protocolTypeId": %d,
+                                  "host": "192.168.1.10",
+                                  "port": 161
+                                }
+                                """.formatted(snmpId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("endpoint already exists for this host and port"));
     }
 
     @Test
