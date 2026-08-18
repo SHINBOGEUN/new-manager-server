@@ -67,11 +67,12 @@ location_node (1) ──< devices (N)   ※ location_node_code NOT NULL
 | 테이블 | 용도 | 상태 |
 |--------|------|------|
 | `device_protocol_endpoint` | host, port (프로토콜 공통) | ✅ [DEVICE_ENDPOINT_API](./DEVICE_ENDPOINT_API.md) |
-| `device_snmp_instance` | SNMP `{instanceId}` 치환 (endpoint 1:1) | ⬜ [DEVICE_SNMP_INSTANCE_API](./DEVICE_SNMP_INSTANCE_API.md) |
+| `device_snmp_instance` | SNMP `{instanceId}` 치환 (endpoint 1:1) | ✅ [DEVICE_SNMP_INSTANCE_API](./DEVICE_SNMP_INSTANCE_API.md) |
+| `device_page` | 노출 페이지 매핑 | ✅ [DEVICE_PAGE_API](./DEVICE_PAGE_API.md) |
 | `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ 예정 |
 | `devices.parent_device_id` | 장비 계층 (자기참조) | ⬜ 예정 |
 
-SNMP point OID 템플릿 + 장비 설정 합성은 [DEVICE_MODEL_SNMP_POINT_API §9](../devicemodel/DEVICE_MODEL_SNMP_POINT_API.md#9-스크립트-생성-향후) 참고.
+SNMP point + endpoint + instance **합성 조회**는 [DEVICE_CAPABILITY_API](./DEVICE_CAPABILITY_API.md) (`GET /devices/capabilities`).
 
 ---
 

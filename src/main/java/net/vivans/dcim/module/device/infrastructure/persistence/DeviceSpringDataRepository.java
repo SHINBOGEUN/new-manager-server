@@ -50,4 +50,20 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
     boolean existsByLocationNodeAndNameAndIdNot(LocationNode locationNode, String name, Integer id);
 
     boolean existsByDeviceModel_Id(Integer deviceModelId);
+
+    @EntityGraph(attributePaths = {"deviceModel", "locationNode"})
+    @Query("SELECT d FROM Device d " +
+            "WHERE d.enabled = true " +
+            "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
+            "AND (:pageCode IS NULL OR EXISTS (" +
+            "  SELECT 1 FROM DevicePage dp " +
+            "  WHERE dp.device = d " +
+            "    AND dp.pageCode.code = :pageCode " +
+            "    AND dp.pageCode.codeGroup.groupKey = 'DEVICE_PAGE'" +
+            ")) " +
+            "ORDER BY d.id ASC")
+    List<Device> findAllEnabledForCapabilities(
+            @Param("locationNodeCodes") Collection<String> locationNodeCodes,
+            @Param("pageCode") String pageCode
+    );
 }

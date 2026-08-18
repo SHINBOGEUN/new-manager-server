@@ -89,7 +89,7 @@ device C → POWER
 
 | ID | 항목 | 비고 |
 |----|------|------|
-| 2.1 | `GET /devices/capabilities` | **pageCode + location** 등으로 장비 먼저 고르고, point/OID 해석 |
+| 2.1 | `GET /devices/capabilities` | **pageCode + location** 등으로 장비 먼저 고르고, point/OID 해석 | ✅ |
 | 2.2 | 수집 스크립트 export + collector 연동 | |
 | 2.3 | 범용 probe API | 구 pduTest |
 
@@ -145,4 +145,4 @@ Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록**
 ## 다음 한 줄
 
 **완료(이 브랜치):** Device ↔ Page 매핑 (V013 + API).  
-**다음:** Modbus device 확장 / 모델 변경 정합성 / capabilities.
+**다음:** Telemetry API / 수집 스크립트 export.
