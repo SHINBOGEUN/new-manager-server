@@ -27,6 +27,7 @@ public class DeviceProtocolEndpointQueryService {
 
     private static final String PROTOCOL_TYPE_GROUP_KEY = "PROTOCOL_TYPE";
     private static final String ENDPOINT_ALREADY_EXISTS_MESSAGE = "endpoint already exists for this protocol";
+    private static final String HOST_PORT_ALREADY_EXISTS_MESSAGE = "endpoint already exists for this host and port";
     private static final String PROTOCOL_NOT_SUPPORTED_MESSAGE = "protocol not supported by device model";
 
     private final DeviceRepository deviceRepository;
@@ -64,6 +65,7 @@ public class DeviceProtocolEndpointQueryService {
                 deviceId, protocolType.getId())) {
             throw new ConflictException(ENDPOINT_ALREADY_EXISTS_MESSAGE);
         }
+        validateUniqueHostPort(request.host(), request.port(), null);
 
         boolean enabled = request.enabled() == null || request.enabled();
         DeviceProtocolEndpoint endpoint = DeviceProtocolEndpoint.create(
@@ -91,6 +93,7 @@ public class DeviceProtocolEndpointQueryService {
                 deviceId, protocolType.getId(), endpointId)) {
             throw new ConflictException(ENDPOINT_ALREADY_EXISTS_MESSAGE);
         }
+        validateUniqueHostPort(request.host(), request.port(), endpointId);
 
         boolean enabled = request.enabled() == null || request.enabled();
         endpoint.update(protocolType, request.host(), request.port(), enabled);
@@ -136,5 +139,14 @@ public class DeviceProtocolEndpointQueryService {
             }
         }
         throw new IllegalArgumentException(PROTOCOL_NOT_SUPPORTED_MESSAGE);
+    }
+
+    private void validateUniqueHostPort(String host, int port, Integer excludeId) {
+        boolean duplicated = excludeId == null
+                ? deviceProtocolEndpointRepository.existsByHostAndPort(host, port)
+                : deviceProtocolEndpointRepository.existsByHostAndPortAndIdNot(host, port, excludeId);
+        if (duplicated) {
+            throw new ConflictException(HOST_PORT_ALREADY_EXISTS_MESSAGE);
+        }
     }
 }

@@ -49,6 +49,16 @@ public class DeviceProtocolEndpointJpaRepository implements DeviceProtocolEndpoi
     }
 
     @Override
+    public boolean existsByHostAndPort(String host, int port) {
+        return springDataRepository.existsByHostAndPort(host, port);
+    }
+
+    @Override
+    public boolean existsByHostAndPortAndIdNot(String host, int port, Integer id) {
+        return springDataRepository.existsByHostAndPortAndIdNot(host, port, id);
+    }
+
+    @Override
     public void delete(DeviceProtocolEndpoint endpoint) {
         springDataRepository.delete(endpoint);
     }

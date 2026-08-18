@@ -19,10 +19,16 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 @Entity
 @Table(
         name = "device_protocol_endpoint",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_device_protocol_endpoint_device_protocol",
-                columnNames = {"device_id", "protocol_type_id"}
-        )
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_device_protocol_endpoint_device_protocol",
+                        columnNames = {"device_id", "protocol_type_id"}
+                ),
+                @UniqueConstraint(
+                        name = "uk_device_protocol_endpoint_host_port",
+                        columnNames = {"host", "port"}
+                )
+        }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
