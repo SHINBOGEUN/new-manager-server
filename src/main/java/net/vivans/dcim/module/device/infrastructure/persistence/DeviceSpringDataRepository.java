@@ -52,6 +52,9 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
     boolean existsByDeviceModel_Id(Integer deviceModelId);
 
     @EntityGraph(attributePaths = {"deviceModel", "locationNode"})
+    List<Device> findByDeviceModel_IdOrderByIdAsc(Integer deviceModelId);
+
+    @EntityGraph(attributePaths = {"deviceModel", "locationNode"})
     @Query("SELECT d FROM Device d " +
             "WHERE d.enabled = true " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +

@@ -20,21 +20,37 @@ public class CollectionTaskJpaRepository implements CollectionTaskRepository {
     }
 
     @Override
-    public Optional<CollectionTask> findById(String id) {
+    public Optional<CollectionTask> findById(Integer id) {
         return springDataRepository.findById(id);
     }
 
     @Override
-    public List<CollectionTask> findAll(String name, Boolean active, Integer scriptTypeId) {
-        return springDataRepository.findAll(blankToNull(name), active, scriptTypeId);
+    public List<CollectionTask> findAll(Integer modelId, Integer scriptTypeId, Boolean active) {
+        return springDataRepository.findAll(modelId, scriptTypeId, active);
+    }
+
+    @Override
+    public Optional<CollectionTask> findByModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId) {
+        return springDataRepository.findByDeviceModelIdAndScriptTypeId(modelId, scriptTypeId);
+    }
+
+    @Override
+    public List<CollectionTask> findAllByModelId(Integer modelId) {
+        return springDataRepository.findAllByDeviceModelId(modelId);
+    }
+
+    @Override
+    public boolean existsByModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId) {
+        return springDataRepository.existsByDeviceModelIdAndScriptTypeId(modelId, scriptTypeId);
+    }
+
+    @Override
+    public boolean existsByModelId(Integer modelId) {
+        return springDataRepository.existsByDeviceModelId(modelId);
     }
 
     @Override
     public void delete(CollectionTask collectionTask) {
         springDataRepository.delete(collectionTask);
-    }
-
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
     }
 }

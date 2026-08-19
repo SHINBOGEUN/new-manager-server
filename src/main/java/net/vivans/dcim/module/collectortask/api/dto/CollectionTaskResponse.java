@@ -1,36 +1,43 @@
 package net.vivans.dcim.module.collectortask.api.dto;
 
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTask;
+import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public record CollectionTaskResponse(
-        String id,
+        Integer id,
         String name,
-        String cronExpression,
+        Integer modelId,
+        String modelName,
         Integer scriptTypeId,
         String scriptTypeCode,
         String scriptTypeName,
-        String generatedScript,
-        String collectorTaskId,
         boolean active,
+        List<CollectionTaskGroupResponse> groups,
         Instant createdDt,
         Instant updatedDt
 ) {
 
-    public static CollectionTaskResponse from(CollectionTask collectionTask) {
+    public static CollectionTaskResponse from(CollectionTask task) {
+        List<CollectionTaskGroupResponse> groups = new ArrayList<>();
+        for (CollectionTaskGroup group : task.getGroups()) {
+            groups.add(CollectionTaskGroupResponse.from(group));
+        }
         return new CollectionTaskResponse(
-                collectionTask.getId(),
-                collectionTask.getName(),
-                collectionTask.getCronExpression(),
-                collectionTask.getScriptType().getId(),
-                collectionTask.getScriptType().getCode(),
-                collectionTask.getScriptType().getName(),
-                collectionTask.getGeneratedScript(),
-                collectionTask.getCollectorTaskId(),
-                collectionTask.isActive(),
-                collectionTask.getCreatedDt(),
-                collectionTask.getUpdatedDt()
+                task.getId(),
+                task.getName(),
+                task.getDeviceModel().getId(),
+                task.getDeviceModel().getName(),
+                task.getScriptType().getId(),
+                task.getScriptType().getCode(),
+                task.getScriptType().getName(),
+                task.isActive(),
+                groups,
+                task.getCreatedDt(),
+                task.getUpdatedDt()
         );
     }
 }

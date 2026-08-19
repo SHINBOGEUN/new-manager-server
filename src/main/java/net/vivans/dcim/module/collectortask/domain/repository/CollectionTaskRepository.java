@@ -9,9 +9,17 @@ public interface CollectionTaskRepository {
 
     CollectionTask save(CollectionTask collectionTask);
 
-    Optional<CollectionTask> findById(String id);
+    Optional<CollectionTask> findById(Integer id);
 
-    List<CollectionTask> findAll(String name, Boolean active, Integer scriptTypeId);
+    List<CollectionTask> findAll(Integer modelId, Integer scriptTypeId, Boolean active);
+
+    Optional<CollectionTask> findByModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId);
+
+    List<CollectionTask> findAllByModelId(Integer modelId);
+
+    boolean existsByModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId);
+
+    boolean existsByModelId(Integer modelId);
 
     void delete(CollectionTask collectionTask);
 }

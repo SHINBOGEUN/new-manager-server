@@ -2,12 +2,14 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceProtocolEndpointRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
+import net.vivans.dcim.module.device.domain.repository.DeviceSnmpInstanceRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
@@ -39,6 +41,8 @@ public class DeviceQueryService {
     private final DeviceModelRepository deviceModelRepository;
     private final LocationNodeRepository locationNodeRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
+    private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
+    private final CollectionScriptSyncService collectionScriptSyncService;
 
     public PageResponse<DeviceResponse> getDevices(
             Integer modelId,
@@ -77,7 +81,9 @@ public class DeviceQueryService {
                 request.description(),
                 enabled
         );
-        return DeviceResponse.from(deviceRepository.save(device));
+        Device saved = deviceRepository.save(device);
+        collectionScriptSyncService.assignDeviceAndRegenerate(saved);
+        return DeviceResponse.from(saved);
     }
 
     @Transactional
@@ -91,6 +97,9 @@ public class DeviceQueryService {
         }
 
         boolean enabled = request.enabled() == null || request.enabled();
+        Integer oldModelId = device.getDeviceModel().getId();
+        Integer newModelId = deviceModel.getId();
+        boolean modelChanged = !oldModelId.equals(newModelId);
         device.update(
                 deviceModel,
                 locationNode,
@@ -98,13 +107,32 @@ public class DeviceQueryService {
                 request.description(),
                 enabled
         );
-        return DeviceResponse.from(deviceRepository.save(device));
+        DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
+        if (modelChanged) {
+            collectionScriptSyncService.removeDeviceAndRegenerate(id, oldModelId);
+            collectionScriptSyncService.assignDeviceAndRegenerate(device);
+        } else {
+            collectionScriptSyncService.regenerateByModelId(newModelId);
+        }
+        return response;
     }
 
     @Transactional
     public void deleteDevice(Integer id) {
         Device device = findDevice(id);
+        Integer modelId = device.getDeviceModel().getId();
+        collectionScriptSyncService.removeDeviceAndRegenerate(id, modelId);
+        deleteEndpoints(id);
+        deviceRepository.flush();
         deviceRepository.delete(device);
+    }
+
+    private void deleteEndpoints(Integer deviceId) {
+        for (DeviceProtocolEndpoint endpoint : deviceProtocolEndpointRepository.findAllByDeviceIdOrderByIdAsc(deviceId)) {
+            deviceSnmpInstanceRepository.findByEndpointId(endpoint.getId())
+                    .ifPresent(deviceSnmpInstanceRepository::delete);
+            deviceProtocolEndpointRepository.delete(endpoint);
+        }
     }
 
     private Device findDevice(Integer id) {

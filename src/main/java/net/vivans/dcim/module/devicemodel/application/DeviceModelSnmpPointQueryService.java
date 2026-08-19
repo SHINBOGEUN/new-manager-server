@@ -2,6 +2,7 @@ package net.vivans.dcim.module.devicemodel.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointResponse;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
@@ -22,6 +23,7 @@ public class DeviceModelSnmpPointQueryService {
 
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
+    private final CollectionScriptSyncService collectionScriptSyncService;
 
     public List<DeviceModelSnmpPointResponse> getDeviceModelSnmpPoints(Integer modelId, Integer protocolId) {
         findSnmpProtocol(modelId, protocolId);
@@ -72,7 +74,9 @@ public class DeviceModelSnmpPointQueryService {
                 enabled
         );
 
-        return DeviceModelSnmpPointResponse.from(deviceModelSnmpPointRepository.save(point));
+        DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
+        collectionScriptSyncService.regenerateByModelId(modelId);
+        return DeviceModelSnmpPointResponse.from(saved);
     }
 
     @Transactional
@@ -99,7 +103,9 @@ public class DeviceModelSnmpPointQueryService {
 
         point.update(request.name(), request.oid(), requiresInstance, request.unit(), enabled);
 
-        return DeviceModelSnmpPointResponse.from(deviceModelSnmpPointRepository.save(point));
+        DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
+        collectionScriptSyncService.regenerateByModelId(modelId);
+        return DeviceModelSnmpPointResponse.from(saved);
     }
 
     @Transactional
@@ -107,6 +113,7 @@ public class DeviceModelSnmpPointQueryService {
         findSnmpProtocol(modelId, protocolId);
         DeviceModelSnmpPoint point = findSnmpPoint(pointId, protocolId);
         deviceModelSnmpPointRepository.delete(point);
+        collectionScriptSyncService.regenerateByModelId(modelId);
         return pointId;
     }
 

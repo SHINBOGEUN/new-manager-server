@@ -9,21 +9,51 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface CollectionTaskSpringDataRepository extends JpaRepository<CollectionTask, String> {
+public interface CollectionTaskSpringDataRepository extends JpaRepository<CollectionTask, Integer> {
 
     @Override
-    @EntityGraph(attributePaths = {"scriptType", "scriptType.codeGroup"})
-    Optional<CollectionTask> findById(String id);
+    @EntityGraph(attributePaths = {
+            "deviceModel",
+            "scriptType",
+            "scriptType.codeGroup",
+            "groups"
+    })
+    Optional<CollectionTask> findById(Integer id);
 
-    @EntityGraph(attributePaths = {"scriptType", "scriptType.codeGroup"})
-    @Query("SELECT ct FROM CollectionTask ct " +
-            "WHERE (:name IS NULL OR LOWER(ct.name) LIKE LOWER(CONCAT('%', :name, '%'))) " +
-            "AND (:active IS NULL OR ct.active = :active) " +
-            "AND (:scriptTypeId IS NULL OR ct.scriptType.id = :scriptTypeId) " +
-            "ORDER BY ct.createdDt DESC")
+    @EntityGraph(attributePaths = {
+            "deviceModel",
+            "scriptType",
+            "scriptType.codeGroup",
+            "groups"
+    })
+    @Query("SELECT ct FROM CollectionTask ct "
+            + "WHERE (:modelId IS NULL OR ct.deviceModel.id = :modelId) "
+            + "AND (:scriptTypeId IS NULL OR ct.scriptType.id = :scriptTypeId) "
+            + "AND (:active IS NULL OR ct.active = :active) "
+            + "ORDER BY ct.id ASC")
     List<CollectionTask> findAll(
-            @Param("name") String name,
-            @Param("active") Boolean active,
-            @Param("scriptTypeId") Integer scriptTypeId
+            @Param("modelId") Integer modelId,
+            @Param("scriptTypeId") Integer scriptTypeId,
+            @Param("active") Boolean active
     );
+
+    @EntityGraph(attributePaths = {
+            "deviceModel",
+            "scriptType",
+            "scriptType.codeGroup",
+            "groups"
+    })
+    Optional<CollectionTask> findByDeviceModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId);
+
+    @EntityGraph(attributePaths = {
+            "deviceModel",
+            "scriptType",
+            "scriptType.codeGroup",
+            "groups"
+    })
+    List<CollectionTask> findAllByDeviceModelId(Integer modelId);
+
+    boolean existsByDeviceModelIdAndScriptTypeId(Integer modelId, Integer scriptTypeId);
+
+    boolean existsByDeviceModelId(Integer modelId);
 }

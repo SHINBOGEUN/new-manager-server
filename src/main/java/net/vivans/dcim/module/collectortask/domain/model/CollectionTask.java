@@ -1,91 +1,85 @@
 package net.vivans.dcim.module.collectortask.domain.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
-import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "collection_task")
+@Table(
+        name = "collection_task",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_collection_task_model_script",
+                columnNames = {"model_id", "script_type_id"}
+        )
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CollectionTask extends BaseEntity {
 
     public static final String SCRIPT_TYPE_GROUP_KEY = "PROTOCOL_TYPE";
+    public static final String DEFAULT_GROUP_NAME = "기본 그룹";
+    public static final String DEFAULT_GROUP_CRON = "0 */1 * * * *";
 
     @Id
-    @Column(length = 36, nullable = false, updatable = false)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 100)
-    private String cronExpression;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "model_id", nullable = false)
+    private DeviceModel deviceModel;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "script_type_id", nullable = false)
     private CommonCode scriptType;
 
-    @Column(columnDefinition = "LONGTEXT")
-    private String generatedScript;
-
-    @Column(length = 100)
-    private String collectorTaskId;
-
     @Column(nullable = false)
     private boolean active;
 
-    private CollectionTask(
-            String id,
-            String name,
-            String cronExpression,
-            CommonCode scriptType,
-            String generatedScript,
-            String collectorTaskId,
-            boolean active
-    ) {
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private final List<CollectionTaskGroup> groups = new ArrayList<>();
+
+    private CollectionTask(String name, DeviceModel deviceModel, CommonCode scriptType, boolean active) {
         validateName(name);
-        validateCronExpression(cronExpression);
+        validateDeviceModel(deviceModel);
         validateScriptType(scriptType);
-        this.id = id;
+        validateModelSupportsScriptType(deviceModel, scriptType);
         this.name = name;
-        this.cronExpression = cronExpression;
+        this.deviceModel = deviceModel;
         this.scriptType = scriptType;
-        this.generatedScript = generatedScript;
-        this.collectorTaskId = collectorTaskId;
         this.active = active;
     }
 
-    public static CollectionTask create(String name, String cronExpression, CommonCode scriptType, boolean active) {
-        return new CollectionTask(
-                UUID.randomUUID().toString(),
-                name,
-                cronExpression,
-                scriptType,
-                null,
-                null,
-                active
-        );
+    public static CollectionTask create(String name, DeviceModel deviceModel, CommonCode scriptType, boolean active) {
+        return new CollectionTask(name, deviceModel, scriptType, active);
     }
 
-    public void update(String name, String cronExpression, CommonCode scriptType, boolean active) {
+    public void update(String name, boolean active) {
         validateName(name);
-        validateCronExpression(cronExpression);
-        validateScriptType(scriptType);
         this.name = name;
-        this.cronExpression = cronExpression;
-        this.scriptType = scriptType;
         this.active = active;
     }
 
@@ -93,12 +87,49 @@ public class CollectionTask extends BaseEntity {
         this.active = !this.active;
     }
 
-    public void updateGeneratedScript(String generatedScript) {
-        this.generatedScript = blankToNull(generatedScript);
+    public void addGroup(CollectionTaskGroup group) {
+        groups.add(group);
     }
 
-    public void updateCollectorTaskId(String collectorTaskId) {
-        this.collectorTaskId = blankToNull(collectorTaskId);
+    public CollectionTaskGroup ensureDefaultGroup() {
+        CollectionTaskGroup existing = defaultGroup();
+        if (existing != null) {
+            return existing;
+        }
+        return CollectionTaskGroup.create(this, DEFAULT_GROUP_NAME, DEFAULT_GROUP_CRON, true);
+    }
+
+    public CollectionTaskGroup defaultGroup() {
+        for (CollectionTaskGroup group : groups) {
+            if (group.isActive()) {
+                return group;
+            }
+        }
+        return groups.isEmpty() ? null : groups.get(0);
+    }
+
+    public boolean hasCronExpression(String cronExpression, Integer excludeGroupId) {
+        for (CollectionTaskGroup group : groups) {
+            if (excludeGroupId != null && excludeGroupId.equals(group.getId())) {
+                continue;
+            }
+            if (group.getCronExpression().equals(cronExpression)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean containsDevice(Integer deviceId, Integer excludeGroupId) {
+        for (CollectionTaskGroup group : groups) {
+            if (excludeGroupId != null && excludeGroupId.equals(group.getId())) {
+                continue;
+            }
+            if (group.containsDevice(deviceId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void validateName(String name) {
@@ -107,9 +138,9 @@ public class CollectionTask extends BaseEntity {
         }
     }
 
-    private static void validateCronExpression(String cronExpression) {
-        if (cronExpression == null || cronExpression.isBlank()) {
-            throw new IllegalArgumentException("cronExpression is required");
+    private static void validateDeviceModel(DeviceModel deviceModel) {
+        if (deviceModel == null) {
+            throw new IllegalArgumentException("deviceModel is required");
         }
     }
 
@@ -122,7 +153,12 @@ public class CollectionTask extends BaseEntity {
         }
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
+    private static void validateModelSupportsScriptType(DeviceModel deviceModel, CommonCode scriptType) {
+        for (DeviceModelProtocol protocol : deviceModel.getProtocols()) {
+            if (scriptType.getId().equals(protocol.getProtocolType().getId())) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("scriptType is not supported by device model");
     }
 }
