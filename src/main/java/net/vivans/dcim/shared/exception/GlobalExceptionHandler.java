@@ -114,6 +114,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(404, "Resource not found", e.getMessage()));
     }
 
+    @ExceptionHandler(CollectorSyncException.class)
+    public ResponseEntity<ApiResponse<Object>> collectorSyncExceptionHandler(CollectorSyncException e) {
+        log.error("CollectorSyncException: {}", e.getMessage(), e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> exceptionHandler(Exception e) {
         log.error("Exception: {}", e, e);

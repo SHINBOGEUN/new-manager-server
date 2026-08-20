@@ -32,37 +32,57 @@ public class CollectorJobClient {
     }
 
     public CollectorJobResponse register(String specJson) {
-        return requireData(restClient.post()
+        return withRetry(() -> requireData(restClient.post()
                 .uri("/api/jobs/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(specJson)
                 .retrieve()
-                .body(JOB_RESPONSE_TYPE), "register");
+                .body(JOB_RESPONSE_TYPE), "register"));
     }
 
     public CollectorJobResponse update(String collectorJobId, String specJson) {
-        return requireData(restClient.put()
+        return withRetry(() -> requireData(restClient.put()
                 .uri("/api/jobs/{collectorJobId}", collectorJobId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(specJson)
                 .retrieve()
-                .body(JOB_RESPONSE_TYPE), "update");
+                .body(JOB_RESPONSE_TYPE), "update"));
     }
 
     public void delete(String collectorJobId) {
-        restClient.delete()
+        withRetryVoid(() -> restClient.delete()
                 .uri("/api/jobs/{collectorJobId}", collectorJobId)
                 .retrieve()
-                .toBodilessEntity();
+                .toBodilessEntity());
     }
 
     public CollectorJobResponse toggle(String collectorJobId, boolean enabled) {
-        return requireData(restClient.patch()
+        return withRetry(() -> requireData(restClient.patch()
                 .uri("/api/jobs/{collectorJobId}/toggle", collectorJobId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"enabled\":" + enabled + "}")
                 .retrieve()
-                .body(JOB_RESPONSE_TYPE), "toggle");
+                .body(JOB_RESPONSE_TYPE), "toggle"));
+    }
+
+    <T> T withRetry(java.util.function.Supplier<T> action) {
+        return CollectorSyncRetryExecutor.execute(
+                action,
+                properties.getRetryMaxAttempts(),
+                properties.getRetryDelayMs()
+        );
+    }
+
+    void withRetryVoid(Runnable action) {
+        CollectorSyncRetryExecutor.executeVoid(
+                action,
+                properties.getRetryMaxAttempts(),
+                properties.getRetryDelayMs()
+        );
+    }
+
+    public boolean isFailFast() {
+        return properties.isFailFast();
     }
 
     private CollectorJobResponse requireData(CollectorApiResponse<CollectorJobResponse> response, String operation) {

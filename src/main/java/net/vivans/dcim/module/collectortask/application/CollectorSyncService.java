@@ -8,6 +8,7 @@ import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorJobClient;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorJobResponse;
+import net.vivans.dcim.shared.exception.CollectorSyncException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,11 @@ public class CollectorSyncService {
 
     @Transactional
     public void syncGroupSpec(CollectionTaskGroup group) {
+        syncGroupSpec(group, collectorJobClient.isFailFast());
+    }
+
+    @Transactional
+    public void syncGroupSpec(CollectionTaskGroup group, boolean failFast) {
         if (!collectorJobClient.isEnabled()) {
             return;
         }
@@ -34,12 +40,12 @@ public class CollectorSyncService {
             return;
         }
         if (!isSnmpSpec(specJson)) {
-            removeGroupJob(group);
+            removeGroupJob(group, failFast);
             save(task);
             return;
         }
         if (!isCollectorEnabled(task, group)) {
-            disableGroupJob(group);
+            disableGroupJob(group, failFast);
             save(task);
             return;
         }
@@ -65,25 +71,30 @@ public class CollectorSyncService {
             }
             save(task);
         } catch (Exception exception) {
-            collectorJobClient.logFailure("syncGroupSpec", task.getId(), group.getId(), exception);
+            handleFailure("syncGroupSpec", task.getId(), group.getId(), failFast, exception);
         }
     }
 
     @Transactional
     public void syncGroupToggle(CollectionTaskGroup group) {
+        syncGroupToggle(group, collectorJobClient.isFailFast());
+    }
+
+    @Transactional
+    public void syncGroupToggle(CollectionTaskGroup group, boolean failFast) {
         if (!collectorJobClient.isEnabled()) {
             return;
         }
         CollectionTask task = group.getTask();
         if (!isSnmpTask(task)) {
-            removeGroupJob(group);
+            removeGroupJob(group, failFast);
             save(task);
             return;
         }
         boolean enabled = isCollectorEnabled(task, group);
         if (group.getCollectorJobId() == null) {
             if (enabled && hasGeneratedSpec(group)) {
-                syncGroupSpec(group);
+                syncGroupSpec(group, failFast);
             }
             return;
         }
@@ -97,19 +108,29 @@ public class CollectorSyncService {
                     enabled
             );
         } catch (Exception exception) {
-            collectorJobClient.logFailure("syncGroupToggle", task.getId(), group.getId(), exception);
+            handleFailure("syncGroupToggle", task.getId(), group.getId(), failFast, exception);
         }
     }
 
     @Transactional
     public void syncTaskToggle(CollectionTask task) {
+        syncTaskToggle(task, collectorJobClient.isFailFast());
+    }
+
+    @Transactional
+    public void syncTaskToggle(CollectionTask task, boolean failFast) {
         for (CollectionTaskGroup group : new ArrayList<>(task.getGroups())) {
-            syncGroupToggle(group);
+            syncGroupToggle(group, failFast);
         }
     }
 
     @Transactional
     public void removeGroupJob(CollectionTaskGroup group) {
+        removeGroupJob(group, collectorJobClient.isFailFast());
+    }
+
+    @Transactional
+    public void removeGroupJob(CollectionTaskGroup group, boolean failFast) {
         if (!collectorJobClient.isEnabled()) {
             return;
         }
@@ -129,14 +150,19 @@ public class CollectorSyncService {
                     collectorJobId
             );
         } catch (Exception exception) {
-            collectorJobClient.logFailure("removeGroupJob", task.getId(), group.getId(), exception);
+            handleFailure("removeGroupJob", task.getId(), group.getId(), failFast, exception);
         }
     }
 
     @Transactional
     public void removeTaskJobs(CollectionTask task) {
+        removeTaskJobs(task, collectorJobClient.isFailFast());
+    }
+
+    @Transactional
+    public void removeTaskJobs(CollectionTask task, boolean failFast) {
         for (CollectionTaskGroup group : new ArrayList<>(task.getGroups())) {
-            removeGroupJob(group);
+            removeGroupJob(group, failFast);
         }
     }
 
@@ -185,11 +211,11 @@ public class CollectorSyncService {
                     response.collectorJobId()
             );
         } catch (Exception exception) {
-            collectorJobClient.logFailure("repushGroup", task.getId(), group.getId(), exception);
+            handleFailure("repushGroup", task.getId(), group.getId(), false, exception);
         }
     }
 
-    private void disableGroupJob(CollectionTaskGroup group) {
+    private void disableGroupJob(CollectionTaskGroup group, boolean failFast) {
         if (group.getCollectorJobId() == null) {
             return;
         }
@@ -203,7 +229,23 @@ public class CollectorSyncService {
                     group.getCollectorJobId()
             );
         } catch (Exception exception) {
-            collectorJobClient.logFailure("disableGroupJob", task.getId(), group.getId(), exception);
+            handleFailure("disableGroupJob", task.getId(), group.getId(), failFast, exception);
+        }
+    }
+
+    private void handleFailure(
+            String operation,
+            Integer taskId,
+            Integer groupId,
+            boolean failFast,
+            Exception exception
+    ) {
+        collectorJobClient.logFailure(operation, taskId, groupId, exception);
+        if (failFast) {
+            throw new CollectorSyncException(
+                    "collector sync failed: " + operation + " (taskId=" + taskId + ", groupId=" + groupId + ")",
+                    exception
+            );
         }
     }
 

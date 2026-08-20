@@ -47,3 +47,6 @@ collector:
     url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
     api-key: ${COLLECTOR_API_KEY:manager-server}
     enabled: ${COLLECTOR_SYNC_ENABLED:true}
+    fail-fast: ${COLLECTOR_SYNC_FAIL_FAST:true}
+    retry-max-attempts: ${COLLECTOR_SYNC_RETRY_MAX_ATTEMPTS:3}
+    retry-delay-ms: ${COLLECTOR_SYNC_RETRY_DELAY_MS:500}

@@ -45,7 +45,7 @@ public class CollectionScriptSyncService {
             }
             group.updateGeneratedSpec(spec);
             log.info("regenerated collection group spec: taskId={}, groupId={}", task.getId(), group.getId());
-            collectorSyncService.syncGroupSpec(group);
+            collectorSyncService.syncGroupSpec(group, false);
         }
         collectionTaskRepository.save(task);
     }
