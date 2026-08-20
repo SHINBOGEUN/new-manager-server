@@ -9,6 +9,8 @@ public interface CollectionTaskRepository {
 
     CollectionTask save(CollectionTask collectionTask);
 
+    CollectionTask saveAndFlush(CollectionTask collectionTask);
+
     Optional<CollectionTask> findById(Integer id);
 
     List<CollectionTask> findAll(Integer modelId, Integer scriptTypeId, Boolean active);

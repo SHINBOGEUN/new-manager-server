@@ -28,3 +28,7 @@ jwt:
 
 security:
   auth-enabled: true
+
+collector:
+  service:
+    enabled: false

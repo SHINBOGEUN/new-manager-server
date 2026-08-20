@@ -10,6 +10,7 @@ import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,6 +22,7 @@ public class CollectionScriptSyncService {
     private final CollectionTaskRepository collectionTaskRepository;
     private final CollectionGroupSpecService collectionGroupSpecService;
     private final DeviceRepository deviceRepository;
+    private final CollectorSyncService collectorSyncService;
 
     @Transactional
     public void regenerateByModelId(Integer modelId) {
@@ -35,14 +37,15 @@ public class CollectionScriptSyncService {
 
     @Transactional
     public void regenerateTask(CollectionTask task) {
-        collectionTaskRepository.save(task);
-        for (CollectionTaskGroup group : task.getGroups()) {
+        collectionTaskRepository.saveAndFlush(task);
+        for (CollectionTaskGroup group : new ArrayList<>(task.getGroups())) {
             String spec = collectionGroupSpecService.generateJson(group);
             if (Objects.equals(spec, group.getGeneratedSpec())) {
                 continue;
             }
             group.updateGeneratedSpec(spec);
             log.info("regenerated collection group spec: taskId={}, groupId={}", task.getId(), group.getId());
+            collectorSyncService.syncGroupSpec(group);
         }
         collectionTaskRepository.save(task);
     }

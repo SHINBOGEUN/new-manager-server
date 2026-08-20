@@ -43,6 +43,7 @@ public class CollectionTaskService {
     private final CollectionTaskRepository collectionTaskRepository;
     private final CollectionGroupSpecService collectionGroupSpecService;
     private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectorSyncService collectorSyncService;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceRepository deviceRepository;
@@ -70,7 +71,7 @@ public class CollectionTaskService {
         boolean active = request.active() == null || request.active();
         CollectionTask task = CollectionTask.create(request.name(), deviceModel, scriptType, active);
         addGroups(task, request.groups());
-        collectionTaskRepository.save(task);
+        collectionTaskRepository.saveAndFlush(task);
         collectionScriptSyncService.assignUnassignedModelDevicesAndRegenerate(task);
         return CollectionTaskResponse.from(task);
     }
@@ -79,12 +80,15 @@ public class CollectionTaskService {
     public CollectionTaskResponse updateTask(Integer taskId, CollectionTaskUpdateRequest request) {
         CollectionTask task = findTask(taskId);
         task.update(request.name(), request.active());
-        return CollectionTaskResponse.from(collectionTaskRepository.save(task));
+        collectionTaskRepository.save(task);
+        collectorSyncService.syncTaskToggle(task);
+        return CollectionTaskResponse.from(task);
     }
 
     @Transactional
     public Integer deleteTask(Integer taskId) {
         CollectionTask task = findTask(taskId);
+        collectorSyncService.removeTaskJobs(task);
         collectionTaskRepository.delete(task);
         return taskId;
     }
@@ -93,16 +97,19 @@ public class CollectionTaskService {
     public CollectionTaskResponse toggleTask(Integer taskId) {
         CollectionTask task = findTask(taskId);
         task.toggleActive();
-        return CollectionTaskResponse.from(collectionTaskRepository.save(task));
+        collectionTaskRepository.save(task);
+        collectorSyncService.syncTaskToggle(task);
+        return CollectionTaskResponse.from(task);
     }
 
     @Transactional
     public CollectionTaskGroupResponse createGroup(Integer taskId, CollectionTaskGroupRequest request) {
         CollectionTask task = findTask(taskId);
         CollectionTaskGroup group = buildGroup(task, request, null);
-        collectionTaskRepository.save(task);
+        collectionTaskRepository.saveAndFlush(task);
         group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
-        collectionTaskRepository.save(task);
+        collectionTaskRepository.saveAndFlush(task);
+        collectorSyncService.syncGroupSpec(group);
         return CollectionTaskGroupResponse.from(group);
     }
 
@@ -115,9 +122,10 @@ public class CollectionTaskService {
         CollectionTask task = findTask(taskId);
         CollectionTaskGroup group = findGroup(task, groupId);
         applyGroupUpdate(task, group, request);
-        collectionTaskRepository.save(task);
+        collectionTaskRepository.saveAndFlush(task);
         group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
-        collectionTaskRepository.save(task);
+        collectionTaskRepository.saveAndFlush(task);
+        collectorSyncService.syncGroupSpec(group);
         return CollectionTaskGroupResponse.from(group);
     }
 
@@ -125,6 +133,7 @@ public class CollectionTaskService {
     public Integer deleteGroup(Integer taskId, Integer groupId) {
         CollectionTask task = findTask(taskId);
         CollectionTaskGroup group = findGroup(task, groupId);
+        collectorSyncService.removeGroupJob(group);
         task.getGroups().remove(group);
         collectionTaskRepository.save(task);
         return groupId;
@@ -136,6 +145,7 @@ public class CollectionTaskService {
         CollectionTaskGroup group = findGroup(task, groupId);
         group.toggleActive();
         collectionTaskRepository.save(task);
+        collectorSyncService.syncGroupToggle(group);
         return CollectionTaskGroupResponse.from(group);
     }
 

@@ -346,18 +346,18 @@ topic: `dcim/sensor/data`
 
 ```json
 {
-  "type": "sensor",
   "datetime": "2026-08-19 02:00:00",
-  "taskId": 1,
-  "groupId": 11,
   "data": {
-    "device:1": {
+    "1": {
       "V": 220.1,
       "A": 1.4
     }
-  }
+  },
+  "type": "schedule"
 }
 ```
+
+`data` 키는 `devices.id`를 문자열로 쓴다 (예: `"9"`). 레거시 MQTT envelope와 동일하다.
 
 실패는 MQTT에 안 넣는다. collector 로그(이후 메트릭)만.
 
@@ -380,7 +380,7 @@ topic: `dcim/sensor/data`
 
 - Spring Boot 3.x + Java 17
 - MQTT `dcim/sensor/data` 구독
-- `data`의 `device:{id}` 기준으로 manager capabilities/캐시 조회
+- `data`의 키(`devices.id` 문자열, 예 `"9"`) 기준으로 manager capabilities/캐시 조회
 - InfluxDB write
 
 **measurement:** `dcim_sensor`  

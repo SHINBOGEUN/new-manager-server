@@ -20,6 +20,11 @@ public class CollectionTaskJpaRepository implements CollectionTaskRepository {
     }
 
     @Override
+    public CollectionTask saveAndFlush(CollectionTask collectionTask) {
+        return springDataRepository.saveAndFlush(collectionTask);
+    }
+
+    @Override
     public Optional<CollectionTask> findById(Integer id) {
         return springDataRepository.findById(id);
     }

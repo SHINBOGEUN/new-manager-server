@@ -365,6 +365,44 @@ class CollectionTaskControllerIntegrationTest {
     }
 
     @Test
+    void updateGroup_keepsOverlappingDeviceWithoutDuplicateMappingError() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-keep-device", "password123");
+        Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
+        Integer modelId = createDeviceModelWithSnmpPoint(
+                accessToken, "V4-KEEP-MAP", "APC", snmpId, false,
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.12.8.0", "temp", "C");
+        String locationCode = createRootLocation(accessToken, "V4-Keep-Map-Loc");
+        int keepId = createDevice(accessToken, modelId, locationCode, "V4-KEEP-ONLY");
+        int dropA = createDevice(accessToken, modelId, locationCode, "V4-DROP-A");
+        int dropB = createDevice(accessToken, modelId, locationCode, "V4-DROP-B");
+        int taskId = createTaskWithDevices(
+                accessToken, "매핑 유지", modelId, snmpId, "0 */5 * * * *", keepId, dropA, dropB);
+
+        String taskJson = mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int groupId = objectMapper.readTree(taskJson).path("data").path("groups").get(0).path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/collector/tasks/{taskId}/groups/{groupId}", taskId, groupId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "5분 그룹",
+                                  "cronExpression": "0 */5 * * * *",
+                                  "deviceIds": [%d],
+                                  "active": true
+                                }
+                                """.formatted(keepId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.devices", hasSize(1)))
+                .andExpect(jsonPath("$.data.devices[0].deviceId").value(keepId));
+    }
+
+    @Test
     void disableEndpoint_dropsDeviceFromGeneratedSpec() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-endpoint-off", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);

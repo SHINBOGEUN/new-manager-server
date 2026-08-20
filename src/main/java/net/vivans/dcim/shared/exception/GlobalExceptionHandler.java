@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> dataIntegrityViolationExceptionHandler(DataIntegrityViolationException e) {
         log.warn("DataIntegrityViolationException: {}", e.getMessage());
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error(400, "name already exists under parent"));
+                .body(ApiResponse.error(400, "duplicate or constraint violation"));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

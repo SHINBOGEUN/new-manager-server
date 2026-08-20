@@ -41,3 +41,9 @@ jwt:
 
 security:
   auth-enabled: true
+
+collector:
+  service:
+    url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
+    api-key: ${COLLECTOR_API_KEY:manager-server}
+    enabled: ${COLLECTOR_SYNC_ENABLED:true}

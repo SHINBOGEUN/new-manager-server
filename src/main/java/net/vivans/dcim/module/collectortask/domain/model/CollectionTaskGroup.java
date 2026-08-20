@@ -20,7 +20,9 @@ import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(
@@ -100,12 +102,25 @@ public class CollectionTaskGroup extends BaseEntity {
     }
 
     public void replaceDevices(List<Device> newDevices) {
-        devices.clear();
+        Set<Integer> keepIds = new HashSet<>();
+        if (newDevices != null) {
+            for (Device device : newDevices) {
+                if (device != null && device.getId() != null) {
+                    keepIds.add(device.getId());
+                }
+            }
+        }
+        devices.removeIf(mapping -> !keepIds.contains(mapping.getDevice().getId()));
         if (newDevices == null) {
             return;
         }
         for (Device device : newDevices) {
-            addDevice(device);
+            if (device == null || device.getId() == null) {
+                continue;
+            }
+            if (!containsDevice(device.getId())) {
+                addDevice(device);
+            }
         }
     }
 
