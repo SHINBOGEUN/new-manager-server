@@ -365,6 +365,80 @@ class CollectionTaskControllerIntegrationTest {
     }
 
     @Test
+    void updateGroup_withoutDeviceIds_keepsExistingDevices() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-omit-devices", "password123");
+        Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
+        Integer modelId = createDeviceModelWithSnmpPoint(
+                accessToken, "V4-OMIT-DEV", "APC", snmpId, false,
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.12.9.0", "temp", "C");
+        String locationCode = createRootLocation(accessToken, "V4-Omit-Dev-Loc");
+        int deviceA = createDevice(accessToken, modelId, locationCode, "V4-OMIT-A");
+        int deviceB = createDevice(accessToken, modelId, locationCode, "V4-OMIT-B");
+        int taskId = createTaskWithDevices(
+                accessToken, "deviceIds 생략", modelId, snmpId, "0 */5 * * * *", deviceA, deviceB);
+
+        String taskJson = mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int groupId = objectMapper.readTree(taskJson).path("data").path("groups").get(0).path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/collector/tasks/{taskId}/groups/{groupId}", taskId, groupId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "5분 그룹 (이름만 변경)",
+                                  "cronExpression": "0 */5 * * * *",
+                                  "active": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("5분 그룹 (이름만 변경)"))
+                .andExpect(jsonPath("$.data.devices", hasSize(2)))
+                .andExpect(jsonPath("$.data.devices[0].deviceId").value(deviceA))
+                .andExpect(jsonPath("$.data.devices[1].deviceId").value(deviceB));
+    }
+
+    @Test
+    void updateGroup_withEmptyDeviceIds_clearsAllDevices() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-clear-devices", "password123");
+        Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
+        Integer modelId = createDeviceModelWithSnmpPoint(
+                accessToken, "V4-CLEAR-DEV", "APC", snmpId, false,
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.12.10.0", "temp", "C");
+        String locationCode = createRootLocation(accessToken, "V4-Clear-Dev-Loc");
+        int deviceA = createDevice(accessToken, modelId, locationCode, "V4-CLEAR-A");
+        int deviceB = createDevice(accessToken, modelId, locationCode, "V4-CLEAR-B");
+        int taskId = createTaskWithDevices(
+                accessToken, "deviceIds 비우기", modelId, snmpId, "0 */5 * * * *", deviceA, deviceB);
+
+        String taskJson = mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int groupId = objectMapper.readTree(taskJson).path("data").path("groups").get(0).path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/collector/tasks/{taskId}/groups/{groupId}", taskId, groupId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "5분 그룹",
+                                  "cronExpression": "0 */5 * * * *",
+                                  "deviceIds": [],
+                                  "active": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.devices", hasSize(0)));
+    }
+
+    @Test
     void updateGroup_keepsOverlappingDeviceWithoutDuplicateMappingError() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-keep-device", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);

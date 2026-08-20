@@ -189,7 +189,9 @@ public class CollectionTaskService {
         }
         boolean active = request.active() == null || request.active();
         group.update(request.name(), request.cronExpression(), active);
-        group.replaceDevices(resolveDevices(task, request.deviceIds(), group.getId()));
+        if (request.deviceIds() != null) {
+            group.replaceDevices(resolveDevices(task, request.deviceIds(), group.getId()));
+        }
     }
 
     private List<Device> resolveDevices(CollectionTask task, List<Integer> deviceIds, Integer excludeGroupId) {

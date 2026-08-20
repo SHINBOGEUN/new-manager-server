@@ -14,7 +14,11 @@ public record CollectionTaskGroupRequest(
         @NotBlank(message = "cronExpression must not be empty")
         String cronExpression,
 
-        @Schema(description = "이 주기로 수집할 장비 ID 목록", example = "[1, 2, 3]")
+        @Schema(
+                description = "이 주기로 수집할 장비 ID 목록. 그룹 생성 시 생략/null/[]면 빈 그룹. "
+                        + "그룹 수정(PUT) 시 생략/null이면 기존 장비 유지, []면 전체 제거.",
+                example = "[1, 2, 3]"
+        )
         List<Integer> deviceIds,
 
         @Schema(description = "그룹 활성 여부 (기본 true)", example = "true")
