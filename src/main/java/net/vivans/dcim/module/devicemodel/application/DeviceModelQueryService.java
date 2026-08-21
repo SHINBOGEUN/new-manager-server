@@ -2,6 +2,8 @@ package net.vivans.dcim.module.devicemodel.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
@@ -28,10 +30,14 @@ public class DeviceModelQueryService {
     private static final String PROTOCOL_TYPE_GROUP_KEY = "PROTOCOL_TYPE";
     private static final String MODEL_TYPE_GROUP_KEY = "MODEL_TYPE";
     private static final String DEVICE_MODEL_REFERENCED_MESSAGE = "device model is referenced by devices";
+    private static final String DEVICE_MODEL_REFERENCED_BY_TASK_MESSAGE =
+            "device model is referenced by collection tasks";
 
     private final DeviceModelRepository deviceModelRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
+    private final CollectionTaskRepository collectionTaskRepository;
+    private final CollectionScriptSyncService collectionScriptSyncService;
 
     @Transactional
     public DeviceModelResponse createDeviceModel(DeviceModelCreateRequest request) {
@@ -58,7 +64,9 @@ public class DeviceModelQueryService {
         deviceModel.update(request.name(), request.manufacturer(), deviceType, request.description());
         replaceProtocolsFromRequest(deviceModel, request.protocols());
 
-        return DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
+        DeviceModelResponse response = DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
+        collectionScriptSyncService.regenerateByModelId(id);
+        return response;
     }
 
     public List<DeviceModelResponse> getDeviceModels(String name, String manufacturer) {
@@ -79,6 +87,9 @@ public class DeviceModelQueryService {
         DeviceModel deviceModel = findDeviceModel(id);
         if (deviceRepository.existsByDeviceModelId(id)) {
             throw new ConflictException(DEVICE_MODEL_REFERENCED_MESSAGE);
+        }
+        if (collectionTaskRepository.existsByModelId(id)) {
+            throw new ConflictException(DEVICE_MODEL_REFERENCED_BY_TASK_MESSAGE);
         }
         deviceModelRepository.delete(deviceModel);
     }

@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceProtocolEndpointCreateRequest;
@@ -30,10 +31,13 @@ public class DeviceProtocolEndpointQueryService {
     private static final String HOST_PORT_ALREADY_EXISTS_MESSAGE = "endpoint already exists for this host and port";
     private static final String PROTOCOL_NOT_SUPPORTED_MESSAGE = "protocol not supported by device model";
 
+    private static final String SNMP_PROTOCOL_CODE = "snmp";
+
     private final DeviceRepository deviceRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final CommonCodeRepository commonCodeRepository;
+    private final CollectionScriptSyncService collectionScriptSyncService;
 
     public List<DeviceProtocolEndpointResponse> getEndpoints(Integer deviceId) {
         findDevice(deviceId);
@@ -75,7 +79,9 @@ public class DeviceProtocolEndpointQueryService {
                 request.port(),
                 enabled
         );
-        return DeviceProtocolEndpointResponse.from(deviceProtocolEndpointRepository.save(endpoint));
+        DeviceProtocolEndpoint saved = deviceProtocolEndpointRepository.save(endpoint);
+        regenerateIfSnmp(protocolType, device);
+        return DeviceProtocolEndpointResponse.from(saved);
     }
 
     @Transactional
@@ -96,21 +102,40 @@ public class DeviceProtocolEndpointQueryService {
         validateUniqueHostPort(request.host(), request.port(), endpointId);
 
         boolean enabled = request.enabled() == null || request.enabled();
+        boolean snmpAffected = isSnmp(endpoint.getProtocolType()) || isSnmp(protocolType);
         endpoint.update(protocolType, request.host(), request.port(), enabled);
-        return DeviceProtocolEndpointResponse.from(deviceProtocolEndpointRepository.save(endpoint));
+        DeviceProtocolEndpoint saved = deviceProtocolEndpointRepository.save(endpoint);
+        if (snmpAffected) {
+            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+        }
+        return DeviceProtocolEndpointResponse.from(saved);
     }
 
     @Transactional
     public Integer deleteEndpoint(Integer deviceId, Integer endpointId) {
-        findDevice(deviceId);
+        Device device = findDevice(deviceId);
         DeviceProtocolEndpoint endpoint = findEndpoint(endpointId, deviceId);
+        boolean snmpAffected = isSnmp(endpoint.getProtocolType());
         deviceProtocolEndpointRepository.delete(endpoint);
+        if (snmpAffected) {
+            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+        }
         return endpointId;
     }
 
     private Device findDevice(Integer deviceId) {
         return deviceRepository.findById(deviceId)
                 .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId));
+    }
+
+    private void regenerateIfSnmp(CommonCode protocolType, Device device) {
+        if (isSnmp(protocolType)) {
+            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+        }
+    }
+
+    private static boolean isSnmp(CommonCode protocolType) {
+        return protocolType != null && SNMP_PROTOCOL_CODE.equals(protocolType.getCode());
     }
 
     private DeviceProtocolEndpoint findEndpoint(Integer endpointId, Integer deviceId) {

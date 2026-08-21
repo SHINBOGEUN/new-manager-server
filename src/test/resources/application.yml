@@ -28,3 +28,11 @@ jwt:
 
 security:
   auth-enabled: true
+
+collector:
+  service:
+    enabled: false
+
+live:
+  telemetry:
+    session-timeout-minutes: 30

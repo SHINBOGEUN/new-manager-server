@@ -38,5 +38,9 @@ public interface DeviceRepository {
 
     boolean existsByDeviceModelId(Integer deviceModelId);
 
+    List<Device> findAllByDeviceModelId(Integer deviceModelId);
+
+    void flush();
+
     void delete(Device device);
 }

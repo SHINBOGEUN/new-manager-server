@@ -104,7 +104,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> dataIntegrityViolationExceptionHandler(DataIntegrityViolationException e) {
         log.warn("DataIntegrityViolationException: {}", e.getMessage());
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error(400, "name already exists under parent"));
+                .body(ApiResponse.error(400, "duplicate or constraint violation"));
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
@@ -112,6 +112,13 @@ public class GlobalExceptionHandler {
         log.warn("NoResourceFoundException: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(404, "Resource not found", e.getMessage()));
+    }
+
+    @ExceptionHandler(CollectorSyncException.class)
+    public ResponseEntity<ApiResponse<Object>> collectorSyncExceptionHandler(CollectorSyncException e) {
+        log.error("CollectorSyncException: {}", e.getMessage(), e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

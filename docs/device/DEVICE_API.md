@@ -47,7 +47,9 @@
 | `name` | 필수. **같은 위치**(`location_node_code`) 아래에서 중복 불가 |
 | `enabled` | boolean. 기본 `true` |
 | `description` | 선택 |
-| 응답 `locationNodeName` | `location_node.name` (code는 응답에 포함하지 않음) |
+| 응답 `locationNodeCode` | `location_node.code` (Influx tag·내부 조회용, 안정 키) |
+| 응답 `locationNodeName` | `location_node.name` (표시명) |
+| 응답 `deviceTypeCode` | `device_model.device_type` common_code (`MODEL_TYPE`, Influx tag `device_type`) |
 | 모델 삭제 | `devices.model_id` 참조 중이면 409 ([DEVICE_MODEL_API](../devicemodel/DEVICE_MODEL_API.md)) |
 | 위치 삭제 | 참조 device는 **`UNASSIGNED`로 자동 이동** 후 삭제. 이름 충돌 시 409. **`UNASSIGNED`는 삭제 금지** |
 
@@ -171,6 +173,8 @@ erDiagram
     "modelId": 1,
     "modelName": "APC-8941",
     "manufacturer": "APC",
+    "deviceTypeCode": "PDU",
+    "locationNodeCode": "RACK000001",
     "locationNodeName": "Rack-01",
     "name": "PDU-01",
     "description": "Rack-01 좌측 PDU",
@@ -244,6 +248,8 @@ erDiagram
         "modelId": 1,
         "modelName": "APC-8941",
         "manufacturer": "APC",
+        "deviceTypeCode": "PDU",
+        "locationNodeCode": "RACK000001",
         "locationNodeName": "Rack-01",
         "name": "PDU-01",
         "description": "Rack-01 좌측 PDU",
@@ -350,4 +356,6 @@ erDiagram
 | 2026-07-22 | Device 수정 API·통합 테스트 추가 |
 | 2026-07-22 | Device 삭제 API·통합 테스트 추가 |
 | 2026-07-22 | Device 응답의 위치 필드를 `locationNodeName`으로 변경 (code 미노출) |
+| 2026-08-20 | Device 응답에 `locationNodeCode` 재추가 (Influx `location_code` tag용 안정 키) |
+| 2026-08-21 | Device 응답에 `deviceTypeCode` 추가 (Influx tag `device_type`) |
 | 2026-07-23 | §1.4·삭제 CASCADE·구현 현황 — `device_protocol_endpoint` (V009) 연동 |

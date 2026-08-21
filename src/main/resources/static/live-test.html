@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DCIM Live Telemetry</title>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #171d25;
+      --panel-2: #1d2530;
+      --line: #2a3544;
+      --text: #e8edf4;
+      --muted: #8b98a8;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --bad: #f07178;
+      --chip: #243044;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Malgun Gothic", sans-serif; }
+    body { display: grid; grid-template-rows: auto 1fr; }
+    header {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .02em; }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    label { font-size: 12px; color: var(--muted); }
+    input, button, select {
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 6px; padding: 7px 10px; font-size: 13px;
+    }
+    input { min-width: 140px; }
+    button { cursor: pointer; background: var(--accent); border-color: transparent; color: #061018; font-weight: 650; }
+    button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+    button.danger { background: #c94c53; color: #fff; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
+    .dot.on { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    main { display: grid; grid-template-columns: 340px 1fr; min-height: 0; }
+    aside {
+      border-right: 1px solid var(--line); background: var(--panel);
+      overflow: auto; padding: 12px;
+    }
+    .panel-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
+    .device {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; margin-bottom: 8px;
+    }
+    .device h3 { margin: 0 0 4px; font-size: 14px; }
+    .meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .point { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+    .point input { min-width: 0; }
+    .charts {
+      overflow: auto; padding: 12px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px;
+      align-content: start;
+    }
+    .chart-card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+      min-height: 260px;
+    }
+    .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .chart-head strong { font-size: 13px; }
+    .chart-head span { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--accent); }
+    .unit { color: var(--muted); font-size: 12px; margin-left: 4px; }
+    canvas { width: 100% !important; height: 200px !important; }
+    .log {
+      grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; padding: 10px; font-family: Consolas, monospace; font-size: 12px;
+      max-height: 160px; overflow: auto; color: var(--muted); white-space: pre-wrap;
+    }
+    .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
+    .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DCIM Live</h1>
+    <span class="chip">SNMP realtime</span>
+    <div class="row">
+      <label>Manager</label>
+      <input id="managerUrl" placeholder="http://localhost:8080" />
+      <label>MQTT WS</label>
+      <input id="mqttUrl" value="ws://localhost:9001/mqtt" />
+      <label>Topic</label>
+      <input id="topic" value="dcim/sensor/realtime" />
+    </div>
+    <div class="row">
+      <label>ID</label>
+      <input id="username" placeholder="username" />
+      <label>PW</label>
+      <input id="password" type="password" placeholder="password" />
+      <button id="loginBtn" type="button">로그인</button>
+      <span id="authStatus" class="chip">미로그인</span>
+    </div>
+    <div class="row">
+      <span class="dot" id="mqttDot"></span>
+      <span id="mqttStatus">MQTT 미연결</span>
+      <button id="mqttBtn" class="ghost" type="button">MQTT 연결</button>
+      <button id="applyBtn" type="button">선택 적용 (수집 시작)</button>
+      <button id="stopBtn" class="danger" type="button">수집 중지</button>
+    </div>
+  </header>
+  <main>
+    <aside>
+      <p class="panel-title">장비 / Point</p>
+      <div class="row" style="margin-bottom:8px">
+        <button id="reloadBtn" class="ghost" type="button">목록 새로고침</button>
+        <button id="allBtn" class="ghost" type="button">전체 선택</button>
+        <button id="noneBtn" class="ghost" type="button">선택 해제</button>
+      </div>
+      <div id="devices"><p class="empty">로그인 후 목록을 불러오세요.</p></div>
+    </aside>
+    <section class="charts" id="charts">
+      <p class="empty" id="chartEmpty">point를 고른 뒤 수집을 시작하면 그래프가 생깁니다.</p>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+  <script>
+    const MAX_POINTS = 90;
+    const PALETTE = ["#3d9cf0", "#3ecf8e", "#f0b429", "#c084fc", "#f07178", "#67e8f9", "#fb923c", "#a3e635"];
+    const state = {
+      token: sessionStorage.getItem("liveToken") || "",
+      mqtt: null,
+      charts: new Map(),
+      devices: [],
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function defaultManagerUrl() {
+      if (location.protocol.startsWith("http") && location.port === "8080") return "";
+      return "http://localhost:8080";
+    }
+
+    $("managerUrl").value = localStorage.getItem("liveManagerUrl") ?? defaultManagerUrl();
+    $("mqttUrl").value = localStorage.getItem("liveMqttUrl") || "ws://localhost:9001/mqtt";
+    $("topic").value = localStorage.getItem("liveTopic") || "dcim/sensor/realtime";
+
+    function managerBase() {
+      return $("managerUrl").value.replace(/\/$/, "");
+    }
+
+    function log(line) {
+      const el = $("log");
+      const ts = new Date().toLocaleTimeString();
+      el.textContent = `[${ts}] ${line}\n` + el.textContent;
+      if (el.textContent.length > 8000) el.textContent = el.textContent.slice(0, 8000);
+    }
+
+    function setAuthStatus() {
+      $("authStatus").textContent = state.token ? "로그인됨" : "미로그인";
+    }
+
+    async function api(path, options = {}) {
+      const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+      if (state.token) headers.Authorization = "Bearer " + state.token;
+      const res = await fetch(managerBase() + path, { ...options, headers });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.error || json.message || `HTTP ${res.status}`);
+      }
+      return json.data;
+    }
+
+    async function login() {
+      const username = $("username").value.trim();
+      const password = $("password").value;
+      const data = await api("/api/manager/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      state.token = data.accessToken;
+      sessionStorage.setItem("liveToken", state.token);
+      setAuthStatus();
+      log("로그인 성공: " + data.username);
+      await loadDevices();
+    }
+
+    function selectedItems() {
+      const items = [];
+      for (const device of state.devices) {
+        const names = [];
+        for (const point of device.points || []) {
+          const box = document.querySelector(`input[data-key="${device.deviceId}::${point.name}"]`);
+          if (box && box.checked) names.push(point.name);
+        }
+        if (names.length) items.push({ deviceId: device.deviceId, pointNames: names });
+      }
+      return items;
+    }
+
+    function renderDevices() {
+      if (!state.devices.length) {
+        $("devices").innerHTML = '<p class="empty">선택 가능한 SNMP 장비가 없습니다.</p>';
+        return;
+      }
+      $("devices").innerHTML = state.devices.map((device) => `
+        <article class="device">
+          <h3>${escapeHtml(device.deviceName || ("device-" + device.deviceId))}</h3>
+          <div class="meta">#${device.deviceId} · ${escapeHtml(device.modelName || "-")} · ${escapeHtml(device.locationNodeName || "-")}</div>
+          ${(device.points || []).map((point) => `
+            <label class="point">
+              <input type="checkbox" data-key="${device.deviceId}::${point.name}" />
+              <span>${escapeHtml(point.name)}</span>
+              <span class="chip">${escapeHtml(point.unit || "")}</span>
+            </label>
+          `).join("")}
+        </article>
+      `).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[ch]));
+    }
+
+    async function loadDevices() {
+      localStorage.setItem("liveManagerUrl", $("managerUrl").value);
+      state.devices = await api("/api/manager/live/devices") || [];
+      renderDevices();
+      log("장비 " + state.devices.length + "대 로드");
+      try {
+        const selection = await api("/api/manager/live/selection");
+        applyChecks(selection && selection.items ? selection.items : []);
+      } catch (err) {
+        log("현재 선택 조회 실패: " + err.message);
+      }
+    }
+
+    function applyChecks(items) {
+      document.querySelectorAll("input[data-key]").forEach((el) => { el.checked = false; });
+      for (const item of items) {
+        for (const name of item.pointNames || []) {
+          const box = document.querySelector(`input[data-key="${item.deviceId}::${name}"]`);
+          if (box) box.checked = true;
+        }
+      }
+      ensureCharts(selectedKeys());
+    }
+
+    function selectedKeys() {
+      return [...document.querySelectorAll("input[data-key]:checked")].map((el) => el.dataset.key);
+    }
+
+    function setAll(checked) {
+      document.querySelectorAll("input[data-key]").forEach((el) => { el.checked = checked; });
+    }
+
+    async function applySelection() {
+      const items = selectedItems();
+      const result = await api("/api/manager/live/selection", {
+        method: "PUT",
+        body: JSON.stringify({ items }),
+      });
+      ensureCharts(selectedKeys());
+      log("수집 시작. 만료: " + (result && result.expiresAt ? result.expiresAt : "-"));
+      connectMqtt();
+    }
+
+    async function stopSelection() {
+      await api("/api/manager/live/selection", { method: "DELETE" });
+      document.querySelectorAll("input[data-key]").forEach((el) => { el.checked = false; });
+      log("수집 중지");
+    }
+
+    function connectMqtt() {
+      localStorage.setItem("liveMqttUrl", $("mqttUrl").value);
+      localStorage.setItem("liveTopic", $("topic").value);
+      if (state.mqtt) {
+        try { state.mqtt.end(true); } catch (_) { /* ignore */ }
+        state.mqtt = null;
+      }
+      $("mqttStatus").textContent = "MQTT 연결 중...";
+      $("mqttDot").className = "dot warn";
+      const client = mqtt.connect($("mqttUrl").value.trim(), {
+        clientId: "live-html-" + Math.random().toString(16).slice(2),
+        reconnectPeriod: 2000,
+        connectTimeout: 8000,
+        clean: true,
+      });
+      state.mqtt = client;
+      client.on("connect", () => {
+        $("mqttStatus").textContent = "MQTT 연결됨";
+        $("mqttDot").className = "dot on";
+        client.subscribe($("topic").value.trim(), (err) => {
+          if (err) log("구독 실패: " + err.message);
+          else log("구독: " + $("topic").value.trim());
+        });
+      });
+      client.on("reconnect", () => {
+        $("mqttStatus").textContent = "MQTT 재연결 중";
+        $("mqttDot").className = "dot warn";
+      });
+      client.on("close", () => {
+        $("mqttStatus").textContent = "MQTT 끊김";
+        $("mqttDot").className = "dot";
+      });
+      client.on("error", (err) => log("MQTT 오류: " + err.message));
+      client.on("message", (_topic, payload) => onMessage(payload.toString()));
+    }
+
+    function onMessage(raw) {
+      let msg;
+      try { msg = JSON.parse(raw); } catch (_) {
+        log("JSON 아님: " + raw);
+        return;
+      }
+      if (msg.type && msg.type !== "realtime") return;
+      const key = msg.deviceId + "::" + msg.pointName;
+      pushSample(key, msg);
+    }
+
+    function ensureCharts(keys) {
+      $("chartEmpty").style.display = keys.length ? "none" : "block";
+      for (const key of state.charts.keys()) {
+        if (!keys.includes(key)) {
+          const entry = state.charts.get(key);
+          entry.chart.destroy();
+          entry.card.remove();
+          state.charts.delete(key);
+        }
+      }
+      keys.forEach((key, index) => {
+        if (!state.charts.has(key)) createChart(key, PALETTE[index % PALETTE.length]);
+      });
+    }
+
+    function createChart(key, color) {
+      const [deviceId, pointName] = key.split("::");
+      const device = state.devices.find((d) => String(d.deviceId) === String(deviceId));
+      const point = device && (device.points || []).find((p) => p.name === pointName);
+      const card = document.createElement("article");
+      card.className = "chart-card";
+      card.innerHTML = `
+        <div class="chart-head">
+          <strong>${escapeHtml((device && device.deviceName) || ("device " + deviceId))} · ${escapeHtml(pointName)}</strong>
+          <div><span data-value>--</span><span class="unit">${escapeHtml((point && point.unit) || "")}</span></div>
+        </div>
+        <canvas></canvas>
+      `;
+      $("charts").insertBefore(card, $("log"));
+      const chart = new Chart(card.querySelector("canvas"), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            borderColor: color,
+            backgroundColor: color + "33",
+            fill: true,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: "#8b98a8", maxTicksLimit: 6 }, grid: { color: "#2a3544" } },
+            y: { ticks: { color: "#8b98a8" }, grid: { color: "#2a3544" } },
+          },
+        },
+      });
+      state.charts.set(key, { chart, card, valueEl: card.querySelector("[data-value]") });
+    }
+
+    function pushSample(key, msg) {
+      if (!state.charts.has(key)) {
+        const keys = [...new Set([...selectedKeys(), key])];
+        ensureCharts(keys);
+      }
+      const entry = state.charts.get(key);
+      if (!entry) return;
+      const received = new Date();
+      const label = received.toLocaleTimeString("ko-KR", { hour12: false }) +
+        "." + String(received.getMilliseconds()).padStart(3, "0");
+      const value = Number(msg.value);
+      const data = entry.chart.data;
+      data.labels.push(label);
+      data.datasets[0].data.push(Number.isFinite(value) ? value : null);
+      if (data.labels.length > MAX_POINTS) {
+        data.labels.shift();
+        data.datasets[0].data.shift();
+      }
+      entry.valueEl.textContent = Number.isFinite(value) ? value : String(msg.value);
+      const head = entry.card.querySelector("strong");
+      if (msg.displayName) {
+        head.textContent = msg.displayName + " · " + msg.pointName;
+      }
+      entry.chart.update("none");
+    }
+
+    $("loginBtn").addEventListener("click", () => login().catch((err) => log("로그인 실패: " + err.message)));
+    $("reloadBtn").addEventListener("click", () => loadDevices().catch((err) => log("목록 실패: " + err.message)));
+    $("allBtn").addEventListener("click", () => setAll(true));
+    $("noneBtn").addEventListener("click", () => setAll(false));
+    $("applyBtn").addEventListener("click", () => applySelection().catch((err) => log("적용 실패: " + err.message)));
+    $("stopBtn").addEventListener("click", () => stopSelection().catch((err) => log("중지 실패: " + err.message)));
+    $("mqttBtn").addEventListener("click", connectMqtt);
+
+    setAuthStatus();
+    connectMqtt();
+    if (state.token) {
+      loadDevices().catch((err) => log("목록 실패: " + err.message));
+    }
+  </script>
+</body>
+</html>
