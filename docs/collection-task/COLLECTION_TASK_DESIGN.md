@@ -380,14 +380,58 @@ topic: `dcim/sensor/data`
 
 - Spring Boot 3.x + Java 17
 - MQTT `dcim/sensor/data` 구독
-- `data`의 키(`devices.id` 문자열, 예 `"9"`) 기준으로 manager capabilities/캐시 조회
-- InfluxDB write
+- `data`의 키(`devices.id` 문자열, 예 `"9"`) 기준으로 manager device 조회 (location/model/type tag용)
+- InfluxDB write: **포인트 1개 = Point 1개 (narrow)**
+
+PDU·온습도·GPU 등 모델이 달라도 measurement/tag/field 구조는 같다.  
+metric 이름은 tag `point_name`, 값은 항상 field `value`(float).  
+GPU처럼 장비 안 슬롯이 있으면 tag `component`만 추가한다 (없으면 생략).
 
 **measurement:** `dcim_sensor`  
-**tags:** `device_id`, `model_id`, `location_code`, `point_name`, `protocol`  
-**field:** `value`
+**tags (필수):** `device_id`, `point_name`, `protocol`  
+**tags (manager 조회 성공 시):** `location_code`, `model_id`, `device_type`  
+**tags (슬롯이 있을 때만):** `component`  
+**field:** `value` (항상 float)
 
-장비 1건 payload이므로 파싱이 단순하다. 실패한 장비는 메시지가 오지 않으므로 이전 값이 유지된다 (gap은 조회 시 공백).
+`location_code`는 `location_node.code` (표시명·옛 PDU path 아님. 좌/우는 location 트리).  
+`protocol`은 MQTT에 없으므로 현재 `snmp` 고정.  
+manager 조회 실패 시 optional tag는 생략하고 `device_id`+`point_name`으로 저장.
+
+MQTT 1건 예시:
+
+```json
+{
+  "datetime": "2026-08-20 10:51:00",
+  "data": { "9": { "V": 219, "W": 519.5 } },
+  "type": "schedule"
+}
+```
+
+Influx line protocol (Point 2개):
+
+```
+dcim_sensor,device_id=9,device_type=PDU,location_code=RACK01,model_id=10,point_name=V,protocol=snmp value=219.0 <ms>
+dcim_sensor,device_id=9,device_type=PDU,location_code=RACK01,model_id=10,point_name=W,protocol=snmp value=519.5 <ms>
+```
+
+GPU 예시:
+
+```
+dcim_sensor,device_id=40,component=0,point_name=gpu_temperature,protocol=snmp value=72.0 <ms>
+```
+
+조회:
+
+```
+from(bucket: "dcim")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r._measurement == "dcim_sensor")
+  |> filter(fn: (r) => r.device_id == "9")
+  |> filter(fn: (r) => r.point_name == "V")
+  |> last()
+```
+
+실패한 장비는 메시지가 오지 않으므로 이전 값이 유지된다 (gap은 조회 시 공백).
 
 ---
 
@@ -410,8 +454,8 @@ new-sensor-data-service → new-manager-server : X-Api-Key
 | 생성 파라미터 | name, modelId, scriptTypeId, groups[].deviceIds | modelId, scriptTypeId, groups[].deviceIds |
 | 산출물 | 그룹 JSON spec | 그룹 JSON spec |
 | 재생성 | 해당 모델 Task/그룹만 | 해당 모델 Task/그룹만 |
-| collector | 미연동 | 그룹 job 등록, 병렬 SNMP, 장비별 MQTT |
-| endpoint enabled | 해당 모델 spec 재생성 | 해당 그룹 spec + collector 재등록 |
+| collector | 그룹 job 등록, 병렬 SNMP, 장비별 MQTT | 그룹 job 등록, 병렬 SNMP, 장비별 MQTT |
+| endpoint enabled | 해당 그룹 spec + collector 재등록 | 해당 그룹 spec + collector 재등록 |
 
 ---
 
@@ -439,27 +483,26 @@ new-sensor-data-service → new-manager-server : X-Api-Key
 | B3 | [x] | Task/그룹/장비 API | 섹션 2.5. 생성 시 groups[].deviceIds |
 | B4 | [x] | 그룹 spec 생성기 | 모델 OID + 그룹 targets(host/port/instance). skip 규칙 3.2 |
 | B5 | [x] | 동기화 훅 수정 | `regenerateByModelId`. 장비 모델 변경 시 이전/이후 모델 그룹만 |
-| B6 | [ ] | collector REST client | 그룹 spec register/update/delete/toggle. ApiKey |
+| B6 | [x] | collector REST client | 그룹 spec register/update/delete/toggle. ApiKey. fail-fast·재시도 |
 
 ### C. new-collector-service
 
 | 순서 | 상태 | 작업 | 상세 |
 |---|---|---|---|
-| C1 | [ ] | Spring Boot 3.x 프로젝트 | DB 없음 |
-| C2 | [ ] | job 수신 API + in-memory cron | 그룹 단위 스케줄 |
-| C3 | [ ] | 병렬 SNMP 실행기 | maxConcurrency, timeoutMs, retries. 실패 장비 skip |
-| C4 | [ ] | 성공 장비 즉시 MQTT publish | payload 4.3. 전체 집계 return 없음 |
-| C5 | [ ] | tick 겹침 방지 | 이전 실행 중이면 skip |
+| C1 | [x] | Spring Boot 3.x 프로젝트 | DB 없음 |
+| C2 | [x] | job 수신 API + in-memory cron | 그룹 단위 스케줄 |
+| C3 | [x] | 병렬 SNMP 실행기 | maxConcurrency, timeoutMs, retries. 실패 장비 skip |
+| C4 | [x] | 성공 장비 즉시 MQTT publish | payload 4.3. 전체 집계 return 없음 |
+| C5 | [x] | tick 겹침 방지 | 이전 실행 중이면 skip |
 
 ### D. new-sensor-data-service
 
 | 순서 | 상태 | 작업 | 상세 |
 |---|---|---|---|
-| D1 | [ ] | Spring Boot 3.x 프로젝트 | |
-| D2 | [ ] | MQTT 구독 + manager 메타 + Influx write | 장비 1건 payload |
+| D1 | [x] | Spring Boot 3.x 프로젝트 | 포트 8082 |
+| D2 | [~] | MQTT 구독 + manager 메타 + Influx write | narrow 스키마 적용. 로컬 E2E(Influx enabled)는 다음 |
 
 ### 다음에 바로 할 일
 
-1. **로컬 DB에 V016 적용** — `collection_task` / `collection_task_group` / `collection_task_device` 생성  
-2. **B6 + C** — collector 병렬 수집·timeout·장비별 MQTT  
-3. **D** — sensor-data-service
+1. **로컬 E2E** — 8080 + 8081 + 8082 + MQTT 1883 + Influx 8086, `INFLUX_ENABLED=true`  
+2. **1년 보관** — raw 버킷 단기 + 1시간 다운샘플 버킷 (운영 설정)
