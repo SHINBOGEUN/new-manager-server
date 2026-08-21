@@ -65,6 +65,22 @@ public class CollectorJobClient {
                 .body(JOB_RESPONSE_TYPE), "toggle"));
     }
 
+    public CollectorJobResponse upsertLive(String specJson) {
+        return withRetry(() -> requireData(restClient.put()
+                .uri("/api/jobs/live")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(specJson)
+                .retrieve()
+                .body(JOB_RESPONSE_TYPE), "upsertLive"));
+    }
+
+    public void deleteLive() {
+        withRetryVoid(() -> restClient.delete()
+                .uri("/api/jobs/live")
+                .retrieve()
+                .toBodilessEntity());
+    }
+
     <T> T withRetry(java.util.function.Supplier<T> action) {
         return CollectorSyncRetryExecutor.execute(
                 action,

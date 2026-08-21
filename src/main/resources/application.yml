@@ -50,3 +50,7 @@ collector:
     fail-fast: ${COLLECTOR_SYNC_FAIL_FAST:true}
     retry-max-attempts: ${COLLECTOR_SYNC_RETRY_MAX_ATTEMPTS:3}
     retry-delay-ms: ${COLLECTOR_SYNC_RETRY_DELAY_MS:500}
+
+live:
+  telemetry:
+    session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
