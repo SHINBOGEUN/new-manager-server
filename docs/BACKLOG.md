@@ -107,12 +107,13 @@ device C → POWER
 
 ## Phase 4 — 조회 UI용 API
 
-Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록** → capabilities/telemetry.
+Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록** → capabilities / dashboard last·chart·aggregate.
 
 | ID | 항목 |
 |----|------|
 | 4.1 | Analysis |
-| 4.2 | Environment / Dashboard |
+| 4.2 | Environment / Dashboard 조회 (last / chart / aggregate) |
+| 4.2w | 페이지 위젯 `page_widget` — DDL V018 + CRUD, [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
 | 4.3 | DashboardGroup (페이지 매핑과 역할 정리 — 중복이면 page로 흡수) |
 | 4.4 | Cooling / GPU |
 
@@ -145,4 +146,5 @@ Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록**
 ## 다음 한 줄
 
 **완료(이 브랜치):** Device ↔ Page 매핑 (V013 + API).  
-**다음:** Telemetry API / 수집 스크립트 export.
+**진행:** 페이지 위젯 CRUD (`page_widget`).  
+**다음:** last / chart / aggregate 조회.

@@ -603,6 +603,7 @@ erDiagram
 |--------|------|------|
 | `device_snmp_instance` | `{instanceId}` 치환 (PDU형) | ✅ V011 |
 | `device_page` | 장비↔노출 페이지 (DEVICE_PAGE) | ✅ V013 |
+| `page_widget` | 페이지 위젯 조회 정의 (DEVICE_PAGE 자식) | ✅ V018 — [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
 | `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
 | `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ |
 | community / version | 앱 기본값. DB 의도적 제외 | 보류 |

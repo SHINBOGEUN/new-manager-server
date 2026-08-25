@@ -25,6 +25,11 @@ public class CommonCodeJpaRepository implements CommonCodeRepository {
     }
 
     @Override
+    public Optional<CommonCode> findByCodeGroupGroupKeyAndCode(String groupKey, String code) {
+        return springDataRepository.findByCodeGroup_GroupKeyAndCode(groupKey, code);
+    }
+
+    @Override
     public boolean existsByCodeGroupIdAndCode(Integer groupId, String code) {
         return springDataRepository.existsByCodeGroupIdAndCode(groupId, code);
     }

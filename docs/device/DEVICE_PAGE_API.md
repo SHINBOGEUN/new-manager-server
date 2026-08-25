@@ -127,3 +127,5 @@ device C → POWER
 | `PUT` | `/devices/{deviceId}/pages` | 전체 교체 | ✅ |
 | `DELETE` | `/devices/{deviceId}/pages/{pageId}` | 단건 삭제 | ✅ |
 | `GET` | `/devices?pageCode=` | 페이지별 장비 필터 | ✅ |
+
+페이지 **안 조회 위젯** 은 [PAGE_WIDGET_API.md](./PAGE_WIDGET_API.md) (`page_widget`, V018)입니다. 대시보드·쿨러·전력 페이지가 같은 테이블을 씁니다.

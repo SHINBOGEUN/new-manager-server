@@ -62,6 +62,7 @@ mysql -h 192.168.10.14 -P 20181 -u dcim -p dcim_new < sql/history/V001__create_u
 | V006 | `V006__create_device_model_snmp_point.sql` | | dcim_new | device_model_snmp_point (V005 선행) |
 | V007 | `V007__create_devices_table.sql` | | dcim_new | devices (V004·V005 선행, location NOT NULL → UNASSIGNED) |
 | V008 | `V008__add_device_model_device_type_id.sql` | | dcim_new | **기존 DB용** device_type_id ALTER·백필(id 2→13, 3→3)·FK |
+| V018 | `V018__create_page_widget.sql` | | dcim_new | page_widget + point 1:N (V003·V014 선행) |
 
 > 운영 반영 후 위 표에 날짜·환경을 채워 주세요.
 
