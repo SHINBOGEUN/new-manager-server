@@ -4,7 +4,7 @@
 
 > API prefix: `GET /api/manager/devices/capabilities`  
 > 아키텍처: [DEVICE_ARCHITECTURE.md](./DEVICE_ARCHITECTURE.md) §5.2  
-> 샘플 데이터: [capabilities_demo_data.sql](../../sql/samples/capabilities_demo_data.sql)
+> 샘플 데이터: [demo_capabilities_devices.sql](../../sql/samples/demo_capabilities_devices.sql)
 
 ---
 
@@ -13,7 +13,7 @@
 | 개념 | 설명 |
 |------|------|
 | **Device** | 현장 장비 인스턴스 |
-| **device_page** | 장비↔노출 페이지 (pageCode 필터) |
+| **page_widget_device** | 페이지(위젯)↔장비. `pageCode` 필터 |
 | **DeviceModelSnmpPoint** | 모델 OID 템플릿/고정 OID |
 | **DeviceProtocolEndpoint** | SNMP host/port |
 | **DeviceSnmpInstance** | `{instanceId}` 치환값 |
@@ -109,7 +109,7 @@
 V001~V014 적용 후 아래 SQL을 실행하면 데모 데이터가 들어갑니다.
 
 ```bash
-mysql -h HOST -P PORT -u dcim -p dcim_new < sql/samples/capabilities_demo_data.sql
+mysql -h HOST -P PORT -u dcim -p dcim_new < sql/samples/demo_capabilities_devices.sql
 ```
 
 확인 예:

@@ -54,10 +54,10 @@ device C → POWER
 | ID | 항목 | 내용 |
 |----|------|------|
 | D1 | 페이지 코드 | `common_code` 그룹 예: `DEVICE_PAGE` — ENVIRONMENT, COOLING, ANALYSIS, POWER … (페이지 추가 = 코드 행 추가) | ✅ |
-| D2 | 매핑 테이블 | `device_page`: `(device_id, page_code_id)` UK. N:M | ✅ V013 |
-| D3 | API | `/devices/{deviceId}/pages` GET/POST/PUT/DELETE | ✅ |
-| D4 | 목록 필터 | `GET /devices?pageCode=ENVIRONMENT` | ✅ |
-| D5 | DDL·문서·테스트 | V013, DEVICE_PAGE_API.md, 통합 테스트 | ✅ |
+| D2 | 매핑 테이블 | ~~`device_page`~~ → `page_widget_device` (V018에서 DROP) | ✅ |
+| D3 | API | ~~`/devices/{id}/pages`~~ → `/widgets` deviceIds | ✅ |
+| D4 | 목록 필터 | `GET /devices?pageCode=` — 위젯 연결 장비 | ✅ |
+| D5 | DDL·문서·테스트 | V018 page_widget 일괄, PAGE_WIDGET_API | ✅ |
 
 **하지 않음 (이 브랜치):** point↔page, SRC snmp_point, capabilities/telemetry 구현.
 
@@ -107,13 +107,13 @@ device C → POWER
 
 ## Phase 4 — 조회 UI용 API
 
-Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록** → capabilities / dashboard last·chart·aggregate.
+Environment / Cooling / Analysis / Dashboard는 **페이지 위젯에 묶인 장비** → capabilities / last·chart·aggregate.
 
 | ID | 항목 |
 |----|------|
 | 4.1 | Analysis |
-| 4.2 | Environment / Dashboard 조회 (last / chart / aggregate) |
-| 4.2w | 페이지 위젯 `page_widget` — DDL V018 + CRUD, [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
+| 4.2 | Environment / Dashboard 조회 (last ✅ / chart / aggregate) — [QUERY_LAST_API.md](./query/QUERY_LAST_API.md) |
+| 4.2w | 페이지 위젯 `page_widget` — DDL V018 + CRUD ✅, [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
 | 4.3 | DashboardGroup (페이지 매핑과 역할 정리 — 중복이면 page로 흡수) |
 | 4.4 | Cooling / GPU |
 
@@ -145,6 +145,6 @@ Environment / Cooling / Analysis / Dashboard는 **device_page로 장비 목록**
 
 ## 다음 한 줄
 
-**완료(이 브랜치):** Device ↔ Page 매핑 (V013 + API).  
-**진행:** 페이지 위젯 CRUD (`page_widget`).  
-**다음:** last / chart / aggregate 조회.
+**완료(이 브랜치):** 페이지 위젯(CRUD + device + 2D layout), `GET /query/last?widgetId=`, `device_page` 제거(V018).  
+**다음:** aggregate → count → chart. (3D layout는 추후)  
+**참고:** 페이지 장비 범위 = `page_widget_device` (`DEVICE_PAGE` 코드는 유지).

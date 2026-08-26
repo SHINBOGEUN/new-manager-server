@@ -1,7 +1,9 @@
 package net.vivans.dcim.module.device.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -38,7 +40,15 @@ public record PageWidgetCreateRequest(
         @Schema(description = "divide 분모 포인트")
         String denominatorPoint,
 
+        @Schema(description = "조회 장비 ID", example = "[9]")
+        @NotEmpty(message = "deviceIds is required")
+        List<Integer> deviceIds,
+
         @Schema(description = "조회 포인트 이름", example = "[\"status\",\"W\"]")
-        List<String> pointNames
+        List<String> pointNames,
+
+        @Schema(description = "2D 그리드 배치 (선택)")
+        @Valid
+        PageWidgetLayoutRequest layout
 ) {
 }

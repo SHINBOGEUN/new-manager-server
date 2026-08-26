@@ -39,6 +39,8 @@ class PageWidgetControllerIntegrationTest {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-create", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         devicePageCodeId(accessToken, "POWER", "Power", 2);
+        int coolingDevice = createDevice(accessToken, "Widget-Cool-A");
+        int powerDevice = createDevice(accessToken, "Widget-Power-A");
 
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
@@ -48,14 +50,16 @@ class PageWidgetControllerIntegrationTest {
                                   "pageCode": "COOLING",
                                   "name": "칠러",
                                   "queryKind": "last",
+                                  "deviceIds": [%d],
                                   "pointNames": ["status", "W"]
                                 }
-                                """))
+                                """.formatted(coolingDevice)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pageCode").value("COOLING"))
                 .andExpect(jsonPath("$.data.name").value("칠러"))
                 .andExpect(jsonPath("$.data.queryKind").value("last"))
                 .andExpect(jsonPath("$.data.enabled").value(true))
+                .andExpect(jsonPath("$.data.deviceIds[0]").value(coolingDevice))
                 .andExpect(jsonPath("$.data.pointNames[0]").value("status"));
 
         mockMvc.perform(post("/api/manager/widgets")
@@ -66,9 +70,10 @@ class PageWidgetControllerIntegrationTest {
                                   "pageCode": "POWER",
                                   "name": "전체 전력",
                                   "queryKind": "last",
+                                  "deviceIds": [%d],
                                   "pointNames": ["W"]
                                 }
-                                """))
+                                """.formatted(powerDevice)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/manager/widgets")
@@ -90,14 +95,17 @@ class PageWidgetControllerIntegrationTest {
     void createWidget_whenNameDuplicatedOnSamePage_returnsConflict() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-dup", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
+        int deviceId = createDevice(accessToken, "Widget-Dup");
 
         String body = """
                 {
                   "pageCode": "COOLING",
                   "name": "칠러",
-                  "queryKind": "last"
+                  "queryKind": "last",
+                  "deviceIds": [%d],
+                  "pointNames": ["W"]
                 }
-                """;
+                """.formatted(deviceId);
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,21 +125,35 @@ class PageWidgetControllerIntegrationTest {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-same-name", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         devicePageCodeId(accessToken, "POWER", "Power", 2);
+        int deviceA = createDevice(accessToken, "Widget-Same-A");
+        int deviceB = createDevice(accessToken, "Widget-Same-B");
 
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"COOLING","name":"현재값","queryKind":"last"}
-                                """))
+                                {
+                                  "pageCode":"COOLING",
+                                  "name":"현재값",
+                                  "queryKind":"last",
+                                  "deviceIds":[%d],
+                                  "pointNames":["W"]
+                                }
+                                """.formatted(deviceA)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"POWER","name":"현재값","queryKind":"last"}
-                                """))
+                                {
+                                  "pageCode":"POWER",
+                                  "name":"현재값",
+                                  "queryKind":"last",
+                                  "deviceIds":[%d],
+                                  "pointNames":["W"]
+                                }
+                                """.formatted(deviceB)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.pageCode").value("POWER"));
     }
@@ -139,13 +161,20 @@ class PageWidgetControllerIntegrationTest {
     @Test
     void createWidget_whenPageCodeMissing_returnsNotFound() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-missing-page", "password123");
+        int deviceId = createDevice(accessToken, "Widget-Missing-Page");
 
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"COOLING","name":"칠러","queryKind":"last"}
-                                """))
+                                {
+                                  "pageCode":"COOLING",
+                                  "name":"칠러",
+                                  "queryKind":"last",
+                                  "deviceIds":[%d],
+                                  "pointNames":["W"]
+                                }
+                                """.formatted(deviceId)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("DEVICE_PAGE code not found: COOLING"));
     }
@@ -154,13 +183,19 @@ class PageWidgetControllerIntegrationTest {
     void createWidget_whenQueryKindInvalid_returnsBadRequest() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-bad-kind", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
+        int deviceId = createDevice(accessToken, "Widget-Bad-Kind");
 
         mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"COOLING","name":"PUE","queryKind":"pue"}
-                                """))
+                                {
+                                  "pageCode":"COOLING",
+                                  "name":"PUE",
+                                  "queryKind":"pue",
+                                  "deviceIds":[%d]
+                                }
+                                """.formatted(deviceId)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("queryKind must be last, aggregate, or count"));
     }
@@ -169,13 +204,21 @@ class PageWidgetControllerIntegrationTest {
     void updateAndDeleteWidget() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-upd", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
+        int deviceA = createDevice(accessToken, "Widget-Upd-A");
+        int deviceB = createDevice(accessToken, "Widget-Upd-B");
 
         String createResponse = mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"COOLING","name":"칠러","queryKind":"last"}
-                                """))
+                                {
+                                  "pageCode":"COOLING",
+                                  "name":"칠러",
+                                  "queryKind":"last",
+                                  "deviceIds":[%d],
+                                  "pointNames":["W"]
+                                }
+                                """.formatted(deviceA)))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -190,12 +233,14 @@ class PageWidgetControllerIntegrationTest {
                                   "name": "칠러 상태",
                                   "enabled": false,
                                   "queryKind": "last",
+                                  "deviceIds": [%d],
                                   "pointNames": ["status"]
                                 }
-                                """))
+                                """.formatted(deviceB)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("칠러 상태"))
                 .andExpect(jsonPath("$.data.enabled").value(false))
+                .andExpect(jsonPath("$.data.deviceIds[0]").value(deviceB))
                 .andExpect(jsonPath("$.data.pointNames[0]").value("status"));
 
         mockMvc.perform(get("/api/manager/widgets/{id}", id)
@@ -213,6 +258,103 @@ class PageWidgetControllerIntegrationTest {
                         .header("Authorization", bearerToken(accessToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(0)));
+    }
+
+    @Test
+    void replaceLayout_savesGridPosition() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-layout", "password123");
+        devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
+        int deviceId = createDevice(accessToken, "Widget-Layout");
+
+        String createResponse = mockMvc.perform(post("/api/manager/widgets")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageCode": "dashboard",
+                                  "name": "PDU 카드",
+                                  "queryKind": "last",
+                                  "deviceIds": [%d],
+                                  "pointNames": ["W"],
+                                  "layout": { "gridX": 0, "gridY": 0, "w": 2, "h": 1 }
+                                }
+                                """.formatted(deviceId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.layout.gridX").value(0))
+                .andExpect(jsonPath("$.data.layout.gridY").value(0))
+                .andExpect(jsonPath("$.data.layout.w").value(2))
+                .andExpect(jsonPath("$.data.layout.h").value(1))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int id = objectMapper.readTree(createResponse).path("data").path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/widgets/{id}/layout", id)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "gridX": 3, "gridY": 1, "w": 4, "h": 2 }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.layout.gridX").value(3))
+                .andExpect(jsonPath("$.data.layout.gridY").value(1))
+                .andExpect(jsonPath("$.data.layout.w").value(4))
+                .andExpect(jsonPath("$.data.layout.h").value(2));
+    }
+
+    private int createDevice(String accessToken, String name) throws Exception {
+        Integer protocolGroupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
+        Integer snmpId = findOrCreateCommonCode(accessToken, protocolGroupId, "snmp", "SNMP", 1);
+        Integer modelTypeGroupId = findOrCreateCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
+        Integer deviceTypeId = findOrCreateCommonCode(accessToken, modelTypeGroupId, "PDU", "PDU", 1);
+
+        String modelResponse = mockMvc.perform(post("/api/manager/device-models")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Model-%s",
+                                  "manufacturer": "APC",
+                                  "deviceTypeId": %d,
+                                  "protocols": [ { "protocolTypeId": %d } ]
+                                }
+                                """.formatted(name, deviceTypeId, snmpId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int modelId = objectMapper.readTree(modelResponse).path("data").path("id").asInt();
+
+        Integer locationGroupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
+        Integer rackTypeId = findOrCreateCommonCode(accessToken, locationGroupId, "RACK", "랙", 3);
+        String locationResponse = mockMvc.perform(post("/api/manager/location-node")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"parentCode": null, "locationTypeId": %d, "name": "Rack-%s"}
+                                """.formatted(rackTypeId, name)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String locationCode = objectMapper.readTree(locationResponse).path("data").path("code").asText();
+
+        String deviceResponse = mockMvc.perform(post("/api/manager/devices")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "modelId": %d,
+                                  "locationNodeCode": "%s",
+                                  "name": "%s"
+                                }
+                                """.formatted(modelId, locationCode, name)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        return objectMapper.readTree(deviceResponse).path("data").path("id").asInt();
     }
 
     private Integer devicePageCodeId(String accessToken, String code, String name, int sortOrder) throws Exception {

@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.application.PageWidgetQueryService;
@@ -63,6 +64,15 @@ public class PageWidgetController {
             @Valid @RequestBody PageWidgetUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updateWidget(id, request)));
+    }
+
+    @PutMapping("/{id}/layout")
+    @Operation(summary = "위젯 2D 배치 저장", description = "드래그 후 grid 좌표·크기만 저장합니다.")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> replaceLayout(
+            @Parameter(description = "위젯 ID") @PathVariable Integer id,
+            @Valid @RequestBody PageWidgetLayoutRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.replaceLayout(id, request)));
     }
 
     @DeleteMapping("/{id}")

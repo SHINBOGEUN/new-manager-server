@@ -1,28 +1,22 @@
 -- =============================================================================
--- capabilities 데모 데이터 (샘플 INSERT)
+-- demo_capabilities_devices: capabilities API 데모 (위치/모델/장비/위젯/endpoint)
 -- =============================================================================
--- 작성일  : 2026-08-14
+-- 작성일  : 2026-08-26 (기존 capabilities_demo + 수집 스펙 확인 SELECT 통합)
 -- 대상 DB : MariaDB (dcim_new)
 --
--- 적용 방법 (예시):
---   mysql -h HOST -P PORT -u dcim -p dcim_new < sql/samples/capabilities_demo_data.sql
+-- 적용 방법:
+--   mysql -h HOST -P PORT -u dcim -p dcim_new < sql/samples/demo_capabilities_devices.sql
 --
--- 선행 조건: V001 ~ V014 (특히 V004 location, V005 model, V014 DEVICE_PAGE)
+-- 선행: history + seed/REQUIRED_BOOTSTRAP
+-- 설계: docs/device/DEVICE_CAPABILITY_API.md
 --
--- 설계 문서: docs/device/DEVICE_CAPABILITY_API.md
---
--- 역할:
---   - GET /api/manager/devices/capabilities 호출 예시를 위한 데모 데이터
---   - 재실행 안전 (이미 있으면 INSERT 생략)
+-- 시나리오:
+--   DEMOZONE01 → DEMORACK01
+--     ├── PDU-DEMO-L   (AP8959, instance OID)
+--     └── SENSOR-DEMO  (LHT65N, 고정 OID)
 --
 -- 확인 예:
 --   GET /api/manager/devices/capabilities?pageCode=ENVIRONMENT&locationNodeCode=DEMOZONE01&includeSubtree=true
---
--- 시나리오:
---   DEMOZONE01 (1층 Zone-A)
---     └── DEMORACK01 (Rack-01)
---           ├── PDU-DEMO-L   (AP8959 PDU, ENVIRONMENT+POWER, instance OID)
---           └── SENSOR-DEMO  (LHT65N 센서, ENVIRONMENT, 고정 OID)
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -164,44 +158,61 @@ WHERE dm.name = 'LHT65N-DEMO' AND dm.manufacturer = 'Dragino'
   );
 
 -- -----------------------------------------------------------------------------
--- 5. 장비 ↔ 페이지 매핑
+-- 5. (선택) 페이지 위젯에 장비 연결 — capabilities pageCode 필터용
+--    device_page 테이블은 V018에서 제거됨. page_widget_device 사용.
 -- -----------------------------------------------------------------------------
 
-INSERT INTO device_page (device_id, page_code_id)
-SELECT d.id, cc.id
-FROM devices d
-CROSS JOIN common_code cc
-INNER JOIN code_group cg ON cg.id = cc.group_id
-WHERE d.location_node_code = 'DEMORACK01' AND d.name = 'PDU-DEMO-L'
-  AND cg.group_key = 'DEVICE_PAGE' AND cc.code = 'ENVIRONMENT'
+SET @env_page_id := (
+    SELECT cc.id FROM common_code cc
+    INNER JOIN code_group cg ON cg.id = cc.group_id
+    WHERE cg.group_key = 'DEVICE_PAGE' AND cc.code = 'ENVIRONMENT'
+    LIMIT 1
+);
+SET @power_page_id := (
+    SELECT cc.id FROM common_code cc
+    INNER JOIN code_group cg ON cg.id = cc.group_id
+    WHERE cg.group_key = 'DEVICE_PAGE' AND cc.code = 'POWER'
+    LIMIT 1
+);
+
+INSERT INTO page_widget (page_code_id, name, enabled, query_kind)
+SELECT @env_page_id, '데모 ENVIRONMENT', 1, 'last' FROM DUAL
+WHERE @env_page_id IS NOT NULL
   AND NOT EXISTS (
-      SELECT 1 FROM device_page dp
-      WHERE dp.device_id = d.id AND dp.page_code_id = cc.id
+      SELECT 1 FROM page_widget
+      WHERE page_code_id = @env_page_id AND name = '데모 ENVIRONMENT'
   );
 
-INSERT INTO device_page (device_id, page_code_id)
-SELECT d.id, cc.id
-FROM devices d
-CROSS JOIN common_code cc
-INNER JOIN code_group cg ON cg.id = cc.group_id
-WHERE d.location_node_code = 'DEMORACK01' AND d.name = 'PDU-DEMO-L'
-  AND cg.group_key = 'DEVICE_PAGE' AND cc.code = 'POWER'
+INSERT INTO page_widget (page_code_id, name, enabled, query_kind)
+SELECT @power_page_id, '데모 POWER', 1, 'last' FROM DUAL
+WHERE @power_page_id IS NOT NULL
   AND NOT EXISTS (
-      SELECT 1 FROM device_page dp
-      WHERE dp.device_id = d.id AND dp.page_code_id = cc.id
+      SELECT 1 FROM page_widget
+      WHERE page_code_id = @power_page_id AND name = '데모 POWER'
   );
 
-INSERT INTO device_page (device_id, page_code_id)
-SELECT d.id, cc.id
-FROM devices d
-CROSS JOIN common_code cc
-INNER JOIN code_group cg ON cg.id = cc.group_id
-WHERE d.location_node_code = 'DEMORACK01' AND d.name = 'SENSOR-DEMO'
-  AND cg.group_key = 'DEVICE_PAGE' AND cc.code = 'ENVIRONMENT'
-  AND NOT EXISTS (
-      SELECT 1 FROM device_page dp
-      WHERE dp.device_id = d.id AND dp.page_code_id = cc.id
-  );
+INSERT IGNORE INTO page_widget_point (widget_id, point_name)
+SELECT w.id, p.point_name
+FROM page_widget w
+INNER JOIN (
+    SELECT '데모 ENVIRONMENT' AS name, 'V' AS point_name
+    UNION ALL SELECT '데모 ENVIRONMENT', 'temp'
+    UNION ALL SELECT '데모 POWER', 'V'
+) p ON p.name = w.name
+WHERE w.page_code_id IN (@env_page_id, @power_page_id);
+
+INSERT IGNORE INTO page_widget_device (widget_id, device_id)
+SELECT w.id, d.id
+FROM page_widget w
+INNER JOIN devices d ON d.location_node_code = 'DEMORACK01'
+WHERE w.page_code_id = @env_page_id AND w.name = '데모 ENVIRONMENT'
+  AND d.name IN ('PDU-DEMO-L', 'SENSOR-DEMO');
+
+INSERT IGNORE INTO page_widget_device (widget_id, device_id)
+SELECT w.id, d.id
+FROM page_widget w
+INNER JOIN devices d ON d.location_node_code = 'DEMORACK01' AND d.name = 'PDU-DEMO-L'
+WHERE w.page_code_id = @power_page_id AND w.name = '데모 POWER';
 
 -- -----------------------------------------------------------------------------
 -- 6. SNMP endpoint (host/port)
@@ -265,3 +276,85 @@ WHERE d.location_node_code = 'DEMORACK01' AND d.name = 'PDU-DEMO-L' AND pt.code 
 -- GET ...?pageCode=POWER&locationNodeCode=DEMORACK01
 -- → PDU-DEMO-L 만 (2 points)
 -- =============================================================================
+
+-- =============================================================================
+-- 확인 SELECT (수집 스펙 재료)
+-- =============================================================================
+
+-- 1. Task 등록에 필요한 scriptTypeId
+-- -----------------------------------------------------------------------------
+-- POST /api/manager/collector/tasks 의 scriptTypeId 로 사용
+
+SELECT cc.id   AS scriptTypeId,
+       cc.code AS scriptTypeCode,
+       cc.name AS scriptTypeName
+FROM common_code cc
+INNER JOIN code_group cg ON cg.id = cc.group_id
+WHERE cg.group_key = 'PROTOCOL_TYPE'
+  AND cc.code = 'snmp';
+
+-- -----------------------------------------------------------------------------
+-- 2. 스크립트 생성 재료 (장비 + endpoint + resolved OID)
+-- -----------------------------------------------------------------------------
+-- 이 SELECT 결과가 나중에 CollectionGroupSpecService 입력이 됩니다.
+
+SELECT
+    d.id                                              AS device_id,
+    d.name                                            AS device_name,
+    e.host,
+    e.port,
+    si.instance_id,
+    p.name                                            AS point_name,
+    p.oid                                             AS oid_template,
+    p.requires_instance,
+    CASE
+        WHEN p.requires_instance = 0 THEN p.oid
+        WHEN si.instance_id IS NULL THEN NULL
+        ELSE REPLACE(p.oid, '{instanceId}', CAST(si.instance_id AS CHAR))
+    END                                               AS resolved_oid
+FROM devices d
+INNER JOIN device_model dm
+        ON dm.id = d.model_id
+INNER JOIN device_model_protocol dmp
+        ON dmp.model_id = dm.id
+INNER JOIN common_code pt
+        ON pt.id = dmp.protocol_type_id
+INNER JOIN code_group ptg
+        ON ptg.id = pt.group_id
+       AND ptg.group_key = 'PROTOCOL_TYPE'
+       AND pt.code = 'snmp'
+INNER JOIN device_model_snmp_point p
+        ON p.model_protocol_id = dmp.id
+       AND p.enabled = 1
+LEFT JOIN device_protocol_endpoint e
+       ON e.device_id = d.id
+      AND e.protocol_type_id = pt.id
+      AND e.enabled = 1
+LEFT JOIN device_snmp_instance si
+       ON si.endpoint_id = e.id
+WHERE d.enabled = 1
+  AND d.location_node_code = 'DEMORACK01'
+  AND d.name IN ('PDU-DEMO-L', 'SENSOR-DEMO')
+ORDER BY d.id, p.id;
+
+-- 기대 결과:
+--   PDU-DEMO-L  192.168.1.10 161  1  V     ...{instanceId}.3  →  ...1.3
+--   PDU-DEMO-L  192.168.1.10 161  1  A     ...{instanceId}.4  →  ...1.4
+--   SENSOR-DEMO 192.168.1.20 161     temp  고정 OID           →  그대로
+--   SENSOR-DEMO 192.168.1.20 161     hum   고정 OID           →  그대로
+
+-- -----------------------------------------------------------------------------
+-- 3. 데모 데이터가 없을 때 확인
+-- -----------------------------------------------------------------------------
+SELECT
+    (SELECT COUNT(*) FROM devices WHERE name IN ('PDU-DEMO-L', 'SENSOR-DEMO')) AS device_count,
+    (SELECT COUNT(*) FROM device_protocol_endpoint e
+     INNER JOIN devices d ON d.id = e.device_id
+     WHERE d.name IN ('PDU-DEMO-L', 'SENSOR-DEMO')) AS endpoint_count,
+    (SELECT COUNT(*) FROM device_model_snmp_point p
+     INNER JOIN device_model_protocol dmp ON dmp.id = p.model_protocol_id
+     INNER JOIN device_model dm ON dm.id = dmp.model_id
+     WHERE dm.name IN ('AP8959-DEMO', 'LHT65N-DEMO')) AS point_count;
+
+-- device_count = 2, endpoint_count = 2, point_count = 4 이어야 합니다.
+-- 아니면 이 파일의 INSERT 구간을 먼저 실행하세요.

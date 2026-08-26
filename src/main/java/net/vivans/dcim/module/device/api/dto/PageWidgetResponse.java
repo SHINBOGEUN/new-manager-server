@@ -17,7 +17,9 @@ public record PageWidgetResponse(
         String weightPoint,
         String numeratorPoint,
         String denominatorPoint,
-        List<String> pointNames
+        List<Integer> deviceIds,
+        List<String> pointNames,
+        PageWidgetLayoutResponse layout
 ) {
 
     public static PageWidgetResponse from(PageWidget widget) {
@@ -34,7 +36,9 @@ public record PageWidgetResponse(
                 widget.getWeightPoint(),
                 widget.getNumeratorPoint(),
                 widget.getDenominatorPoint(),
-                widget.pointNames()
+                widget.deviceIds(),
+                widget.pointNames(),
+                PageWidgetLayoutResponse.from(widget.getLayout())
         );
     }
 }

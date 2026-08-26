@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -77,6 +78,14 @@ public class PageWidget extends BaseEntity {
     @OrderBy("id ASC")
     private final List<PageWidgetPoint> points = new ArrayList<>();
 
+    /** Set: Hibernate MultipleBagFetchException 회피 (points List와 동시 fetch) */
+    @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private final Set<PageWidgetDevice> devices = new LinkedHashSet<>();
+
+    @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private PageWidgetLayout layout;
+
     private PageWidget(
             CommonCode pageCode,
             String name,
@@ -113,13 +122,16 @@ public class PageWidget extends BaseEntity {
             String weightPoint,
             String numeratorPoint,
             String denominatorPoint,
-            List<String> pointNames
+            List<String> pointNames,
+            List<Device> devices
     ) {
         PageWidget widget = new PageWidget(
                 pageCode, name, enabled, queryKind, op, groupBy,
                 weightPoint, numeratorPoint, denominatorPoint
         );
         widget.replacePoints(pointNames);
+        widget.replaceDevices(devices);
+        widget.validateBindings();
         return widget;
     }
 
@@ -132,7 +144,8 @@ public class PageWidget extends BaseEntity {
             String weightPoint,
             String numeratorPoint,
             String denominatorPoint,
-            List<String> pointNames
+            List<String> pointNames,
+            List<Device> devices
     ) {
         validateName(name);
         validateQueryKind(queryKind);
@@ -146,6 +159,20 @@ public class PageWidget extends BaseEntity {
         this.denominatorPoint = blankToNull(denominatorPoint);
         validateOptions();
         replacePoints(pointNames);
+        replaceDevices(devices);
+        validateBindings();
+    }
+
+    public void upsertLayout(int gridX, int gridY, int w, int h) {
+        if (this.layout == null) {
+            this.layout = PageWidgetLayout.create(this, gridX, gridY, w, h);
+        } else {
+            this.layout.update(gridX, gridY, w, h);
+        }
+    }
+
+    public void clearLayout() {
+        this.layout = null;
     }
 
     public List<String> pointNames() {
@@ -154,6 +181,14 @@ public class PageWidget extends BaseEntity {
             names.add(point.getPointName());
         }
         return names;
+    }
+
+    public List<Integer> deviceIds() {
+        List<Integer> ids = new ArrayList<>();
+        for (PageWidgetDevice mapping : devices) {
+            ids.add(mapping.getDevice().getId());
+        }
+        return ids;
     }
 
     private void replacePoints(List<String> pointNames) {
@@ -169,6 +204,35 @@ public class PageWidget extends BaseEntity {
         }
         for (String pointName : unique) {
             points.add(PageWidgetPoint.create(this, pointName));
+        }
+    }
+
+    private void replaceDevices(List<Device> devices) {
+        this.devices.clear();
+        if (devices == null) {
+            return;
+        }
+        Set<Integer> uniqueIds = new LinkedHashSet<>();
+        for (Device device : devices) {
+            if (device == null || device.getId() == null) {
+                throw new IllegalArgumentException("deviceId is required");
+            }
+            if (uniqueIds.add(device.getId())) {
+                this.devices.add(PageWidgetDevice.create(this, device));
+            }
+        }
+    }
+
+    private void validateBindings() {
+        if (devices.isEmpty()) {
+            throw new IllegalArgumentException("deviceIds is required");
+        }
+        if (queryKind == PageWidgetQueryKind.last && points.isEmpty()) {
+            throw new IllegalArgumentException("pointNames is required for last");
+        }
+        if (queryKind == PageWidgetQueryKind.aggregate && points.isEmpty()
+                && op != PageWidgetOp.divide) {
+            throw new IllegalArgumentException("pointNames is required for aggregate");
         }
     }
 
@@ -191,7 +255,7 @@ public class PageWidget extends BaseEntity {
         if (pageCode == null) {
             throw new IllegalArgumentException("pageCode is required");
         }
-        if (!DevicePage.DEVICE_PAGE_GROUP_KEY.equals(pageCode.getCodeGroup().getGroupKey())) {
+        if (!DevicePageCodes.DEVICE_PAGE_GROUP_KEY.equals(pageCode.getCodeGroup().getGroupKey())) {
             throw new IllegalArgumentException("pageCode must belong to DEVICE_PAGE group");
         }
     }

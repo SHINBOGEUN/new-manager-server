@@ -15,10 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 import static net.vivans.dcim.support.AuthTestSupport.bearerToken;
 import static net.vivans.dcim.support.AuthTestSupport.loginAndGetAccessToken;
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 @Transactional
-class DevicePageControllerIntegrationTest {
+class DevicePageFilterIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -35,147 +33,13 @@ class DevicePageControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void createAndListDevicePages_returnsLinkedPages() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-create", "password123");
-        int deviceId = createDevice(accessToken, "PDU-page-1");
-        Integer envId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
-        Integer analysisId = devicePageCodeId(accessToken, "ANALYSIS", "Analysis", 2);
-
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(envId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.deviceId").value(deviceId))
-                .andExpect(jsonPath("$.data.pageCode").value("ENVIRONMENT"));
-
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(analysisId)))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)));
-    }
-
-    @Test
-    void createDevicePage_whenAlreadyLinked_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-dup", "password123");
-        int deviceId = createDevice(accessToken, "PDU-page-dup");
-        Integer envId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
-
-        String body = """
-                {"pageCodeId": %d}
-                """.formatted(envId);
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("page already linked to this device"));
-    }
-
-    @Test
-    void createDevicePage_whenNotDevicePageGroup_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-bad-group", "password123");
-        int deviceId = createDevice(accessToken, "PDU-page-bad");
-        Integer groupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
-        Integer snmpId = findOrCreateCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
-
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(snmpId)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("pageCode must belong to DEVICE_PAGE group"));
-    }
-
-    @Test
-    void replaceDevicePages_replacesAll() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-put", "password123");
-        int deviceId = createDevice(accessToken, "PDU-page-put");
-        Integer envId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
-        Integer coolingId = devicePageCodeId(accessToken, "COOLING", "Cooling", 2);
-        Integer analysisId = devicePageCodeId(accessToken, "ANALYSIS", "Analysis", 3);
-
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(envId)))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(put("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeIds": [%d, %d]}
-                                """.formatted(coolingId, analysisId)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].pageCode").value("COOLING"))
-                .andExpect(jsonPath("$.data[1].pageCode").value("ANALYSIS"));
-    }
-
-    @Test
-    void deleteDevicePage_removesLink() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-del", "password123");
-        int deviceId = createDevice(accessToken, "PDU-page-del");
-        Integer envId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
-
-        String createResponse = mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(envId)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        int pageId = objectMapper.readTree(createResponse).path("data").path("id").asInt();
-
-        mockMvc.perform(delete("/api/manager/devices/{deviceId}/pages/{pageId}", deviceId, pageId)
-                        .header("Authorization", bearerToken(accessToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value(pageId));
-
-        mockMvc.perform(get("/api/manager/devices/{deviceId}/pages", deviceId)
-                        .header("Authorization", bearerToken(accessToken)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data", hasSize(0)));
-    }
-
-    @Test
-    void getDevices_filterByPageCode_returnsMatchingDevices() throws Exception {
+    void getDevices_filterByPageCode_returnsWidgetLinkedDevices() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-filter", "password123");
         int envDeviceId = createDevice(accessToken, "Sensor-env");
         int otherDeviceId = createDevice(accessToken, "PDU-other");
-        Integer envId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
+        ensureDevicePageCode(accessToken, "ENVIRONMENT", "Environment", 1);
 
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", envDeviceId)
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(envId)))
-                .andExpect(status().isOk());
+        linkDeviceToPage(accessToken, envDeviceId, "ENVIRONMENT", "temp");
 
         mockMvc.perform(get("/api/manager/devices")
                         .param("pageCode", "ENVIRONMENT")
@@ -197,9 +61,25 @@ class DevicePageControllerIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    private Integer devicePageCodeId(String accessToken, String code, String name, int sortOrder) throws Exception {
+    private void ensureDevicePageCode(String accessToken, String code, String name, int sortOrder) throws Exception {
         Integer groupId = findOrCreateCodeGroup(accessToken, "DEVICE_PAGE", "Device Page");
-        return findOrCreateCommonCode(accessToken, groupId, code, name, sortOrder);
+        findOrCreateCommonCode(accessToken, groupId, code, name, sortOrder);
+    }
+
+    private void linkDeviceToPage(String accessToken, int deviceId, String pageCode, String pointName) throws Exception {
+        mockMvc.perform(post("/api/manager/widgets")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageCode": "%s",
+                                  "name": "page-link-%d",
+                                  "queryKind": "last",
+                                  "deviceIds": [%d],
+                                  "pointNames": ["%s"]
+                                }
+                                """.formatted(pageCode, deviceId, deviceId, pointName)))
+                .andExpect(status().isOk());
     }
 
     private int createDevice(String accessToken, String name) throws Exception {

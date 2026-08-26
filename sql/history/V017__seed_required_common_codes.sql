@@ -18,9 +18,12 @@
 --
 -- 이 데이터가 있어야 하는 이유:
 --   LOCATION_TYPE  — 위치 트리 (UNASSIGNED/CONTAINER/ZONE/ROW/RACK)
---   MODEL_TYPE     — 장비 모델 유형 (PDU/SENSOR/CDU/OTHER)
+--   MODEL_TYPE     — PDU/UPS/SENSOR/CDU/RDC/DISTRIBUTION_BOARD/OTHER
 --   PROTOCOL_TYPE  — 모델 프로토콜·수집 Task scriptType (snmp/modbus/mqtt)
---   DEVICE_PAGE    — 장비 노출 페이지 (ENVIRONMENT/COOLING/ANALYSIS/POWER)
+--   DEVICE_PAGE    — UI 페이지 (ENVIRONMENT/COOLING/ANALYSIS/POWER/dashboard)
+--
+-- 신규 배포 한 장 정리본: sql/seed/REQUIRED_BOOTSTRAP.sql
+--   (이 파일 + UNASSIGNED location_node + dashboard 포함)
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -71,10 +74,13 @@ INSERT INTO common_code (group_id, code, name, sort_order)
 SELECT cg.id, v.code, v.name, v.sort_order
 FROM code_group cg
 CROSS JOIN (
-    SELECT 'PDU'    AS code, 'PDU'    AS name,  1 AS sort_order UNION ALL
-    SELECT 'SENSOR' AS code, 'Sensor' AS name,  2 AS sort_order UNION ALL
-    SELECT 'CDU'    AS code, 'CDU'    AS name,  3 AS sort_order UNION ALL
-    SELECT 'OTHER'  AS code, 'Other'  AS name, 99 AS sort_order
+    SELECT 'PDU'                AS code, 'PDU'                AS name,  1 AS sort_order UNION ALL
+    SELECT 'UPS'                AS code, 'UPS'                AS name,  2 AS sort_order UNION ALL
+    SELECT 'SENSOR'             AS code, 'Sensor'             AS name,  3 AS sort_order UNION ALL
+    SELECT 'CDU'                AS code, 'CDU'                AS name,  4 AS sort_order UNION ALL
+    SELECT 'RDC'                AS code, 'RDC'                AS name,  5 AS sort_order UNION ALL
+    SELECT 'DISTRIBUTION_BOARD' AS code, 'Distribution Board' AS name,  6 AS sort_order UNION ALL
+    SELECT 'OTHER'              AS code, 'Other'              AS name, 99 AS sort_order
 ) v
 WHERE cg.group_key = 'MODEL_TYPE'
   AND NOT EXISTS (
@@ -111,7 +117,8 @@ CROSS JOIN (
     SELECT 'ENVIRONMENT' AS code, 'Environment' AS name, 1 AS sort_order UNION ALL
     SELECT 'COOLING'     AS code, 'Cooling'     AS name, 2 AS sort_order UNION ALL
     SELECT 'ANALYSIS'    AS code, 'Analysis'    AS name, 3 AS sort_order UNION ALL
-    SELECT 'POWER'       AS code, 'Power'       AS name, 4 AS sort_order
+    SELECT 'POWER'       AS code, 'Power'       AS name, 4 AS sort_order UNION ALL
+    SELECT 'dashboard'   AS code, 'Dashboard'   AS name, 5 AS sort_order
 ) v
 WHERE cg.group_key = 'DEVICE_PAGE'
   AND NOT EXISTS (

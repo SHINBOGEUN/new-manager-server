@@ -5,20 +5,25 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
-import net.vivans.dcim.module.device.domain.model.DevicePage;
+import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
 import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
+import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ public class PageWidgetQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
     private final CommonCodeRepository commonCodeRepository;
+    private final DeviceRepository deviceRepository;
 
     public List<PageWidgetResponse> getWidgets(String pageCode) {
         CommonCode code = findPageCode(pageCode);
@@ -62,8 +68,10 @@ public class PageWidgetQueryService {
                 request.weightPoint(),
                 request.numeratorPoint(),
                 request.denominatorPoint(),
-                request.pointNames()
+                request.pointNames(),
+                resolveDevices(request.deviceIds())
         );
+        applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 
@@ -85,8 +93,19 @@ public class PageWidgetQueryService {
                 request.weightPoint(),
                 request.numeratorPoint(),
                 request.denominatorPoint(),
-                request.pointNames()
+                request.pointNames(),
+                resolveDevices(request.deviceIds())
         );
+        if (request.layout() != null) {
+            applyLayout(widget, request.layout());
+        }
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse replaceLayout(Integer id, PageWidgetLayoutRequest request) {
+        PageWidget widget = findWidget(id);
+        applyLayout(widget, request);
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 
@@ -95,6 +114,32 @@ public class PageWidgetQueryService {
         PageWidget widget = findWidget(id);
         pageWidgetRepository.delete(widget);
         return id;
+    }
+
+    private static void applyLayout(PageWidget widget, PageWidgetLayoutRequest layout) {
+        if (layout == null) {
+            return;
+        }
+        widget.upsertLayout(layout.gridX(), layout.gridY(), layout.w(), layout.h());
+    }
+
+    private List<Device> resolveDevices(List<Integer> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            throw new IllegalArgumentException("deviceIds is required");
+        }
+        Set<Integer> uniqueIds = new LinkedHashSet<>();
+        for (Integer deviceId : deviceIds) {
+            if (deviceId == null || deviceId <= 0) {
+                throw new IllegalArgumentException("deviceIds must contain positive integers");
+            }
+            uniqueIds.add(deviceId);
+        }
+        List<Device> devices = new ArrayList<>();
+        for (Integer deviceId : uniqueIds) {
+            devices.add(deviceRepository.findById(deviceId)
+                    .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId)));
+        }
+        return devices;
     }
 
     private PageWidget findWidget(Integer id) {
@@ -107,7 +152,7 @@ public class PageWidgetQueryService {
             throw new IllegalArgumentException("pageCode is required");
         }
         return commonCodeRepository.findByCodeGroupGroupKeyAndCode(
-                        DevicePage.DEVICE_PAGE_GROUP_KEY,
+                        DevicePageCodes.DEVICE_PAGE_GROUP_KEY,
                         pageCode.trim()
                 )
                 .orElseThrow(() -> new EntityNotFoundException("DEVICE_PAGE code not found: " + pageCode.trim()));

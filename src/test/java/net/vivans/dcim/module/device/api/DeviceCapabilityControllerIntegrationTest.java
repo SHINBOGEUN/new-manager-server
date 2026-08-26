@@ -37,8 +37,8 @@ class DeviceCapabilityControllerIntegrationTest {
     void getCapabilities_filtersByPageCodeAndLocation() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-filter-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
-        Integer envPageId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
-        Integer powerPageId = devicePageCodeId(accessToken, "POWER", "Power", 4);
+        devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
+        devicePageCodeId(accessToken, "POWER", "Power", 4);
 
         Integer pduModelId = createDeviceModelWithSnmpPoints(
                 accessToken,
@@ -65,9 +65,9 @@ class DeviceCapabilityControllerIntegrationTest {
         String rackCode = createChildLocation(accessToken, zoneCode, "Cap-Rack");
         int pduId = createDevice(accessToken, pduModelId, rackCode, "PDU-cap");
         int sensorId = createDevice(accessToken, sensorModelId, rackCode, "Sensor-cap");
-        linkPage(accessToken, pduId, envPageId);
-        linkPage(accessToken, pduId, powerPageId);
-        linkPage(accessToken, sensorId, envPageId);
+        linkDeviceToPage(accessToken, pduId, "ENVIRONMENT", "V");
+        linkDeviceToPage(accessToken, pduId, "POWER", "V");
+        linkDeviceToPage(accessToken, sensorId, "ENVIRONMENT", "temp");
 
         int pduEndpointId = createEndpoint(accessToken, pduId, snmpId, "192.168.1.10", 161);
         createEndpoint(accessToken, sensorId, snmpId, "192.168.1.20", 161);
@@ -104,7 +104,7 @@ class DeviceCapabilityControllerIntegrationTest {
     void getCapabilities_whenInstanceMissing_returnsNullResolvedOid() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-no-instance", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
-        Integer envPageId = devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
+        devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
 
         Integer modelId = createDeviceModelWithSnmpPoints(
                 accessToken,
@@ -118,7 +118,7 @@ class DeviceCapabilityControllerIntegrationTest {
         );
         String locationCode = createRootLocation(accessToken, "Cap-NoInst");
         int deviceId = createDevice(accessToken, modelId, locationCode, "PDU-no-inst");
-        linkPage(accessToken, deviceId, envPageId);
+        linkDeviceToPage(accessToken, deviceId, "ENVIRONMENT", "V");
         createEndpoint(accessToken, deviceId, snmpId, "192.168.1.10", 161);
 
         mockMvc.perform(get("/api/manager/devices/capabilities")
@@ -241,13 +241,20 @@ class DeviceCapabilityControllerIntegrationTest {
         return objectMapper.readTree(response).path("data").path("id").asInt();
     }
 
-    private void linkPage(String accessToken, int deviceId, Integer pageCodeId) throws Exception {
-        mockMvc.perform(post("/api/manager/devices/{deviceId}/pages", deviceId)
+    private void linkDeviceToPage(String accessToken, int deviceId, String pageCode, String pointName)
+            throws Exception {
+        mockMvc.perform(post("/api/manager/widgets")
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCodeId": %d}
-                                """.formatted(pageCodeId)))
+                                {
+                                  "pageCode": "%s",
+                                  "name": "cap-link-%d-%s",
+                                  "queryKind": "last",
+                                  "deviceIds": [%d],
+                                  "pointNames": ["%s"]
+                                }
+                                """.formatted(pageCode, deviceId, pageCode, deviceId, pointName)))
                 .andExpect(status().isOk());
     }
 
