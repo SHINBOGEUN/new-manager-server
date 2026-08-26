@@ -163,6 +163,10 @@ public class PageWidget extends BaseEntity {
         validateBindings();
     }
 
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public void upsertLayout(int gridX, int gridY, int w, int h) {
         if (this.layout == null) {
             this.layout = PageWidgetLayout.create(this, gridX, gridY, w, h);

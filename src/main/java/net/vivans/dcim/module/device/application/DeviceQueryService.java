@@ -17,14 +17,19 @@ import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.location.domain.repository.LocationNodeRepository;
 import net.vivans.dcim.shared.api.PageResponse;
 import net.vivans.dcim.shared.exception.ConflictException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -47,6 +52,7 @@ public class DeviceQueryService {
     public PageResponse<DeviceResponse> getDevices(
             Integer modelId,
             String locationNodeCode,
+            Boolean includeSubtree,
             String name,
             Boolean enabled,
             String pageCode,
@@ -57,10 +63,65 @@ public class DeviceQueryService {
         int safeSize = size <= 0 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
         PageRequest pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "id"));
 
+        Collection<String> locationNodeCodes = resolveLocationNodeCodes(locationNodeCode, includeSubtree);
+        if (locationNodeCodes != null && locationNodeCodes.isEmpty()) {
+            return PageResponse.from(new PageImpl<>(List.of(), pageable, 0), DeviceResponse::from);
+        }
+
         return PageResponse.from(
-                deviceRepository.findAll(modelId, locationNodeCode, name, enabled, pageCode, pageable),
+                deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, pageable),
                 DeviceResponse::from
         );
+    }
+
+    private Collection<String> resolveLocationNodeCodes(String locationNodeCode, Boolean includeSubtree) {
+        String normalized = blankToNull(locationNodeCode);
+        if (normalized == null) {
+            return null;
+        }
+
+        LocationNode rootNode = locationNodeRepository.findByCode(normalized)
+                .orElseThrow(() -> new EntityNotFoundException("LocationNode not found: " + normalized));
+
+        if (!Boolean.TRUE.equals(includeSubtree)) {
+            return List.of(rootNode.getCode());
+        }
+
+        List<LocationNode> allNodes = locationNodeRepository.findAll();
+        Map<String, List<LocationNode>> childrenByParentCode = new HashMap<>();
+        for (LocationNode node : allNodes) {
+            if (node.getParent() == null) {
+                continue;
+            }
+            childrenByParentCode
+                    .computeIfAbsent(node.getParent().getCode(), ignored -> new ArrayList<>())
+                    .add(node);
+        }
+
+        Set<String> subtreeCodes = new HashSet<>();
+        subtreeCodes.add(rootNode.getCode());
+        collectDescendants(rootNode.getCode(), childrenByParentCode, subtreeCodes);
+        return subtreeCodes;
+    }
+
+    private void collectDescendants(
+            String code,
+            Map<String, List<LocationNode>> childrenByParentCode,
+            Set<String> subtreeCodes
+    ) {
+        List<LocationNode> children = childrenByParentCode.getOrDefault(code, List.of());
+        for (LocationNode child : children) {
+            if (subtreeCodes.add(child.getCode())) {
+                collectDescendants(child.getCode(), childrenByParentCode, subtreeCodes);
+            }
+        }
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     public DeviceResponse getDevice(Integer id) {

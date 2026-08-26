@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
@@ -36,11 +37,14 @@ public class PageWidgetQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
 
-    public List<PageWidgetResponse> getWidgets(String pageCode) {
+    public List<PageWidgetResponse> getWidgets(String pageCode, Boolean enabled) {
         CommonCode code = findPageCode(pageCode);
         List<PageWidget> widgets = pageWidgetRepository.findAllByPageCodeIdOrderByIdAsc(code.getId());
         List<PageWidgetResponse> responses = new ArrayList<>();
         for (PageWidget widget : widgets) {
+            if (enabled != null && widget.isEnabled() != enabled) {
+                continue;
+            }
             responses.add(PageWidgetResponse.from(widget));
         }
         return responses;
@@ -99,6 +103,13 @@ public class PageWidgetQueryService {
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
         }
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse setEnabled(Integer id, PageWidgetEnabledRequest request) {
+        PageWidget widget = findWidget(id);
+        widget.setEnabled(request.enabled());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 

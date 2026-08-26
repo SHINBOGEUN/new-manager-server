@@ -17,6 +17,7 @@ import static net.vivans.dcim.support.AuthTestSupport.loginAndGetAccessToken;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -355,6 +356,53 @@ class PageWidgetControllerIntegrationTest {
                 .getContentAsString();
 
         return objectMapper.readTree(deviceResponse).path("data").path("id").asInt();
+    }
+
+    @Test
+    void toggleEnabled_andFilterByEnabled() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-toggle", "password123");
+        devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
+        int deviceId = createDevice(accessToken, "Toggle-PDU");
+
+        String createResponse = mockMvc.perform(post("/api/manager/widgets")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageCode": "dashboard",
+                                  "name": "토글 테스트",
+                                  "queryKind": "last",
+                                  "deviceIds": [%d],
+                                  "pointNames": ["W"]
+                                }
+                                """.formatted(deviceId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int widgetId = objectMapper.readTree(createResponse).path("data").path("id").asInt();
+
+        mockMvc.perform(patch("/api/manager/widgets/" + widgetId + "/enabled")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\": false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.enabled").value(false));
+
+        mockMvc.perform(get("/api/manager/widgets")
+                        .param("pageCode", "dashboard")
+                        .param("enabled", "true")
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        mockMvc.perform(get("/api/manager/widgets")
+                        .param("pageCode", "dashboard")
+                        .param("enabled", "false")
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(widgetId))
+                .andExpect(jsonPath("$.data[0].enabled").value(false));
     }
 
     private Integer devicePageCodeId(String accessToken, String code, String name, int sortOrder) throws Exception {

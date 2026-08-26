@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
@@ -14,6 +15,7 @@ import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -36,9 +38,11 @@ public class PageWidgetController {
     @Operation(summary = "페이지 위젯 목록")
     public ResponseEntity<ApiResponse<List<PageWidgetResponse>>> getWidgets(
             @Parameter(description = "DEVICE_PAGE code", example = "COOLING")
-            @RequestParam String pageCode
+            @RequestParam String pageCode,
+            @Parameter(description = "true/false 이면 enabled 필터")
+            @RequestParam(required = false) Boolean enabled
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getWidgets(pageCode)));
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getWidgets(pageCode, enabled)));
     }
 
     @GetMapping("/{id}")
@@ -64,6 +68,15 @@ public class PageWidgetController {
             @Valid @RequestBody PageWidgetUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updateWidget(id, request)));
+    }
+
+    @PatchMapping("/{id}/enabled")
+    @Operation(summary = "위젯 UI 표시 on/off", description = "페이지에 위젯을 보여줄지 여부만 변경합니다.")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> setEnabled(
+            @Parameter(description = "위젯 ID") @PathVariable Integer id,
+            @Valid @RequestBody PageWidgetEnabledRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.setEnabled(id, request)));
     }
 
     @PutMapping("/{id}/layout")

@@ -152,6 +152,18 @@ class LastQueryServiceTest {
     }
 
     @Test
+    void rejectsDisabledWidget() {
+        PageWidget widget = mock(PageWidget.class);
+        when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.last);
+        when(widget.isEnabled()).thenReturn(false);
+        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
+
+        assertThatThrownBy(() -> service.getLast(12, 24))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("widget is disabled");
+    }
+
+    @Test
     void rejectsNonLastWidget() {
         PageWidget widget = mock(PageWidget.class);
         when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.aggregate);
@@ -168,6 +180,7 @@ class LastQueryServiceTest {
         when(point.getPointName()).thenReturn("W");
         PageWidget widget = mock(PageWidget.class);
         when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.last);
+        when(widget.isEnabled()).thenReturn(true);
         when(widget.getPoints()).thenReturn(List.of(point));
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
 
@@ -203,6 +216,7 @@ class LastQueryServiceTest {
         PageWidget widget = mock(PageWidget.class);
         when(widget.getId()).thenReturn(id);
         when(widget.getName()).thenReturn(name);
+        when(widget.isEnabled()).thenReturn(true);
         when(widget.getPageCode()).thenReturn(pageCode(pageCode));
         when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.last);
         when(widget.getPoints()).thenReturn(points);

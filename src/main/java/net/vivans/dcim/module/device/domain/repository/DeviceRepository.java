@@ -23,7 +23,7 @@ public interface DeviceRepository {
 
     Page<Device> findAll(
             Integer modelId,
-            String locationNodeCode,
+            Collection<String> locationNodeCodes,
             String name,
             Boolean enabled,
             String pageCode,

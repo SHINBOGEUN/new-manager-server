@@ -279,6 +279,34 @@ class DeviceControllerIntegrationTest {
     }
 
     @Test
+    void getDevices_includeSubtree_returnsDevicesUnderDescendantLocations() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-subtree-user", "password123");
+        Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
+        Integer groupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
+        Integer zoneTypeId = findOrCreateCommonCode(accessToken, groupId, "ZONE", "존", 1);
+        Integer rackTypeId = findOrCreateCommonCode(accessToken, groupId, "RACK", "랙", 3);
+        String zone = createLocationNode(accessToken, null, zoneTypeId, "Zone-Subtree");
+        String rack = createLocationNode(accessToken, zone, rackTypeId, "Rack-Subtree");
+        createDevice(accessToken, modelId, zone, "ZONE-DEVICE", "on-zone");
+        createDevice(accessToken, modelId, rack, "RACK-DEVICE", "on-rack");
+
+        mockMvc.perform(get("/api/manager/devices")
+                        .param("locationNodeCode", zone)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content", hasSize(1)))
+                .andExpect(jsonPath("$.data.content[0].name").value("ZONE-DEVICE"));
+
+        mockMvc.perform(get("/api/manager/devices")
+                        .param("locationNodeCode", zone)
+                        .param("includeSubtree", "true")
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[*].name", org.hamcrest.Matchers.containsInAnyOrder("ZONE-DEVICE", "RACK-DEVICE")));
+    }
+
+    @Test
     void updateDevice_updatesFields() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");

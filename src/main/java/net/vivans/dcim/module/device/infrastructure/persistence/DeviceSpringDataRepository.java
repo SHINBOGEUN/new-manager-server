@@ -27,7 +27,7 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
     @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
     @Query("SELECT d FROM Device d " +
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
-            "AND (:locationNodeCode IS NULL OR d.locationNode.code = :locationNodeCode) " +
+            "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
             "AND (:name IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :name, '%'))) " +
             "AND (:enabled IS NULL OR d.enabled = :enabled) " +
             "AND (:pageCode IS NULL OR EXISTS (" +
@@ -38,7 +38,7 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
             "))")
     Page<Device> findAllWithFilters(
             @Param("modelId") Integer modelId,
-            @Param("locationNodeCode") String locationNodeCode,
+            @Param("locationNodeCodes") Collection<String> locationNodeCodes,
             @Param("name") String name,
             @Param("enabled") Boolean enabled,
             @Param("pageCode") String pageCode,

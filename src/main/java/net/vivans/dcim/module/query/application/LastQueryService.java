@@ -138,6 +138,9 @@ public class LastQueryService {
             throw new IllegalArgumentException(
                     "widget queryKind must be last, but was " + widget.getQueryKind());
         }
+        if (!widget.isEnabled()) {
+            throw new IllegalArgumentException("widget is disabled");
+        }
         return widget;
     }
 

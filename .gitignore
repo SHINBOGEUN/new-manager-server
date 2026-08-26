@@ -33,3 +33,8 @@ build/
 logs/
 upload/
 .tmp_last_extract/
+
+### Local-only static prototypes (not for product) ###
+src/main/resources/static/ops-console.html
+src/main/resources/static/widget-dashboard.html
+src/main/resources/static/index.html
