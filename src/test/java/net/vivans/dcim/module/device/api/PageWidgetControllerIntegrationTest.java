@@ -198,7 +198,7 @@ class PageWidgetControllerIntegrationTest {
                                 }
                                 """.formatted(deviceId)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("queryKind must be last, aggregate, or count"));
+                .andExpect(jsonPath("$.error").value("queryKind must be last, aggregate, count, or chart"));
     }
 
     @Test

@@ -223,6 +223,52 @@ device_model <- device_model_protocol -> common_code (snmp)
 | requiresInstance=false인데 placeholder 있음 | 400 | `oid must not contain {instanceId}` |
 | oid 형식 오류 | 400 | `invalid oid format` |
 
+### 3.2 point 일괄 추가 — `POST /api/manager/device-models/{modelId}/protocols/{protocolId}/snmp-points/bulk`
+
+**구현 상태:** ✅ 구현 완료
+
+여러 OID를 한 요청으로 등록합니다. 요청 내·DB 중복이 하나라도 있으면 **전부 롤백**하고, 수집 스크립트 재생성은 **1회**만 수행합니다.
+
+#### 요청
+
+```json
+{
+  "points": [
+    {
+      "name": "V",
+      "oid": "1.3.6.1.4.1.xxx.1.1.0",
+      "requiresInstance": false,
+      "unit": "V",
+      "enabled": true
+    },
+    {
+      "name": "A",
+      "oid": "1.3.6.1.4.1.xxx.1.2.0",
+      "unit": "A"
+    }
+  ]
+}
+```
+
+| 필드 | 필수 | 타입 | 설명 |
+|------|------|------|------|
+| `points` | O | array | 비어 있으면 400. 요소 스키마는 단건 등록과 동일 |
+| `points[].name` / `oid` | O | string | 요청 배열 안에서도 name·oid 중복 불가 |
+
+#### 응답 — `data` 배열
+
+등록된 point 목록 (`id` 포함). 단건 응답 객체와 동일 스키마.
+
+#### 오류
+
+단건 등록 오류 + 아래:
+
+| 조건 | HTTP | 메시지(예) |
+|------|------|------------|
+| `points` 비어 있음 | 400 | `points must not be empty` |
+| 요청 내 name 중복 | 400 | `duplicate point name in request: {name}` |
+| 요청 내 oid 중복 | 400 | `duplicate point oid in request: {oid}` |
+
 ---
 
 ## 4. 수정 API
@@ -308,6 +354,7 @@ device_model <- device_model_protocol -> common_code (snmp)
 | `GET` | `.../snmp-points` | SNMP point 목록 | ✅ |
 | `GET` | `.../snmp-points/{pointId}` | SNMP point 단건 | ✅ |
 | `POST` | `.../snmp-points` | SNMP point 추가 | ✅ |
+| `POST` | `.../snmp-points/bulk` | SNMP point 일괄 추가 | ✅ |
 | `PUT` | `.../snmp-points/{pointId}` | SNMP point 수정 | ✅ |
 | `DELETE` | `.../snmp-points/{pointId}` | SNMP point 삭제 | ✅ |
 

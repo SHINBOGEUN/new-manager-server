@@ -55,7 +55,8 @@ public class LocationNodeQueryService {
                             "LocationNode not found: " + request.parentCode()));
             validateSiblingName(parent, request.name(), null);
             validateLocationTypeDepth(parent, locationType);
-            node = LocationNode.createChild(generateUniqueCode(), parent, locationType, request.name());
+            node = LocationNode.createChild(
+                    generateUniqueCode(), parent, locationType, request.name());
             node = locationNodeRepository.save(node);
             reconstructTreeAfterInsert(parent, node);
             return LocationNodeResponse.from(node);
@@ -409,9 +410,11 @@ public class LocationNodeQueryService {
 
         LocationNode node;
         if (parent == null) {
-            node = LocationNode.createRoot(generateUniqueCode(batchCodes), locationType, request.name());
+            node = LocationNode.createRoot(
+                    generateUniqueCode(batchCodes), locationType, request.name());
         } else {
-            node = LocationNode.createChild(generateUniqueCode(batchCodes), parent, locationType, request.name());
+            node = LocationNode.createChild(
+                    generateUniqueCode(batchCodes), parent, locationType, request.name());
         }
         node = locationNodeRepository.save(node);
         if (parent != null) {

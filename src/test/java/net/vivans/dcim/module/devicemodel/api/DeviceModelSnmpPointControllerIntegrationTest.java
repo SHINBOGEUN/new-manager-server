@@ -615,6 +615,62 @@ class DeviceModelSnmpPointControllerIntegrationTest {
                 .andExpect(jsonPath("$.error").value("point oid already exists for this protocol"));
     }
 
+    @Test
+    void createSnmpPointsBulk_returnsCreatedList() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-bulk-user", "password123");
+        Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
+        Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
+        Integer deviceTypeId = createModelType(accessToken);
+        String modelResponse = mockMvc.perform(post("/api/manager/device-models")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "CDU-BULK",
+                                  "manufacturer": "Vivans",
+                                  "deviceTypeId": %d,
+                                  "protocols": [
+                                    { "protocolTypeId": %d }
+                                  ]
+                                }
+                                """.formatted(deviceTypeId, snmpId)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        int modelId = objectMapper.readTree(modelResponse).path("data").path("id").asInt();
+        int protocolId = objectMapper.readTree(modelResponse).path("data").path("protocols").get(0).path("id").asInt();
+
+        mockMvc.perform(post("/api/manager/device-models/{modelId}/protocols/{protocolId}/snmp-points/bulk",
+                        modelId, protocolId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "points": [
+                                    {
+                                      "name": "V",
+                                      "oid": "1.3.6.1.4.1.12345.1.1.0",
+                                      "unit": "V",
+                                      "enabled": true
+                                    },
+                                    {
+                                      "name": "A",
+                                      "oid": "1.3.6.1.4.1.12345.1.2.0",
+                                      "unit": "A"
+                                    }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].name").value("V"))
+                .andExpect(jsonPath("$.data[1].name").value("A"))
+                .andExpect(jsonPath("$.data[0].modelId").value(modelId))
+                .andExpect(jsonPath("$.data[1].protocolId").value(protocolId));
+    }
+
     private Integer createModelType(String accessToken) throws Exception {
         Integer groupId = createCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
         return createCommonCode(accessToken, groupId, "CDU", "CDU", 1);

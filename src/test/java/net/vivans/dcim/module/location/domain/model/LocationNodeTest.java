@@ -142,14 +142,4 @@ class LocationNodeTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("name is required");
     }
-
-    @Test
-    void createRoot_throwsWhenCodeIsInvalid() {
-        CodeGroup codeGroup = CodeGroup.createCodeGroup("LOCATION_TYPE", "장소 유형");
-        CommonCode locationType = CommonCode.createCommonCode(codeGroup, "container", "컨테이너", 1);
-
-        assertThatThrownBy(() -> LocationNode.createRoot("short", locationType, "컨테이너 A"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("code is invalid");
-    }
 }

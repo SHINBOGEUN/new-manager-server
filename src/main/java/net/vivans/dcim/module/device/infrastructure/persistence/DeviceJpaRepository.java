@@ -91,6 +91,14 @@ public class DeviceJpaRepository implements DeviceRepository {
     }
 
     @Override
+    public List<Device> findAllEnabledByDeviceModelIds(Collection<Integer> modelIds) {
+        if (modelIds == null || modelIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataRepository.findByEnabledTrueAndDeviceModel_IdInOrderByIdAsc(modelIds);
+    }
+
+    @Override
     public void flush() {
         springDataRepository.flush();
     }

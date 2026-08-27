@@ -21,6 +21,9 @@ public record DeviceCreateRequest(
         String description,
 
         @Schema(description = "사용 여부 (기본 true)", example = "true")
-        Boolean enabled
+        Boolean enabled,
+
+        @Schema(description = "Path 코드 ID (LOCATION_PATH 그룹, 선택). PDU 전원 피드 / 차트 by_path", example = "10")
+        Integer pathCodeId
 ) {
 }

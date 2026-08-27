@@ -4,8 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
+import net.vivans.dcim.module.query.application.ChartQueryService;
 import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
@@ -23,6 +25,7 @@ public class QueryController {
 
     private final LastQueryService lastQueryService;
     private final CountQueryService countQueryService;
+    private final ChartQueryService chartQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -57,5 +60,25 @@ public class QueryController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 countQueryService.getCount(widgetId, countMode, countModelId)));
+    }
+
+    @GetMapping("/chart")
+    @Operation(
+            summary = "위젯 시계열 차트 조회",
+            description = "queryKind=chart 위젯의 장비/모델 범위 + pointNames로 Influx 시계열을 조회합니다. "
+                    + "seriesMode: per_device | sum | by_phase(point L1/L2/L3) | by_path(location_node)."
+    )
+    public ResponseEntity<ApiResponse<ChartWidgetResponse>> getChart(
+            @Parameter(description = "page_widget id", example = "12", required = true)
+            @RequestParam Integer widgetId,
+            @Parameter(description = "기간 preset override")
+            @RequestParam(required = false) String rangePreset,
+            @Parameter(description = "aggregateWindow override: 1m|5m|15m|1h|1d")
+            @RequestParam(required = false) String window,
+            @Parameter(description = "seriesMode override: per_device(PDU) | sum(Total) | by_phase | by_path")
+            @RequestParam(required = false) String seriesMode
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                chartQueryService.getChart(widgetId, rangePreset, window, seriesMode)));
     }
 }

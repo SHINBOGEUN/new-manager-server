@@ -106,6 +106,35 @@ class DeviceTest {
                 .hasMessage("name is required");
     }
 
+    @Test
+    void create_withInvalidPathGroup_throws() {
+        DeviceModel model = DeviceModel.create("AP8959", "APC", modelType(), null);
+        CodeGroup modelGroup = CodeGroup.createCodeGroup("MODEL_TYPE", "Model");
+        CommonCode notPath = CommonCode.createCommonCode(modelGroup, "PDU", "PDU", 1);
+
+        assertThatThrownBy(() -> Device.create(
+                model,
+                unassignedLocation(),
+                "PDU-좌",
+                null,
+                true,
+                notPath
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("pathCode must belong to LOCATION_PATH group");
+    }
+
+    @Test
+    void create_withLocationPath_succeeds() {
+        DeviceModel model = DeviceModel.create("AP8959", "APC", modelType(), null);
+        CodeGroup pathGroup = CodeGroup.createCodeGroup("LOCATION_PATH", "Location Path");
+        CommonCode pathA = CommonCode.createCommonCode(pathGroup, "A", "A Path", 1);
+
+        Device device = Device.create(model, unassignedLocation(), "PDU-A", null, true, pathA);
+
+        assertThat(device.getPathCode()).isEqualTo(pathA);
+    }
+
     private CommonCode modelType() {
         CodeGroup group = CodeGroup.createCodeGroup("MODEL_TYPE", "Model Type");
         return CommonCode.createCommonCode(group, "PDU", "PDU", 1);

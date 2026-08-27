@@ -15,21 +15,7 @@ class PageWidgetTest {
 
     @Test
     void create_withDevicesAndPoints_succeeds() {
-        PageWidget widget = PageWidget.create(
-                pageCode("cooling", "Cooling"),
-                "칠러",
-                true,
-                PageWidgetQueryKind.last,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                List.of("status", "W"),
-                List.of(device(9), device(10))
-        );
+        PageWidget widget = lastWidget("칠러", List.of("status", "W"), List.of(device(9), device(10)));
 
         assertThat(widget.getName()).isEqualTo("칠러");
         assertThat(widget.getQueryKind()).isEqualTo(PageWidgetQueryKind.last);
@@ -41,15 +27,7 @@ class PageWidgetTest {
 
     @Test
     void upsertLayout_setsAndUpdatesGrid() {
-        PageWidget widget = PageWidget.create(
-                pageCode("dashboard", "dashboard"),
-                "PDU",
-                true,
-                PageWidgetQueryKind.last,
-                null, null, null, null, null, null, null,
-                List.of("W"),
-                List.of(device(1))
-        );
+        PageWidget widget = lastWidget("PDU", List.of("W"), List.of(device(1)));
 
         widget.upsertLayout(1, 2, 3, 1);
         assertThat(widget.getLayout().getGridX()).isEqualTo(1);
@@ -64,15 +42,7 @@ class PageWidgetTest {
 
     @Test
     void upsertLayout_withInvalidSize_throws() {
-        PageWidget widget = PageWidget.create(
-                pageCode("dashboard", "dashboard"),
-                "PDU",
-                true,
-                PageWidgetQueryKind.last,
-                null, null, null, null, null, null, null,
-                List.of("W"),
-                List.of(device(1))
-        );
+        PageWidget widget = lastWidget("PDU", List.of("W"), List.of(device(1)));
 
         assertThatThrownBy(() -> widget.upsertLayout(0, 0, 0, 1))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -89,8 +59,10 @@ class PageWidgetTest {
                 null, null, null, null, null,
                 PageWidgetCountMode.total,
                 null,
+                null, null, null, null,
                 List.of("W"),
-                List.of(device(1), device(2))
+                List.of(device(1), device(2)),
+                List.of()
         );
 
         assertThat(widget.deviceIds()).isEmpty();
@@ -108,6 +80,8 @@ class PageWidgetTest {
                 null, null, null, null, null,
                 PageWidgetCountMode.total,
                 null,
+                null, null, null, null,
+                List.of(),
                 List.of(),
                 List.of()
         );
@@ -118,16 +92,95 @@ class PageWidgetTest {
     }
 
     @Test
-    void create_withoutDevices_throws() {
-        assertThatThrownBy(() -> PageWidget.create(
-                pageCode("cooling", "Cooling"),
-                "칠러",
+    void create_chartWithDevices_succeeds() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "전력 차트",
                 true,
-                PageWidgetQueryKind.last,
-                null, null, null, null, null, null, null,
+                PageWidgetQueryKind.chart,
+                null, null, null, null, null,
+                null, null,
+                PageWidgetChartScope.devices,
+                PageWidgetChartSeriesMode.per_device,
+                PageWidgetChartRangePreset.last_24h,
+                "5m",
                 List.of("W"),
+                List.of(device(1), device(2)),
                 List.of()
-        ))
+        );
+
+        assertThat(widget.getQueryKind()).isEqualTo(PageWidgetQueryKind.chart);
+        assertThat(widget.getChartScope()).isEqualTo(PageWidgetChartScope.devices);
+        assertThat(widget.getChartSeriesMode()).isEqualTo(PageWidgetChartSeriesMode.per_device);
+        assertThat(widget.deviceIds()).containsExactly(1, 2);
+        assertThat(widget.modelIds()).isEmpty();
+        assertThat(widget.pointNames()).containsExactly("W");
+    }
+
+    @Test
+    void create_chartWithModels_succeeds() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "모델 차트",
+                true,
+                PageWidgetQueryKind.chart,
+                null, null, null, null, null,
+                null, null,
+                PageWidgetChartScope.models,
+                PageWidgetChartSeriesMode.by_phase,
+                PageWidgetChartRangePreset.this_month,
+                "1h",
+                List.of("L1", "L2", "L3"),
+                List.of(),
+                List.of(10, 20)
+        );
+
+        assertThat(widget.getChartScope()).isEqualTo(PageWidgetChartScope.models);
+        assertThat(widget.modelIds()).containsExactly(10, 20);
+        assertThat(widget.deviceIds()).isEmpty();
+        assertThat(widget.pointNames()).containsExactly("L1", "L2", "L3");
+    }
+
+    @Test
+    void update_chart_keepsSameChartRow() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "전력 차트",
+                true,
+                PageWidgetQueryKind.chart,
+                null, null, null, null, null,
+                null, null,
+                PageWidgetChartScope.devices,
+                PageWidgetChartSeriesMode.sum,
+                PageWidgetChartRangePreset.last_24h,
+                "15m",
+                List.of("W"),
+                List.of(device(1)),
+                List.of()
+        );
+
+        widget.update(
+                "전력 차트",
+                true,
+                PageWidgetQueryKind.chart,
+                null, null, null, null, null,
+                null, null,
+                PageWidgetChartScope.devices,
+                PageWidgetChartSeriesMode.by_phase,
+                PageWidgetChartRangePreset.last_24h,
+                "15m",
+                List.of("L1_WATT", "L2_WATT", "L3_WATT"),
+                List.of(device(1), device(2)),
+                List.of()
+        );
+
+        assertThat(widget.getChartSeriesMode()).isEqualTo(PageWidgetChartSeriesMode.by_phase);
+        assertThat(widget.deviceIds()).containsExactly(1, 2);
+    }
+
+    @Test
+    void create_withoutDevices_throws() {
+        assertThatThrownBy(() -> lastWidget("칠러", List.of("W"), List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("deviceIds is required");
     }
@@ -144,8 +197,10 @@ class PageWidgetTest {
         assertThatThrownBy(() -> PageWidget.create(
                 wrong, "칠러", true, PageWidgetQueryKind.last,
                 null, null, null, null, null, null, null,
+                null, null, null, null,
                 List.of("W"),
-                List.of(device(1))
+                List.of(device(1)),
+                List.of()
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("pageCode must belong to DEVICE_PAGE group");
@@ -159,8 +214,10 @@ class PageWidgetTest {
                 true,
                 PageWidgetQueryKind.aggregate,
                 null, null, null, null, null, null, null,
+                null, null, null, null,
                 List.of("TOTAL_KWH"),
-                List.of(device(1))
+                List.of(device(1)),
+                List.of()
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("op is required for aggregate");
@@ -168,35 +225,18 @@ class PageWidgetTest {
 
     @Test
     void update_replacesDevicesAndPoints() {
-        PageWidget widget = PageWidget.create(
-                pageCode("dashboard", "dashboard"),
-                "칠러",
-                true,
-                PageWidgetQueryKind.last,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                List.of("W"),
-                List.of(device(9))
-        );
+        PageWidget widget = lastWidget("칠러", List.of("W"), List.of(device(9)));
 
         widget.update(
                 "칠러 상태",
                 false,
                 PageWidgetQueryKind.last,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
+                null, null, null, null, null,
+                null, null,
+                null, null, null, null,
                 List.of("status", "W"),
-                List.of(device(11))
+                List.of(device(11)),
+                List.of()
         );
 
         assertThat(widget.getName()).isEqualTo("칠러 상태");
@@ -207,12 +247,27 @@ class PageWidgetTest {
 
     @Test
     void queryKindFrom_rejectsUnknown() {
-        assertThatThrownBy(() -> PageWidgetQueryKind.from("chart"))
+        assertThatThrownBy(() -> PageWidgetQueryKind.from("gauge"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("queryKind must be last, aggregate, or count");
+                .hasMessage("queryKind must be last, aggregate, count, or chart");
     }
 
-    private CommonCode pageCode(String code, String name) {
+    private static PageWidget lastWidget(String name, List<String> points, List<Device> devices) {
+        return PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                name,
+                true,
+                PageWidgetQueryKind.last,
+                null, null, null, null, null,
+                null, null,
+                null, null, null, null,
+                points,
+                devices,
+                List.of()
+        );
+    }
+
+    private static CommonCode pageCode(String code, String name) {
         CodeGroup group = CodeGroup.createCodeGroup(DevicePageCodes.DEVICE_PAGE_GROUP_KEY, "Device Page");
         return CommonCode.createCommonCode(group, code, name, 1);
     }

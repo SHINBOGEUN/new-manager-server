@@ -47,8 +47,10 @@
 | `name` | 필수. **같은 위치**(`location_node_code`) 아래에서 중복 불가 |
 | `enabled` | boolean. 기본 `true` |
 | `description` | 선택 |
+| `pathCodeId` | 선택. `LOCATION_PATH` 공통코드 (A/B/C…). PDU 전원 피드. 차트 `by_path` 그룹 키 |
 | 응답 `locationNodeCode` | `location_node.code` (Influx tag·내부 조회용, 안정 키) |
 | 응답 `locationNodeName` | `location_node.name` (표시명) |
+| 응답 `pathCodeId` / `pathCode` / `pathName` | Path 공통코드 (미지정 시 null) |
 | 응답 `deviceTypeCode` | `device_model.device_type` common_code (`MODEL_TYPE`, Influx tag `device_type`) |
 | 모델 삭제 | `devices.model_id` 참조 중이면 409 ([DEVICE_MODEL_API](../devicemodel/DEVICE_MODEL_API.md)) |
 | 위치 삭제 | 참조 device는 **`UNASSIGNED`로 자동 이동** 후 삭제. 이름 충돌 시 409. **`UNASSIGNED`는 삭제 금지** |
@@ -87,6 +89,7 @@ SNMP point + endpoint + instance **합성 조회**는 [DEVICE_CAPABILITY_API](./
 | `id` | INT | N | PK | AUTO_INCREMENT | 장비 ID (API·Influx `device_id`) |
 | `model_id` | INT | N | FK | | `device_model.id` |
 | `location_node_code` | CHAR(10) | N | FK, UK | | `location_node.code` (미지정 시 `UNASSIGNED`) |
+| `path_code_id` | INT | Y | FK | | `common_code.id` (`LOCATION_PATH`, PDU Path 피드) |
 | `name` | VARCHAR(255) | N | UK | | 현장 표시명 |
 | `description` | VARCHAR(1000) | Y | | | 설명 |
 | `enabled` | TINYINT(1) | N | | `1` | 사용 여부 (boolean, CHECK 0/1) |
@@ -105,6 +108,7 @@ SNMP point + endpoint + instance **합성 조회**는 [DEVICE_CAPABILITY_API](./
 |----|------|-----------|-----------|
 | `fk_devices_model_id` | `device_model(id)` | RESTRICT | CASCADE |
 | `fk_devices_location_node_code` | `location_node(code)` | RESTRICT | CASCADE |
+| `fk_devices_path_code_id` | `common_code(id)` | RESTRICT | CASCADE |
 
 **관계도**
 
@@ -151,7 +155,8 @@ erDiagram
   "locationNodeCode": "UNASSIGNED",
   "name": "PDU-01",
   "description": "Rack-01 좌측 PDU (위치는 나중에 지정)",
-  "enabled": true
+  "enabled": true,
+  "pathCodeId": 10
 }
 ```
 
@@ -162,6 +167,7 @@ erDiagram
 | `name` | O | string | 현장 표시명 |
 | `description` | X | string | 설명 |
 | `enabled` | X | boolean | 기본 `true` |
+| `pathCodeId` | X | integer | `LOCATION_PATH` common_code ID. PDU 전원 피드. 생략/`null`이면 Path 미지정 |
 
 #### 응답 — `200 OK` (ApiResponse)
 
@@ -176,6 +182,9 @@ erDiagram
     "deviceTypeCode": "PDU",
     "locationNodeCode": "RACK000001",
     "locationNodeName": "Rack-01",
+    "pathCodeId": 10,
+    "pathCode": "A",
+    "pathName": "A Path",
     "name": "PDU-01",
     "description": "Rack-01 좌측 PDU",
     "enabled": true

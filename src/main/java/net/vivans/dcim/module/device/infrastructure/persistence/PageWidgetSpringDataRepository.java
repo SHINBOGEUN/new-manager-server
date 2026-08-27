@@ -11,15 +11,21 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
+            "aggregate", "count", "chart",
             "devices", "devices.device", "devices.device.deviceModel",
-            "devices.device.deviceModel.deviceType", "devices.device.locationNode"
+            "devices.device.deviceModel.deviceType", "devices.device.locationNode",
+            "devices.device.pathCode",
+            "models"
     })
     Optional<PageWidget> findById(Integer id);
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
+            "aggregate", "count", "chart",
             "devices", "devices.device", "devices.device.deviceModel",
-            "devices.device.deviceModel.deviceType", "devices.device.locationNode"
+            "devices.device.deviceModel.deviceType", "devices.device.locationNode",
+            "devices.device.pathCode",
+            "models"
     })
     List<PageWidget> findAllByPageCode_IdOrderByIdAsc(Integer pageCodeId);
 

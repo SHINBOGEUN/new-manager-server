@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.shared.persistence.BaseEntity;
@@ -25,6 +26,9 @@ public class Device extends BaseEntity {
     /** 위치 미지정(선등록) 시 사용 */
     public static final String UNASSIGNED_LOCATION_CODE = "UNASSIGNED";
 
+    /** PDU Path 피드 (A/B/C…). 차트 by_path 그룹 키 */
+    public static final String LOCATION_PATH_GROUP_KEY = "LOCATION_PATH";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -36,6 +40,11 @@ public class Device extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "location_node_code", nullable = false)
     private LocationNode locationNode;
+
+    /** LOCATION_PATH 그룹. PDU 전원 피드. 차트 by_path 그룹 키. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "path_code_id")
+    private CommonCode pathCode;
 
     @Column(nullable = false)
     private String name;
@@ -49,15 +58,18 @@ public class Device extends BaseEntity {
     private Device(
             DeviceModel deviceModel,
             LocationNode locationNode,
+            CommonCode pathCode,
             String name,
             String description,
             boolean enabled
     ) {
         validateDeviceModel(deviceModel);
         validateLocationNode(locationNode);
+        validatePathCode(pathCode);
         validateName(name);
         this.deviceModel = deviceModel;
         this.locationNode = locationNode;
+        this.pathCode = pathCode;
         this.name = name;
         this.description = description;
         this.enabled = enabled;
@@ -69,7 +81,7 @@ public class Device extends BaseEntity {
             String name,
             String description
     ) {
-        return create(deviceModel, locationNode, name, description, true);
+        return create(deviceModel, locationNode, name, description, true, null);
     }
 
     public static Device create(
@@ -79,7 +91,18 @@ public class Device extends BaseEntity {
             String description,
             boolean enabled
     ) {
-        return new Device(deviceModel, locationNode, name, description, enabled);
+        return create(deviceModel, locationNode, name, description, enabled, null);
+    }
+
+    public static Device create(
+            DeviceModel deviceModel,
+            LocationNode locationNode,
+            String name,
+            String description,
+            boolean enabled,
+            CommonCode pathCode
+    ) {
+        return new Device(deviceModel, locationNode, pathCode, name, description, enabled);
     }
 
     public void update(
@@ -89,11 +112,24 @@ public class Device extends BaseEntity {
             String description,
             boolean enabled
     ) {
+        update(deviceModel, locationNode, name, description, enabled, this.pathCode);
+    }
+
+    public void update(
+            DeviceModel deviceModel,
+            LocationNode locationNode,
+            String name,
+            String description,
+            boolean enabled,
+            CommonCode pathCode
+    ) {
         validateDeviceModel(deviceModel);
         validateLocationNode(locationNode);
+        validatePathCode(pathCode);
         validateName(name);
         this.deviceModel = deviceModel;
         this.locationNode = locationNode;
+        this.pathCode = pathCode;
         this.name = name;
         this.description = description;
         this.enabled = enabled;
@@ -117,6 +153,16 @@ public class Device extends BaseEntity {
     private static void validateLocationNode(LocationNode locationNode) {
         if (locationNode == null) {
             throw new IllegalArgumentException("locationNode is required");
+        }
+    }
+
+    private static void validatePathCode(CommonCode pathCode) {
+        if (pathCode == null) {
+            return;
+        }
+        if (pathCode.getCodeGroup() == null
+                || !LOCATION_PATH_GROUP_KEY.equals(pathCode.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("pathCode must belong to LOCATION_PATH group");
         }
     }
 

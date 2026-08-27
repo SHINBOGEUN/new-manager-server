@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointBulkCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointResponse;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelSnmpPointQueryService;
@@ -59,6 +60,20 @@ public class DeviceModelSnmpPointController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 deviceModelSnmpPointQueryService.createDeviceModelSnmpPoint(modelId, protocolId, request)));
+    }
+
+    @PostMapping("/bulk")
+    @Operation(
+            summary = "SNMP 수집 POINT 일괄 등록 API",
+            description = "여러 OID를 한 요청으로 등록합니다. 하나라도 실패하면 전부 롤백되며, 수집 스크립트는 1회만 재생성합니다."
+    )
+    public ResponseEntity<ApiResponse<List<DeviceModelSnmpPointResponse>>> createDeviceModelSnmpPoints(
+            @Parameter(description = "장비 모델 ID") @PathVariable Integer modelId,
+            @Parameter(description = "모델 프로토콜 ID (SNMP)") @PathVariable Integer protocolId,
+            @Valid @RequestBody DeviceModelSnmpPointBulkCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                deviceModelSnmpPointQueryService.createDeviceModelSnmpPoints(modelId, protocolId, request)));
     }
 
     @PutMapping("/{pointId}")

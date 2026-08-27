@@ -13,7 +13,7 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class LocationNode extends BaseEntity {
 
-    private static final String LOCATION_TYPE_GROUP_KEY = "LOCATION_TYPE";
+    public static final String LOCATION_TYPE_GROUP_KEY = "LOCATION_TYPE";
 
     @Id
     @Column(name = "code", length = LocationNodeCodeGenerator.CODE_LENGTH, nullable = false)
@@ -70,6 +70,7 @@ public class LocationNode extends BaseEntity {
         this.locationType = locationType;
         this.name = name;
     }
+
     public void updateParent(LocationNode newParent) {
         if (newParent != null && newParent.getCode().equals(this.code)) {
             throw new IllegalArgumentException("cannot set parent to itself");

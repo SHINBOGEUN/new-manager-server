@@ -333,8 +333,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.save(any(LocationNode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         LocationNodeTreeCreateRequest rowRequest = new LocationNodeTreeCreateRequest(3, "A열", List.of());
-        LocationNodeTreeCreateRequest containerRequest = new LocationNodeTreeCreateRequest(
-                1, "컨테이너 A", List.of(rowRequest)
+        LocationNodeTreeCreateRequest containerRequest = new LocationNodeTreeCreateRequest(1, "컨테이너 A", List.of(rowRequest)
         );
         LocationNodeBulkCreateRequest bulkRequest = new LocationNodeBulkCreateRequest(null, List.of(containerRequest));
 
