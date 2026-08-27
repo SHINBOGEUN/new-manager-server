@@ -742,7 +742,7 @@
       <section class="screen" id="widget">
         <div class="screen-head">
           <h2><span class="num">5</span> 화면 위젯</h2>
-          <span class="api">POST /widgets · GET /query/last · GET /query/count</span>
+          <span class="api">POST /widgets · GET /query/last · GET /query/count · GET /query/chart</span>
         </div>
         <div class="layout">
           <div class="panel">
@@ -766,6 +766,7 @@
                   <select id="wfKind">
                     <option selected>last</option>
                     <option>count</option>
+                    <option>chart</option>
                     <option>aggregate (조회 미구현)</option>
                   </select>
                   <p class="hint">종류에 따라 아래 필수 필드가 바뀝니다. 검증은 서버 PageWidget 도메인.</p>
@@ -822,6 +823,77 @@
               </div>
 
               <div class="subbox" style="margin-top:12px">
+                <h4>chart 일 때 · 시계열</h4>
+                <p class="hint" style="margin:0 0 10px"><code>pointNames</code> 항상 필수. phase = point 이름 L1/L2/L3 · path = location_node.</p>
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>범위 <span class="req">*</span></span><span class="key">chartScope</span></span>
+                    <select>
+                      <option selected>devices — deviceIds[]</option>
+                      <option>models — modelIds[]</option>
+                    </select>
+                    <p class="hint">기본 devices. models 이면 deviceIds=[] · modelIds 필수.</p>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>시리즈 <span class="req">*</span></span><span class="key">chartSeriesMode</span></span>
+                    <select>
+                      <option selected>per_device — 장비(또는 모델 내 장비)별</option>
+                      <option>sum — 합계 1시리즈</option>
+                      <option>by_phase — L1/L2/L3 point별</option>
+                      <option>by_path — location_node별</option>
+                    </select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>기간</span><span class="key">chartRangePreset</span></span>
+                    <select>
+                      <option selected>last_24h</option>
+                      <option>today</option>
+                      <option>yesterday</option>
+                      <option>last_7d</option>
+                      <option>this_month</option>
+                    </select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>윈도우</span><span class="key">chartWindow</span></span>
+                    <select>
+                      <option>1m</option>
+                      <option selected>5m</option>
+                      <option>15m</option>
+                      <option>1h</option>
+                      <option>1d</option>
+                    </select>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>대상 장비 (scope=devices)</span><span class="key">deviceIds[]</span></span>
+                    <div class="chips" style="margin-top:2px">
+                      <span class="chip">#101 PDU-좌 <span class="x">×</span></span>
+                      <span class="chip">#102 PDU-우 <span class="x">×</span></span>
+                      <span class="chip add">+ 장비 고르기</span>
+                    </div>
+                    <p class="hint">chartScope=devices 일 때 필수. models 이면 숨기고 [].</p>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>대상 모델 (scope=models)</span><span class="key">modelIds[]</span></span>
+                    <div class="chips" style="margin-top:2px">
+                      <span class="chip">#10 AP8959 <span class="x">×</span></span>
+                      <span class="chip add">+ 모델 고르기</span>
+                    </div>
+                    <p class="hint">chartScope=models 일 때 필수. 해당 모델의 enabled 장비 전체가 조회 대상.</p>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>측정 항목 <span class="req">*</span></span><span class="key">pointNames[]</span></span>
+                    <div class="checks" style="margin-top:4px">
+                      <label><input type="checkbox" checked /> W <span class="u">W</span></label>
+                      <label><input type="checkbox" checked /> L1 <span class="u">phase</span></label>
+                      <label><input type="checkbox" /> L2</label>
+                      <label><input type="checkbox" /> L3</label>
+                    </div>
+                  </label>
+                </form>
+                <div class="callout" style="margin-top:10px">미리보기: <code>GET /api/manager/query/chart?widgetId=&amp;rangePreset=&amp;window=</code> · 문서 <code>docs/query/QUERY_CHART_API.md</code></div>
+              </div>
+
+              <div class="subbox" style="margin-top:12px">
                 <h4>배치 layout (선택) · 대시보드 드래그용</h4>
                 <form class="fields" onsubmit="return false">
                   <label class="f"><span class="row-meta"><span>gridX</span><span class="key">layout.gridX</span></span><input type="number" value="0" /></label>
@@ -829,6 +901,7 @@
                   <label class="f"><span class="row-meta"><span>가로 w</span><span class="key">layout.w</span></span><input type="number" value="16" /></label>
                   <label class="f"><span class="row-meta"><span>세로 h</span><span class="key">layout.h</span></span><input type="number" value="8" /></label>
                 </form>
+                <p class="hint" style="margin-top:8px">chart 카드는 라인 차트 가독성을 위해 <code>h=16</code> 권장 (last/count는 8).</p>
               </div>
 
               <div class="subbox" style="margin-top:12px">
@@ -851,6 +924,7 @@
                 <button type="button" class="ghost">표시 토글 PATCH /{id}/enabled</button>
                 <button type="button" class="ghost">last 미리보기</button>
                 <button type="button" class="ghost">count 미리보기</button>
+                <button type="button" class="ghost">chart 미리보기</button>
               </div>
             </div>
           </div>
@@ -863,9 +937,12 @@
               <li><b>last</b> — 장비·point 필수 → <code>/query/last</code></li>
               <li><b>count</b> — 장비 없음. enabled 전체 → <code>/query/count</code></li>
               <li>countMode: total / by_model / model(+countModelId)</li>
+              <li><b>chart</b> — point 필수 · devices|models → <code>/query/chart</code></li>
+              <li>seriesMode: per_device / sum / by_phase(L1·L2·L3) / by_path(location)</li>
               <li>aggregate — 폼만 예약, 조회 API 미구현</li>
             </ul>
-            <div class="callout">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, count: <code>docs/query/QUERY_COUNT_API.md</code></div>
+            <div class="callout">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, count: <code>docs/query/QUERY_COUNT_API.md</code>, chart: <code>docs/query/QUERY_CHART_API.md</code></div>
+            <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code>). 폼·API JSON 필드명은 동일.</div>
             <div class="callout" style="margin-top:8px">레이아웃은 드래그 후 <code>PUT /widgets/{id}/layout</code></div>
           </aside>
         </div>

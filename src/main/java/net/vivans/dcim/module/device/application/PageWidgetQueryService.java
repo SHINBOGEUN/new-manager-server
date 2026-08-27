@@ -12,12 +12,16 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
+import net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset;
+import net.vivans.dcim.module.device.domain.model.PageWidgetChartScope;
+import net.vivans.dcim.module.device.domain.model.PageWidgetChartSeriesMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetCountMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
+import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +41,7 @@ public class PageWidgetQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
+    private final DeviceModelRepository deviceModelRepository;
 
     public List<PageWidgetResponse> getWidgets(String pageCode, Boolean enabled) {
         CommonCode code = findPageCode(pageCode);
@@ -62,12 +67,13 @@ public class PageWidgetQueryService {
             throw new ConflictException(DUPLICATE_NAME_MESSAGE);
         }
 
+        PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
         boolean enabled = request.enabled() == null || request.enabled();
         PageWidget widget = PageWidget.create(
                 pageCode,
                 request.name(),
                 enabled,
-                PageWidgetQueryKind.from(request.queryKind()),
+                kind,
                 PageWidgetOp.from(request.op()),
                 PageWidgetGroupBy.from(request.groupBy()),
                 request.weightPoint(),
@@ -75,8 +81,13 @@ public class PageWidgetQueryService {
                 request.denominatorPoint(),
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
+                PageWidgetChartScope.from(request.chartScope()),
+                PageWidgetChartSeriesMode.from(request.chartSeriesMode()),
+                PageWidgetChartRangePreset.from(request.chartRangePreset()),
+                request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), PageWidgetQueryKind.from(request.queryKind()))
+                resolveDevices(request.deviceIds(), kind, request.chartScope()),
+                resolveModelIds(request.modelIds(), kind, request.chartScope())
         );
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
@@ -90,11 +101,12 @@ public class PageWidgetQueryService {
             throw new ConflictException(DUPLICATE_NAME_MESSAGE);
         }
 
+        PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
         widget.update(
                 name,
                 enabled,
-                PageWidgetQueryKind.from(request.queryKind()),
+                kind,
                 PageWidgetOp.from(request.op()),
                 PageWidgetGroupBy.from(request.groupBy()),
                 request.weightPoint(),
@@ -102,8 +114,13 @@ public class PageWidgetQueryService {
                 request.denominatorPoint(),
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
+                PageWidgetChartScope.from(request.chartScope()),
+                PageWidgetChartSeriesMode.from(request.chartSeriesMode()),
+                PageWidgetChartRangePreset.from(request.chartRangePreset()),
+                request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), PageWidgetQueryKind.from(request.queryKind()))
+                resolveDevices(request.deviceIds(), kind, request.chartScope()),
+                resolveModelIds(request.modelIds(), kind, request.chartScope())
         );
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
@@ -139,9 +156,22 @@ public class PageWidgetQueryService {
         widget.upsertLayout(layout.gridX(), layout.gridY(), layout.w(), layout.h());
     }
 
-    private List<Device> resolveDevices(List<Integer> deviceIds, PageWidgetQueryKind queryKind) {
+    private List<Device> resolveDevices(
+            List<Integer> deviceIds,
+            PageWidgetQueryKind queryKind,
+            String chartScopeRaw
+    ) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             if (queryKind == PageWidgetQueryKind.count) {
+                return List.of();
+            }
+            if (queryKind == PageWidgetQueryKind.chart
+                    && PageWidgetChartScope.from(chartScopeRaw) == PageWidgetChartScope.models) {
+                return List.of();
+            }
+            if (queryKind == PageWidgetQueryKind.chart
+                    && (chartScopeRaw == null || chartScopeRaw.isBlank()
+                    || PageWidgetChartScope.from(chartScopeRaw) == PageWidgetChartScope.devices)) {
                 return List.of();
             }
             throw new IllegalArgumentException("deviceIds is required");
@@ -159,6 +189,34 @@ public class PageWidgetQueryService {
                     .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId)));
         }
         return devices;
+    }
+
+    private List<Integer> resolveModelIds(
+            List<Integer> modelIds,
+            PageWidgetQueryKind queryKind,
+            String chartScopeRaw
+    ) {
+        if (queryKind != PageWidgetQueryKind.chart
+                || PageWidgetChartScope.from(chartScopeRaw) != PageWidgetChartScope.models) {
+            return List.of();
+        }
+        if (modelIds == null || modelIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Integer> uniqueIds = new LinkedHashSet<>();
+        for (Integer modelId : modelIds) {
+            if (modelId == null || modelId <= 0) {
+                throw new IllegalArgumentException("modelIds must contain positive integers");
+            }
+            uniqueIds.add(modelId);
+        }
+        List<Integer> resolved = new ArrayList<>();
+        for (Integer modelId : uniqueIds) {
+            deviceModelRepository.findById(modelId)
+                    .orElseThrow(() -> new EntityNotFoundException("DeviceModel not found: " + modelId));
+            resolved.add(modelId);
+        }
+        return resolved;
     }
 
     private PageWidget findWidget(Integer id) {

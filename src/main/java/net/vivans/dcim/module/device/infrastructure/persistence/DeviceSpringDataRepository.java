@@ -15,16 +15,16 @@ import java.util.Optional;
 
 public interface DeviceSpringDataRepository extends JpaRepository<Device, Integer> {
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     Optional<Device> findById(Integer id);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     List<Device> findByLocationNode_Code(String locationNodeCode);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     List<Device> findByLocationNode_CodeIn(Collection<String> locationNodeCodes);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     @Query("SELECT d FROM Device d " +
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
@@ -51,13 +51,16 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
 
     boolean existsByDeviceModel_Id(Integer deviceModelId);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     List<Device> findByDeviceModel_IdOrderByIdAsc(Integer deviceModelId);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     List<Device> findByEnabledTrueOrderByIdAsc();
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    List<Device> findByEnabledTrueAndDeviceModel_IdInOrderByIdAsc(Collection<Integer> modelIds);
+
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     @Query("SELECT d FROM Device d " +
             "WHERE d.enabled = true " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +

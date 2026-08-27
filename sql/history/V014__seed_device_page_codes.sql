@@ -7,13 +7,14 @@
 -- 적용 방법 (예시):
 --   mysql -h HOST -P PORT -u dcim -p dcim_new < sql/history/V014__seed_device_page_codes.sql
 --
--- 선행 조건: V002 (code_group), V003 (common_code), V013 (device_page)
+-- 선행 조건: V002 (code_group), V003 (common_code)
 --
 -- 설계 문서: docs/device/DEVICE_PAGE_API.md
 --
 -- 역할:
---   - 장비↔페이지 매핑에 쓰는 DEVICE_PAGE 그룹/코드 초기 데이터
+--   - 페이지 위젯(page_code_id)에 쓰는 DEVICE_PAGE 그룹/코드 초기 데이터
 --   - 재실행 안전 (이미 있으면 INSERT 생략)
+--   - (참고) 구 device_page 테이블은 제거됨. 장비 범위는 page_widget_device (V018)
 -- =============================================================================
 
 INSERT INTO code_group (group_key, group_name)

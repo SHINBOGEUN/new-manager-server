@@ -3,6 +3,8 @@ package net.vivans.dcim.module.device.application;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
+import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -45,6 +47,7 @@ public class DeviceQueryService {
     private final DeviceRepository deviceRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final LocationNodeRepository locationNodeRepository;
+    private final CommonCodeRepository commonCodeRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final CollectionScriptSyncService collectionScriptSyncService;
@@ -132,6 +135,7 @@ public class DeviceQueryService {
     public DeviceResponse createDevice(DeviceCreateRequest request) {
         DeviceModel deviceModel = findDeviceModel(request.modelId());
         LocationNode locationNode = findLocationNode(request.locationNodeCode());
+        CommonCode pathCode = findPathCode(request.pathCodeId());
         validateUniqueNameAtLocation(locationNode, request.name(), null);
 
         boolean enabled = request.enabled() == null || request.enabled();
@@ -140,7 +144,8 @@ public class DeviceQueryService {
                 locationNode,
                 request.name(),
                 request.description(),
-                enabled
+                enabled,
+                pathCode
         );
         Device saved = deviceRepository.save(device);
         collectionScriptSyncService.assignDeviceAndRegenerate(saved);
@@ -152,6 +157,7 @@ public class DeviceQueryService {
         Device device = findDevice(id);
         DeviceModel deviceModel = findDeviceModel(request.modelId());
         LocationNode locationNode = findLocationNode(request.locationNodeCode());
+        CommonCode pathCode = findPathCode(request.pathCodeId());
         validateUniqueNameAtLocation(locationNode, request.name(), id);
         if (!device.getDeviceModel().getId().equals(deviceModel.getId())) {
             validateEndpointsCompatibleWithModel(id, deviceModel);
@@ -166,7 +172,8 @@ public class DeviceQueryService {
                 locationNode,
                 request.name(),
                 request.description(),
-                enabled
+                enabled,
+                pathCode
         );
         DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
         if (modelChanged) {
@@ -209,6 +216,15 @@ public class DeviceQueryService {
     private LocationNode findLocationNode(String locationNodeCode) {
         return locationNodeRepository.findByCode(locationNodeCode)
                 .orElseThrow(() -> new EntityNotFoundException("LocationNode not found: " + locationNodeCode));
+    }
+
+    /** null pathCodeId → Path 미지정(해제). 값이 있으면 LOCATION_PATH 그룹만 허용(엔티티 검증). */
+    private CommonCode findPathCode(Integer pathCodeId) {
+        if (pathCodeId == null) {
+            return null;
+        }
+        return commonCodeRepository.findById(pathCodeId)
+                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + pathCodeId));
     }
 
     private void validateUniqueNameAtLocation(LocationNode locationNode, String name, Integer excludeId) {

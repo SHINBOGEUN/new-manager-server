@@ -483,6 +483,7 @@ device_model (1) ──< device_model_protocol (N) >── common_code (PROTOCOL
 | `id` | INT | N | PK | AUTO_INCREMENT | 장비 ID (API·Influx `device_id`) |
 | `model_id` | INT | N | FK | | `device_model.id` |
 | `location_node_code` | CHAR(10) | N | FK, UK | | `location_node.code` (미지정=`UNASSIGNED`) |
+| `path_code_id` | INT | Y | FK | | `common_code.id` (`LOCATION_PATH`, PDU Path) |
 | `name` | VARCHAR(255) | N | UK | | 현장 표시명 |
 | `description` | VARCHAR(1000) | Y | | | 설명 |
 | `enabled` | TINYINT(1) | N | | `1` | 사용 여부 (CHECK 0/1) |
@@ -497,8 +498,9 @@ device_model (1) ──< device_model_protocol (N) >── common_code (PROTOCOL
 **연관:**
 - `@ManyToOne` → `DeviceModel` (`model_id`)
 - `@ManyToOne` → `LocationNode` (`location_node_code`, required)
+- `@ManyToOne` → `CommonCode` (`path_code_id`, optional, `LOCATION_PATH`)
 
-**DDL:** [V007__create_devices_table.sql](../sql/history/V007__create_devices_table.sql)
+**DDL:** [V007__create_devices_table.sql](../sql/history/V007__create_devices_table.sql), [V019__device_path_code.sql](../sql/history/V019__device_path_code.sql)
 
 **FK 제약**
 
@@ -506,6 +508,7 @@ device_model (1) ──< device_model_protocol (N) >── common_code (PROTOCOL
 |----|------|-----------|-----------|
 | `fk_devices_model_id` | `device_model(id)` | RESTRICT | CASCADE |
 | `fk_devices_location_node_code` | `location_node(code)` | RESTRICT | CASCADE |
+| `fk_devices_path_code_id` | `common_code(id)` | RESTRICT | CASCADE |
 
 **관계도**
 

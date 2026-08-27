@@ -16,7 +16,7 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "사용 여부", example = "true")
         Boolean enabled,
 
-        @Schema(description = "조회 종류: last | aggregate | count", example = "last")
+        @Schema(description = "조회 종류: last | aggregate | count | chart", example = "last")
         @NotBlank(message = "queryKind is required")
         String queryKind,
 
@@ -41,10 +41,25 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "countMode=model 일 때 필수 — device_model.id")
         Integer countModelId,
 
-        @Schema(description = "last/aggregate 필수. count는 [] 또는 생략")
+        @Schema(description = "chart만: devices | models")
+        String chartScope,
+
+        @Schema(description = "chart만: per_device | sum | by_phase | by_path")
+        String chartSeriesMode,
+
+        @Schema(description = "chart만: last_24h | today | yesterday | last_7d | this_month")
+        String chartRangePreset,
+
+        @Schema(description = "chart만: 1m | 5m | 15m | 1h | 1d")
+        String chartWindow,
+
+        @Schema(description = "last/aggregate 필수. chart+devices 필수. count/chart+models는 []")
         List<Integer> deviceIds,
 
-        @Schema(description = "last 필수. count는 [] 또는 생략")
+        @Schema(description = "chart+models 일 때 필수")
+        List<Integer> modelIds,
+
+        @Schema(description = "last/chart 필수. count는 []")
         List<String> pointNames,
 
         @Schema(description = "2D 그리드 배치. null이면 기존 layout 유지")

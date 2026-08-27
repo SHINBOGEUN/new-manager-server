@@ -10,6 +10,8 @@
 
 ## 1. 개요
 
+> Path(전원 피드 A/B/C)는 **위치 노드가 아니라 장비(`devices.path_code_id`)** 에 둡니다. 차트 `by_path`는 [QUERY_CHART_API](../query/QUERY_CHART_API.md) · [DEVICE_API](../device/DEVICE_API.md) 참고.
+
 위치 노드는 **트리 구조**로 관리합니다. 루트가 여러 개인 **포레스트**도 허용합니다.
 
 | 개념 | 설명 |
@@ -225,7 +227,7 @@ CONTAINER
 
 **구현 상태:** ✅ 구현됨
 
-`locationType`, `name`만 수정. **`code`·`parentCode`는 변경 불가.**
+`locationType`, `name` 수정. **`code`·`parentCode`는 변경 불가.**
 
 #### 요청
 

@@ -43,6 +43,9 @@ public interface DeviceRepository {
     /** count 위젯 등: enabled=true 인 장비 전체 (deviceModel fetch) */
     List<Device> findAllEnabled();
 
+    /** chart 위젯 models 범위: 지정 모델의 enabled 장비 */
+    List<Device> findAllEnabledByDeviceModelIds(Collection<Integer> modelIds);
+
     void flush();
 
     void delete(Device device);

@@ -19,7 +19,12 @@ public record PageWidgetResponse(
         String denominatorPoint,
         String countMode,
         Integer countModelId,
+        String chartScope,
+        String chartSeriesMode,
+        String chartRangePreset,
+        String chartWindow,
         List<Integer> deviceIds,
+        List<Integer> modelIds,
         List<String> pointNames,
         PageWidgetLayoutResponse layout
 ) {
@@ -40,7 +45,12 @@ public record PageWidgetResponse(
                 widget.getDenominatorPoint(),
                 widget.getCountMode() == null ? null : widget.getCountMode().name(),
                 widget.getCountModelId(),
+                widget.getChartScope() == null ? null : widget.getChartScope().name(),
+                widget.getChartSeriesMode() == null ? null : widget.getChartSeriesMode().name(),
+                widget.getChartRangePreset() == null ? null : widget.getChartRangePreset().name(),
+                widget.getChartWindow(),
                 widget.deviceIds(),
+                widget.modelIds(),
                 widget.pointNames(),
                 PageWidgetLayoutResponse.from(widget.getLayout())
         );

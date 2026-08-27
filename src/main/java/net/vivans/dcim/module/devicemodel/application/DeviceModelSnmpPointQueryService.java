@@ -3,6 +3,7 @@ package net.vivans.dcim.module.devicemodel.application;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointBulkCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointResponse;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -54,29 +57,29 @@ public class DeviceModelSnmpPointQueryService {
             DeviceModelSnmpPointCreateRequest request
     ) {
         DeviceModelProtocol protocol = findSnmpProtocol(modelId, protocolId);
-
-        if (deviceModelSnmpPointRepository.existsByModelProtocolIdAndName(protocolId, request.name())) {
-            throw new IllegalArgumentException("point name already exists for this protocol");
-        }
-        if (deviceModelSnmpPointRepository.existsByModelProtocolIdAndOid(protocolId, request.oid())) {
-            throw new IllegalArgumentException("point oid already exists for this protocol");
-        }
-
-        boolean requiresInstance = Boolean.TRUE.equals(request.requiresInstance());
-        boolean enabled = request.enabled() == null || request.enabled();
-
-        DeviceModelSnmpPoint point = DeviceModelSnmpPoint.create(
-                protocol,
-                request.name(),
-                request.oid(),
-                requiresInstance,
-                request.unit(),
-                enabled
-        );
-
-        DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
+        validateUniqueNameAndOid(protocolId, request.name(), request.oid());
+        DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(createPoint(protocol, request));
         collectionScriptSyncService.regenerateByModelId(modelId);
         return DeviceModelSnmpPointResponse.from(saved);
+    }
+
+    @Transactional
+    public List<DeviceModelSnmpPointResponse> createDeviceModelSnmpPoints(
+            Integer modelId,
+            Integer protocolId,
+            DeviceModelSnmpPointBulkCreateRequest request
+    ) {
+        DeviceModelProtocol protocol = findSnmpProtocol(modelId, protocolId);
+        List<DeviceModelSnmpPointCreateRequest> points = request.points();
+        validateBatchUniqueness(protocolId, points);
+
+        List<DeviceModelSnmpPointResponse> responses = new ArrayList<>();
+        for (DeviceModelSnmpPointCreateRequest pointRequest : points) {
+            DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(createPoint(protocol, pointRequest));
+            responses.add(DeviceModelSnmpPointResponse.from(saved));
+        }
+        collectionScriptSyncService.regenerateByModelId(modelId);
+        return responses;
     }
 
     @Transactional
@@ -132,5 +135,41 @@ public class DeviceModelSnmpPointQueryService {
     private DeviceModelSnmpPoint findSnmpPoint(Integer pointId, Integer protocolId) {
         return deviceModelSnmpPointRepository.findByIdAndModelProtocolId(pointId, protocolId)
                 .orElseThrow(() -> new EntityNotFoundException("DeviceModelSnmpPoint not found: " + pointId));
+    }
+
+    private void validateBatchUniqueness(Integer protocolId, List<DeviceModelSnmpPointCreateRequest> points) {
+        Set<String> names = new HashSet<>();
+        Set<String> oids = new HashSet<>();
+        for (DeviceModelSnmpPointCreateRequest point : points) {
+            if (!names.add(point.name())) {
+                throw new IllegalArgumentException("duplicate point name in request: " + point.name());
+            }
+            if (!oids.add(point.oid())) {
+                throw new IllegalArgumentException("duplicate point oid in request: " + point.oid());
+            }
+            validateUniqueNameAndOid(protocolId, point.name(), point.oid());
+        }
+    }
+
+    private void validateUniqueNameAndOid(Integer protocolId, String name, String oid) {
+        if (deviceModelSnmpPointRepository.existsByModelProtocolIdAndName(protocolId, name)) {
+            throw new IllegalArgumentException("point name already exists for this protocol");
+        }
+        if (deviceModelSnmpPointRepository.existsByModelProtocolIdAndOid(protocolId, oid)) {
+            throw new IllegalArgumentException("point oid already exists for this protocol");
+        }
+    }
+
+    private DeviceModelSnmpPoint createPoint(DeviceModelProtocol protocol, DeviceModelSnmpPointCreateRequest request) {
+        boolean requiresInstance = Boolean.TRUE.equals(request.requiresInstance());
+        boolean enabled = request.enabled() == null || request.enabled();
+        return DeviceModelSnmpPoint.create(
+                protocol,
+                request.name(),
+                request.oid(),
+                requiresInstance,
+                request.unit(),
+                enabled
+        );
     }
 }

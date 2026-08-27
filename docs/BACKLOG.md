@@ -112,8 +112,8 @@ Environment / Cooling / Analysis / Dashboard는 **페이지 위젯에 묶인 장
 | ID | 항목 |
 |----|------|
 | 4.1 | Analysis |
-| 4.2 | Environment / Dashboard 조회 (last ✅ / chart / aggregate) — [QUERY_LAST_API.md](./query/QUERY_LAST_API.md) |
-| 4.2w | 페이지 위젯 `page_widget` — DDL V018 + CRUD ✅, [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
+| 4.2 | Environment / Dashboard 조회 (last ✅ / count ✅ / chart ✅ / aggregate) — [QUERY_LAST_API.md](./query/QUERY_LAST_API.md) · [QUERY_CHART_API.md](./query/QUERY_CHART_API.md) |
+| 4.2w | 페이지 위젯 `page_widget` — DDL V018 (core + kind별 1:1 확장) + CRUD ✅, [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
 | 4.3 | DashboardGroup (페이지 매핑과 역할 정리 — 중복이면 page로 흡수) |
 | 4.4 | Cooling / GPU |
 
@@ -146,6 +146,6 @@ Environment / Cooling / Analysis / Dashboard는 **페이지 위젯에 묶인 장
 ## 다음 한 줄
 
 **완료(이 브랜치):** 페이지 위젯(CRUD + device + 2D layout), `GET /query/last?widgetId=`, `device_page` 제거(V018).
-**완료 추가:** `GET /query/count` — 전체 enabled 장비 대상 + `countMode`(total/by_model/model). DDL V019(`count_mode`, `count_model_id`). 규칙은 [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md).
-**다음:** aggregate(일반, PUE는 후순위) → chart. (3D layout는 추후)
-**참고:** last/aggregate 장비 범위 = `page_widget_device`. count는 `devices.enabled=1` 전체.
+**완료 추가:** `GET /query/count` + countMode, `GET /query/chart` + chartScope/seriesMode (스키마는 V018 `page_widget_count` / `page_widget_chart`).
+**다음:** aggregate(일반, PUE는 후순위). chart compareMode(어제/전월)는 후속.
+**참고:** last/aggregate/chart(devices) 범위 = `page_widget_device`. chart(models) = `page_widget_model` → enabled 장비. count = `devices.enabled=1` 전체.
