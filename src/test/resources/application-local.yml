@@ -21,3 +21,10 @@ spring:
 collector:
   service:
     enabled: false
+
+influx:
+  enabled: false
+  url: http://localhost:8086
+  org: vivans
+  bucket: dcim
+  measurement: dcim_sensor

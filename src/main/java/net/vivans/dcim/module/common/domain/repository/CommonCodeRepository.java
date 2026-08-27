@@ -12,6 +12,8 @@ public interface CommonCodeRepository {
 
     Optional<CommonCode> findById(Integer id);
 
+    Optional<CommonCode> findByCodeGroupGroupKeyAndCode(String groupKey, String code);
+
     boolean existsByCodeGroupIdAndCode(Integer groupId, String code);
 
     boolean existsByCodeAndIdNot(@NotBlank(message = "code must not be empty") String code, Integer id);

@@ -23,7 +23,7 @@ public interface DeviceRepository {
 
     Page<Device> findAll(
             Integer modelId,
-            String locationNodeCode,
+            Collection<String> locationNodeCodes,
             String name,
             Boolean enabled,
             String pageCode,
@@ -39,6 +39,9 @@ public interface DeviceRepository {
     boolean existsByDeviceModelId(Integer deviceModelId);
 
     List<Device> findAllByDeviceModelId(Integer deviceModelId);
+
+    /** count 위젯 등: enabled=true 인 장비 전체 (deviceModel fetch) */
+    List<Device> findAllEnabled();
 
     void flush();
 

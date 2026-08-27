@@ -49,7 +49,7 @@ public class DeviceJpaRepository implements DeviceRepository {
     @Override
     public Page<Device> findAll(
             Integer modelId,
-            String locationNodeCode,
+            Collection<String> locationNodeCodes,
             String name,
             Boolean enabled,
             String pageCode,
@@ -57,7 +57,7 @@ public class DeviceJpaRepository implements DeviceRepository {
     ) {
         return springDataRepository.findAllWithFilters(
                 modelId,
-                blankToNull(locationNodeCode),
+                locationNodeCodes,
                 blankToNull(name),
                 enabled,
                 blankToNull(pageCode),
@@ -83,6 +83,11 @@ public class DeviceJpaRepository implements DeviceRepository {
     @Override
     public List<Device> findAllByDeviceModelId(Integer deviceModelId) {
         return springDataRepository.findByDeviceModel_IdOrderByIdAsc(deviceModelId);
+    }
+
+    @Override
+    public List<Device> findAllEnabled() {
+        return springDataRepository.findByEnabledTrueOrderByIdAsc();
     }
 
     @Override

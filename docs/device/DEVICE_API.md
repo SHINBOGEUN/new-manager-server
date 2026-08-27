@@ -70,7 +70,7 @@ location_node (1) ──< devices (N)   ※ location_node_code NOT NULL
 |--------|------|------|
 | `device_protocol_endpoint` | host, port (프로토콜 공통) | ✅ [DEVICE_ENDPOINT_API](./DEVICE_ENDPOINT_API.md) |
 | `device_snmp_instance` | SNMP `{instanceId}` 치환 (endpoint 1:1) | ✅ [DEVICE_SNMP_INSTANCE_API](./DEVICE_SNMP_INSTANCE_API.md) |
-| `device_page` | 노출 페이지 매핑 | ✅ [DEVICE_PAGE_API](./DEVICE_PAGE_API.md) |
+| `page_widget` / `page_widget_device` | 페이지 카드·장비 범위 | ✅ [PAGE_WIDGET_API](./PAGE_WIDGET_API.md) |
 | `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ 예정 |
 | `devices.parent_device_id` | 장비 계층 (자기참조) | ⬜ 예정 |
 
@@ -227,10 +227,11 @@ erDiagram
 | 파라미터 | 설명 |
 |----------|------|
 | `modelId` | 모델 ID 일치 |
-| `locationNodeCode` | 위치 code 일치 (내부 필터) |
+| `locationNodeCode` | 위치 code |
+| `includeSubtree` | `true`이면 `locationNodeCode` **하위 트리** 위치의 장비까지 포함 (기본: 해당 위치만) |
 | `name` | 표시명 부분 일치 |
 | `enabled` | `true` / `false` |
-| `pageCode` | 노출 페이지 code (`DEVICE_PAGE`, 예: `ENVIRONMENT`) — [DEVICE_PAGE_API](./DEVICE_PAGE_API.md) |
+| `pageCode` | 페이지 code (`DEVICE_PAGE`). 해당 페이지 **위젯에 묶인** 장비만 — [PAGE_WIDGET_API](./PAGE_WIDGET_API.md) |
 | `page` | 페이지 번호 (**1부터**, 기본 `1`) |
 | `size` | 페이지 크기 (기본 `20`, 최대 `100`) |
 
@@ -357,5 +358,6 @@ erDiagram
 | 2026-07-22 | Device 삭제 API·통합 테스트 추가 |
 | 2026-07-22 | Device 응답의 위치 필드를 `locationNodeName`으로 변경 (code 미노출) |
 | 2026-08-20 | Device 응답에 `locationNodeCode` 재추가 (Influx `location_code` tag용 안정 키) |
+| 2026-08-26 | 목록 `includeSubtree` — 위치 하위 트리 장비 일괄 조회 |
 | 2026-08-21 | Device 응답에 `deviceTypeCode` 추가 (Influx tag `device_type`) |
 | 2026-07-23 | §1.4·삭제 CASCADE·구현 현황 — `device_protocol_endpoint` (V009) 연동 |

@@ -35,25 +35,27 @@ public class DeviceController {
     private final DeviceCapabilityQueryService deviceCapabilityQueryService;
 
     @GetMapping
-    @Operation(summary = "장비 목록 조회 API", description = "필터·페이징 지원. 정렬은 id 오름차순.")
+    @Operation(summary = "장비 목록 조회 API", description = "필터·페이징 지원. 정렬은 id 오름차순. includeSubtree=true이면 locationNodeCode 하위 위치의 장비까지 포함.")
     public ResponseEntity<ApiResponse<PageResponse<DeviceResponse>>> getDevices(
             @Parameter(description = "모델 ID 일치") @RequestParam(required = false) Integer modelId,
-            @Parameter(description = "위치 code 일치") @RequestParam(required = false) String locationNodeCode,
+            @Parameter(description = "위치 code") @RequestParam(required = false) String locationNodeCode,
+            @Parameter(description = "locationNodeCode 하위 트리 포함") @RequestParam(required = false) Boolean includeSubtree,
             @Parameter(description = "표시명 부분 일치") @RequestParam(required = false) String name,
             @Parameter(description = "사용 여부") @RequestParam(required = false) Boolean enabled,
-            @Parameter(description = "노출 페이지 code (DEVICE_PAGE, 예: ENVIRONMENT)") @RequestParam(required = false) String pageCode,
+            @Parameter(description = "페이지 code (DEVICE_PAGE). 해당 페이지 위젯에 묶인 장비만") @RequestParam(required = false) String pageCode,
             @Parameter(description = "페이지 번호 (1부터)") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기 (기본 20, 최대 100)") @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.getDevices(modelId, locationNodeCode, name, enabled, pageCode, page, size)));
+        return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.getDevices(
+                modelId, locationNodeCode, includeSubtree, name, enabled, pageCode, page, size)));
     }
 
     @GetMapping("/capabilities")
     @Operation(
             summary = "장비 capabilities 조회 API",
-            description = "pageCode·location으로 장비를 고르고 SNMP point OID·endpoint를 합성합니다."
+            description = "pageCode(위젯에 묶인 장비)·location으로 장비를 고르고 SNMP point OID·endpoint를 합성합니다."
     )
     public ResponseEntity<ApiResponse<List<DeviceCapabilityResponse>>> getCapabilities(
-            @Parameter(description = "노출 페이지 code (DEVICE_PAGE, 예: ENVIRONMENT)") @RequestParam(required = false) String pageCode,
+            @Parameter(description = "페이지 code (DEVICE_PAGE). 해당 페이지 위젯에 묶인 장비만") @RequestParam(required = false) String pageCode,
             @Parameter(description = "위치 code") @RequestParam(required = false) String locationNodeCode,
             @Parameter(description = "locationNodeCode 하위 트리 포함 여부") @RequestParam(required = false) Boolean includeSubtree
     ) {

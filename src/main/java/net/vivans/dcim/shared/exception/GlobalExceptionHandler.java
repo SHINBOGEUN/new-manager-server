@@ -121,6 +121,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(503, e.getMessage()));
     }
 
+    @ExceptionHandler(QueryException.class)
+    public ResponseEntity<ApiResponse<Object>> queryExceptionHandler(QueryException e) {
+        log.error("QueryException: {}", e.getMessage(), e);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiResponse.error(503, e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> exceptionHandler(Exception e) {
         log.error("Exception: {}", e, e);
