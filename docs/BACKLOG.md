@@ -145,6 +145,7 @@ Environment / Cooling / Analysis / Dashboard는 **페이지 위젯에 묶인 장
 
 ## 다음 한 줄
 
-**완료(이 브랜치):** 페이지 위젯(CRUD + device + 2D layout), `GET /query/last?widgetId=`, `device_page` 제거(V018).  
-**다음:** aggregate → count → chart. (3D layout는 추후)  
-**참고:** 페이지 장비 범위 = `page_widget_device` (`DEVICE_PAGE` 코드는 유지).
+**완료(이 브랜치):** 페이지 위젯(CRUD + device + 2D layout), `GET /query/last?widgetId=`, `device_page` 제거(V018).
+**완료 추가:** `GET /query/count` — 전체 enabled 장비 대상 + `countMode`(total/by_model/model). DDL V019(`count_mode`, `count_model_id`). 규칙은 [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md).
+**다음:** aggregate(일반, PUE는 후순위) → chart. (3D layout는 추후)
+**참고:** last/aggregate 장비 범위 = `page_widget_device`. count는 `devices.enabled=1` 전체.

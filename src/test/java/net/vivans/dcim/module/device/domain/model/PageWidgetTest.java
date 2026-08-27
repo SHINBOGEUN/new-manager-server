@@ -25,6 +25,8 @@ class PageWidgetTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 List.of("status", "W"),
                 List.of(device(9), device(10))
         );
@@ -44,7 +46,7 @@ class PageWidgetTest {
                 "PDU",
                 true,
                 PageWidgetQueryKind.last,
-                null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 List.of("W"),
                 List.of(device(1))
         );
@@ -67,7 +69,7 @@ class PageWidgetTest {
                 "PDU",
                 true,
                 PageWidgetQueryKind.last,
-                null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 List.of("W"),
                 List.of(device(1))
         );
@@ -78,13 +80,51 @@ class PageWidgetTest {
     }
 
     @Test
+    void create_count_clearsDevicesEvenIfPassed() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "장비 수",
+                true,
+                PageWidgetQueryKind.count,
+                null, null, null, null, null,
+                PageWidgetCountMode.total,
+                null,
+                List.of("W"),
+                List.of(device(1), device(2))
+        );
+
+        assertThat(widget.deviceIds()).isEmpty();
+        assertThat(widget.pointNames()).isEmpty();
+        assertThat(widget.getCountMode()).isEqualTo(PageWidgetCountMode.total);
+    }
+
+    @Test
+    void create_countWithoutDevices_succeeds() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "장비 수",
+                true,
+                PageWidgetQueryKind.count,
+                null, null, null, null, null,
+                PageWidgetCountMode.total,
+                null,
+                List.of(),
+                List.of()
+        );
+
+        assertThat(widget.getQueryKind()).isEqualTo(PageWidgetQueryKind.count);
+        assertThat(widget.getCountMode()).isEqualTo(PageWidgetCountMode.total);
+        assertThat(widget.deviceIds()).isEmpty();
+    }
+
+    @Test
     void create_withoutDevices_throws() {
         assertThatThrownBy(() -> PageWidget.create(
                 pageCode("cooling", "Cooling"),
                 "칠러",
                 true,
                 PageWidgetQueryKind.last,
-                null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 List.of("W"),
                 List.of()
         ))
@@ -103,7 +143,9 @@ class PageWidgetTest {
 
         assertThatThrownBy(() -> PageWidget.create(
                 wrong, "칠러", true, PageWidgetQueryKind.last,
-                null, null, null, null, null, null, List.of(device(1))
+                null, null, null, null, null, null, null,
+                List.of("W"),
+                List.of(device(1))
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("pageCode must belong to DEVICE_PAGE group");
@@ -116,7 +158,7 @@ class PageWidgetTest {
                 "오늘 kWh",
                 true,
                 PageWidgetQueryKind.aggregate,
-                null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 List.of("TOTAL_KWH"),
                 List.of(device(1))
         ))
@@ -136,6 +178,8 @@ class PageWidgetTest {
                 null,
                 null,
                 null,
+                null,
+                null,
                 List.of("W"),
                 List.of(device(9))
         );
@@ -144,6 +188,8 @@ class PageWidgetTest {
                 "칠러 상태",
                 false,
                 PageWidgetQueryKind.last,
+                null,
+                null,
                 null,
                 null,
                 null,

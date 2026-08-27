@@ -55,6 +55,9 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
     List<Device> findByDeviceModel_IdOrderByIdAsc(Integer deviceModelId);
 
     @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
+    List<Device> findByEnabledTrueOrderByIdAsc();
+
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode"})
     @Query("SELECT d FROM Device d " +
             "WHERE d.enabled = true " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +

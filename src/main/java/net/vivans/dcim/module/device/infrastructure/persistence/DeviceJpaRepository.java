@@ -86,6 +86,11 @@ public class DeviceJpaRepository implements DeviceRepository {
     }
 
     @Override
+    public List<Device> findAllEnabled() {
+        return springDataRepository.findByEnabledTrueOrderByIdAsc();
+    }
+
+    @Override
     public void flush() {
         springDataRepository.flush();
     }

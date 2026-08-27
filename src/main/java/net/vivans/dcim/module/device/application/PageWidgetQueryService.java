@@ -12,6 +12,7 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
+import net.vivans.dcim.module.device.domain.model.PageWidgetCountMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
@@ -72,8 +73,10 @@ public class PageWidgetQueryService {
                 request.weightPoint(),
                 request.numeratorPoint(),
                 request.denominatorPoint(),
+                PageWidgetCountMode.from(request.countMode()),
+                request.countModelId(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds())
+                resolveDevices(request.deviceIds(), PageWidgetQueryKind.from(request.queryKind()))
         );
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
@@ -97,8 +100,10 @@ public class PageWidgetQueryService {
                 request.weightPoint(),
                 request.numeratorPoint(),
                 request.denominatorPoint(),
+                PageWidgetCountMode.from(request.countMode()),
+                request.countModelId(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds())
+                resolveDevices(request.deviceIds(), PageWidgetQueryKind.from(request.queryKind()))
         );
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
@@ -134,8 +139,11 @@ public class PageWidgetQueryService {
         widget.upsertLayout(layout.gridX(), layout.gridY(), layout.w(), layout.h());
     }
 
-    private List<Device> resolveDevices(List<Integer> deviceIds) {
+    private List<Device> resolveDevices(List<Integer> deviceIds, PageWidgetQueryKind queryKind) {
         if (deviceIds == null || deviceIds.isEmpty()) {
+            if (queryKind == PageWidgetQueryKind.count) {
+                return List.of();
+            }
             throw new IllegalArgumentException("deviceIds is required");
         }
         Set<Integer> uniqueIds = new LinkedHashSet<>();

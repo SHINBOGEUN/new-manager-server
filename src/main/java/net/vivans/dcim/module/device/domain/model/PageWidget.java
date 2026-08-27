@@ -74,6 +74,13 @@ public class PageWidget extends BaseEntity {
     @Column(name = "denominator_point", length = 100)
     private String denominatorPoint;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "count_mode", length = 16)
+    private PageWidgetCountMode countMode;
+
+    @Column(name = "count_model_id")
+    private Integer countModelId;
+
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private final List<PageWidgetPoint> points = new ArrayList<>();
@@ -95,7 +102,9 @@ public class PageWidget extends BaseEntity {
             PageWidgetGroupBy groupBy,
             String weightPoint,
             String numeratorPoint,
-            String denominatorPoint
+            String denominatorPoint,
+            PageWidgetCountMode countMode,
+            Integer countModelId
     ) {
         validatePageCode(pageCode);
         validateName(name);
@@ -109,6 +118,8 @@ public class PageWidget extends BaseEntity {
         this.weightPoint = blankToNull(weightPoint);
         this.numeratorPoint = blankToNull(numeratorPoint);
         this.denominatorPoint = blankToNull(denominatorPoint);
+        this.countMode = countMode;
+        this.countModelId = countModelId;
         validateOptions();
     }
 
@@ -122,15 +133,22 @@ public class PageWidget extends BaseEntity {
             String weightPoint,
             String numeratorPoint,
             String denominatorPoint,
+            PageWidgetCountMode countMode,
+            Integer countModelId,
             List<String> pointNames,
             List<Device> devices
     ) {
         PageWidget widget = new PageWidget(
                 pageCode, name, enabled, queryKind, op, groupBy,
-                weightPoint, numeratorPoint, denominatorPoint
+                weightPoint, numeratorPoint, denominatorPoint,
+                countMode, countModelId
         );
         widget.replacePoints(pointNames);
         widget.replaceDevices(devices);
+        if (widget.getQueryKind() == PageWidgetQueryKind.count) {
+            widget.replacePoints(List.of());
+            widget.replaceDevices(List.of());
+        }
         widget.validateBindings();
         return widget;
     }
@@ -144,6 +162,8 @@ public class PageWidget extends BaseEntity {
             String weightPoint,
             String numeratorPoint,
             String denominatorPoint,
+            PageWidgetCountMode countMode,
+            Integer countModelId,
             List<String> pointNames,
             List<Device> devices
     ) {
@@ -157,9 +177,16 @@ public class PageWidget extends BaseEntity {
         this.weightPoint = blankToNull(weightPoint);
         this.numeratorPoint = blankToNull(numeratorPoint);
         this.denominatorPoint = blankToNull(denominatorPoint);
+        this.countMode = countMode;
+        this.countModelId = countModelId;
         validateOptions();
-        replacePoints(pointNames);
-        replaceDevices(devices);
+        if (queryKind == PageWidgetQueryKind.count) {
+            replacePoints(List.of());
+            replaceDevices(List.of());
+        } else {
+            replacePoints(pointNames);
+            replaceDevices(devices);
+        }
         validateBindings();
     }
 
@@ -228,7 +255,7 @@ public class PageWidget extends BaseEntity {
     }
 
     private void validateBindings() {
-        if (devices.isEmpty()) {
+        if (queryKind != PageWidgetQueryKind.count && devices.isEmpty()) {
             throw new IllegalArgumentException("deviceIds is required");
         }
         if (queryKind == PageWidgetQueryKind.last && points.isEmpty()) {
@@ -252,6 +279,17 @@ public class PageWidget extends BaseEntity {
         }
         if (op == PageWidgetOp.divide && (numeratorPoint == null || denominatorPoint == null)) {
             throw new IllegalArgumentException("numeratorPoint and denominatorPoint are required for divide");
+        }
+        if (queryKind == PageWidgetQueryKind.count) {
+            PageWidgetCountMode mode = countMode == null ? PageWidgetCountMode.by_model : countMode;
+            if (mode == PageWidgetCountMode.model && countModelId == null) {
+                throw new IllegalArgumentException("countModelId is required when countMode is model");
+            }
+            if (mode != PageWidgetCountMode.model && countModelId != null) {
+                throw new IllegalArgumentException("countModelId is only allowed when countMode is model");
+            }
+        } else if (countMode != null || countModelId != null) {
+            throw new IllegalArgumentException("countMode is only allowed for count");
         }
     }
 

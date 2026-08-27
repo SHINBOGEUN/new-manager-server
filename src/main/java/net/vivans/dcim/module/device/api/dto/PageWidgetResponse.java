@@ -17,6 +17,8 @@ public record PageWidgetResponse(
         String weightPoint,
         String numeratorPoint,
         String denominatorPoint,
+        String countMode,
+        Integer countModelId,
         List<Integer> deviceIds,
         List<String> pointNames,
         PageWidgetLayoutResponse layout
@@ -36,6 +38,8 @@ public record PageWidgetResponse(
                 widget.getWeightPoint(),
                 widget.getNumeratorPoint(),
                 widget.getDenominatorPoint(),
+                widget.getCountMode() == null ? null : widget.getCountMode().name(),
+                widget.getCountModelId(),
                 widget.deviceIds(),
                 widget.pointNames(),
                 PageWidgetLayoutResponse.from(widget.getLayout())

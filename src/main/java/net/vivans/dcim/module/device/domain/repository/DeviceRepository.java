@@ -40,6 +40,9 @@ public interface DeviceRepository {
 
     List<Device> findAllByDeviceModelId(Integer deviceModelId);
 
+    /** count 위젯 등: enabled=true 인 장비 전체 (deviceModel fetch) */
+    List<Device> findAllEnabled();
+
     void flush();
 
     void delete(Device device);

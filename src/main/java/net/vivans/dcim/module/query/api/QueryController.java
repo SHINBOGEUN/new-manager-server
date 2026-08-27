@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
+import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class QueryController {
 
     private final LastQueryService lastQueryService;
+    private final CountQueryService countQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -35,5 +38,24 @@ public class QueryController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 lastQueryService.getLast(widgetId, lookbackHours)));
+    }
+
+    @GetMapping("/count")
+    @Operation(
+            summary = "위젯 장비 수 조회",
+            description = "widgetId의 page_widget에 묶인 enabled 장비 수를 셉니다. "
+                    + "queryKind=count 만 허용. 전체 count와 model별 byModel을 반환합니다. "
+                    + "Influx를 쓰지 않습니다."
+    )
+    public ResponseEntity<ApiResponse<CountWidgetResponse>> getCount(
+            @Parameter(description = "page_widget id", example = "12", required = true)
+            @RequestParam Integer widgetId,
+            @Parameter(description = "집계 방식 override: total | by_model | model (미지정 시 위젯 설정)")
+            @RequestParam(required = false) String countMode,
+            @Parameter(description = "countMode=model 일 때 modelId (미지정 시 위젯 설정)")
+            @RequestParam(required = false) Integer countModelId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                countQueryService.getCount(widgetId, countMode, countModelId)));
     }
 }

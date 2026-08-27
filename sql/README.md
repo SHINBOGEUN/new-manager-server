@@ -176,6 +176,8 @@ mysql -h HOST -P PORT -u dcim -p dcim_new < sql/seed/REQUIRED_BOOTSTRAP.sql
 
 | V018 | `V018__create_page_widget.sql` | | dcim_new | page_widget(+point/device/layout) + device_page 제거 |
 
+| V019 | `V019__page_widget_count_mode.sql` | | dcim_new | page_widget.count_mode / count_model_id |
+
 
 
 ---

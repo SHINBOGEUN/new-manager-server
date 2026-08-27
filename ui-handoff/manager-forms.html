@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DCIM Manager · UI 핸드오프 폼</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <style>
+    @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+    :root {
+      --ink: #0f172a;
+      --ink-2: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --line-2: #cbd5e1;
+      --bg: #e8edf3;
+      --paper: #ffffff;
+      --paper-2: #f8fafc;
+      --navy: #0b1f33;
+      --navy-2: #16324f;
+      --teal: #0f766e;
+      --teal-soft: #ccfbf1;
+      --amber: #b45309;
+      --amber-soft: #ffedd5;
+      --rose: #be123c;
+      --rose-soft: #ffe4e6;
+      --blue: #1d4ed8;
+      --blue-soft: #dbeafe;
+      --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
+      --radius: 14px;
+      --side: 240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #dbe7f5 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #d8f3ef 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: var(--side) 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 960px) {
+      .shell { grid-template-columns: 1fr; }
+      .side { position: sticky; top: 0; z-index: 20; }
+    }
+
+    .side {
+      background: linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%);
+      color: #e2e8f0;
+      padding: 22px 16px 28px;
+      border-right: 1px solid rgba(255,255,255,.06);
+    }
+    .brand {
+      padding: 4px 10px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 14px;
+    }
+    .brand .mark {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+      color: #94a3b8; font-weight: 700;
+    }
+    .brand h1 {
+      margin: 8px 0 0; font-size: 18px; font-weight: 750; letter-spacing: -.02em; color: #fff;
+    }
+    .brand p { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: #94a3b8; }
+
+    .side nav { display: flex; flex-direction: column; gap: 4px; }
+    .side a {
+      display: block; text-decoration: none; color: #cbd5e1;
+      padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+    }
+    .side a small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: #8091a8; }
+    .side a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .side .group {
+      margin: 14px 12px 6px; font-size: 10px; letter-spacing: .08em;
+      color: #64748b; font-weight: 700; text-transform: uppercase;
+    }
+
+    .content { padding: 28px 28px 72px; max-width: 1100px; }
+    @media (max-width: 700px) { .content { padding: 18px 14px 56px; } }
+
+    .hero {
+      display: grid; grid-template-columns: 1.4fr .9fr; gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
+    .hero-main, .hero-note {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 22px 20px;
+    }
+    .hero-main h2 {
+      margin: 0 0 8px; font-size: 26px; letter-spacing: -.03em; line-height: 1.2;
+    }
+    .hero-main p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.65; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+    .badge {
+      font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 999px;
+      background: var(--paper-2); border: 1px solid var(--line); color: var(--ink-2);
+    }
+    .badge.teal { background: var(--teal-soft); border-color: #99f6e4; color: var(--teal); }
+    .badge.amber { background: var(--amber-soft); border-color: #fdba74; color: var(--amber); }
+
+    .hero-note h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+    .hero-note ol { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+    .hero-note li::marker { font-weight: 700; color: var(--teal); }
+
+    .screen { margin-bottom: 36px; scroll-margin-top: 16px; }
+    .screen-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .screen-head h2 {
+      margin: 0; font-size: 20px; letter-spacing: -.02em;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .screen-head .num {
+      width: 28px; height: 28px; border-radius: 9px;
+      background: var(--navy); color: #fff;
+      display: inline-grid; place-items: center;
+      font-size: 13px; font-weight: 750;
+    }
+    .screen-head .api {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 11px; color: var(--muted);
+      background: var(--paper); border: 1px solid var(--line);
+      padding: 6px 10px; border-radius: 8px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #fff, var(--paper-2));
+    }
+    .panel-bar h3 { margin: 0; font-size: 14px; font-weight: 750; }
+    .panel-bar .meta { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .panel-body { padding: 16px; }
+
+    .explain {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: var(--radius);
+      padding: 16px 16px 14px;
+      box-shadow: var(--shadow);
+      position: sticky; top: 16px;
+    }
+    .explain .label {
+      font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+      color: #94a3b8; font-weight: 800; margin-bottom: 8px;
+    }
+    .explain h4 { margin: 0 0 8px; font-size: 15px; color: #fff; letter-spacing: -.01em; }
+    .explain p { margin: 0 0 10px; font-size: 13px; line-height: 1.6; color: #cbd5e1; }
+    .explain ul { margin: 0; padding-left: 16px; font-size: 12.5px; line-height: 1.65; color: #94a3b8; }
+    .explain li { margin-bottom: 4px; }
+    .explain .callout {
+      margin-top: 12px; padding: 10px 11px; border-radius: 10px;
+      background: rgba(15, 118, 110, .25); border: 1px solid rgba(45, 212, 191, .35);
+      color: #99f6e4; font-size: 12px; line-height: 1.5;
+    }
+    .explain .warn {
+      background: rgba(180, 83, 9, .2); border-color: rgba(251, 191, 36, .35); color: #fde68a;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 14px;
+    }
+    .fields .full { grid-column: 1 / -1; }
+    @media (max-width: 640px) { .fields { grid-template-columns: 1fr; } }
+
+    label.f {
+      display: flex; flex-direction: column; gap: 6px;
+      font-size: 12px; font-weight: 700; color: var(--ink-2);
+    }
+    label.f .row-meta {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    }
+    label.f .key {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 10.5px; font-weight: 600; color: var(--muted);
+    }
+    .req { color: var(--rose); }
+    input, select, textarea {
+      width: 100%;
+      font: inherit; font-size: 13px; font-weight: 500; color: var(--ink);
+      border: 1px solid var(--line-2); border-radius: 10px;
+      padding: 10px 12px; background: #fff;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #5eead4; box-shadow: 0 0 0 3px rgba(15, 118, 110, .15);
+    }
+    textarea { min-height: 78px; resize: vertical; }
+    .hint { margin: 0; font-size: 11.5px; color: var(--muted); font-weight: 500; line-height: 1.4; }
+
+    .actions {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+    }
+    button {
+      border: 0; border-radius: 10px; padding: 10px 14px;
+      font: inherit; font-size: 13px; font-weight: 700; cursor: default;
+    }
+    button.primary { background: var(--navy); color: #fff; }
+    button.teal { background: var(--teal); color: #fff; }
+    button.ghost { background: #fff; border: 1px solid var(--line-2); color: var(--ink); }
+    button.danger { background: var(--rose-soft); color: var(--rose); border: 1px solid #fecdd3; }
+
+    .wiz {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
+    }
+    @media (max-width: 640px) { .wiz { grid-template-columns: 1fr 1fr; } }
+    .wiz .step {
+      text-align: center; padding: 10px 8px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--paper-2);
+      font-size: 12px; font-weight: 750; color: var(--muted);
+    }
+    .wiz .step b { display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px; opacity: .8; }
+    .wiz .step.on {
+      background: var(--teal-soft); border-color: #5eead4; color: var(--teal);
+    }
+    .wiz .step.done {
+      background: var(--blue-soft); border-color: #93c5fd; color: var(--blue);
+    }
+
+    .split-2 {
+      display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px;
+    }
+    @media (max-width: 860px) { .split-2 { grid-template-columns: 1fr; } }
+
+    .tree {
+      font-size: 13px; line-height: 1.35;
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    }
+    .tree .node {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .tree .node:last-child { border-bottom: 0; }
+    .tree .node.sel { background: var(--teal-soft); }
+    .tree .twist { width: 16px; color: var(--muted); font-size: 11px; }
+    .tree .ico {
+      width: 22px; height: 22px; border-radius: 6px;
+      display: inline-grid; place-items: center; font-size: 11px; font-weight: 800;
+      background: var(--paper-2); border: 1px solid var(--line); color: var(--ink-2);
+    }
+    .tree .ico.z { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
+    .tree .ico.r { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+    .tree .name { font-weight: 650; flex: 1; }
+    .tree .cnt {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      background: var(--paper-2); border-radius: 999px; padding: 2px 8px;
+    }
+
+    .table-wrap { border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    th { background: var(--paper-2); color: var(--muted); font-size: 11px; font-weight: 750; }
+    tr:last-child td { border-bottom: 0; }
+    tr.sel td { background: #f0fdfa; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px;
+      background: var(--paper-2); border: 1px solid var(--line);
+      font-size: 12px; font-weight: 650;
+    }
+    .chip .x { color: var(--muted); font-weight: 800; }
+    .chip.add { border-style: dashed; color: var(--teal); background: #fff; }
+
+    .checks {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+    }
+    @media (max-width: 520px) { .checks { grid-template-columns: 1fr; } }
+    .checks label {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+      font-size: 13px; font-weight: 650; background: #fff;
+    }
+    .checks label .u { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 600; }
+
+    .subbox {
+      margin-top: 4px; padding: 14px;
+      border: 1px dashed var(--line-2); border-radius: 12px; background: var(--paper-2);
+    }
+    .subbox h4 {
+      margin: 0 0 10px; font-size: 12px; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--muted);
+    }
+
+    .flow {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+    }
+    @media (max-width: 700px) { .flow { grid-template-columns: 1fr; } }
+    .flow .item {
+      padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff;
+    }
+    .flow .item strong { display: block; font-size: 12px; margin-bottom: 4px; }
+    .flow .item span { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+
+    footer.note {
+      margin-top: 8px; padding: 14px 16px;
+      border: 1px dashed var(--line-2); border-radius: 12px;
+      background: rgba(255,255,255,.55);
+      font-size: 12px; color: var(--muted); line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand">
+        <div class="mark">DCIM · UI Handoff</div>
+        <h1>Manager 폼 스펙</h1>
+        <p>백엔드가 가정한 화면 구조·필드·등록 순서입니다. 디자인 시안이 아니라 구현 기준 와이어입니다.</p>
+      </div>
+      <nav>
+        <div class="group">Guide</div>
+        <a href="#overview">개요<small>왜 이렇게 나눴는지</small></a>
+        <div class="group">Screens</div>
+        <a href="#location">1. 위치<small>트리 · 추가 · 이동</small></a>
+        <a href="#device">2. 장비 등록<small>마법사 4단계</small></a>
+        <a href="#device-edit">3. 장비 관리<small>수정 · endpoint</small></a>
+        <a href="#task">4. 수집 작업<small>Task · 주기 그룹</small></a>
+        <a href="#widget">5. 화면 위젯<small>last · count · 배치</small></a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <section class="hero" id="overview">
+        <div class="hero-main">
+          <h2>수집 장비를 붙이고,<br />화면에 값을 올리기 위한 입력 화면</h2>
+          <p>
+            운영 UI는 아직 제품입니다. 아래 폼은 <b>서버 API 계약</b>에 맞춰
+            “어떤 값을, 어떤 순서로, 왜” 받는지 보여 줍니다.
+            회색 코드는 JSON 필드명입니다. <span class="req">*</span> 는 필수입니다.
+          </p>
+          <div class="badge-row">
+            <span class="badge teal">API 연동 없음 · 예시 값</span>
+            <span class="badge amber">제품 디자인 ≠ 이 화면</span>
+            <span class="badge">필드·순서·설명이 전달 목적</span>
+          </div>
+        </div>
+        <div class="hero-note">
+          <h3>권장 사용자 흐름</h3>
+          <ol>
+            <li>위치 트리 준비 (존/랙)</li>
+            <li>장비 모델은 이미 있다고 가정</li>
+            <li>장비 등록 마법사 (메타 → IP → 수집)</li>
+            <li>위젯: last(장비+point) 또는 count(enabled 전체)</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ========== LOCATION ========== -->
+      <section class="screen" id="location">
+        <div class="screen-head">
+          <h2><span class="num">1</span> 위치</h2>
+          <span class="api">/api/manager/location-node</span>
+        </div>
+
+        <div class="layout">
+          <div>
+            <div class="flow">
+              <div class="item"><strong>탐색</strong><span>왼쪽 트리에서 선택. 하위 장비 수 뱃지.</span></div>
+              <div class="item"><strong>추가/수정</strong><span>오른쪽 폼. 유형은 LOCATION_TYPE 코드.</span></div>
+              <div class="item"><strong>이동</strong><span>드래그로 부모 변경 (PATCH parent).</span></div>
+            </div>
+
+            <div class="split-2">
+              <div class="panel">
+                <div class="panel-bar">
+                  <h3>위치 탐색기</h3>
+                  <span class="meta">GET 트리</span>
+                </div>
+                <div class="panel-body" style="padding:0">
+                  <div class="tree">
+                    <div class="node"><span class="twist">▾</span><span class="ico">S</span><span class="name">데이터센터 A</span><span class="cnt">SITE</span></div>
+                    <div class="node sel" style="padding-left:28px"><span class="twist">▾</span><span class="ico z">Z</span><span class="name">존-1</span><span class="cnt">장비 4</span></div>
+                    <div class="node" style="padding-left:48px"><span class="twist">·</span><span class="ico r">R</span><span class="name">랙-01</span><span class="cnt">3</span></div>
+                    <div class="node" style="padding-left:48px"><span class="twist">·</span><span class="ico r">R</span><span class="name">랙-02</span><span class="cnt">1</span></div>
+                    <div class="node" style="padding-left:28px"><span class="twist">▸</span><span class="ico z">Z</span><span class="name">존-2</span><span class="cnt">0</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-bar">
+                  <h3>위치 추가</h3>
+                  <span class="meta">POST</span>
+                </div>
+                <div class="panel-body">
+                  <form class="fields" onsubmit="return false">
+                    <label class="f full">
+                      <span class="row-meta"><span>부모 위치</span><span class="key">parentCode</span></span>
+                      <select><option value="">(루트)</option><option selected>데이터센터 A</option><option>존-1</option></select>
+                      <p class="hint">루트면 null. UI에서는 “상위 위치” 셀렉트.</p>
+                    </label>
+                    <label class="f">
+                      <span class="row-meta"><span>유형 <span class="req">*</span></span><span class="key">locationTypeId</span></span>
+                      <select><option>SITE</option><option selected>ZONE</option><option>RACK</option></select>
+                    </label>
+                    <label class="f">
+                      <span class="row-meta"><span>이름 <span class="req">*</span></span><span class="key">name</span></span>
+                      <input value="존-3" />
+                    </label>
+                  </form>
+                  <div class="actions">
+                    <button type="button" class="primary">추가</button>
+                    <button type="button" class="ghost">이름 수정 (PUT)</button>
+                    <button type="button" class="danger">삭제</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel" style="margin-top:14px">
+              <div class="panel-bar">
+                <h3>선택 위치의 장비</h3>
+                <span class="meta">GET /devices?locationNodeCode=&amp;includeSubtree=true</span>
+              </div>
+              <div class="panel-body" style="padding:0">
+                <div class="table-wrap" style="border:0;border-radius:0">
+                  <table>
+                    <thead><tr><th>이름</th><th>제조사</th><th>모델</th><th>상태</th></tr></thead>
+                    <tbody>
+                      <tr class="sel"><td>PDU-좌</td><td>APC</td><td>AP8959</td><td>enabled</td></tr>
+                      <tr><td>PDU-우</td><td>APC</td><td>AP8959</td><td>enabled</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="explain">
+            <div class="label">설명</div>
+            <h4>위치 = 장비의 주소</h4>
+            <p>장비는 반드시 위치 코드에 매핑됩니다. 미지정은 <code>UNASSIGNED</code>를 씁니다.</p>
+            <ul>
+              <li>트리는 children 재귀 구조로 내려옵니다.</li>
+              <li>드래그 이동 → <code>PATCH /{code}/parent</code> · body <code>{ parentCode }</code></li>
+              <li>하위 포함 삭제와 단일 삭제를 버튼으로 분리하세요.</li>
+              <li>위치 선택 시 하위 장비 목록을 같이 보여 주면 운영이 편합니다.</li>
+            </ul>
+            <div class="callout">폴더 아이콘보다 SITE / ZONE / RACK 유형이 보이게 하는 편이 좋습니다.</div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ========== DEVICE WIZARD ========== -->
+      <section class="screen" id="device">
+        <div class="screen-head">
+          <h2><span class="num">2</span> 장비 등록 마법사</h2>
+          <span class="api">devices → endpoints → snmp-instance → task group</span>
+        </div>
+
+        <div class="layout">
+          <div>
+            <div class="wiz">
+              <div class="step on"><b>STEP 1</b>기본 정보</div>
+              <div class="step done"><b>STEP 2</b>통신(IP)</div>
+              <div class="step done"><b>STEP 3</b>수집 연결</div>
+              <div class="step"><b>STEP 4</b>완료</div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-bar">
+                <h3>① 장비 기본 · POST /devices</h3>
+                <span class="meta">필수: modelId, locationNodeCode, name</span>
+              </div>
+              <div class="panel-body">
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>표시 이름 <span class="req">*</span></span><span class="key">name</span></span>
+                    <input value="PDU-좌" />
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>사용 여부</span><span class="key">enabled</span></span>
+                    <select><option selected>true</option><option>false</option></select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>장비 모델 <span class="req">*</span></span><span class="key">modelId</span></span>
+                    <select><option>AP8959 · APC (id=10)</option></select>
+                    <p class="hint">모델에 SNMP OID(point)가 있어야 이후 수집·위젯이 됩니다.</p>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>설치 위치 <span class="req">*</span></span><span class="key">locationNodeCode</span></span>
+                    <select><option>랙-01</option><option>UNASSIGNED</option></select>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>설명</span><span class="key">description</span></span>
+                    <textarea>A열 좌측 PDU</textarea>
+                  </label>
+                </form>
+              </div>
+            </div>
+
+            <div class="panel" style="margin-top:14px">
+              <div class="panel-bar">
+                <h3>② 통신 Endpoint · POST /devices/{id}/endpoints</h3>
+                <span class="meta">host + port 조합 유니크</span>
+              </div>
+              <div class="panel-body">
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>프로토콜 <span class="req">*</span></span><span class="key">protocolTypeId</span></span>
+                    <select><option selected>SNMP</option><option>MODBUS</option></select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>사용</span><span class="key">enabled</span></span>
+                    <select><option selected>true</option><option>false</option></select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>Host / IP <span class="req">*</span></span><span class="key">host</span></span>
+                    <input value="192.168.1.10" />
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>Port <span class="req">*</span></span><span class="key">port</span></span>
+                    <input type="number" value="161" />
+                  </label>
+                </form>
+
+                <div class="subbox" style="margin-top:14px">
+                  <h4>조건부 · SNMP Instance</h4>
+                  <p class="hint" style="margin-bottom:10px">모델 point에 requiresInstance=true 가 있을 때만.
+                    POST …/endpoints/{endpointId}/snmp-instance</p>
+                  <form class="fields" onsubmit="return false">
+                    <label class="f">
+                      <span class="row-meta"><span>instanceId <span class="req">*</span></span><span class="key">instanceId ≥ 1</span></span>
+                      <input type="number" value="1" />
+                    </label>
+                    <label class="f">
+                      <span class="row-meta"><span>UI 처리</span><span class="key">skip if not needed</span></span>
+                      <select><option>모델에 필요 없음 → 숨김</option><option>필요함 → 표시</option></select>
+                    </label>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel" style="margin-top:14px">
+              <div class="panel-bar">
+                <h3>③ 수집 그룹에 붙이기</h3>
+                <span class="meta">PUT …/collector/tasks/{taskId}/groups/{groupId}</span>
+              </div>
+              <div class="panel-body">
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>수집 Task</span><span class="key">taskId</span></span>
+                    <select><option>AP8959 SNMP 수집</option></select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>주기 그룹</span><span class="key">groupId</span></span>
+                    <select><option>1분 그룹 · 0 */1 * * * *</option></select>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>그룹 장비</span><span class="key">deviceIds[]</span></span>
+                    <div class="chips" style="margin-top:2px">
+                      <span class="chip">#101 PDU-좌 <span class="x">×</span></span>
+                      <span class="chip add">+ 장비 추가</span>
+                    </div>
+                    <p class="hint">수정 시 deviceIds 생략 = 기존 유지 / [] = 전부 제거</p>
+                  </label>
+                </form>
+                <div class="actions">
+                  <button type="button" class="teal">등록 완료</button>
+                  <button type="button" class="ghost">수집 연결 건너뛰기</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="explain">
+            <div class="label">설명</div>
+            <h4>왜 한 번에 안 끝나나</h4>
+            <p>서버에서 장비·통신·수집이 테이블이 갈립니다. UI는 마법사로 묶어 줘도, API는 단계 호출입니다.</p>
+            <ul>
+              <li>① 장비 row 생성</li>
+              <li>② 그 장비의 IP/포트</li>
+              <li>②-b MIB instance (필요할 때만)</li>
+              <li>③ 이미 있는 Task 그룹에 deviceId 추가</li>
+            </ul>
+            <div class="callout warn">
+              instance가 필요 없는 모델에 snmp-instance를 치면
+              “no snmp point requiring instance” 로 실패합니다. UI에서 숨기세요.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ========== DEVICE EDIT ========== -->
+      <section class="screen" id="device-edit">
+        <div class="screen-head">
+          <h2><span class="num">3</span> 장비 목록 · 수정</h2>
+          <span class="api">GET/PUT/DELETE /api/manager/devices</span>
+        </div>
+        <div class="layout">
+          <div class="split-2">
+            <div class="panel">
+              <div class="panel-bar"><h3>목록</h3><span class="meta">필터: name, modelId, enabled</span></div>
+              <div class="panel-body" style="padding:0">
+                <div class="table-wrap" style="border:0;border-radius:0">
+                  <table>
+                    <thead><tr><th>이름</th><th>제조사</th><th>모델</th><th>위치</th></tr></thead>
+                    <tbody>
+                      <tr class="sel"><td>PDU-좌</td><td>APC</td><td>AP8959</td><td>랙-01</td></tr>
+                      <tr><td>칠러-1</td><td>Carrier</td><td>30XA</td><td>존-2</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-bar"><h3>선택 장비 수정</h3><span class="meta">PUT /{id}</span></div>
+              <div class="panel-body">
+                <form class="fields" onsubmit="return false">
+                  <label class="f full"><span class="row-meta"><span>이름 <span class="req">*</span></span><span class="key">name</span></span><input value="PDU-좌" /></label>
+                  <label class="f"><span class="row-meta"><span>모델 <span class="req">*</span></span><span class="key">modelId</span></span><select><option>AP8959</option></select></label>
+                  <label class="f"><span class="row-meta"><span>위치 <span class="req">*</span></span><span class="key">locationNodeCode</span></span><select><option>랙-01</option></select></label>
+                  <label class="f full"><span class="row-meta"><span>설명</span><span class="key">description</span></span><textarea></textarea></label>
+                </form>
+                <div class="actions">
+                  <button type="button" class="primary">저장</button>
+                  <button type="button" class="danger">삭제</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <aside class="explain">
+            <div class="label">설명</div>
+            <h4>목록에서 고르고 오른쪽에서 편집</h4>
+            <p>제조사는 모델 마스터에서 따라옵니다. 장비 테이블에 직접 두지 마세요.</p>
+            <ul>
+              <li>목록 컬럼 권장: 이름 · 제조사 · 모델 · 위치 · enabled</li>
+              <li>endpoint/instance는 별도 하위 패널</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ========== TASK ========== -->
+      <section class="screen" id="task">
+        <div class="screen-head">
+          <h2><span class="num">4</span> 수집 작업</h2>
+          <span class="api">POST /api/manager/collector/tasks</span>
+        </div>
+        <div class="layout">
+          <div class="panel">
+            <div class="panel-bar"><h3>Task 생성</h3><span class="meta">모델 1개 + 주기 그룹 N개</span></div>
+            <div class="panel-body">
+              <form class="fields" onsubmit="return false">
+                <label class="f">
+                  <span class="row-meta"><span>Task 이름 <span class="req">*</span></span><span class="key">name</span></span>
+                  <input value="AP8959 SNMP 수집" />
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>활성</span><span class="key">active</span></span>
+                  <select><option selected>true</option><option>false</option></select>
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>대상 모델 <span class="req">*</span></span><span class="key">modelId</span></span>
+                  <select><option>AP8959</option></select>
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>스크립트 타입 <span class="req">*</span></span><span class="key">scriptTypeId</span></span>
+                  <select><option>SNMP</option></select>
+                </label>
+              </form>
+              <div class="subbox" style="margin-top:14px">
+                <h4>groups[0] · 주기 그룹</h4>
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>그룹 이름 <span class="req">*</span></span><span class="key">groups[].name</span></span>
+                    <input value="1분 그룹" />
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>Cron <span class="req">*</span></span><span class="key">groups[].cronExpression</span></span>
+                    <input value="0 */1 * * * *" />
+                    <p class="hint">Spring cron 6필드 (초 분 시 일 월 요일)</p>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>초기 장비</span><span class="key">groups[].deviceIds</span></span>
+                    <input placeholder="비우면 빈 그룹 · 나중에 장비 마법사에서 추가" />
+                  </label>
+                </form>
+              </div>
+              <div class="actions">
+                <button type="button" class="primary">Task 생성</button>
+                <button type="button" class="ghost">활성 토글 PATCH /{id}/toggle</button>
+              </div>
+            </div>
+          </div>
+          <aside class="explain">
+            <div class="label">설명</div>
+            <h4>Task ≠ 장비</h4>
+            <p>Task는 “이 모델의 SNMP를 어떤 주기로 돌릴지” 정의입니다. 실제 장비는 그룹의 deviceIds에 들어갑니다.</p>
+            <ul>
+              <li>보통 모델당 Task 1개 + 1분 그룹</li>
+              <li>장비 등록 마법사 ③에서 그룹에 합류</li>
+              <li>Collector 서버로 스펙이 동기화됩니다</li>
+            </ul>
+            <div class="callout">UI에서 cron 프리셋(1분/5분/10분)을 주면 실수가 줄어듭니다.</div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ========== WIDGET ========== -->
+      <section class="screen" id="widget">
+        <div class="screen-head">
+          <h2><span class="num">5</span> 화면 위젯</h2>
+          <span class="api">POST /widgets · GET /query/last · GET /query/count</span>
+        </div>
+        <div class="layout">
+          <div class="panel">
+            <div class="panel-bar"><h3>위젯 생성</h3><span class="meta">카드 1장 = 위젯 1개</span></div>
+            <div class="panel-body">
+              <form class="fields" onsubmit="return false">
+                <label class="f">
+                  <span class="row-meta"><span>페이지 <span class="req">*</span></span><span class="key">pageCode</span></span>
+                  <select><option>dashboard</option><option>COOLING</option><option>ENVIRONMENT</option></select>
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>위젯 이름 <span class="req">*</span></span><span class="key">name</span></span>
+                  <input value="PDU-좌 전력" />
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>표시</span><span class="key">enabled</span></span>
+                  <select><option selected>true</option><option>false</option></select>
+                </label>
+                <label class="f">
+                  <span class="row-meta"><span>조회 종류 <span class="req">*</span></span><span class="key">queryKind</span></span>
+                  <select id="wfKind">
+                    <option selected>last</option>
+                    <option>count</option>
+                    <option>aggregate (조회 미구현)</option>
+                  </select>
+                  <p class="hint">종류에 따라 아래 필수 필드가 바뀝니다. 검증은 서버 PageWidget 도메인.</p>
+                </label>
+              </form>
+
+              <div class="subbox" style="margin-top:14px">
+                <h4>last 일 때 · 장비 + point <span class="req">*</span></h4>
+                <form class="fields" onsubmit="return false">
+                  <label class="f full">
+                    <span class="row-meta"><span>대상 장비 <span class="req">*</span></span><span class="key">deviceIds[]</span></span>
+                    <div class="chips" style="margin-top:2px">
+                      <span class="chip">#101 PDU-좌 <span class="x">×</span></span>
+                      <span class="chip">#102 PDU-우 <span class="x">×</span></span>
+                      <span class="chip add">+ 장비 고르기</span>
+                    </div>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>측정 항목 <span class="req">*</span></span><span class="key">pointNames[]</span></span>
+                    <div class="checks" style="margin-top:4px">
+                      <label><input type="checkbox" checked /> W <span class="u">W</span></label>
+                      <label><input type="checkbox" checked /> status <span class="u">—</span></label>
+                      <label><input type="checkbox" /> voltage <span class="u">V</span></label>
+                      <label><input type="checkbox" /> current <span class="u">A</span></label>
+                    </div>
+                    <p class="hint">모델 SNMP point 목록에서 체크. 문자열 직접 입력 UX는 비권장.</p>
+                  </label>
+                </form>
+              </div>
+
+              <div class="subbox" style="margin-top:12px">
+                <h4>count 일 때 · 장비 선택 없음</h4>
+                <p class="hint" style="margin:0 0 10px">대상은 DB <code>devices.enabled=1</code> 전체. <code>deviceIds</code>/<code>pointNames</code>는 보내지 않거나 [].</p>
+                <form class="fields" onsubmit="return false">
+                  <label class="f">
+                    <span class="row-meta"><span>집계 방식 <span class="req">*</span></span><span class="key">countMode</span></span>
+                    <select>
+                      <option>total — 숫자만</option>
+                      <option selected>by_model — 총수 + 모델별</option>
+                      <option>model — 특정 모델만</option>
+                    </select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>대상 모델</span><span class="key">countModelId</span></span>
+                    <select>
+                      <option value="">(model 일 때만 표시)</option>
+                      <option>AP8959 (APC) · id=10</option>
+                      <option>30XA (Carrier) · id=20</option>
+                    </select>
+                    <p class="hint">countMode=model 이면 필수. total / by_model 이면 숨김.</p>
+                  </label>
+                </form>
+                <div class="callout" style="margin-top:10px">미리보기: <code>GET /api/manager/query/count?widgetId=</code> (± countMode override)</div>
+              </div>
+
+              <div class="subbox" style="margin-top:12px">
+                <h4>배치 layout (선택) · 대시보드 드래그용</h4>
+                <form class="fields" onsubmit="return false">
+                  <label class="f"><span class="row-meta"><span>gridX</span><span class="key">layout.gridX</span></span><input type="number" value="0" /></label>
+                  <label class="f"><span class="row-meta"><span>gridY</span><span class="key">layout.gridY</span></span><input type="number" value="0" /></label>
+                  <label class="f"><span class="row-meta"><span>가로 w</span><span class="key">layout.w</span></span><input type="number" value="16" /></label>
+                  <label class="f"><span class="row-meta"><span>세로 h</span><span class="key">layout.h</span></span><input type="number" value="8" /></label>
+                </form>
+              </div>
+
+              <div class="subbox" style="margin-top:12px">
+                <h4>aggregate 일 때만 (조회 미구현 · PUE 후순위)</h4>
+                <form class="fields" onsubmit="return false">
+                  <label class="f"><span class="row-meta"><span>op <span class="req">*</span></span><span class="key">op</span></span>
+                    <select><option>delta_sum</option><option>weighted_avg</option><option>divide</option></select>
+                  </label>
+                  <label class="f"><span class="row-meta"><span>groupBy</span><span class="key">groupBy</span></span>
+                    <select><option>device</option><option>point</option><option>location</option></select>
+                  </label>
+                  <label class="f"><span class="row-meta"><span>가중치</span><span class="key">weightPoint</span></span><input placeholder="weighted_avg 시 필수" /></label>
+                  <label class="f"><span class="row-meta"><span>분자/분모</span><span class="key">numerator / denominator</span></span><input placeholder="divide 시 필수" /></label>
+                </form>
+                <p class="hint" style="margin-top:8px">aggregate도 deviceIds(+ pointNames) 필요. count와 다름.</p>
+              </div>
+
+              <div class="actions">
+                <button type="button" class="teal">위젯 생성</button>
+                <button type="button" class="ghost">표시 토글 PATCH /{id}/enabled</button>
+                <button type="button" class="ghost">last 미리보기</button>
+                <button type="button" class="ghost">count 미리보기</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="explain">
+            <div class="label">설명</div>
+            <h4>표시는 UI, 계산은 서버</h4>
+            <p>위젯은 조회 정의입니다. 카드 디자인·차트 종류는 프론트 몫입니다.</p>
+            <ul>
+              <li><b>last</b> — 장비·point 필수 → <code>/query/last</code></li>
+              <li><b>count</b> — 장비 없음. enabled 전체 → <code>/query/count</code></li>
+              <li>countMode: total / by_model / model(+countModelId)</li>
+              <li>aggregate — 폼만 예약, 조회 API 미구현</li>
+            </ul>
+            <div class="callout">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, count: <code>docs/query/QUERY_COUNT_API.md</code></div>
+            <div class="callout" style="margin-top:8px">레이아웃은 드래그 후 <code>PUT /widgets/{id}/layout</code></div>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="note">
+        파일 위치: <code>ui-handoff/manager-forms.html</code> ·
+        이 HTML은 UI 담당 전달용입니다. 실제 제품 컴포넌트/카피/테마는 디자인 시스템으로 재구성하세요.
+        JS·API 호출은 넣지 않았습니다.
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
