@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DCIM Manager · Tools</title>
+  <style>
+    :root { --bg:#0f1419; --panel:#171d25; --line:#2a3544; --text:#e8edf4; --muted:#8b98a8; --accent:#3d9cf0; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"Segoe UI","Malgun Gothic",sans-serif;
+      display:grid; place-items:center; padding:24px; }
+    main { width:min(640px,100%); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:28px; }
+    h1 { margin:0 0 6px; font-size:22px; }
+    p { margin:0 0 20px; color:var(--muted); font-size:14px; line-height:1.5; }
+    a { display:block; padding:14px 16px; margin:0 0 10px; border:1px solid var(--line); border-radius:8px;
+      color:var(--text); text-decoration:none; background:#1d2530; }
+    a:hover { border-color:var(--accent); }
+    a strong { display:block; margin-bottom:4px; color:var(--accent); }
+    a span { font-size:13px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>DCIM Manager</h1>
+    <p>프로토타입 도구. 디자인·본 UI는 별도. API 연동·등록 확인용입니다.</p>
+    <a href="/ops-console.html">
+      <strong>Ops Console</strong>
+      <span>등록 UI — 코드 · 위치(Path) · 모델 · 장비 · Task · 위젯 · Query</span>
+    </a>
+    <a href="/widget-dashboard.html">
+      <strong>Widget Dashboard</strong>
+      <span>페이지 위젯 ON/OFF · 배치 편집 · last/count/chart</span>
+    </a>
+    <a href="/live-test.html">
+      <strong>Live Telemetry</strong>
+      <span>실시간 SNMP MQTT 차트</span>
+    </a>
+    <a href="/swagger-ui/index.html">
+      <strong>Swagger</strong>
+      <span>API 문서</span>
+    </a>
+  </main>
+</body>
+</html>
