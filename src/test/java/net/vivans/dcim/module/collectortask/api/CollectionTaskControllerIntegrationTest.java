@@ -518,6 +518,78 @@ class CollectionTaskControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.groups[0].generatedSpec").value(not(containsString("10.88.2.11"))));
     }
 
+    @Test
+    void createTask_withExplicitDeviceIds_doesNotAutoAssignOtherModelDevices() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-explicit-only", "password123");
+        Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
+        Integer modelId = createDeviceModelWithSnmpPoint(
+                accessToken, "V4-EXPLICIT", "APC", snmpId, false,
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.10.1.0", "temp", "C");
+        String locationCode = createRootLocation(accessToken, "V4-Explicit-Loc");
+        int selected = createDevice(accessToken, modelId, locationCode, "V4-SEL");
+        int unselected = createDevice(accessToken, modelId, locationCode, "V4-UNSEL");
+        createEndpoint(accessToken, selected, snmpId, "10.88.40.1", 161);
+        createEndpoint(accessToken, unselected, snmpId, "10.88.40.2", 161);
+
+        mockMvc.perform(post("/api/manager/collector/tasks")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "선택 장비만",
+                                  "modelId": %d,
+                                  "scriptTypeId": %d,
+                                  "active": true,
+                                  "groups": [
+                                    {
+                                      "name": "1분 그룹",
+                                      "cronExpression": "0 */1 * * * *",
+                                      "deviceIds": [%d]
+                                    }
+                                  ]
+                                }
+                                """.formatted(modelId, snmpId, selected)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.groups", hasSize(1)))
+                .andExpect(jsonPath("$.data.groups[0].devices", hasSize(1)))
+                .andExpect(jsonPath("$.data.groups[0].devices[0].deviceId").value(selected))
+                .andExpect(jsonPath("$.data.groups[0].generatedSpec").value(containsString("10.88.40.1")))
+                .andExpect(jsonPath("$.data.groups[0].generatedSpec").value(not(containsString("10.88.40.2"))));
+    }
+
+    @Test
+    void updateGroup_changesCronExpression() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-cron", "password123");
+        Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
+        Integer modelId = createDeviceModelWithSnmpPoint(
+                accessToken, "V4-CRON", "APC", snmpId, false,
+                "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.12.11.0", "temp", "C");
+        int taskId = createTaskWithDevices(
+                accessToken, "주기 변경", modelId, snmpId, "0 */1 * * * *");
+
+        String taskJson = mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        int groupId = objectMapper.readTree(taskJson).path("data").path("groups").get(0).path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/collector/tasks/{taskId}/groups/{groupId}", taskId, groupId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "5분 그룹",
+                                  "cronExpression": "0 */5 * * * *",
+                                  "active": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("5분 그룹"))
+                .andExpect(jsonPath("$.data.cronExpression").value("0 */5 * * * *"));
+    }
+
     private Integer scriptTypeId(String accessToken, String code, String name, int sortOrder) throws Exception {
         Integer groupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         return findOrCreateCommonCode(accessToken, groupId, code, name, sortOrder);

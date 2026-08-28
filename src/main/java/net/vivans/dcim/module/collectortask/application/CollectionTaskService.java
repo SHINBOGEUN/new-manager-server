@@ -72,7 +72,11 @@ public class CollectionTaskService {
         CollectionTask task = CollectionTask.create(request.name(), deviceModel, scriptType, active);
         addGroups(task, request.groups());
         collectionTaskRepository.saveAndFlush(task);
-        collectionScriptSyncService.assignUnassignedModelDevicesAndRegenerate(task);
+        if (shouldAutoAssignDevices(request.groups())) {
+            collectionScriptSyncService.assignUnassignedModelDevicesAndRegenerate(task);
+        } else {
+            collectionScriptSyncService.regenerateTask(task);
+        }
         return CollectionTaskResponse.from(task);
     }
 
@@ -253,5 +257,9 @@ public class CollectionTaskService {
         if (!CronExpression.isValidExpression(cronExpression)) {
             throw new IllegalArgumentException("cronExpression is invalid");
         }
+    }
+
+    private boolean shouldAutoAssignDevices(List<CollectionTaskGroupRequest> groupRequests) {
+        return groupRequests == null || groupRequests.isEmpty();
     }
 }

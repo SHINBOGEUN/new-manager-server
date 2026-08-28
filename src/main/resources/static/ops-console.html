@@ -497,8 +497,8 @@
           <label class="field">프로토콜
             <select id="wzProtocol"></select>
           </label>
-          <label class="field">인스턴스 번호
-            <input id="wzInstance" type="number" value="1" title="PDU outlet 등 OID 치환용" />
+          <label class="field" id="wzInstanceField" style="display:none">인스턴스 번호
+            <input id="wzInstance" type="number" min="1" value="1" title="모델에 {instanceId} OID가 있을 때만 필요" />
           </label>
         </div>
       </div>
@@ -593,8 +593,8 @@
               <label class="field">프로토콜
                 <select id="epProtocol"></select>
               </label>
-              <label class="field">인스턴스
-                <input id="epInstance" type="number" value="1" />
+              <label class="field" id="epInstanceField" style="display:none">인스턴스
+                <input id="epInstance" type="number" min="1" value="1" />
               </label>
               <label class="field">IP / 호스트
                 <input id="epHost" placeholder="192.168.0.10" />
@@ -607,7 +607,7 @@
               <button type="button" class="primary" id="epCreate">통신 설정 추가</button>
               <button type="button" class="ghost" id="epCancelEdit" style="display:none">수정 취소</button>
               <button type="button" class="ghost" id="epReload">다시 읽기</button>
-              <button type="button" class="ghost" id="instCreate">인스턴스만 저장</button>
+              <button type="button" class="ghost" id="instCreate" style="display:none">인스턴스만 저장</button>
             </div>
             <div id="epOut"></div>
           </div>
@@ -663,11 +663,21 @@
             <label class="field">그룹 이름
               <input id="taskGName" value="1분" />
             </label>
-            <label class="field">주기 (cron)
-              <input id="taskCron" value="0 */1 * * * *" />
+            <label class="field">주기
+              <select id="taskCronPreset">
+                <option value="0 */1 * * * *">1분마다</option>
+                <option value="0 */5 * * * *">5분마다</option>
+                <option value="0 */15 * * * *">15분마다</option>
+                <option value="__custom__">직접 입력</option>
+              </select>
             </label>
-            <label class="field full">넣을 장비 번호 (쉼표)
-              <input id="taskDevices" placeholder="예: 9, 10, 11" />
+            <label class="field full" id="taskCronCustomField" style="display:none">cron (직접)
+              <input id="taskCron" value="0 */1 * * * *" class="mono" />
+            </label>
+            <label class="field full">넣을 장비
+              <div id="taskDevicePick" class="device-pick-box" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+                <div class="muted" style="font-size:12px">모델을 선택하면 장비 목록이 나타납니다</div>
+              </div>
             </label>
           </div>
           <button type="button" class="primary" style="margin-top:12px" id="taskCreate">만들고 collector에 반영</button>
@@ -1108,6 +1118,7 @@
       codes: {},
       codeGroups: [],
       models: [],
+      modelRequiresInstance: {},
       devices: [],
       locations: [],
       tasks: [],
@@ -1634,9 +1645,54 @@
       updateStats();
     }
 
+    function findSnmpProtocol(model) {
+      return (model?.protocols || []).find((p) =>
+        (p.protocolCode || "").toLowerCase() === "snmp"
+        || (p.protocolName || "").toLowerCase().includes("snmp"));
+    }
+
+    function invalidateModelRequiresInstance(modelId) {
+      if (modelId) delete state.modelRequiresInstance[modelId];
+    }
+
+    async function modelRequiresInstance(modelId) {
+      if (!modelId) return false;
+      if (state.modelRequiresInstance[modelId] !== undefined) {
+        return state.modelRequiresInstance[modelId];
+      }
+      const model = state.models.find((m) => m.id === modelId);
+      const snmp = findSnmpProtocol(model);
+      if (!snmp) {
+        state.modelRequiresInstance[modelId] = false;
+        return false;
+      }
+      const points = await api(`/api/manager/device-models/${modelId}/protocols/${snmp.id}/snmp-points`);
+      const needs = (points || []).some((p) => p.requiresInstance);
+      state.modelRequiresInstance[modelId] = needs;
+      return needs;
+    }
+
+    async function updateInstanceUiForModel(modelId) {
+      const needs = await modelRequiresInstance(modelId);
+      $("wzInstanceField").style.display = needs ? "" : "none";
+      $("epInstanceField").style.display = needs ? "" : "none";
+      $("instCreate").style.display = needs ? "" : "none";
+      return needs;
+    }
+
+    function parseInstanceId(raw, required) {
+      const id = Number(raw);
+      if (!required) return null;
+      if (!Number.isFinite(id) || id < 1) {
+        throw new Error("인스턴스 번호는 1 이상이어야 합니다");
+      }
+      return id;
+    }
+
     async function loadModels() {
       state.models = await api("/api/manager/device-models") || [];
       if (state.models.content) state.models = state.models.content;
+      state.modelRequiresInstance = {};
       $("modelBody").innerHTML = state.models.map((m) => `
         <tr class="clickable" data-id="${m.id}">
           <td><b>${esc(m.name)}</b><div class="muted mono">#${m.id} · ${esc(m.manufacturer || "")}</div></td>
@@ -1725,6 +1781,12 @@
           };
         });
         toast(`측정 항목 ${points?.length || 0}개`);
+        invalidateModelRequiresInstance(m.id);
+        if (Number($("wzModel").value) === m.id) await updateInstanceUiForModel(m.id);
+        if (state.selectedDeviceId) {
+          const dev = state.devices.find((x) => x.id === state.selectedDeviceId);
+          if (dev?.modelId === m.id) await updateInstanceUiForModel(m.id);
+        }
       } catch (e) {
         toast(e.message, true);
       }
@@ -2142,6 +2204,7 @@
       $("editDevDesc").value = d.description || "";
       $("editDevEnabled").value = d.enabled ? "true" : "false";
       syncEditManufacturer();
+      await updateInstanceUiForModel(d.modelId);
       await reloadEndpoints();
       syncAttachFilters(d.modelId);
     }
@@ -2149,6 +2212,8 @@
     async function reloadEndpoints() {
       const id = state.selectedDeviceId;
       if (!id) return;
+      const dev = state.devices.find((x) => x.id === id);
+      const needsInst = await modelRequiresInstance(dev?.modelId);
       try {
         const eps = await api(`/api/manager/devices/${id}/endpoints`);
         if (!eps?.length) {
@@ -2157,11 +2222,14 @@
         }
         const cards = [];
         for (const ep of eps) {
-          let instHtml = '<span class="chip warn">인스턴스 없음</span>';
-          try {
-            const inst = await api(`/api/manager/devices/${id}/endpoints/${ep.id}/snmp-instance`);
-            instHtml = `<span class="chip ok">인스턴스 ${esc(inst.instanceId)}</span>`;
-          } catch (_) { /* empty */ }
+          let instHtml = "";
+          if (needsInst) {
+            instHtml = '<span class="chip warn">인스턴스 없음</span>';
+            try {
+              const inst = await api(`/api/manager/devices/${id}/endpoints/${ep.id}/snmp-instance`);
+              instHtml = `<span class="chip ok">인스턴스 ${esc(inst.instanceId)}</span>`;
+            } catch (_) { /* empty */ }
+          }
           cards.push(`
             <div class="ep-card" data-ep-id="${ep.id}">
               <div class="row" style="justify-content:space-between;align-items:flex-start">
@@ -2213,17 +2281,129 @@
       $("epCancelEdit").style.display = "none";
     }
 
+    const CRON_PRESETS = [
+      { label: "1분마다", value: "0 */1 * * * *" },
+      { label: "5분마다", value: "0 */5 * * * *" },
+      { label: "15분마다", value: "0 */15 * * * *" },
+      { label: "직접 입력", value: "__custom__" },
+    ];
+
+    function cronPresetOptions(selectedCron) {
+      const matched = CRON_PRESETS.find((p) => p.value === selectedCron);
+      const presetValue = matched ? matched.value : "__custom__";
+      return CRON_PRESETS.map((p) =>
+        `<option value="${p.value}"${presetValue === p.value ? " selected" : ""}>${p.label}</option>`
+      ).join("");
+    }
+
+    function bindCronPreset(selectEl, cronInputEl, customWrapEl) {
+      if (!selectEl || !cronInputEl) return;
+      const sync = () => {
+        const preset = selectEl.value;
+        if (preset === "__custom__") {
+          if (customWrapEl) customWrapEl.style.display = "";
+          cronInputEl.disabled = false;
+        } else {
+          if (customWrapEl) customWrapEl.style.display = "none";
+          cronInputEl.value = preset;
+          cronInputEl.disabled = true;
+        }
+      };
+      selectEl.onchange = sync;
+      if (selectEl.value === "__custom__") {
+        if (customWrapEl) customWrapEl.style.display = "";
+        cronInputEl.disabled = false;
+      } else {
+        sync();
+      }
+    }
+
     function cronLabel(cron) {
       if (cron === "0 */1 * * * *") return "1분마다";
       if (cron === "0 */5 * * * *") return "5분마다";
       return cron;
     }
 
+    async function fetchDevicesByModel(modelId) {
+      if (!modelId) return [];
+      const qs = new URLSearchParams({ modelId: String(modelId), page: "1", size: "500" });
+      const page = await api(`/api/manager/devices?${qs}`);
+      return page.content || [];
+    }
+
+    function renderDeviceChecklist(container, devices, selectedIds = []) {
+      if (!container) return;
+      const selected = new Set(selectedIds);
+      if (!devices.length) {
+        container.innerHTML = '<div class="muted" style="font-size:12px">해당 모델의 등록 장비가 없습니다</div>';
+        return;
+      }
+      container.innerHTML = devices.map((d) => `
+        <label style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer">
+          <input type="checkbox" class="task-dev-pick" data-device-id="${d.id}" value="${d.id}" style="margin-top:3px"${selected.has(d.id) ? " checked" : ""} />
+          <span>
+            <b>${esc(d.name)}</b>
+            <span class="muted mono"> #${d.id}</span>
+            <span class="muted"> · ${esc(d.locationNodeName || d.locationNodeCode || "—")}</span>
+            ${d.enabled ? "" : ' <span class="chip bad" style="font-size:11px">중지</span>'}
+          </span>
+        </label>`).join("");
+    }
+
+    function selectedDeviceIdsFrom(container) {
+      if (!container) return [];
+      return [...container.querySelectorAll("input.task-dev-pick:checked")]
+        .map((el) => Number(el.dataset.deviceId))
+        .filter((id) => Number.isFinite(id));
+    }
+
+    async function refreshTaskDevicePick() {
+      const modelId = Number($("taskModel").value);
+      const box = $("taskDevicePick");
+      if (!box) return;
+      if (!modelId) {
+        box.innerHTML = '<div class="muted" style="font-size:12px">모델을 먼저 선택하세요</div>';
+        return;
+      }
+      box.innerHTML = '<div class="muted" style="font-size:12px">불러오는 중…</div>';
+      try {
+        renderDeviceChecklist(box, await fetchDevicesByModel(modelId));
+      } catch (e) {
+        box.innerHTML = `<div class="muted">${esc(e.message)}</div>`;
+      }
+    }
+
+    async function populateTaskGroupDevicePickers() {
+      for (const t of state.tasks) {
+        const devices = await fetchDevicesByModel(t.modelId);
+        const addBox = $("taskList").querySelector(`[data-add-gdevs-box="${t.id}"]`);
+        if (addBox) renderDeviceChecklist(addBox, devices);
+        for (const g of t.groups || []) {
+          const editBox = $("taskList").querySelector(`[data-edit-gdevs-box="${t.id}-${g.id}"]`);
+          if (!editBox) continue;
+          const selected = (g.devices || []).map((d) => d.deviceId ?? d.id);
+          renderDeviceChecklist(editBox, devices, selected);
+        }
+      }
+      $("taskList").querySelectorAll("[data-edit-gcron-preset]").forEach((sel) => {
+        const key = sel.dataset.editGcronPreset;
+        const cronInput = $("taskList").querySelector(`[data-edit-gcron="${key}"]`);
+        const customWrap = $("taskList").querySelector(`[data-edit-gcron-custom="${key}"]`);
+        bindCronPreset(sel, cronInput, customWrap);
+      });
+      $("taskList").querySelectorAll("[data-add-gcron-preset]").forEach((sel) => {
+        const tid = sel.dataset.addGcronPreset;
+        const cronInput = $("taskList").querySelector(`[data-add-gcron="${tid}"]`);
+        const customWrap = $("taskList").querySelector(`[data-add-gcron-custom="${tid}"]`);
+        bindCronPreset(sel, cronInput, customWrap);
+      });
+    }
+
     async function loadTasks() {
       state.tasks = await api("/api/manager/collector/tasks") || [];
       if (state.tasks.content) state.tasks = state.tasks.content;
       $("taskList").innerHTML = state.tasks.map((t) => `
-        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface2)" data-task="${t.id}">
+        <div style="border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface2)" data-task="${t.id}" data-task-model="${t.modelId}">
           <div class="row" style="justify-content:space-between">
             <div>
               <b>${esc(t.name)}</b>
@@ -2232,20 +2412,37 @@
             <span class="chip ${t.active ? "ok" : "bad"}">${t.active ? "동작 중" : "중지"}</span>
           </div>
           ${(t.groups || []).map((g) => {
-            const names = (g.devices || []).map((d) => d.deviceName || ("#" + (d.deviceId ?? d.id)));
+            const key = `${t.id}-${g.id}`;
+            const presetOpts = cronPresetOptions(g.cronExpression);
+            const isCustomCron = !CRON_PRESETS.some((p) => p.value === g.cronExpression);
             return `<div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1px solid var(--line)">
-              <div class="row" style="justify-content:space-between;align-items:flex-start">
+              <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:8px">
                 <div>
-                  <b>${esc(g.name)}</b>
-                  <span class="chip">${esc(cronLabel(g.cronExpression))}</span>
+                  <b>그룹 #${g.id}</b>
                   <span class="chip ${g.active ? "ok" : "bad"}">${g.active ? "ON" : "OFF"}</span>
                 </div>
                 <div class="row" style="gap:6px">
-                  <button type="button" class="ghost" data-toggle-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">${g.active ? "그룹 중지" : "그룹 시작"}</button>
-                  <button type="button" class="danger" data-del-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">그룹 삭제</button>
+                  <button type="button" class="ghost" data-toggle-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">${g.active ? "중지" : "시작"}</button>
+                  <button type="button" class="danger" data-del-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">삭제</button>
                 </div>
               </div>
-              <div class="muted" style="margin-top:6px">${names.length ? names.map(esc).join(", ") : "장비 없음"}</div>
+              <div class="fields">
+                <label class="field">이름
+                  <input data-edit-gname="${key}" value="${esc(g.name)}" />
+                </label>
+                <label class="field">주기
+                  <select data-edit-gcron-preset="${key}">${presetOpts}</select>
+                </label>
+                <label class="field full" data-edit-gcron-custom="${key}" style="${isCustomCron ? "" : "display:none"}">cron (직접)
+                  <input data-edit-gcron="${key}" value="${esc(g.cronExpression)}" class="mono" />
+                </label>
+                <label class="field full">장비
+                  <div data-edit-gdevs-box="${key}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+                    <div class="muted" style="font-size:12px">불러오는 중…</div>
+                  </div>
+                </label>
+              </div>
+              <button type="button" class="primary" data-save-group="${g.id}" data-task-id="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 저장 (주기·장비)</button>
             </div>`;
           }).join("")}
           <div style="margin-top:12px;padding:10px;background:#fff;border-radius:8px;border:1px dashed var(--line)">
@@ -2254,11 +2451,16 @@
               <label class="field">이름
                 <input data-add-gname="${t.id}" value="추가 그룹" />
               </label>
-              <label class="field">cron
-                <input data-add-gcron="${t.id}" value="0 */5 * * * *" class="mono" />
+              <label class="field">주기
+                <select data-add-gcron-preset="${t.id}">${cronPresetOptions("0 */5 * * * *")}</select>
               </label>
-              <label class="field full">장비 ID (선택, 쉼표)
-                <input data-add-gdevs="${t.id}" placeholder="예: 9, 10" />
+              <label class="field full" data-add-gcron-custom="${t.id}" style="display:none">cron (직접)
+                <input data-add-gcron="${t.id}" value="0 */5 * * * *" class="mono" disabled />
+              </label>
+              <label class="field full">장비 (같은 모델)
+                <div data-add-gdevs-box="${t.id}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+                  <div class="muted" style="font-size:12px">불러오는 중…</div>
+                </div>
               </label>
             </div>
             <button type="button" class="primary" data-add-group="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 추가</button>
@@ -2306,12 +2508,41 @@
           } catch (e) { toast(e.message, true); }
         };
       });
+      $("taskList").querySelectorAll("[data-save-group]").forEach((btn) => {
+        btn.onclick = async () => {
+          const tid = btn.dataset.taskId;
+          const gid = btn.dataset.saveGroup;
+          const key = `${tid}-${gid}`;
+          const name = ($("taskList").querySelector(`[data-edit-gname="${key}"]`)?.value || "").trim();
+          const cron = ($("taskList").querySelector(`[data-edit-gcron="${key}"]`)?.value || "").trim();
+          const deviceIds = selectedDeviceIdsFrom(
+            $("taskList").querySelector(`[data-edit-gdevs-box="${key}"]`)
+          );
+          const group = state.tasks.find((x) => x.id === Number(tid))?.groups?.find((g) => g.id === Number(gid));
+          if (!name || !cron) return toast("그룹 이름과 주기를 입력하세요", true);
+          try {
+            await api(`/api/manager/collector/tasks/${tid}/groups/${gid}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                name,
+                cronExpression: cron,
+                deviceIds,
+                active: group?.active ?? true,
+              }),
+            });
+            toast("그룹을 저장했습니다");
+            await loadTasks();
+          } catch (e) { toast(e.message, true); }
+        };
+      });
       $("taskList").querySelectorAll("[data-add-group]").forEach((btn) => {
         btn.onclick = async () => {
           const tid = btn.dataset.addGroup;
           const name = ($("taskList").querySelector(`[data-add-gname="${tid}"]`)?.value || "").trim();
           const cron = ($("taskList").querySelector(`[data-add-gcron="${tid}"]`)?.value || "").trim();
-          const deviceIds = parseIds($("taskList").querySelector(`[data-add-gdevs="${tid}"]`)?.value);
+          const deviceIds = selectedDeviceIdsFrom(
+            $("taskList").querySelector(`[data-add-gdevs-box="${tid}"]`)
+          );
           if (!name || !cron) return toast("그룹 이름과 cron을 입력하세요", true);
           try {
             await api(`/api/manager/collector/tasks/${tid}/groups`, {
@@ -2328,6 +2559,7 @@
       fillSelect($("taskScript"), state.codes.PROTOCOL_TYPE || [], (c) =>
         `<option value="${c.id}">${esc(c.name)} (${esc(c.code)})</option>`);
       updateStats();
+      await populateTaskGroupDevicePickers();
     }
 
     function fillAttachTaskSelect() {
@@ -2484,6 +2716,8 @@
         await loadDevices();
         await loadTasks();
         await loadCommonCodesUi();
+        if ($("taskModel").value) await refreshTaskDevicePick();
+        if ($("wzModel").value) await updateInstanceUiForModel(Number($("wzModel").value));
         $("bootStatus").innerHTML =
           `<span class="chip ok">준비됨</span><div style="margin-top:10px;line-height:1.6">` +
           `위치 ${state.flatLocations.length} · 모델 ${state.models.length}<br>` +
@@ -2505,6 +2739,7 @@
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
     $("devReload").onclick = () => loadDevices().catch((e) => toast(e.message, true));
     $("taskReload").onclick = () => loadTasks().catch((e) => toast(e.message, true));
+    $("taskModel").addEventListener("change", () => refreshTaskDevicePick().catch((e) => toast(e.message, true)));
     $("epReload").onclick = () => reloadEndpoints();
     $("cgReload").onclick = async () => {
       try { await loadCodes(); await loadCommonCodesUi(); toast("코드 그룹을 새로고침했습니다"); }
@@ -2660,8 +2895,6 @@
       } catch (e) { toast(e.message, true); }
     };
 
-    $("editDevModel").addEventListener("change", syncEditManufacturer);
-
     $("devSave").onclick = async () => {
       const id = state.selectedDeviceId;
       if (!id) return toast("장비를 선택하세요", true);
@@ -2703,20 +2936,30 @@
       } catch (e) { toast(e.message, true); }
     };
 
-    async function ensureEndpointAndInstance(deviceId, protocolTypeId, host, port, instanceId) {
-      const ep = await api(`/api/manager/devices/${deviceId}/endpoints`, {
+    async function ensureEndpoint(deviceId, protocolTypeId, host, port) {
+      return api(`/api/manager/devices/${deviceId}/endpoints`, {
         method: "POST",
         body: JSON.stringify({ protocolTypeId, host, port, enabled: true }),
       });
+    }
+
+    async function saveSnmpInstance(deviceId, endpointId, instanceId) {
       const instBody = { instanceId };
       try {
-        await api(`/api/manager/devices/${deviceId}/endpoints/${ep.id}/snmp-instance`, {
+        await api(`/api/manager/devices/${deviceId}/endpoints/${endpointId}/snmp-instance`, {
           method: "POST", body: JSON.stringify(instBody),
         });
       } catch (_) {
-        await api(`/api/manager/devices/${deviceId}/endpoints/${ep.id}/snmp-instance`, {
+        await api(`/api/manager/devices/${deviceId}/endpoints/${endpointId}/snmp-instance`, {
           method: "PUT", body: JSON.stringify(instBody),
         });
+      }
+    }
+
+    async function ensureEndpointAndInstance(deviceId, protocolTypeId, host, port, needsInstance, instanceId) {
+      const ep = await ensureEndpoint(deviceId, protocolTypeId, host, port);
+      if (needsInstance) {
+        await saveSnmpInstance(deviceId, ep.id, parseInstanceId(instanceId, true));
       }
       return ep;
     }
@@ -2755,14 +2998,17 @@
           toast("통신 설정을 수정했습니다");
           clearEndpointEdit();
         } else {
+          const d = state.devices.find((x) => x.id === id);
+          const needsInst = await modelRequiresInstance(d?.modelId);
           await ensureEndpointAndInstance(
             id,
             Number($("epProtocol").value),
             $("epHost").value.trim(),
             Number($("epPort").value),
-            Number($("epInstance").value)
+            needsInst,
+            $("epInstance").value
           );
-          toast("통신 설정을 저장했습니다");
+          toast(needsInst ? "통신·인스턴스를 저장했습니다" : "통신 설정을 저장했습니다");
         }
         await reloadEndpoints();
       } catch (e) { toast(e.message, true); }
@@ -2776,12 +3022,15 @@
     $("instCreate").onclick = async () => {
       const id = state.selectedDeviceId;
       if (!id) return toast("장비를 먼저 선택하세요", true);
+      const d = state.devices.find((x) => x.id === id);
+      const needsInst = await modelRequiresInstance(d?.modelId);
+      if (!needsInst) return toast("이 모델은 인스턴스가 필요하지 않습니다", true);
       try {
         const eps = await api(`/api/manager/devices/${id}/endpoints`);
         const snmp = (state.codes.PROTOCOL_TYPE || []).find((c) => c.code === "snmp");
         const ep = (eps || []).find((e) => e.protocolTypeId === snmp?.id) || eps?.[0];
         if (!ep) return toast("통신 설정이 없습니다", true);
-        const body = { instanceId: Number($("epInstance").value) };
+        const body = { instanceId: parseInstanceId($("epInstance").value, true) };
         try {
           await api(`/api/manager/devices/${id}/endpoints/${ep.id}/snmp-instance`, { method: "POST", body: JSON.stringify(body) });
         } catch {
@@ -2833,12 +3082,14 @@
         });
         state.wizardDeviceId = device.id;
         setWizProgress(1);
+        const needsInst = await modelRequiresInstance(device.modelId);
         await ensureEndpointAndInstance(
           device.id,
           Number($("wzProtocol").value),
           host,
           Number($("wzPort").value),
-          Number($("wzInstance").value)
+          needsInst,
+          $("wzInstance").value
         );
         setWizProgress(2);
         let attachMsg = "수집 연결은 건너뜀";
@@ -2876,8 +3127,9 @@
     };
 
     // sync wizard model → prefer matching task
-    $("wzModel").addEventListener("change", () => {
+    $("wzModel").addEventListener("change", async () => {
       const modelId = Number($("wzModel").value);
+      await updateInstanceUiForModel(modelId);
       const match = state.tasks.find((t) => t.modelId === modelId);
       if (match) {
         $("wzTask").value = String(match.id);
@@ -2885,8 +3137,16 @@
       }
     });
 
+    $("editDevModel").addEventListener("change", async () => {
+      syncEditManufacturer();
+      await updateInstanceUiForModel(Number($("editDevModel").value));
+    });
+
+    bindCronPreset($("taskCronPreset"), $("taskCron"), $("taskCronCustomField"));
+
     $("taskCreate").onclick = async () => {
       try {
+        const cron = $("taskCron").value.trim();
         const created = await api("/api/manager/collector/tasks", {
           method: "POST",
           body: JSON.stringify({
@@ -2896,8 +3156,8 @@
             active: true,
             groups: [{
               name: $("taskGName").value.trim() || "group",
-              cronExpression: $("taskCron").value.trim(),
-              deviceIds: parseIds($("taskDevices").value),
+              cronExpression: cron,
+              deviceIds: selectedDeviceIdsFrom($("taskDevicePick")),
               active: true,
             }],
           }),
