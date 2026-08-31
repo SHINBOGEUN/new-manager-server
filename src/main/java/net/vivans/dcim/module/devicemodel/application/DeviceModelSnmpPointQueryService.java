@@ -104,7 +104,7 @@ public class DeviceModelSnmpPointQueryService {
         boolean requiresInstance = Boolean.TRUE.equals(request.requiresInstance());
         boolean enabled = request.enabled() == null || request.enabled();
 
-        point.update(request.name(), request.oid(), requiresInstance, request.unit(), enabled);
+        point.update(request.name(), request.oid(), requiresInstance, request.unit(), request.scale(), enabled);
 
         DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
         collectionScriptSyncService.regenerateByModelId(modelId);
@@ -169,6 +169,7 @@ public class DeviceModelSnmpPointQueryService {
                 request.oid(),
                 requiresInstance,
                 request.unit(),
+                request.scale(),
                 enabled
         );
     }

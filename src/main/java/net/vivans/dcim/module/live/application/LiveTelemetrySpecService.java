@@ -50,6 +50,7 @@ public class LiveTelemetrySpecService {
                         point.name(),
                         point.oidTemplate(),
                         point.requiresInstance(),
+                        point.scale(),
                         point.unit()
                 ));
             }

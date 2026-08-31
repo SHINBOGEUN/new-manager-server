@@ -10,6 +10,7 @@ public record DeviceModelSnmpPointResponse(
         String oid,
         boolean requiresInstance,
         String unit,
+        Double scale,
         boolean enabled
 ) {
 
@@ -22,6 +23,7 @@ public record DeviceModelSnmpPointResponse(
                 point.getOid(),
                 point.isRequiresInstance(),
                 point.getUnit(),
+                point.getScale(),
                 point.isEnabled()
         );
     }

@@ -18,6 +18,9 @@ public record DeviceModelSnmpPointCreateRequest(
         @Schema(description = "단위", example = "L/min")
         String unit,
 
+        @Schema(description = "원시값 배율 (null이면 1). 예: raw/10 → 0.1", example = "0.1")
+        Double scale,
+
         @Schema(description = "사용 여부 (기본 true)", example = "true")
         Boolean enabled
 ) {

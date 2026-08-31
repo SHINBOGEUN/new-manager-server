@@ -85,6 +85,7 @@ public class DeviceCapabilityQueryService {
                         point.getId(),
                         point.getName(),
                         point.getUnit(),
+                        point.getScale(),
                         point.getOid(),
                         point.resolveOid(instanceId),
                         point.isRequiresInstance()
