@@ -17,6 +17,7 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.10.1.0",
                 false,
                 "V",
+                0.1,
                 true
         );
 
@@ -24,6 +25,7 @@ class DeviceModelSnmpPointTest {
         assertThat(point.getOid()).isEqualTo("1.3.6.1.4.1.12345.10.1.0");
         assertThat(point.isRequiresInstance()).isFalse();
         assertThat(point.getUnit()).isEqualTo("V");
+        assertThat(point.getScale()).isEqualTo(0.1);
         assertThat(point.isEnabled()).isTrue();
     }
 
@@ -35,11 +37,13 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
                 true,
                 "L/min",
+                null,
                 true
         );
 
         assertThat(point.isRequiresInstance()).isTrue();
         assertThat(point.getOid()).contains("{instanceId}");
+        assertThat(point.getScale()).isNull();
     }
 
     @Test
@@ -49,6 +53,7 @@ class DeviceModelSnmpPointTest {
                 " ",
                 "1.3.6.1.4.1.12345.10.1.0",
                 false,
+                null,
                 null,
                 true
         ))
@@ -64,6 +69,7 @@ class DeviceModelSnmpPointTest {
                 " ",
                 false,
                 null,
+                null,
                 true
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -77,6 +83,7 @@ class DeviceModelSnmpPointTest {
                 "PRI-FLOW",
                 "1.3.6.1.4.1.12345.10.1.0",
                 true,
+                null,
                 null,
                 true
         ))
@@ -92,6 +99,7 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
                 false,
                 null,
+                null,
                 true
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -106,10 +114,26 @@ class DeviceModelSnmpPointTest {
                 "not-an-oid",
                 false,
                 null,
+                null,
                 true
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("invalid oid format");
+    }
+
+    @Test
+    void create_withNonFiniteScale_throws() {
+        assertThatThrownBy(() -> DeviceModelSnmpPoint.create(
+                snmpProtocol(),
+                "V",
+                "1.3.6.1.4.1.12345.10.1.0",
+                false,
+                "V",
+                Double.NaN,
+                true
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("scale must be a finite number");
     }
 
     @Test
@@ -123,6 +147,7 @@ class DeviceModelSnmpPointTest {
                 "V",
                 "1.3.6.1.4.1.12345.10.1.0",
                 false,
+                null,
                 null,
                 true
         ))
@@ -138,6 +163,7 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.10.1.0",
                 false,
                 "C",
+                null,
                 true
         );
 
@@ -153,6 +179,7 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.318.1.1.26.8.3.3.1.2.1.{instanceId}.3",
                 true,
                 "V",
+                null,
                 true
         );
 
@@ -168,6 +195,7 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.10.1.0",
                 false,
                 "V",
+                1.0,
                 true
         );
 
@@ -176,12 +204,14 @@ class DeviceModelSnmpPointTest {
                 "1.3.6.1.4.1.12345.{instanceId}.10.2.0",
                 true,
                 "A",
+                0.01,
                 false
         );
 
         assertThat(point.getName()).isEqualTo("A");
         assertThat(point.isRequiresInstance()).isTrue();
         assertThat(point.getUnit()).isEqualTo("A");
+        assertThat(point.getScale()).isEqualTo(0.01);
         assertThat(point.isEnabled()).isFalse();
     }
 

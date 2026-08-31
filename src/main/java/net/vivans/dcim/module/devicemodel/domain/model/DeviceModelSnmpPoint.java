@@ -56,6 +56,9 @@ public class DeviceModelSnmpPoint extends BaseEntity {
     @Column(length = 50)
     private String unit;
 
+    /** 원시값 배율. null이면 collector가 1.0으로 취급 */
+    private Double scale;
+
     @Column(nullable = false)
     private boolean enabled;
 
@@ -65,16 +68,19 @@ public class DeviceModelSnmpPoint extends BaseEntity {
             String oid,
             boolean requiresInstance,
             String unit,
+            Double scale,
             boolean enabled
     ) {
         validateModelProtocol(modelProtocol);
         validateName(name);
         validateOid(oid, requiresInstance);
+        validateScale(scale);
         this.modelProtocol = modelProtocol;
         this.name = name;
         this.oid = oid;
         this.requiresInstance = requiresInstance;
         this.unit = unit;
+        this.scale = scale;
         this.enabled = enabled;
     }
 
@@ -84,18 +90,28 @@ public class DeviceModelSnmpPoint extends BaseEntity {
             String oid,
             boolean requiresInstance,
             String unit,
+            Double scale,
             boolean enabled
     ) {
-        return new DeviceModelSnmpPoint(modelProtocol, name, oid, requiresInstance, unit, enabled);
+        return new DeviceModelSnmpPoint(modelProtocol, name, oid, requiresInstance, unit, scale, enabled);
     }
 
-    public void update(String name, String oid, boolean requiresInstance, String unit, boolean enabled) {
+    public void update(
+            String name,
+            String oid,
+            boolean requiresInstance,
+            String unit,
+            Double scale,
+            boolean enabled
+    ) {
         validateName(name);
         validateOid(oid, requiresInstance);
+        validateScale(scale);
         this.name = name;
         this.oid = oid;
         this.requiresInstance = requiresInstance;
         this.unit = unit;
+        this.scale = scale;
         this.enabled = enabled;
     }
 
@@ -147,6 +163,15 @@ public class DeviceModelSnmpPoint extends BaseEntity {
             if (segment.isEmpty()) {
                 throw new IllegalArgumentException("invalid oid format");
             }
+        }
+    }
+
+    private static void validateScale(Double scale) {
+        if (scale == null) {
+            return;
+        }
+        if (!Double.isFinite(scale)) {
+            throw new IllegalArgumentException("scale must be a finite number");
         }
     }
 }

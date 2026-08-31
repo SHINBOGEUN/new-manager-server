@@ -111,8 +111,19 @@
     .side button.active { background: linear-gradient(90deg, #2a5688, #234a76); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
     .side button.active small { color: #b9cce2; }
 
-    .content { overflow: auto; padding: 22px 24px 32px; }
-    .panel { display: none; max-width: 1200px; }
+    .content {
+      overflow: auto;
+      padding: 22px 28px 40px;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .panel {
+      display: none;
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+    }
     .panel.active { display: block; }
     .page-title { margin: 0 0 4px; font-size: 22px; letter-spacing: -.02em; }
     .page-desc { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
@@ -120,6 +131,8 @@
     .card {
       background: var(--surface); border: 1px solid rgba(212,220,232,.9); border-radius: var(--radius);
       box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 14px;
+      overflow-x: clip;
+      min-width: 0;
     }
     .card > h2 {
       margin: 0 0 12px; font-size: 15px; display: flex; align-items: center; gap: 8px;
@@ -137,22 +150,78 @@
     .stat .k { font-size: 12px; color: var(--muted); }
     .stat .v { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -.02em; }
 
-    .grid2 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+    /* 좌우 컬럼이 콘텐츠 영역 전체를 나눠 씀 (오른쪽 여백 낭비 방지) */
+    .grid2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
     .grid2 > * { min-width: 0; }
+    .models-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .models-layout > * { min-width: 0; }
+    /* 좁은 왼쪽 컬럼은 폼을 1열로 — 2열이면 입력칸이 카드 밖으로 삐져나감 */
+    .models-layout .fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .table-wrap { overflow-x: hidden; overflow-y: auto; max-height: 480px; }
+    .mp-table-wrap { overflow-x: hidden; overflow-y: auto; max-height: 480px; margin-top: 12px; }
+    table.mp-table { width: 100%; table-layout: fixed; }
+    table.mp-table th,
+    table.mp-table td { vertical-align: middle; }
+    table.mp-table .col-name { width: 14%; }
+    table.mp-table .col-unit { width: 7%; }
+    table.mp-table .col-scale { width: 8%; }
+    table.mp-table .col-inst { width: 6%; text-align: center; }
+    table.mp-table .col-actions { width: 128px; white-space: nowrap; }
+    table.mp-table td.oid-cell,
+    table td.oid-cell {
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      white-space: normal;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    table.mp-table td.actions {
+      white-space: nowrap;
+      text-align: right;
+    }
+    table.mp-table td.actions .row { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
+    @media (max-width: 1100px) {
+      .grid2 { grid-template-columns: 1fr; }
+    }
     @media (max-width: 980px) {
       body { grid-template-columns: 1fr; }
       .side { display: none; }
-      .stats, .grid2 { grid-template-columns: 1fr; }
+      .stats, .grid2, .models-layout { grid-template-columns: 1fr; }
     }
 
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     label.field {
       display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 600;
+      min-width: 0;
     }
-    label.field > :is(input, select, textarea) { font-weight: 500; color: var(--text); }
-    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label.field > :is(input, select, textarea) {
+      font-weight: 500;
+      color: var(--text);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
     .fields .full { grid-column: 1 / -1; }
-    @media (max-width: 700px) { .fields { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .fields { grid-template-columns: minmax(0, 1fr); } }
 
     input, select, textarea, button {
       font: inherit; border-radius: 8px; border: 1px solid var(--line);
@@ -168,8 +237,8 @@
     button.ghost:hover { background: var(--surface2); }
     button.danger { background: var(--bad); border-color: var(--bad); color: #fff; }
     button.danger:hover { filter: brightness(1.05); }
-    td.actions, th.actions { min-width: 280px; }
-    td.actions .action-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    td.actions, th.actions { width: 1%; white-space: nowrap; }
+    td.actions .action-btns { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-end; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     .chip {
       display: inline-flex; align-items: center; gap: 4px;
@@ -181,9 +250,10 @@
     .chip.bad { background: var(--bad-bg); color: var(--bad); border-color: #f3c1bc; }
     .chip.warn { background: var(--warn-bg); color: var(--warn); border-color: #f0d48a; }
 
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; table-layout: auto; }
     th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
     th { font-size: 12px; color: var(--muted); font-weight: 650; background: var(--surface2); }
+    td .mono, td.mono { word-break: break-all; overflow-wrap: anywhere; }
     tr { cursor: default; }
     tr.clickable { cursor: pointer; }
     tr.clickable:hover td { background: #f3f7fc; }
@@ -700,7 +770,7 @@
             <button type="button" class="ghost" id="wReload">조회</button>
           </div>
           <div style="overflow:auto;max-height:420px">
-            <table style="min-width:720px">
+            <table>
               <thead><tr><th>이름</th><th>종류</th><th>표시</th><th>장비</th><th class="actions">작업</th></tr></thead>
               <tbody id="wBody"></tbody>
             </table>
@@ -916,8 +986,8 @@
     <!-- MODELS -->
     <section class="panel" id="tab-models">
       <h1 class="page-title">장비 모델</h1>
-      <p class="page-desc">제품 모델과 SNMP 측정 항목(OID)을 등록·삭제합니다. 위젯·수집에서 쓰는 포인트 이름입니다.</p>
-      <div class="grid2">
+      <p class="page-desc">제품 모델과 SNMP 측정 항목(OID)을 등록·수정·삭제합니다. 위젯·수집에서 쓰는 포인트 이름입니다.</p>
+      <div class="models-layout">
         <div>
           <div class="card">
             <h2>모델 목록</h2>
@@ -967,15 +1037,16 @@
           <div id="mpCreateBox" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">측정 항목 일괄 추가</div>
             <p class="muted" style="margin:0 0 10px;font-size:12px;line-height:1.45">행을 여러 개 채운 뒤 한 번에 등록합니다. 비어 있는 행은 무시됩니다.</p>
-            <div style="overflow:auto">
-              <table>
+            <div class="mp-table-wrap" style="max-height:none;margin-top:0">
+              <table class="mp-table">
                 <thead>
                   <tr>
-                    <th style="width:18%">이름</th>
+                    <th class="col-name">이름</th>
                     <th>OID</th>
-                    <th style="width:12%">단위</th>
-                    <th style="width:12%">inst</th>
-                    <th style="width:40px"></th>
+                    <th class="col-unit">단위</th>
+                    <th class="col-scale">scale</th>
+                    <th class="col-inst">inst</th>
+                    <th class="col-actions"></th>
                   </tr>
                 </thead>
                 <tbody id="mpRows"></tbody>
@@ -986,11 +1057,52 @@
               <button type="button" class="primary" id="mpCreate">일괄 등록</button>
             </div>
           </div>
-          <div style="overflow:auto;max-height:360px;margin-top:12px">
-            <table>
-              <thead><tr><th>항목</th><th>OID</th><th>단위</th><th></th></tr></thead>
+          <div class="mp-table-wrap">
+            <table class="mp-table">
+              <thead>
+                <tr>
+                  <th class="col-name">항목</th>
+                  <th>OID</th>
+                  <th class="col-unit">단위</th>
+                  <th class="col-scale">scale</th>
+                  <th class="col-actions">작업</th>
+                </tr>
+              </thead>
               <tbody id="mpBody"></tbody>
             </table>
+          </div>
+          <div id="mpEditBox" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">측정 항목 수정 <span id="mpEditId" class="mono"></span></div>
+            <div class="fields">
+              <label class="field">이름
+                <input id="mpEditName" />
+              </label>
+              <label class="field">단위
+                <input id="mpEditUnit" placeholder="W" />
+              </label>
+              <label class="field">scale
+                <input id="mpEditScale" class="mono" type="number" step="any" placeholder="비우면 1" title="raw × scale" />
+              </label>
+              <label class="field">inst
+                <select id="mpEditInst">
+                  <option value="false">없음</option>
+                  <option value="true">필요 ({instanceId})</option>
+                </select>
+              </label>
+              <label class="field full">OID
+                <input id="mpEditOid" class="mono" />
+              </label>
+              <label class="field">사용
+                <select id="mpEditEnabled">
+                  <option value="true">enabled</option>
+                  <option value="false">disabled</option>
+                </select>
+              </label>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button type="button" class="primary" id="mpEditSave">저장 (spec 재생성)</button>
+              <button type="button" class="ghost" id="mpEditCancel">취소</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1744,6 +1856,7 @@
       });
       $("mpCreateBox").style.display = "block";
       $("mpBody").innerHTML = "";
+      clearMpEdit();
       resetMpRows(3);
     }
 
@@ -1756,20 +1869,35 @@
         || (proto?.protocolName || "").toLowerCase().includes("snmp");
       try {
         if (!isSnmp) {
-          $("mpBody").innerHTML = `<tr><td colspan="4"><div class="empty">SNMP가 아닌 프로토콜입니다. SNMP 프로토콜을 선택하세요.</div></td></tr>`;
+          $("mpBody").innerHTML = `<tr><td colspan="5"><div class="empty">SNMP가 아닌 프로토콜입니다. SNMP 프로토콜을 선택하세요.</div></td></tr>`;
           $("mpCreateBox").style.display = "none";
           return;
         }
         $("mpCreateBox").style.display = "block";
         const points = await api(`/api/manager/device-models/${m.id}/protocols/${pid}/snmp-points`);
+        state.mpPoints = points || [];
+        clearMpEdit();
         $("mpBody").innerHTML = (points || []).map((p) =>
           `<tr>
-            <td><b>${esc(p.name)}</b>${p.requiresInstance ? ' <span class="chip warn">inst</span>' : ""}</td>
-            <td class="mono">${esc(p.oid)}</td>
+            <td><b>${esc(p.name)}</b>${p.requiresInstance ? ' <span class="chip warn">inst</span>' : ""}${p.enabled === false ? ' <span class="chip warn">off</span>' : ""}</td>
+            <td class="mono oid-cell">${esc(p.oid)}</td>
             <td>${esc(p.unit || "–")}</td>
-            <td><button type="button" class="danger" data-del-point="${p.id}" style="padding:4px 8px;font-size:12px">삭제</button></td>
+            <td class="mono">${p.scale == null ? "–" : esc(String(p.scale))}</td>
+            <td class="actions">
+              <div class="row">
+                <button type="button" class="primary" data-edit-point="${p.id}" style="padding:5px 10px;font-size:12px">수정</button>
+                <button type="button" class="danger" data-del-point="${p.id}" style="padding:5px 10px;font-size:12px">삭제</button>
+              </div>
+            </td>
           </tr>`
-        ).join("") || `<tr><td colspan="4"><div class="empty">측정 항목 없음</div></td></tr>`;
+        ).join("") || `<tr><td colspan="5"><div class="empty">측정 항목 없음</div></td></tr>`;
+        $("mpBody").querySelectorAll("[data-edit-point]").forEach((btn) => {
+          btn.onclick = () => {
+            const point = (state.mpPoints || []).find((x) => String(x.id) === String(btn.dataset.editPoint));
+            if (!point) return toast("항목을 찾을 수 없습니다", true);
+            fillMpEdit(point);
+          };
+        });
         $("mpBody").querySelectorAll("[data-del-point]").forEach((btn) => {
           btn.onclick = async () => {
             if (!confirm("이 측정 항목을 삭제할까요?")) return;
@@ -1794,13 +1922,70 @@
 
     $("mpLoad").onclick = () => loadSnmpPointsUi();
 
+    function clearMpEdit() {
+      state.mpEditPointId = null;
+      $("mpEditBox").style.display = "none";
+      $("mpEditId").textContent = "";
+      $("mpEditName").value = "";
+      $("mpEditOid").value = "";
+      $("mpEditUnit").value = "";
+      $("mpEditScale").value = "";
+      $("mpEditInst").value = "false";
+      $("mpEditEnabled").value = "true";
+    }
+
+    function fillMpEdit(point) {
+      state.mpEditPointId = point.id;
+      $("mpEditBox").style.display = "block";
+      $("mpEditId").textContent = `#${point.id}`;
+      $("mpEditName").value = point.name || "";
+      $("mpEditOid").value = point.oid || "";
+      $("mpEditUnit").value = point.unit || "";
+      $("mpEditScale").value = point.scale == null ? "" : String(point.scale);
+      $("mpEditInst").value = point.requiresInstance ? "true" : "false";
+      $("mpEditEnabled").value = point.enabled === false ? "false" : "true";
+      $("mpEditBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    $("mpEditCancel").onclick = () => clearMpEdit();
+
+    $("mpEditSave").onclick = async () => {
+      const m = state.selectedModel;
+      const pid = Number($("mpProtocol").value);
+      const pointId = state.mpEditPointId;
+      if (!m || !pid || !pointId) return toast("수정할 항목을 선택하세요", true);
+      const scaleRaw = $("mpEditScale").value.trim();
+      const scale = scaleRaw === "" ? null : Number(scaleRaw);
+      if (scale != null && !Number.isFinite(scale)) return toast("scale은 숫자여야 합니다", true);
+      const name = $("mpEditName").value.trim();
+      const oid = $("mpEditOid").value.trim();
+      if (!name || !oid) return toast("이름과 OID를 입력하세요", true);
+      try {
+        await api(`/api/manager/device-models/${m.id}/protocols/${pid}/snmp-points/${pointId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            name,
+            oid,
+            unit: $("mpEditUnit").value.trim() || null,
+            scale,
+            requiresInstance: $("mpEditInst").value === "true",
+            enabled: $("mpEditEnabled").value === "true",
+          }),
+        });
+        toast("측정 항목을 저장했고 수집 spec을 재생성했습니다");
+        clearMpEdit();
+        await loadSnmpPointsUi();
+      } catch (e) { toast(e.message, true); }
+    };
+
     function mpRowHtml() {
       return `<tr class="mp-row">
         <td><input class="mp-name" placeholder="TOTAL_WT" style="width:100%" /></td>
         <td><input class="mp-oid mono" placeholder="1.3.6.1… 또는 {instanceId}" style="width:100%" /></td>
         <td><input class="mp-unit" placeholder="W" style="width:100%" /></td>
-        <td style="text-align:center"><input type="checkbox" class="mp-inst" title="requiresInstance" /></td>
-        <td><button type="button" class="danger mp-del-row" style="padding:4px 8px;font-size:12px">×</button></td>
+        <td><input class="mp-scale mono" type="number" step="any" placeholder="1" style="width:100%" title="raw × scale (비우면 1)" /></td>
+        <td class="col-inst" style="text-align:center"><input type="checkbox" class="mp-inst" title="requiresInstance" /></td>
+        <td class="actions"><button type="button" class="danger mp-del-row" style="padding:5px 10px;font-size:12px">×</button></td>
       </tr>`;
     }
 
@@ -1813,6 +1998,7 @@
           tr.querySelector(".mp-name").value = "";
           tr.querySelector(".mp-oid").value = "";
           tr.querySelector(".mp-unit").value = "";
+          tr.querySelector(".mp-scale").value = "";
           tr.querySelector(".mp-inst").checked = false;
           return;
         }
@@ -1838,16 +2024,22 @@
       const m = state.selectedModel;
       const pid = Number($("mpProtocol").value);
       if (!m || !pid) return toast("모델을 먼저 선택하세요", true);
-      const points = [...$("mpRows").querySelectorAll(".mp-row")].map((tr) => ({
-        name: tr.querySelector(".mp-name").value.trim(),
-        oid: tr.querySelector(".mp-oid").value.trim(),
-        unit: tr.querySelector(".mp-unit").value.trim() || null,
-        requiresInstance: tr.querySelector(".mp-inst").checked,
-        enabled: true,
-      })).filter((p) => p.name || p.oid);
+      const points = [...$("mpRows").querySelectorAll(".mp-row")].map((tr) => {
+        const scaleRaw = tr.querySelector(".mp-scale").value.trim();
+        return {
+          name: tr.querySelector(".mp-name").value.trim(),
+          oid: tr.querySelector(".mp-oid").value.trim(),
+          unit: tr.querySelector(".mp-unit").value.trim() || null,
+          scale: scaleRaw === "" ? null : Number(scaleRaw),
+          requiresInstance: tr.querySelector(".mp-inst").checked,
+          enabled: true,
+        };
+      }).filter((p) => p.name || p.oid);
       if (!points.length) return toast("등록할 행을 입력하세요", true);
       const incomplete = points.find((p) => !p.name || !p.oid);
       if (incomplete) return toast("이름과 OID를 모두 입력하세요", true);
+      const badScale = points.find((p) => p.scale != null && !Number.isFinite(p.scale));
+      if (badScale) return toast("scale은 숫자여야 합니다", true);
       try {
         const created = await api(`/api/manager/device-models/${m.id}/protocols/${pid}/snmp-points/bulk`, {
           method: "POST",

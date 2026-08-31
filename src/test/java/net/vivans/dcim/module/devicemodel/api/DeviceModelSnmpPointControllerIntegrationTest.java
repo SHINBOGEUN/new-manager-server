@@ -69,6 +69,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
                                   "oid": "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
                                   "requiresInstance": true,
                                   "unit": "L/min",
+                                  "scale": 0.1,
                                   "enabled": true
                                 }
                                 """))
@@ -77,7 +78,8 @@ class DeviceModelSnmpPointControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.modelId").value(modelId))
                 .andExpect(jsonPath("$.data.protocolId").value(protocolId))
                 .andExpect(jsonPath("$.data.requiresInstance").value(true))
-                .andExpect(jsonPath("$.data.unit").value("L/min"));
+                .andExpect(jsonPath("$.data.unit").value("L/min"))
+                .andExpect(jsonPath("$.data.scale").value(0.1));
     }
 
     @Test

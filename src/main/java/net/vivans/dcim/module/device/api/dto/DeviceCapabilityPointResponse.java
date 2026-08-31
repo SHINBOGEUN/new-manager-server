@@ -4,6 +4,7 @@ public record DeviceCapabilityPointResponse(
         Integer pointId,
         String name,
         String unit,
+        Double scale,
         String oidTemplate,
         String resolvedOid,
         boolean requiresInstance

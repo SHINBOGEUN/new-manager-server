@@ -138,6 +138,7 @@ device.instanceId = 3   ← `device_endpoint_snmp.instance_id` (예정)에 저�
 | `oid` | VARCHAR(512) | N | UK** | | OID 또는 OID 템플릿 |
 | `requires_instance` | TINYINT(1) | N | | `0` | `{instanceId}` 치환 필요 여부 (boolean) |
 | `unit` | VARCHAR(50) | Y | | | 단위 (`V`, `A`, `L/min`) |
+| `scale` | DOUBLE | Y | | | 원시값 배율 (NULL=1). collector가 MQTT 전에 곱함 |
 | `enabled` | TINYINT(1) | N | | `1` | 사용 여부 (boolean) |
 | `created_dt` | TIMESTAMP(6) | Y | | | |
 | `updated_dt` | TIMESTAMP(6) | Y | | | |
@@ -180,6 +181,7 @@ device_model <- device_model_protocol -> common_code (snmp)
   "oid": "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
   "requiresInstance": true,
   "unit": "L/min",
+  "scale": 0.1,
   "enabled": true
 }
 ```
@@ -190,6 +192,7 @@ device_model <- device_model_protocol -> common_code (snmp)
 | `oid` | O | string | OID 또는 `{instanceId}` 포함 템플릿. 동일 protocol 내 유일 |
 | `requiresInstance` | X | boolean | 기본 `false`. `true`면 `oid`에 `{instanceId}` 필수 |
 | `unit` | X | string | 단위 |
+| `scale` | X | number | 원시값 배율. 생략/null이면 collector가 1로 취급 |
 | `enabled` | X | boolean | 기본 `true` |
 
 #### 응답 — `201 Created`
@@ -205,6 +208,7 @@ device_model <- device_model_protocol -> common_code (snmp)
     "oid": "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
     "requiresInstance": true,
     "unit": "L/min",
+    "scale": 0.1,
     "enabled": true
   }
 }
@@ -222,6 +226,7 @@ device_model <- device_model_protocol -> common_code (snmp)
 | requiresInstance=true인데 placeholder 없음 | 400 | `oid must contain {instanceId}` |
 | requiresInstance=false인데 placeholder 있음 | 400 | `oid must not contain {instanceId}` |
 | oid 형식 오류 | 400 | `invalid oid format` |
+| scale가 NaN/Infinity | 400 | `scale must be a finite number` |
 
 ### 3.2 point 일괄 추가 — `POST /api/manager/device-models/{modelId}/protocols/{protocolId}/snmp-points/bulk`
 
@@ -311,6 +316,7 @@ device_model <- device_model_protocol -> common_code (snmp)
       "oid": "1.3.6.1.4.1.12345.{instanceId}.10.1.0",
       "requiresInstance": true,
       "unit": "L/min",
+      "scale": 0.1,
       "enabled": true
     }
   ]

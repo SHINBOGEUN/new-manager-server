@@ -68,7 +68,12 @@ public class CollectionGroupSpecService {
                 skipped.add("point '" + point.getName() + "' skipped: disabled");
                 continue;
             }
-            oids.add(new CollectionGroupOidSpec(point.getName(), point.getOid(), point.isRequiresInstance()));
+            oids.add(new CollectionGroupOidSpec(
+                    point.getName(),
+                    point.getOid(),
+                    point.isRequiresInstance(),
+                    point.getScale()
+            ));
             if (point.isRequiresInstance()) {
                 requiresAnyInstance = true;
             }
