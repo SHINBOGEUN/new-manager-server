@@ -43,66 +43,66 @@ public class PageWidgetAggregate extends BaseEntity {
     @Column(name = "denominator_point", length = 100)
     private String denominatorPoint;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "range_preset", length = 16)
+    private PageWidgetChartRangePreset rangePreset;
+
     private PageWidgetAggregate(
             PageWidget widget,
             PageWidgetOp op,
-            String weightPoint,
-            String numeratorPoint,
-            String denominatorPoint
+            PageWidgetChartRangePreset rangePreset
     ) {
         if (widget == null) {
             throw new IllegalArgumentException("widget is required");
         }
         if (op == null) {
-            throw new IllegalArgumentException("op is required for aggregate");
+            throw new IllegalArgumentException("aggregatePreset/op is required for aggregate");
         }
         this.widget = widget;
         this.op = op;
-        this.weightPoint = blankToNull(weightPoint);
-        this.numeratorPoint = blankToNull(numeratorPoint);
-        this.denominatorPoint = blankToNull(denominatorPoint);
+        this.weightPoint = null;
+        this.numeratorPoint = null;
+        this.denominatorPoint = null;
+        this.rangePreset = resolveRangePreset(op, rangePreset);
         validate();
     }
 
     static PageWidgetAggregate create(
             PageWidget widget,
             PageWidgetOp op,
-            String weightPoint,
-            String numeratorPoint,
-            String denominatorPoint
+            PageWidgetChartRangePreset rangePreset
     ) {
-        return new PageWidgetAggregate(widget, op, weightPoint, numeratorPoint, denominatorPoint);
+        return new PageWidgetAggregate(widget, op, rangePreset);
     }
 
-    void update(
-            PageWidgetOp op,
-            String weightPoint,
-            String numeratorPoint,
-            String denominatorPoint
-    ) {
+    void update(PageWidgetOp op, PageWidgetChartRangePreset rangePreset) {
         if (op == null) {
-            throw new IllegalArgumentException("op is required for aggregate");
+            throw new IllegalArgumentException("aggregatePreset/op is required for aggregate");
         }
         this.op = op;
-        this.weightPoint = blankToNull(weightPoint);
-        this.numeratorPoint = blankToNull(numeratorPoint);
-        this.denominatorPoint = blankToNull(denominatorPoint);
+        this.weightPoint = null;
+        this.numeratorPoint = null;
+        this.denominatorPoint = null;
+        this.rangePreset = resolveRangePreset(op, rangePreset);
         validate();
     }
 
-    private void validate() {
-        if (op == PageWidgetOp.weighted_avg && weightPoint == null) {
-            throw new IllegalArgumentException("weightPoint is required for weighted_avg");
+    private static PageWidgetChartRangePreset resolveRangePreset(
+            PageWidgetOp op,
+            PageWidgetChartRangePreset rangePreset
+    ) {
+        if (rangePreset != null) {
+            return rangePreset;
         }
-        if (op == PageWidgetOp.divide && (numeratorPoint == null || denominatorPoint == null)) {
-            throw new IllegalArgumentException("numeratorPoint and denominatorPoint are required for divide");
+        if (op == PageWidgetOp.usage) {
+            return PageWidgetChartRangePreset.today;
         }
+        return rangePreset;
     }
 
-    private static String blankToNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    private void validate() {
+        if (op == PageWidgetOp.usage && rangePreset == null) {
+            throw new IllegalArgumentException("aggregateRangePreset is required for usage");
         }
-        return value.trim();
     }
 }

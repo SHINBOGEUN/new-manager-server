@@ -3,10 +3,9 @@
 UI 페이지는 `DEVICE_PAGE` 그룹의 `common_code`로 둡니다.  
 장비 범위는 **`device_page`가 아니라** 페이지 위젯 → `page_widget_device`입니다.
 
-> 필수 시드: [REQUIRED_BOOTSTRAP.sql](../../sql/seed/REQUIRED_BOOTSTRAP.sql)  
-> (history: [V014](../../sql/history/V014__seed_device_page_codes.sql) / [V017](../../sql/history/V017__seed_required_common_codes.sql))  
+> 필수 공통코드: Ops Console에서 `DEVICE_PAGE` 그룹 등록 ([`sql/README.md`](../../sql/README.md))  
 > 매핑/카드: [PAGE_WIDGET_API.md](./PAGE_WIDGET_API.md)  
-> DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (`device_page` DROP 포함)
+> DDL: [`15_page_widget.sql`](../../sql/schema/15_page_widget.sql) ~ [`22_page_widget_layout.sql`](../../sql/schema/22_page_widget_layout.sql)
 
 ---
 

@@ -4,7 +4,7 @@
 페이지를 고르면 위젯 목록이 나오고, 종류(`query_kind`)에 따라 값을 조회합니다.
 
 > API prefix: `/api/manager/widgets`  
-> DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (core + kind별 1:1 확장 + 바인딩)
+> DDL: [`15_page_widget.sql`](../../sql/schema/15_page_widget.sql) ~ [`22_page_widget_layout.sql`](../../sql/schema/22_page_widget_layout.sql) (core + kind별 1:1 확장 + 바인딩)
 
 ```text
 common_code (DEVICE_PAGE)          ← 페이지
@@ -41,7 +41,7 @@ API JSON 필드명은 그대로 — 서버가 core + 확장을 조합해 응답/
 | `last` | 지정 장비의 최신 값 | `GET /query/last?widgetId=` ✅ |
 | `count` | **전체 enabled 장비** 개수 (모드별) | `GET /query/count?widgetId=` ✅ |
 | `chart` | 시계열 (장비/모델 범위 + point) | `GET /query/chart?widgetId=` ✅ |
-| `aggregate` | 지정 장비로 집계 | 예정 (PUE 후순위) |
+| `aggregate` | 지정 장비로 집계 | ✅ [QUERY_AGGREGATE_API.md](../query/QUERY_AGGREGATE_API.md) |
 
 차트는 위젯 `queryKind=chart` → [QUERY_CHART_API.md](../query/QUERY_CHART_API.md)
 
@@ -55,7 +55,7 @@ DTO `@NotEmpty`로 kind 공통 필수를 걸지 않음.
 | `query_kind` | 필수 | 선택 | 금지(넣으면 400) |
 |--------------|------|------|------------------|
 | **last** | `deviceIds` (≥1), `pointNames` (≥1) | `layout`, `groupBy` | `op`, count/chart 옵션 |
-| **aggregate** | `deviceIds` (≥1), `op` | `pointNames`, `groupBy`, `layout` | count/chart 옵션 |
+| **aggregate** | `deviceIds` (≥1), `op` (usage\|power\|pue), `pointNames` (정확히 1개). pue는 `itDeviceIds`도 필수 | `aggregateRangePreset`, `groupBy`, `layout` | count/chart 옵션 |
 | **count** | — | `countMode`, `layout` | `op`, chart 옵션, device/point 불필요 |
 | **chart** | `pointNames` (≥1), scope에 따른 범위 | chart 옵션, `layout` | `op`, count 옵션 |
 
@@ -75,13 +75,15 @@ DTO `@NotEmpty`로 kind 공통 필수를 걸지 않음.
 | `by_phase` | point 이름별 합 (L1/L2/L3) |
 | `by_path` | location_node별 합 |
 
-### aggregate `op`별 추가 필수
+### aggregate preset (`op`)
 
-| `op` | 추가 필수 |
-|------|-----------|
-| `delta_sum` | — |
-| `weighted_avg` | `weightPoint` |
-| `divide` | `numeratorPoint`, `denominatorPoint` |
+| `op` | 계산 | 추가 필수 |
+|------|------|-----------|
+| `usage` | 선택 포인트 구간 차분 합 | `aggregateRangePreset` (미지정 시 `today`) |
+| `power` | 선택 포인트 마지막값 합 | — (기간 기본 `last_24h`) |
+| `pue` | total last / it last | `deviceIds`(total) + `itDeviceIds`(it), 겹침 불가, 동일 `pointNames` 1개 |
+
+`pointNames` 예: `TOTAL_WT`, `W`, `TOTAL_KWH` — 모델 카탈로그 이름 그대로. `weightPoint` / `numeratorPoint` / `denominatorPoint`는 deprecated(항상 null).
 
 ### count `countMode`별 추가 필수
 
@@ -115,7 +117,7 @@ kind별 옵션 컬럼은 core에 두지 않습니다. 아래 **1:1 확장**에�
 
 | 테이블 | `query_kind` | 컬럼 | API 필드 (동일) |
 |--------|--------------|------|-----------------|
-| `page_widget_aggregate` | aggregate | `op`, `weight_point`, `numerator_point`, `denominator_point` | `op`, `weightPoint`, `numeratorPoint`, `denominatorPoint` |
+| `page_widget_aggregate` | aggregate | `op`, `range_preset` (`weight_*` 미사용) | `op`, `aggregateRangePreset` |
 | `page_widget_count` | count | `count_mode`, `count_model_id` | `countMode`, `countModelId` |
 | `page_widget_chart` | chart | `chart_scope`, `chart_series_mode`, `chart_range_preset`, `chart_window` | `chartScope`, `chartSeriesMode`, `chartRangePreset`, `chartWindow` |
 
@@ -125,7 +127,8 @@ kind별 옵션 컬럼은 core에 두지 않습니다. 아래 **1:1 확장**에�
 
 ### 3.3 `page_widget_device`
 
-last / aggregate / chart(scope=devices) 용. **count·chart(models)는 비움.**
+last / aggregate / chart(scope=devices) 용. **count·chart(models)는 비움.**  
+aggregate `pue`는 `device_role`: `total` / `it` (그 외·NULL = `default`).
 
 ### 3.4 `page_widget_model`
 
@@ -215,7 +218,7 @@ GET /api/manager/query/count?widgetId=12
 | last | ✅ | [QUERY_LAST_API.md](../query/QUERY_LAST_API.md) |
 | count | ✅ | [QUERY_COUNT_API.md](../query/QUERY_COUNT_API.md) |
 | chart | ✅ | [QUERY_CHART_API.md](../query/QUERY_CHART_API.md) |
-| aggregate | 예정 (PUE는 후순위) | — |
+| aggregate | ✅ `GET /query/aggregate` | [QUERY_AGGREGATE_API.md](../query/QUERY_AGGREGATE_API.md) |
 
 ---
 
@@ -233,7 +236,7 @@ GET /api/manager/query/count?widgetId=12
 | PUT | `/api/manager/widgets/{id}/layout` |
 | DELETE | `/api/manager/widgets/{id}` |
 
-- **last / aggregate:** `deviceIds` 필수. last는 `pointNames`도 필수.
+- **last / aggregate:** `deviceIds` 필수. `pointNames` 필수 (aggregate는 정확히 1개).
 - **count:** `deviceIds` / `pointNames` 생략 또는 `[]`. `countMode` (+ `model`이면 `countModelId`) 사용.
 - **chart:** `pointNames` 필수. `chartScope=devices`면 `deviceIds`, `models`면 `modelIds`. 상세 [QUERY_CHART_API.md](../query/QUERY_CHART_API.md).
 - `layout`은 생성 시 선택. update에서 `layout` 생략 시 기존 배치 유지.

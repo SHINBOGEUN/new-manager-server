@@ -3,6 +3,9 @@ spring:
     name: new-manager-server
   profiles:
     active: test
+  jackson:
+    generator:
+      write-bigdecimal-as-plain: true
 server:
   port: 8080
   servlet:

@@ -22,7 +22,9 @@ GET /api/manager/query/last?widgetId=12
 2. `page_widget_device`의 **enabled** 장비
 3. `page_widget_point`의 pointNames로 Influx `last()`
 4. 장비 모델 SNMP point의 `unit`을 붙여 응답 (`unit` 없으면 null)
-5. 응답에 `widgetName` + 장비별 points
+5. 값은 **소수 2자리**로 반올림
+6. 동일 unit이면 `total` / `totalUnit`에 전체 합
+7. 응답에 `widgetName` + 장비별 points
 
 ### 응답 예
 
@@ -33,6 +35,8 @@ GET /api/manager/query/last?widgetId=12
     "widgetId": 12,
     "widgetName": "칠러A",
     "pageCode": "dashboard",
+    "total": 540.10,
+    "totalUnit": "W",
     "devices": [
       {
         "deviceId": 40,

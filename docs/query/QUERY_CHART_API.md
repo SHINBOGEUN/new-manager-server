@@ -9,7 +9,7 @@ GET /api/manager/query/chart?widgetId=12&rangePreset=today&window=15m&seriesMode
 ```
 
 관련 위젯 정의: [PAGE_WIDGET_API.md](../device/PAGE_WIDGET_API.md)  
-DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (`page_widget_chart` + `page_widget_model`)
+DDL: [`18_page_widget_chart.sql`](../../sql/schema/18_page_widget_chart.sql), [`21_page_widget_model.sql`](../../sql/schema/21_page_widget_model.sql)
 
 ---
 
@@ -23,7 +23,7 @@ DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.s
 | `deviceIds` | scope=devices | enabled 필터는 조회 시 |
 | `modelIds` | scope=models | 해당 모델의 enabled 장비 전체 |
 | `chartSeriesMode` | | `per_device`(기본) \| `sum` \| `by_phase` \| `by_path` |
-| `chartRangePreset` | | `last_24h`(기본) \| `today` \| `yesterday` \| `last_7d` \| `this_month` |
+| `chartRangePreset` | | `last_24h`(기본) \| `today` \| `yesterday` \| `last_7d` \| `this_month` \| `last_month` |
 | `chartWindow` | | `1m` \| `5m`(기본) \| `15m` \| `1h` \| `1d` |
 
 ### seriesMode (UI 표기 ↔ API)

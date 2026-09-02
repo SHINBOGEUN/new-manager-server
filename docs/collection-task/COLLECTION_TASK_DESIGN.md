@@ -467,7 +467,7 @@ new-sensor-data-service → new-manager-server : X-Api-Key
 
 | 순서 | 상태 | 작업 | 비고 |
 |---|---|---|---|
-| A1 | [x] | `V016__create_collection_task.sql` | INT PK, model 1 Task + 주기 그룹 + 장비 매핑 |
+| A1 | [x] | [`12_collection_task.sql`](../../sql/schema/12_collection_task.sql) 등 | INT PK, model 1 Task + 주기 그룹 + 장비 매핑 |
 | A2 | [x] | CollectionTask 도메인/리포지토리/서비스 | UUID Task CRUD |
 | A3 | [x] | `/api/manager/collector/tasks` CRUD | 생성/조회/수정/삭제/toggle |
 | A4 | [x] | `CollectionScriptGenerator` JS 자동 생성 | v4에서 그룹 JSON spec으로 교체 완료 |

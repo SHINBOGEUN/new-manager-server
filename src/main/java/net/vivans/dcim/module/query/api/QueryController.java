@@ -4,9 +4,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.query.api.dto.AggregateWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
+import net.vivans.dcim.module.query.application.AggregateQueryService;
 import net.vivans.dcim.module.query.application.ChartQueryService;
 import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
@@ -26,6 +28,7 @@ public class QueryController {
     private final LastQueryService lastQueryService;
     private final CountQueryService countQueryService;
     private final ChartQueryService chartQueryService;
+    private final AggregateQueryService aggregateQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -80,5 +83,21 @@ public class QueryController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 chartQueryService.getChart(widgetId, rangePreset, window, seriesMode)));
+    }
+
+    @GetMapping("/aggregate")
+    @Operation(
+            summary = "위젯 집계값 조회",
+            description = "queryKind=aggregate 위젯의 preset(usage|power|pue)으로 구간 집계값을 조회합니다. "
+                    + "rangePreset 미지정 시 위젯 aggregateRangePreset, 없으면 usage→today / power·pue→last_24h."
+    )
+    public ResponseEntity<ApiResponse<AggregateWidgetResponse>> getAggregate(
+            @Parameter(description = "page_widget id", example = "12", required = true)
+            @RequestParam Integer widgetId,
+            @Parameter(description = "기간 preset: last_24h|today|yesterday|last_7d|this_month|last_month")
+            @RequestParam(required = false) String rangePreset
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                aggregateQueryService.getAggregate(widgetId, rangePreset)));
     }
 }

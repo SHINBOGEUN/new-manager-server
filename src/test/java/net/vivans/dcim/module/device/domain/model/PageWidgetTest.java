@@ -56,12 +56,13 @@ class PageWidgetTest {
                 "장비 수",
                 true,
                 PageWidgetQueryKind.count,
-                null, null, null, null, null,
+                null, null, null,
                 PageWidgetCountMode.total,
                 null,
                 null, null, null, null,
                 List.of("W"),
                 List.of(device(1), device(2)),
+                List.of(),
                 List.of()
         );
 
@@ -77,10 +78,11 @@ class PageWidgetTest {
                 "장비 수",
                 true,
                 PageWidgetQueryKind.count,
-                null, null, null, null, null,
+                null, null, null,
                 PageWidgetCountMode.total,
                 null,
                 null, null, null, null,
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of()
@@ -98,7 +100,7 @@ class PageWidgetTest {
                 "전력 차트",
                 true,
                 PageWidgetQueryKind.chart,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 PageWidgetChartScope.devices,
                 PageWidgetChartSeriesMode.per_device,
@@ -106,6 +108,7 @@ class PageWidgetTest {
                 "5m",
                 List.of("W"),
                 List.of(device(1), device(2)),
+                List.of(),
                 List.of()
         );
 
@@ -124,13 +127,14 @@ class PageWidgetTest {
                 "모델 차트",
                 true,
                 PageWidgetQueryKind.chart,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 PageWidgetChartScope.models,
                 PageWidgetChartSeriesMode.by_phase,
                 PageWidgetChartRangePreset.this_month,
                 "1h",
                 List.of("L1", "L2", "L3"),
+                List.of(),
                 List.of(),
                 List.of(10, 20)
         );
@@ -148,7 +152,7 @@ class PageWidgetTest {
                 "전력 차트",
                 true,
                 PageWidgetQueryKind.chart,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 PageWidgetChartScope.devices,
                 PageWidgetChartSeriesMode.sum,
@@ -156,6 +160,7 @@ class PageWidgetTest {
                 "15m",
                 List.of("W"),
                 List.of(device(1)),
+                List.of(),
                 List.of()
         );
 
@@ -163,7 +168,7 @@ class PageWidgetTest {
                 "전력 차트",
                 true,
                 PageWidgetQueryKind.chart,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 PageWidgetChartScope.devices,
                 PageWidgetChartSeriesMode.by_phase,
@@ -171,6 +176,7 @@ class PageWidgetTest {
                 "15m",
                 List.of("L1_WATT", "L2_WATT", "L3_WATT"),
                 List.of(device(1), device(2)),
+                List.of(),
                 List.of()
         );
 
@@ -196,10 +202,11 @@ class PageWidgetTest {
 
         assertThatThrownBy(() -> PageWidget.create(
                 wrong, "칠러", true, PageWidgetQueryKind.last,
-                null, null, null, null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
                 List.of("W"),
                 List.of(device(1)),
+                List.of(),
                 List.of()
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -213,14 +220,98 @@ class PageWidgetTest {
                 "오늘 kWh",
                 true,
                 PageWidgetQueryKind.aggregate,
-                null, null, null, null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
-                List.of("TOTAL_KWH"),
+                List.of(),
                 List.of(device(1)),
+                List.of(),
                 List.of()
         ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("op is required for aggregate");
+                .hasMessage("aggregatePreset/op is required for aggregate");
+    }
+
+    @Test
+    void create_usageRequiresPointName() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "오늘 사용량",
+                true,
+                PageWidgetQueryKind.aggregate,
+                PageWidgetOp.usage, null, null,
+                null, null,
+                null, null, null, null,
+                List.of("TOTAL_KWH"),
+                List.of(device(1)),
+                List.of(),
+                List.of()
+        );
+
+        assertThat(widget.getOp()).isEqualTo(PageWidgetOp.usage);
+        assertThat(widget.getAggregateRangePreset()).isEqualTo(PageWidgetChartRangePreset.today);
+        assertThat(widget.pointNames()).containsExactly("TOTAL_KWH");
+        assertThat(widget.deviceIds()).containsExactly(1);
+        assertThat(widget.itDeviceIds()).isEmpty();
+    }
+
+    @Test
+    void create_aggregateWithoutPointName_throws() {
+        assertThatThrownBy(() -> PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "전력",
+                true,
+                PageWidgetQueryKind.aggregate,
+                PageWidgetOp.power, null, PageWidgetChartRangePreset.today,
+                null, null,
+                null, null, null, null,
+                List.of(),
+                List.of(device(1)),
+                List.of(),
+                List.of()
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("pointNames is required for aggregate");
+    }
+
+    @Test
+    void create_pueRequiresBothDeviceSets() {
+        assertThatThrownBy(() -> PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "PUE",
+                true,
+                PageWidgetQueryKind.aggregate,
+                PageWidgetOp.pue, null, PageWidgetChartRangePreset.last_24h,
+                null, null,
+                null, null, null, null,
+                List.of(),
+                List.of(device(1)),
+                List.of(),
+                List.of()
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("itDeviceIds");
+    }
+
+    @Test
+    void create_pueAssignsRoles() {
+        PageWidget widget = PageWidget.create(
+                pageCode("dashboard", "dashboard"),
+                "PUE",
+                true,
+                PageWidgetQueryKind.aggregate,
+                PageWidgetOp.pue, null, PageWidgetChartRangePreset.last_24h,
+                null, null,
+                null, null, null, null,
+                List.of("TOTAL_WT"),
+                List.of(device(1), device(2)),
+                List.of(device(3)),
+                List.of()
+        );
+
+        assertThat(widget.totalDeviceIds()).containsExactly(1, 2);
+        assertThat(widget.itDeviceIds()).containsExactly(3);
+        assertThat(widget.deviceIds()).containsExactly(1, 2);
+        assertThat(widget.pointNames()).containsExactly("TOTAL_WT");
     }
 
     @Test
@@ -231,11 +322,12 @@ class PageWidgetTest {
                 "칠러 상태",
                 false,
                 PageWidgetQueryKind.last,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 null, null, null, null,
                 List.of("status", "W"),
                 List.of(device(11)),
+                List.of(),
                 List.of()
         );
 
@@ -258,11 +350,12 @@ class PageWidgetTest {
                 name,
                 true,
                 PageWidgetQueryKind.last,
-                null, null, null, null, null,
+                null, null, null,
                 null, null,
                 null, null, null, null,
                 points,
                 devices,
+                List.of(),
                 List.of()
         );
     }

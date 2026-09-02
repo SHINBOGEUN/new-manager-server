@@ -66,6 +66,52 @@ public class InfluxPointQuery implements PointQuery {
         }
     }
 
+    @Override
+    public List<LastPoint> findFirstInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    ) {
+        String flux = BoundaryFluxBuilder.buildFirstQuery(
+                properties.getBucket(),
+                properties.getMeasurement(),
+                deviceIds,
+                pointNames,
+                start,
+                end
+        );
+        try {
+            return mapLast(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query first-in-range failed: {}", exception.getMessage(), exception);
+            throw new QueryException("InfluxDB query failed");
+        }
+    }
+
+    @Override
+    public List<LastPoint> findLastInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    ) {
+        String flux = BoundaryFluxBuilder.buildLastQuery(
+                properties.getBucket(),
+                properties.getMeasurement(),
+                deviceIds,
+                pointNames,
+                start,
+                end
+        );
+        try {
+            return mapLast(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query last-in-range failed: {}", exception.getMessage(), exception);
+            throw new QueryException("InfluxDB query failed");
+        }
+    }
+
     private List<FluxTable> query(String flux) {
         QueryApi queryApi = client.getQueryApi();
         return queryApi.query(flux, properties.getOrg());

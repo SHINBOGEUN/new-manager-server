@@ -111,6 +111,9 @@ class LastQueryServiceTest {
         assertThat(response.devices()).hasSize(1);
         assertThat(response.devices().get(0).points().get(0).pointName()).isEqualTo("W");
         assertThat(response.devices().get(0).points().get(0).unit()).isEqualTo("W");
+        assertThat(response.devices().get(0).points().get(0).value()).isEqualByComparingTo("520.00");
+        assertThat(response.total()).isEqualByComparingTo("520.00");
+        assertThat(response.totalUnit()).isEqualTo("W");
     }
 
     @Test

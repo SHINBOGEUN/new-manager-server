@@ -24,20 +24,23 @@ public record PageWidgetCreateRequest(
         @NotBlank(message = "queryKind is required")
         String queryKind,
 
-        @Schema(description = "aggregate 연산: delta_sum | weighted_avg | divide")
+        @Schema(description = "aggregate preset: usage | power | pue")
         String op,
 
         @Schema(description = "그룹: device | point | location")
         String groupBy,
 
-        @Schema(description = "weighted_avg 가중치 포인트", example = "W")
+        @Schema(description = "deprecated — ignored", deprecated = true)
         String weightPoint,
 
-        @Schema(description = "divide 분자 포인트")
+        @Schema(description = "deprecated — ignored", deprecated = true)
         String numeratorPoint,
 
-        @Schema(description = "divide 분모 포인트")
+        @Schema(description = "deprecated — ignored", deprecated = true)
         String denominatorPoint,
+
+        @Schema(description = "aggregate 기간 preset: last_24h | today | yesterday | last_7d | this_month | last_month (usage 필수, 미지정 시 today)")
+        String aggregateRangePreset,
 
         @Schema(description = "count만: total | by_model | model (미지정 시 조회 기본 by_model)")
         String countMode,
@@ -57,13 +60,16 @@ public record PageWidgetCreateRequest(
         @Schema(description = "chart만: 1m | 5m | 15m | 1h | 1d (기본 5m)")
         String chartWindow,
 
-        @Schema(description = "last/aggregate 필수. chart+devices 필수. count/chart+models는 []", example = "[9]")
+        @Schema(description = "last/aggregate 필수. pue면 총 전력 장비. chart+devices 필수. count/chart+models는 []", example = "[9]")
         List<Integer> deviceIds,
+
+        @Schema(description = "aggregate pue만: IT 전력 장비", example = "[10,11]")
+        List<Integer> itDeviceIds,
 
         @Schema(description = "chart+models 일 때 필수 — device_model.id 목록", example = "[10,20]")
         List<Integer> modelIds,
 
-        @Schema(description = "last/chart 필수. aggregate 권장. count는 []", example = "[\"W\",\"L1\"]")
+        @Schema(description = "last/aggregate/chart: pointNames (aggregate는 1개). count는 []", example = "[\"TOTAL_WT\"]")
         List<String> pointNames,
 
         @Schema(description = "2D 그리드 배치 (선택)")
