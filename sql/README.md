@@ -10,7 +10,8 @@ JPA `ddl-auto: none`(운영/개발)이므로, 테이블 생성·변경은 이 �
 ```
 sql/
 ├── README.md
-├── history/                 ← 스키마 DDL (번호 순)
+├── schema/                  ← 신규 DB용 최종 DDL (01~22, FK 순) — [README](./schema/README.md)
+├── history/                 ← 기존 DB 증분 마이그레이션 (V001~V021)
 ├── seed/
 │   └── REQUIRED_BOOTSTRAP.sql   ← 신규 배포 필수 시드
 ├── dumps/                   ← DB 스냅샷 백업 (mysqldump)
@@ -18,6 +19,17 @@ sql/
 └── scripts/
     └── cleanup_business_data.sql  ← 비즈니스 데이터만 삭제 (부트스트랩 유지)
 ```
+
+---
+
+## 신규 vs 기존 배포
+
+| 대상 | 스키마 | 시드 |
+|------|--------|------|
+| **빈 DB (신규)** | [`schema/01~22`](./schema/README.md) 번호 순 | [`REQUIRED_BOOTSTRAP.sql`](./seed/REQUIRED_BOOTSTRAP.sql) |
+| **history 적용 중인 DB** | 미적용 `history/V00N`만 추가 | 필요 시 bootstrap |
+
+`history/V001~V021`도 빈 DB에 순서대로 적용 가능하나, V008 중복·V013 공백·V012/V015/V020/V021 재실행 불가 등 이슈가 있어 **신규는 `schema/` 권장**. 상세는 [`schema/README.md`](./schema/README.md).
 
 ---
 
@@ -34,15 +46,21 @@ V{번호}__{설명}.sql
 
 ## 신규 배포 순서
 
-1. **스키마** — `history/` 번호 순 (V001 ~ 최신)
+1. **스키마** — [`schema/01~22`](./schema/README.md) 번호 순 (권장) 또는 `history/V001` ~ 최신
 2. **필수 시드** — [`seed/REQUIRED_BOOTSTRAP.sql`](./seed/REQUIRED_BOOTSTRAP.sql)
 3. **로그인 계정** — `users`는 시드에 없음. Ops Console 또는 API로 생성
 4. **현장 데이터** — UI(`/ops-console.html`)로 등록 (샘플 SQL 없음)
 
 ```bash
-mysql -h HOST -P PORT -u dcim -p dcim_new < sql/history/V001__create_users_table.sql
-# … V002 ~ V019 (V013 없음 — 구 device_page 는 미생성) …
+for f in sql/schema/[0-9][0-9]_*.sql; do mysql -h HOST -P PORT -u dcim -p dcim_new < "$f"; done
 mysql -h HOST -P PORT -u dcim -p dcim_new < sql/seed/REQUIRED_BOOTSTRAP.sql
+```
+
+기존 DB 증분 적용 예:
+
+```bash
+mysql -h HOST -P PORT -u dcim -p dcim_new < sql/history/V001__create_users_table.sql
+# … 미적용 V00N만 …
 ```
 
 > **번호 공백:** `V013`은 구 `device_page` 생성 스크립트였으나 V018에서 제거되어 history에서 삭제함.  

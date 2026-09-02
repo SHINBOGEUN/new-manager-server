@@ -23,7 +23,7 @@ DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.s
 | `deviceIds` | scope=devices | enabled 필터는 조회 시 |
 | `modelIds` | scope=models | 해당 모델의 enabled 장비 전체 |
 | `chartSeriesMode` | | `per_device`(기본) \| `sum` \| `by_phase` \| `by_path` |
-| `chartRangePreset` | | `last_24h`(기본) \| `today` \| `yesterday` \| `last_7d` \| `this_month` |
+| `chartRangePreset` | | `last_24h`(기본) \| `today` \| `yesterday` \| `last_7d` \| `this_month` \| `last_month` |
 | `chartWindow` | | `1m` \| `5m`(기본) \| `15m` \| `1h` \| `1d` |
 
 ### seriesMode (UI 표기 ↔ API)

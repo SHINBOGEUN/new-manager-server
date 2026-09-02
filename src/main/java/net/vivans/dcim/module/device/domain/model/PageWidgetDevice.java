@@ -1,5 +1,7 @@
 package net.vivans.dcim.module.device.domain.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -37,18 +39,27 @@ public class PageWidgetDevice {
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
 
-    private PageWidgetDevice(PageWidget widget, Device device) {
+    @Convert(converter = PageWidgetDeviceRoleConverter.class)
+    @Column(name = "device_role", length = 16)
+    private PageWidgetDeviceRole deviceRole;
+
+    private PageWidgetDevice(PageWidget widget, Device device, PageWidgetDeviceRole role) {
         this.widget = widget;
         this.device = device;
+        this.deviceRole = role == null || role == PageWidgetDeviceRole.DEFAULT ? null : role;
     }
 
-    static PageWidgetDevice create(PageWidget widget, Device device) {
+    static PageWidgetDevice create(PageWidget widget, Device device, PageWidgetDeviceRole role) {
         if (widget == null) {
             throw new IllegalArgumentException("widget is required");
         }
         if (device == null) {
             throw new IllegalArgumentException("device is required");
         }
-        return new PageWidgetDevice(widget, device);
+        return new PageWidgetDevice(widget, device, role);
+    }
+
+    public PageWidgetDeviceRole getDeviceRole() {
+        return deviceRole == null ? PageWidgetDeviceRole.DEFAULT : deviceRole;
     }
 }

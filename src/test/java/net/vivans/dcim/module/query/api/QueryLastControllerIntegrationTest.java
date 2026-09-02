@@ -160,9 +160,10 @@ class QueryLastControllerIntegrationTest {
                                   "pageCode": "%s",
                                   "name": "%s",
                                   "queryKind": "aggregate",
-                                  "op": "delta_sum",
+                                  "op": "usage",
+                                  "aggregateRangePreset": "today",
                                   "deviceIds": [%d],
-                                  "pointNames": ["TOTAL_KWH"]
+                                  "pointNames": []
                                 }
                                 """.formatted(pageCode, name, deviceId)))
                 .andExpect(status().isOk())

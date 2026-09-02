@@ -1,7 +1,7 @@
 # Ops Console
 
 경로: `http://localhost:8080/ops-console.html`  
-정적 운영 등록 UI. 업체 본 UI 아님. **계산(PUE 등)은 서버 aggregate API** 로 갈 예정.
+정적 운영 등록 UI. 업체 본 UI 아님. **계산(PUE 등)은 서버 aggregate API** (`GET /api/manager/query/aggregate`).
 
 ## 수집 장비 추가 흐름 (UI가 쓰는 API)
 
@@ -48,7 +48,7 @@
 
 ### 외부 / 미구현
 - Live: `live-test.html`
-- Query aggregate (PUE): 서버 API 미구현. count · chart는 구현됨
+- Query aggregate (usage / power / pue): `GET /api/manager/query/aggregate` 구현됨. Ops Console 위젯에서 preset·기간·(pue) IT 장비 선택 후 집계 조회 가능.
 - Device capabilities: 미연결
 - Modbus point 쓰기: API 예정
 

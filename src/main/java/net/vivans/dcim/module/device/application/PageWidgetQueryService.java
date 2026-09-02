@@ -68,17 +68,16 @@ public class PageWidgetQueryService {
         }
 
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
+        PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
         PageWidget widget = PageWidget.create(
                 pageCode,
                 request.name(),
                 enabled,
                 kind,
-                PageWidgetOp.from(request.op()),
+                op,
                 PageWidgetGroupBy.from(request.groupBy()),
-                request.weightPoint(),
-                request.numeratorPoint(),
-                request.denominatorPoint(),
+                PageWidgetChartRangePreset.from(request.aggregateRangePreset()),
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
                 PageWidgetChartScope.from(request.chartScope()),
@@ -86,7 +85,8 @@ public class PageWidgetQueryService {
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), kind, request.chartScope()),
+                resolveDevices(request.deviceIds(), kind, request.chartScope(), op),
+                resolveItDevices(request.itDeviceIds(), kind, op),
                 resolveModelIds(request.modelIds(), kind, request.chartScope())
         );
         applyLayout(widget, request.layout());
@@ -102,16 +102,15 @@ public class PageWidgetQueryService {
         }
 
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
+        PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
         widget.update(
                 name,
                 enabled,
                 kind,
-                PageWidgetOp.from(request.op()),
+                op,
                 PageWidgetGroupBy.from(request.groupBy()),
-                request.weightPoint(),
-                request.numeratorPoint(),
-                request.denominatorPoint(),
+                PageWidgetChartRangePreset.from(request.aggregateRangePreset()),
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
                 PageWidgetChartScope.from(request.chartScope()),
@@ -119,7 +118,8 @@ public class PageWidgetQueryService {
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), kind, request.chartScope()),
+                resolveDevices(request.deviceIds(), kind, request.chartScope(), op),
+                resolveItDevices(request.itDeviceIds(), kind, op),
                 resolveModelIds(request.modelIds(), kind, request.chartScope())
         );
         if (request.layout() != null) {
@@ -156,10 +156,21 @@ public class PageWidgetQueryService {
         widget.upsertLayout(layout.gridX(), layout.gridY(), layout.w(), layout.h());
     }
 
+    private List<Device> resolveItDevices(List<Integer> itDeviceIds, PageWidgetQueryKind queryKind, PageWidgetOp op) {
+        if (queryKind != PageWidgetQueryKind.aggregate || op != PageWidgetOp.pue) {
+            return List.of();
+        }
+        if (itDeviceIds == null || itDeviceIds.isEmpty()) {
+            throw new IllegalArgumentException("itDeviceIds is required for pue");
+        }
+        return loadDevices(itDeviceIds);
+    }
+
     private List<Device> resolveDevices(
             List<Integer> deviceIds,
             PageWidgetQueryKind queryKind,
-            String chartScopeRaw
+            String chartScopeRaw,
+            PageWidgetOp op
     ) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             if (queryKind == PageWidgetQueryKind.count) {
@@ -174,8 +185,15 @@ public class PageWidgetQueryService {
                     || PageWidgetChartScope.from(chartScopeRaw) == PageWidgetChartScope.devices)) {
                 return List.of();
             }
+            if (queryKind == PageWidgetQueryKind.aggregate && op == PageWidgetOp.pue) {
+                throw new IllegalArgumentException("deviceIds (total) is required for pue");
+            }
             throw new IllegalArgumentException("deviceIds is required");
         }
+        return loadDevices(deviceIds);
+    }
+
+    private List<Device> loadDevices(List<Integer> deviceIds) {
         Set<Integer> uniqueIds = new LinkedHashSet<>();
         for (Integer deviceId : deviceIds) {
             if (deviceId == null || deviceId <= 0) {

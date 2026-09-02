@@ -15,4 +15,20 @@ public interface PointQuery {
             Instant end,
             String window
     );
+
+    /** 구간 내 device+point별 첫 샘플 */
+    List<LastPoint> findFirstInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    );
+
+    /** 구간 내 device+point별 마지막 샘플 */
+    List<LastPoint> findLastInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    );
 }

@@ -783,7 +783,7 @@
             <b>last</b>: 장비 + 측정 항목 → 최신값.
             <b>count</b>: 장비 선택 없음 · <code>devices.enabled=1</code> 전체 · 집계 방식(전체/모델별/특정 모델)만 선택.
             <b>chart</b>: 시계열 · 장비 또는 모델 + point 필수 · scope/series/기간/window.
-            <b>aggregate</b>: 조회 미구현.
+            <b>aggregate</b>: 사용량(usage) / 전력 합(power) / PUE(pue) · 측정 항목 1개 선택 · <code>GET /query/aggregate</code>.
           </p>
           <div class="fields">
             <label class="field">페이지
@@ -797,7 +797,7 @@
                 <option value="last">최신값 (last)</option>
                 <option value="count">개수 (count)</option>
                 <option value="chart">차트 (chart)</option>
-                <option value="aggregate">집계 (aggregate) — 조회 미구현 · PUE 후순위</option>
+                <option value="aggregate">집계 (aggregate)</option>
               </select>
             </label>
           </div>
@@ -847,6 +847,7 @@
                   <option value="yesterday">어제</option>
                   <option value="last_7d">최근 7일</option>
                   <option value="this_month">이번 달</option>
+                  <option value="last_month">지난 달</option>
                 </select>
               </label>
               <label class="field">윈도우 (chartWindow)
@@ -862,12 +863,21 @@
           </div>
 
           <div id="wDeviceBlock" style="margin-top:14px">
-            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">1. 장비 추가</div>
+            <div id="wDeviceLabel" class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">1. 장비 추가</div>
             <div class="row">
               <select id="wPickDevice" style="flex:1;min-width:180px"></select>
               <button type="button" class="primary" id="wAddDevice">추가</button>
             </div>
             <div id="wDeviceList" class="pick-list"></div>
+          </div>
+
+          <div id="wItDeviceBlock" style="margin-top:14px;display:none">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">IT 전력 장비 (pue)</div>
+            <div class="row">
+              <select id="wPickItDevice" style="flex:1;min-width:180px"></select>
+              <button type="button" class="primary" id="wAddItDevice">추가</button>
+            </div>
+            <div id="wItDeviceList" class="pick-list"></div>
           </div>
 
           <div id="wModelBlock" style="margin-top:14px;display:none">
@@ -887,23 +897,27 @@
 
           <div id="wAggBlock" style="margin-top:14px;display:none">
             <div class="fields">
-              <label class="field">연산
+              <label class="field">집계 preset
                 <select id="wOp">
                   <option value="">선택</option>
-                  <option value="delta_sum">delta_sum</option>
-                  <option value="weighted_avg">weighted_avg</option>
-                  <option value="divide">divide</option>
+                  <option value="usage">사용량 (usage)</option>
+                  <option value="power">전력 합 (power)</option>
+                  <option value="pue">PUE (pue)</option>
                 </select>
               </label>
-              <label class="field">가중치 포인트
-                <select id="wWeightPoint"><option value="">–</option></select>
+              <label class="field">기간 (aggregateRangePreset)
+                <select id="wAggRangePreset">
+                  <option value="today">오늘</option>
+                  <option value="yesterday">어제</option>
+                  <option value="this_month">이번 달</option>
+                  <option value="last_month">지난 달</option>
+                  <option value="last_24h">최근 24시간</option>
+                  <option value="last_7d">최근 7일</option>
+                </select>
               </label>
-              <label class="field">분자
-                <select id="wNumPoint"><option value="">–</option></select>
-              </label>
-              <label class="field">분모
-                <select id="wDenPoint"><option value="">–</option></select>
-              </label>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:6px">
+              usage→기간 차분 합 · power→마지막값 합 · pue→총W/IT W · 아래에서 측정 항목 1개 선택
             </div>
           </div>
 
@@ -1195,16 +1209,15 @@
             <tr><td>장비 모델</td><td><span class="chip ok">모델 CRUD · SNMP point CRUD</span></td><td>Modbus create는 API 예정으로 생략</td></tr>
             <tr><td>장비</td><td><span class="chip ok">CRUD · endpoint CRUD · instance</span></td><td>capabilities 미연결</td></tr>
             <tr><td>수집 Task</td><td><span class="chip ok">task/group CRUD · toggle</span></td><td>–</td></tr>
-            <tr><td>위젯</td><td><span class="chip ok">생성·수정·삭제 · last/count/chart</span></td><td>layout은 위젯 보드</td></tr>
-            <tr><td>Query</td><td><span class="chip ok">last · count · chart</span></td><td>aggregate(PUE) 미구현</td></tr>
+            <tr><td>위젯</td><td><span class="chip ok">생성·수정·삭제 · last/count/chart/aggregate</span></td><td>layout은 위젯 보드</td></tr>
+            <tr><td>Query</td><td><span class="chip ok">last · count · chart · aggregate</span></td><td>usage / power / pue</td></tr>
             <tr><td>Live</td><td><span class="chip warn">외부</span></td><td><a href="/live-test.html">live-test.html</a></td></tr>
-            <tr><td>Aggregate</td><td><span class="chip warn">외부/미구현</span></td><td>서버 API 후순위</td></tr>
           </tbody>
         </table>
         <p class="muted" style="margin:12px 0 0;font-size:13px">
           문서: <code>docs/ops/OPS_CONSOLE.md</code> ·
           위젯: <code>docs/device/PAGE_WIDGET_API.md</code> ·
-          chart: <code>GET /api/manager/query/chart</code>
+          query: <code>/api/manager/query/{last|count|chart|aggregate}</code>
         </p>
       </div>
     </section>
@@ -1243,6 +1256,7 @@
       locByCode: {},
       deviceCountByLoc: {},
       widgetDeviceIds: [],
+      widgetItDeviceIds: [],
       widgetModelIds: [],
       widgetPointCatalog: [], // [{name, unit, models:[]}]
       editingWidgetId: null,
@@ -2110,10 +2124,23 @@
 
     function fillWidgetDevicePick() {
       if (!$("wPickDevice")) return;
-      const selected = new Set(state.widgetDeviceIds);
+      const selected = new Set([...state.widgetDeviceIds, ...state.widgetItDeviceIds]);
       const available = state.devices.filter((d) => !selected.has(d.id));
       fillSelect(
         $("wPickDevice"),
+        available,
+        (d) => `<option value="${d.id}">${esc(d.name)} · ${esc(d.manufacturer || "")} · ${esc(d.modelName)} (#${d.id})</option>`,
+        available.length ? null : "추가할 장비 없음"
+      );
+      fillWidgetItDevicePick();
+    }
+
+    function fillWidgetItDevicePick() {
+      if (!$("wPickItDevice")) return;
+      const selected = new Set([...state.widgetDeviceIds, ...state.widgetItDeviceIds]);
+      const available = state.devices.filter((d) => !selected.has(d.id));
+      fillSelect(
+        $("wPickItDevice"),
         available,
         (d) => `<option value="${d.id}">${esc(d.name)} · ${esc(d.manufacturer || "")} · ${esc(d.modelName)} (#${d.id})</option>`,
         available.length ? null : "추가할 장비 없음"
@@ -2123,16 +2150,22 @@
     function renderWidgetDevices() {
       const box = $("wDeviceList");
       if (!box) return;
+      const label = $("wDeviceLabel");
+      if (label) {
+        const kind = $("wKind")?.value;
+        const op = $("wOp")?.value;
+        label.textContent = kind === "aggregate" && op === "pue" ? "총 전력 장비" : "1. 장비 추가";
+      }
       if (!state.widgetDeviceIds.length) {
         box.innerHTML = '<div class="empty" style="padding:12px">아직 없음 — 위에서 장비를 고르고 「추가」</div>';
         return;
       }
       box.innerHTML = state.widgetDeviceIds.map((id) => {
         const d = state.devices.find((x) => x.id === id);
-        const label = d
+        const itemLabel = d
           ? `<b>${esc(d.name)}</b><div class="muted" style="font-size:12px">${esc(d.manufacturer || "–")} · ${esc(d.modelName)} · #${id}</div>`
           : `<b>장비 #${id}</b>`;
-        return `<div class="pick-item"><div>${label}</div><button type="button" class="ghost" data-rm-dev="${id}">제거</button></div>`;
+        return `<div class="pick-item"><div>${itemLabel}</div><button type="button" class="ghost" data-rm-dev="${id}">제거</button></div>`;
       }).join("");
       box.querySelectorAll("[data-rm-dev]").forEach((btn) => {
         btn.onclick = () => {
@@ -2141,6 +2174,30 @@
           renderWidgetDevices();
           fillWidgetDevicePick();
           refreshWidgetPoints();
+        };
+      });
+    }
+
+    function renderWidgetItDevices() {
+      const box = $("wItDeviceList");
+      if (!box) return;
+      if (!state.widgetItDeviceIds.length) {
+        box.innerHTML = '<div class="empty" style="padding:12px">아직 없음 — IT 전력 장비를 추가하세요</div>';
+        return;
+      }
+      box.innerHTML = state.widgetItDeviceIds.map((id) => {
+        const d = state.devices.find((x) => x.id === id);
+        const itemLabel = d
+          ? `<b>${esc(d.name)}</b><div class="muted" style="font-size:12px">${esc(d.manufacturer || "–")} · ${esc(d.modelName)} · #${id}</div>`
+          : `<b>장비 #${id}</b>`;
+        return `<div class="pick-item"><div>${itemLabel}</div><button type="button" class="ghost" data-rm-it="${id}">제거</button></div>`;
+      }).join("");
+      box.querySelectorAll("[data-rm-it]").forEach((btn) => {
+        btn.onclick = () => {
+          const id = Number(btn.dataset.rmIt);
+          state.widgetItDeviceIds = state.widgetItDeviceIds.filter((x) => x !== id);
+          renderWidgetItDevices();
+          fillWidgetDevicePick();
         };
       });
     }
@@ -2203,22 +2260,43 @@
       refreshWidgetPoints();
     }
 
+    function suggestAggregatePoint(catalog, op) {
+      const preferred = {
+        usage: ["TOTAL_KWH", "KWH", "L1_KWH"],
+        power: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
+        pue: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
+      }[op] || [];
+      for (const name of preferred) {
+        if (catalog.some((p) => p.name === name)) return name;
+      }
+      return catalog[0]?.name || null;
+    }
+
+    function formatPointLabel(point) {
+      return point.unit ? `${point.name} (${point.unit})` : point.name;
+    }
+
     async function refreshWidgetPoints() {
       const hint = $("wPointsHint");
       const grid = $("wPointGrid");
       if (!hint || !grid) return;
       const kind = $("wKind").value;
       const chartScope = $("wChartScope")?.value || "devices";
+      const aggOp = $("wOp")?.value || "";
       const showDevices = kind === "last" || kind === "aggregate" || (kind === "chart" && chartScope === "devices");
       const showModels = kind === "chart" && chartScope === "models";
-      const showPoints = kind === "last" || kind === "aggregate" || kind === "chart";
+      const showPoints = kind === "last" || kind === "chart" || kind === "aggregate";
+      const showItDevices = kind === "aggregate" && aggOp === "pue";
 
       $("wPointsBlock").style.display = showPoints ? "block" : "none";
       $("wCountBlock").style.display = kind === "count" ? "block" : "none";
       $("wChartBlock").style.display = kind === "chart" ? "block" : "none";
       $("wDeviceBlock").style.display = showDevices ? "block" : "none";
+      $("wItDeviceBlock").style.display = showItDevices ? "block" : "none";
       $("wModelBlock").style.display = showModels ? "block" : "none";
       $("wAggBlock").style.display = kind === "aggregate" ? "block" : "none";
+      renderWidgetDevices();
+      if (showItDevices) renderWidgetItDevices();
       if (kind === "count") refreshCountModelPick();
       if (kind === "chart") {
         fillWidgetModelPick();
@@ -2235,6 +2313,9 @@
       if (kind === "chart" && chartScope === "models") {
         sourceIds = [...state.widgetModelIds];
         sourceKind = "model";
+      } else if (kind === "aggregate" && aggOp === "pue") {
+        sourceIds = [...new Set([...state.widgetDeviceIds, ...state.widgetItDeviceIds])];
+        sourceKind = "device";
       } else {
         sourceIds = [...state.widgetDeviceIds];
         sourceKind = "device";
@@ -2248,7 +2329,6 @@
         hint.style.display = "block";
         grid.style.display = "none";
         grid.innerHTML = "";
-        fillAggPointSelects([]);
         return;
       }
 
@@ -2292,25 +2372,33 @@
             ? "선택한 모델에 SNMP 측정 항목이 없습니다."
             : "선택한 장비 모델에 SNMP 측정 항목이 없습니다.";
           grid.innerHTML = "";
-          fillAggPointSelects([]);
           return;
         }
 
         hint.textContent = partial.length
-          ? `공통 ${allHave.length}개 · 일부만 ${partial.length}개 — 표시할 항목을 체크하세요`
-          : `측정 항목 ${catalog.length}개 — 표시할 항목을 선택하세요`;
+          ? `공통 ${allHave.length}개 · 일부만 ${partial.length}개 — 표시할 항목을 선택하세요`
+          : kind === "aggregate"
+            ? `측정 항목 ${catalog.length}개 — 집계에 사용할 항목을 하나 선택하세요`
+            : `측정 항목 ${catalog.length}개 — 표시할 항목을 선택하세요`;
         grid.style.display = "grid";
+        const isAggregate = kind === "aggregate";
         grid.innerHTML = catalog.map((p) => {
           const shared = p.count === sourceIds.length;
+          const label = formatPointLabel(p);
           return `<label title="${esc([...p.models].join(", "))}">
-            <input type="checkbox" data-point="${esc(p.name)}" />
-            <span><b>${esc(p.name)}</b>
-              ${p.unit ? `<span class="u">${esc(p.unit)}</span>` : ""}
-              ${shared ? "" : `<span class="u">(${p.count}/${sourceIds.length}${unitLabel})</span>`}
+            <input type="${isAggregate ? "radio" : "checkbox"}" ${isAggregate ? 'name="wAggPoint"' : ""} data-point="${esc(p.name)}" />
+            <span><b>${esc(label)}</b>
+              ${shared ? "" : `<span class="u"> · ${p.count}/${sourceIds.length}${unitLabel}</span>`}
             </span>
           </label>`;
         }).join("");
-        fillAggPointSelects(catalog.map((p) => p.name));
+        if (isAggregate) {
+          const suggested = suggestAggregatePoint(catalog, aggOp);
+          if (suggested) {
+            const input = grid.querySelector(`input[data-point="${suggested}"]`);
+            if (input) input.checked = true;
+          }
+        }
       } catch (e) {
         hint.textContent = "측정 항목 로드 실패: " + e.message;
         grid.style.display = "none";
@@ -2331,19 +2419,17 @@
 
     $("wCountMode")?.addEventListener("change", () => refreshCountModelPick());
 
-    function fillAggPointSelects(names) {
-      const map = (n) => `<option value="${esc(n)}">${esc(n)}</option>`;
-      fillSelect($("wWeightPoint"), names, map, "–");
-      fillSelect($("wNumPoint"), names, map, "–");
-      fillSelect($("wDenPoint"), names, map, "–");
-    }
-
     function selectedWidgetPoints() {
+      const kind = $("wKind").value;
+      if (kind === "aggregate") {
+        const el = $("wPointGrid").querySelector('input[data-point]:checked');
+        return el ? [el.dataset.point] : [];
+      }
       return [...$("wPointGrid").querySelectorAll("input[data-point]:checked")].map((el) => el.dataset.point);
     }
 
     function addWidgetDevice(id) {
-      if (!id || state.widgetDeviceIds.includes(id)) {
+      if (!id || state.widgetDeviceIds.includes(id) || state.widgetItDeviceIds.includes(id)) {
         toast(id ? "이미 추가된 장비입니다" : "장비를 선택하세요", true);
         return;
       }
@@ -2356,6 +2442,17 @@
         const d = state.devices.find((x) => x.id === id);
         if (d) $("wName").value = d.name;
       }
+    }
+
+    function addWidgetItDevice(id) {
+      if (!id || state.widgetDeviceIds.includes(id) || state.widgetItDeviceIds.includes(id)) {
+        toast(id ? "이미 추가된 장비입니다" : "장비를 선택하세요", true);
+        return;
+      }
+      state.widgetItDeviceIds.push(id);
+      renderWidgetItDevices();
+      fillWidgetDevicePick();
+      refreshWidgetPoints();
     }
 
     function clearDeviceSelection() {
@@ -3369,7 +3466,13 @@
       if (!devices.length) {
         return `<div class="empty">${esc(data.error || "데이터 없음")}</div>`;
       }
-      return devices.map((d) => `
+      const unit = data.totalUnit ? " " + esc(data.totalUnit) : "";
+      const totalBlock = data.total != null ? `
+        <div class="card" style="margin:0 0 12px;box-shadow:none">
+          <div class="muted" style="font-size:12px;font-weight:650">전체 합</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px">${esc(data.total)}${unit}</div>
+        </div>` : "";
+      return totalBlock + devices.map((d) => `
         <div class="ep-card">
           <h3>${esc(d.deviceName)}</h3>
           ${(d.points || []).map((p) => `
@@ -3408,6 +3511,54 @@
           <div class="muted">${esc(modeLabel)}${mode === "model" && data.countModelId ? ` · model #${data.countModelId}` : ""}</div>
           <div style="font-size:28px;font-weight:800;margin:6px 0">${data.count ?? 0}</div>
           ${mode !== "total" ? `<div class="muted" style="font-size:12px;font-weight:650;margin-bottom:4px">모델별</div>${rows}` : ""}
+        </div>`;
+    }
+
+    function renderAggregatePretty(data) {
+      if (!data) return '<div class="empty">결과 없음</div>';
+      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
+      const presetLabel = ({
+        usage: "사용량",
+        power: "전력 합",
+        pue: "PUE",
+      })[data.aggregatePreset] || data.aggregatePreset || "";
+      const rangeLabel = ({
+        today: "오늘",
+        yesterday: "어제",
+        this_month: "이번 달",
+        last_month: "지난 달",
+        last_24h: "최근 24시간",
+        last_7d: "최근 7일",
+      })[data.rangePreset] || data.rangePreset || "";
+      const meta = [
+        presetLabel,
+        rangeLabel,
+        data.contributingDevices != null ? `장비 ${data.contributingDevices}` : "",
+      ].filter(Boolean).join(" · ");
+      const valueText = data.value == null ? "–" : data.value;
+      const unit = data.unit ? " " + esc(data.unit) : "";
+      const rows = (data.devices || []).map((d) => `
+        <div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
+          <span>
+            <b>${esc(d.deviceName || ("#" + d.deviceId))}</b>
+            ${d.role && d.role !== "default" ? `<span class="muted">${esc(d.role)}</span>` : ""}
+            <span class="muted mono">#${d.deviceId}</span>
+          </span>
+          <b>${d.value == null ? "–" : esc(d.value)}${unit}</b>
+        </div>`).join("") || '<div class="muted">장비별 값 없음</div>';
+      return `
+        <div class="card" style="margin:0;box-shadow:none">
+          <h3 style="margin:0 0 8px">${esc(data.widgetName || "")}
+            <span class="muted mono">#${data.widgetId}</span>
+          </h3>
+          <div class="muted">${esc(meta)}</div>
+          <div class="muted" style="font-size:12px;font-weight:650;margin-top:10px">전체</div>
+          <div style="font-size:32px;font-weight:800;margin:4px 0 10px">
+            ${esc(valueText)}${unit}
+          </div>
+          <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:4px">장비별</div>
+          ${rows}
+          <div class="muted mono" style="font-size:12px;margin-top:8px">${esc(data.start || "")} → ${esc(data.end || "")}</div>
         </div>`;
     }
 
@@ -3451,6 +3602,7 @@
       state.editingLayout = null;
       state.editingEnabled = true;
       state.widgetDeviceIds = [];
+      state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
       $("wFormTitle").textContent = "위젯 만들기";
       $("wCreate").textContent = "만들기";
@@ -3464,8 +3616,10 @@
       $("wChartRangePreset").value = "last_24h";
       $("wChartWindow").value = "5m";
       $("wOp").value = "";
+      if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
       if (page) $("wCreatePage").value = page;
       renderWidgetDevices();
+      renderWidgetItDevices();
       fillWidgetDevicePick();
       renderWidgetModels();
       fillWidgetModelPick();
@@ -3493,9 +3647,12 @@
         if (w.chartRangePreset) $("wChartRangePreset").value = w.chartRangePreset;
         if (w.chartWindow) $("wChartWindow").value = w.chartWindow;
         if (w.op) $("wOp").value = w.op;
+        if (w.aggregateRangePreset && $("wAggRangePreset")) $("wAggRangePreset").value = w.aggregateRangePreset;
         state.widgetDeviceIds = [...(w.deviceIds || [])];
+        state.widgetItDeviceIds = [...(w.itDeviceIds || [])];
         state.widgetModelIds = [...(w.modelIds || [])];
         renderWidgetDevices();
+        renderWidgetItDevices();
         fillWidgetDevicePick();
         renderWidgetModels();
         fillWidgetModelPick();
@@ -3508,9 +3665,6 @@
         $("wPointGrid")?.querySelectorAll("input[data-point]").forEach((el) => {
           el.checked = wanted.has(el.dataset.point);
         });
-        if (w.weightPoint) $("wWeightPoint").value = w.weightPoint;
-        if (w.numeratorPoint) $("wNumPoint").value = w.numeratorPoint;
-        if (w.denominatorPoint) $("wDenPoint").value = w.denominatorPoint;
         toast(`위젯 #${w.id} 수정 모드`);
         $("tab-widgets")?.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (e) {
@@ -3537,22 +3691,39 @@
       if (!pageCode) return;
       const widgets = await api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`);
       $("wBody").innerHTML = (widgets || []).map((w) => {
-        let queryBtn = `<button type="button" class="ghost" disabled title="미구현">조회</button>`;
+        let queryBtn = `<button type="button" class="ghost" disabled title="미지원">조회</button>`;
         if (w.queryKind === "count") {
           queryBtn = `<button type="button" class="ghost" data-count="${w.id}">개수</button>`;
         } else if (w.queryKind === "last") {
           queryBtn = `<button type="button" class="ghost" data-last="${w.id}">최신값</button>`;
         } else if (w.queryKind === "chart") {
           queryBtn = `<button type="button" class="ghost" data-chart="${w.id}">차트</button>`;
+        } else if (w.queryKind === "aggregate") {
+          queryBtn = `<button type="button" class="ghost" data-agg="${w.id}">집계</button>`;
         }
         const chartMeta = w.queryKind === "chart"
           ? `<div class="muted">${esc(w.chartScope || "devices")} · ${esc(w.chartSeriesMode || "per_device")} · ${esc(w.chartRangePreset || "")} · ${esc(w.chartWindow || "")}</div>`
-          : "";
+          : w.queryKind === "aggregate"
+            ? `<div class="muted">${esc(({
+                usage: "사용량",
+                power: "전력 합",
+                pue: "PUE",
+              })[w.op] || w.op || "")}${w.aggregateRangePreset ? " · " + esc(({
+                today: "오늘",
+                yesterday: "어제",
+                this_month: "이번 달",
+                last_month: "지난 달",
+                last_24h: "최근 24시간",
+                last_7d: "최근 7일",
+              })[w.aggregateRangePreset] || w.aggregateRangePreset) : ""}</div>`
+            : "";
         const targetCell = w.queryKind === "count"
           ? '<span class="muted">전체 enabled</span>'
           : w.queryKind === "chart" && (w.chartScope || "devices") === "models"
             ? ((w.modelIds || []).join(", ") || "–")
-            : ((w.deviceIds || []).join(", ") || "–");
+            : w.queryKind === "aggregate" && w.op === "pue"
+              ? `총 ${(w.deviceIds || []).join(", ") || "–"} · IT ${(w.itDeviceIds || []).join(", ") || "–"}`
+              : ((w.deviceIds || []).join(", ") || "–");
         return `
         <tr>
           <td><b>${esc(w.name)}</b><div class="muted mono">#${w.id}</div></td>
@@ -3601,6 +3772,18 @@
           }
         };
       });
+      $("wBody").querySelectorAll("[data-agg]").forEach((btn) => {
+        btn.onclick = async () => {
+          try {
+            const w = (await api(`/api/manager/widgets/${btn.dataset.agg}`));
+            const range = w.aggregateRangePreset || "today";
+            const data = await api(`/api/manager/query/aggregate?widgetId=${btn.dataset.agg}&rangePreset=${encodeURIComponent(range)}`);
+            $("wLastOut").innerHTML = renderAggregatePretty(data);
+          } catch (e) {
+            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+          }
+        };
+      });
       $("wBody").querySelectorAll("[data-edit]").forEach((btn) => {
         btn.onclick = () => startEditWidget(Number(btn.dataset.edit));
       });
@@ -3623,8 +3806,10 @@
     $("wReload").onclick = () => loadWidgets().catch((e) => toast(e.message, true));
     $("wPage").addEventListener("change", () => loadWidgets().catch(() => {}));
     $("wAddDevice").onclick = () => addWidgetDevice(Number($("wPickDevice").value));
+    $("wAddItDevice")?.addEventListener("click", () => addWidgetItDevice(Number($("wPickItDevice").value)));
     $("wAddModel")?.addEventListener("click", () => addWidgetModel(Number($("wPickModel").value)));
     $("wChartScope")?.addEventListener("change", () => refreshWidgetPoints());
+    $("wOp")?.addEventListener("change", () => refreshWidgetPoints());
     $("wCancelEdit")?.addEventListener("click", () => clearWidgetForm(true));
     $("wDeleteEdit")?.addEventListener("click", () => {
       const id = Number($("wDeleteEdit").dataset.id);
@@ -3635,8 +3820,10 @@
     $("wKind").addEventListener("change", () => {
       if ($("wKind").value === "count") {
         state.widgetDeviceIds = [];
+        state.widgetItDeviceIds = [];
         state.widgetModelIds = [];
         renderWidgetDevices();
+        renderWidgetItDevices();
         fillWidgetDevicePick();
         renderWidgetModels();
         fillWidgetModelPick();
@@ -3644,6 +3831,7 @@
       refreshWidgetPoints();
     });
     renderWidgetDevices();
+    renderWidgetItDevices();
     renderWidgetModels();
 
     $("wCreate").onclick = async () => {
@@ -3653,7 +3841,9 @@
         if (!name) throw new Error("표시 이름을 입력하세요");
 
         const chartScope = kind === "chart" ? ($("wChartScope").value || "devices") : null;
+        const op = kind === "aggregate" ? ($("wOp").value.trim() || null) : null;
         let deviceIds = [];
+        let itDeviceIds = [];
         let modelIds = [];
         if (kind === "count") {
           deviceIds = [];
@@ -3663,12 +3853,23 @@
           if (!modelIds.length) throw new Error("모델을 하나 이상 추가하세요");
         } else {
           deviceIds = [...state.widgetDeviceIds];
-          if (!deviceIds.length) throw new Error("장비를 하나 이상 추가하세요");
+          if (!deviceIds.length) throw new Error(op === "pue" ? "총 전력 장비를 하나 이상 추가하세요" : "장비를 하나 이상 추가하세요");
+        }
+        if (kind === "aggregate" && op === "pue") {
+          itDeviceIds = [...state.widgetItDeviceIds];
+          if (!itDeviceIds.length) throw new Error("IT 전력 장비를 하나 이상 추가하세요");
+        }
+        if (kind === "aggregate" && !op) throw new Error("집계 preset을 선택하세요");
+        if (kind === "aggregate" && op === "usage" && !$("wAggRangePreset").value) {
+          throw new Error("사용량(usage)은 기간(aggregateRangePreset)이 필요합니다");
         }
 
         const pointNames = kind === "count" ? [] : selectedWidgetPoints();
-        if ((kind === "last" || kind === "aggregate" || kind === "chart") && (!pointNames || !pointNames.length)) {
+        if ((kind === "last" || kind === "chart") && (!pointNames || !pointNames.length)) {
           throw new Error("측정 항목을 하나 이상 선택하세요");
+        }
+        if (kind === "aggregate" && pointNames.length !== 1) {
+          throw new Error("집계에 사용할 측정 항목을 하나 선택하세요");
         }
         const countModelId = kind === "count" && $("wCountMode").value === "model"
           ? Number($("wCountModel").value) || null
@@ -3689,14 +3890,13 @@
           chartSeriesMode: kind === "chart" ? $("wChartSeriesMode").value : null,
           chartRangePreset: kind === "chart" ? $("wChartRangePreset").value : null,
           chartWindow: kind === "chart" ? $("wChartWindow").value : null,
-          op: kind === "aggregate" ? ($("wOp").value.trim() || null) : null,
+          op,
+          aggregateRangePreset: kind === "aggregate" ? ($("wAggRangePreset").value || null) : null,
           groupBy: null,
-          weightPoint: kind === "aggregate" ? ($("wWeightPoint").value || null) : null,
-          numeratorPoint: kind === "aggregate" ? ($("wNumPoint").value || null) : null,
-          denominatorPoint: kind === "aggregate" ? ($("wDenPoint").value || null) : null,
           deviceIds,
+          itDeviceIds: kind === "aggregate" && op === "pue" ? itDeviceIds : [],
           modelIds: kind === "chart" && chartScope === "models" ? modelIds : [],
-          pointNames: kind === "count" ? [] : pointNames,
+          pointNames,
           layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: layoutH },
         };
 

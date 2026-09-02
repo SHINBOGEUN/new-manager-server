@@ -18,6 +18,7 @@ import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -68,6 +69,11 @@ public class LastQueryService {
         }
 
         List<LastDeviceResponse> deviceResponses = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+        String totalUnit = null;
+        boolean totalCompatible = true;
+        int totalCount = 0;
+
         for (Map.Entry<Integer, Device> entry : deviceById.entrySet()) {
             List<LastPoint> devicePoints = pointsByDevice.get(entry.getKey());
             if (devicePoints == null || devicePoints.isEmpty()) {
@@ -78,22 +84,52 @@ public class LastQueryService {
                     device.getDeviceModel().getId(),
                     Map.of()
             );
-            List<LastPointValueResponse> pointResponses = devicePoints.stream()
+            List<LastPointValueResponse> pointResponses = new ArrayList<>();
+            for (LastPoint point : devicePoints.stream()
                     .sorted(Comparator.comparing(LastPoint::pointName))
-                    .map(point -> new LastPointValueResponse(
-                            point.pointName(),
-                            unitByPoint.get(point.pointName()),
-                            point.value(),
-                            point.time()
-                    ))
-                    .toList();
+                    .toList()) {
+                String unit = unitByPoint.get(point.pointName());
+                BigDecimal rounded = QueryValues.round2(point.value());
+                pointResponses.add(new LastPointValueResponse(
+                        point.pointName(),
+                        unit,
+                        rounded,
+                        point.time()
+                ));
+                if (rounded == null) {
+                    continue;
+                }
+                if (totalCompatible) {
+                    if (totalCount == 0) {
+                        totalUnit = blankToNull(unit);
+                        total = rounded;
+                        totalCount = 1;
+                    } else if (unitsEqual(totalUnit, unit)) {
+                        total = total.add(rounded);
+                        totalCount++;
+                    } else {
+                        totalCompatible = false;
+                        total = null;
+                        totalUnit = null;
+                    }
+                }
+            }
             deviceResponses.add(LastDeviceResponse.from(device, pointResponses));
+        }
+
+        if (!totalCompatible || totalCount == 0) {
+            total = null;
+            totalUnit = null;
+        } else {
+            total = QueryValues.round2(total);
         }
 
         return new LastWidgetResponse(
                 widget.getId(),
                 widget.getName(),
                 widget.getPageCode().getCode(),
+                total,
+                totalUnit,
                 deviceResponses
         );
     }
@@ -112,6 +148,16 @@ public class LastQueryService {
         return unitsByModelId;
     }
 
+    private static boolean unitsEqual(String left, String right) {
+        if (left == null && right == null) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.equalsIgnoreCase(right);
+    }
+
     private static String blankToNull(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -124,6 +170,8 @@ public class LastQueryService {
                 widget.getId(),
                 widget.getName(),
                 widget.getPageCode().getCode(),
+                null,
+                null,
                 List.of()
         );
     }

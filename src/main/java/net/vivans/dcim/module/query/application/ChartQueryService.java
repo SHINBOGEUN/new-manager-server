@@ -21,9 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -57,7 +54,7 @@ public class ChartQueryService {
         PageWidgetChartRangePreset preset = resolvePreset(widget, rangePresetOverride);
         String window = resolveWindow(widget, windowOverride);
         PageWidgetChartSeriesMode mode = resolveSeriesMode(widget, seriesModeOverride);
-        Range range = resolveRange(preset);
+        QueryRanges.Range range = QueryRanges.resolve(preset);
 
         if (pointNames.isEmpty()) {
             return empty(widget, range.start(), range.end(), window, null, mode, preset);
@@ -303,27 +300,6 @@ public class ChartQueryService {
         return widget.getChartWindow() == null ? "5m" : widget.getChartWindow();
     }
 
-    private static Range resolveRange(PageWidgetChartRangePreset preset) {
-        Instant now = Instant.now();
-        LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
-        return switch (preset) {
-            case last_24h -> new Range(now.minus(24, ChronoUnit.HOURS), now);
-            case today -> new Range(todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC), now);
-            case yesterday -> {
-                LocalDate yesterday = todayUtc.minusDays(1);
-                yield new Range(
-                        yesterday.atStartOfDay().toInstant(ZoneOffset.UTC),
-                        todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC)
-                );
-            }
-            case last_7d -> new Range(now.minus(7, ChronoUnit.DAYS), now);
-            case this_month -> new Range(
-                    todayUtc.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC),
-                    now
-            );
-        };
-    }
-
     private ChartWidgetResponse empty(
             PageWidget widget,
             Instant start,
@@ -372,8 +348,5 @@ public class ChartQueryService {
             return null;
         }
         return value.trim();
-    }
-
-    private record Range(Instant start, Instant end) {
     }
 }

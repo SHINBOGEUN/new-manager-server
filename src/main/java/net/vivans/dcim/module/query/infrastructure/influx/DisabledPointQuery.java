@@ -29,4 +29,26 @@ public class DisabledPointQuery implements PointQuery {
         log.warn("InfluxDB query disabled; returning empty series values");
         return List.of();
     }
+
+    @Override
+    public List<LastPoint> findFirstInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    ) {
+        log.warn("InfluxDB query disabled; returning empty first-in-range values");
+        return List.of();
+    }
+
+    @Override
+    public List<LastPoint> findLastInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end
+    ) {
+        log.warn("InfluxDB query disabled; returning empty last-in-range values");
+        return List.of();
+    }
 }
