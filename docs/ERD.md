@@ -149,7 +149,7 @@ erDiagram
 
 **엔티티:** `module/identity/domain/model/User.java`  
 **상속:** `BaseEntity`  
-**DDL:** [V001__create_users_table.sql](../sql/history/V001__create_users_table.sql)
+**DDL:** [`01_users.sql`](../sql/schema/01_users.sql)
 
 **참고 (애플리케이션 규칙)**
 
@@ -180,7 +180,7 @@ erDiagram
 
 **엔티티:** `module/common/domain/model/CodeGroup.java`  
 **상속:** `BaseEntity`  
-**DDL:** [V002__create_code_group_table.sql](../sql/history/V002__create_code_group_table.sql)
+**DDL:** [`02_code_group.sql`](../sql/schema/02_code_group.sql)
 
 **예시 데이터**
 
@@ -211,7 +211,7 @@ erDiagram
 **엔티티:** `module/common/domain/model/CommonCode.java`  
 **상속:** `BaseEntity`  
 **연관:** `@ManyToOne` → `CodeGroup` (`@JoinColumn(name = "group_id")`)  
-**DDL:** [V003__create_common_code_table.sql](../sql/history/V003__create_common_code_table.sql)
+**DDL:** [`03_common_code.sql`](../sql/schema/03_common_code.sql)
 
 **FK 제약**
 
@@ -253,7 +253,7 @@ erDiagram
 - `@ManyToOne` → `LocationNode` (`@JoinColumn(name = "parent_code")`) — 자기 참조
 - `@ManyToOne` → `CommonCode` (`@JoinColumn(name = "location_type_id")`)
 
-**DDL:** [V004__create_location_node_table.sql](../sql/history/V004__create_location_node_table.sql)
+**DDL:** [`04_location_node.sql`](../sql/schema/04_location_node.sql)
 
 **FK 제약**
 
@@ -268,7 +268,7 @@ erDiagram
 |------|------|
 | `devices.location_node_code` | 장비 위치 FK → `location_node(code)` (**NOT NULL**. 미지정 시 시드 노드 `UNASSIGNED`) |
 
-> API·DDL: [DEVICE_API.md](device/DEVICE_API.md), [V007__create_devices_table.sql](../sql/history/V007__create_devices_table.sql)
+> API·DDL: [DEVICE_API.md](device/DEVICE_API.md), [`09_devices.sql`](../sql/schema/09_devices.sql)
 
 **트리 규칙 (애플리케이션)**
 
@@ -321,8 +321,7 @@ erDiagram
 **상속:** `BaseEntity`  
 **연관:** `@ManyToOne` → `CommonCode` (`device_type_id`), `@OneToMany` → `DeviceModelProtocol` (`mappedBy = "deviceModel"`, cascade ALL)
 
-**DDL:** [V005__create_device_model_tables.sql](../sql/history/V005__create_device_model_tables.sql) (신규)  
-**마이그레이션:** [V008__add_device_model_device_type_id.sql](../sql/history/V008__add_device_model_device_type_id.sql) (이미 `device_model`이 있는 DB)
+**DDL:** [`05_device_model.sql`](../sql/schema/05_device_model.sql), [`06_device_model_protocol.sql`](../sql/schema/06_device_model_protocol.sql)
 
 | 제약 | 대상 | ON DELETE | ON UPDATE |
 |------|------|-----------|-----------|
@@ -409,7 +408,7 @@ V005에서 `code_group` + `common_code` 모두 INSERT (없을 때만).
 **상속:** `BaseEntity`  
 **연관:** `@ManyToOne` → `DeviceModelProtocol` (`model_protocol_id`, LAZY)
 
-**DDL:** [V006__create_device_model_snmp_point.sql](../sql/history/V006__create_device_model_snmp_point.sql)
+**DDL:** [`07_device_model_snmp_point.sql`](../sql/schema/07_device_model_snmp_point.sql)
 
 **FK 제약**
 
@@ -500,7 +499,7 @@ device_model (1) ──< device_model_protocol (N) >── common_code (PROTOCOL
 - `@ManyToOne` → `LocationNode` (`location_node_code`, required)
 - `@ManyToOne` → `CommonCode` (`path_code_id`, optional, `LOCATION_PATH`)
 
-**DDL:** [V007__create_devices_table.sql](../sql/history/V007__create_devices_table.sql), [V019__device_path_code.sql](../sql/history/V019__device_path_code.sql)
+**DDL:** [`09_devices.sql`](../sql/schema/09_devices.sql)
 
 **FK 제약**
 
@@ -545,7 +544,7 @@ erDiagram
 
 > 4층 아키텍처 **③ 엔드포인트층** — host/port.  
 > API: [DEVICE_ENDPOINT_API.md](device/DEVICE_ENDPOINT_API.md)  
-> DDL: [V009__create_device_protocol_endpoint.sql](../sql/history/V009__create_device_protocol_endpoint.sql)
+> DDL: [`10_device_protocol_endpoint.sql`](../sql/schema/10_device_protocol_endpoint.sql)
 
 | 컬럼 | 타입 | NULL | 키 | 기본값 | 설명 |
 |------|------|------|-----|--------|------|

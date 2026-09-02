@@ -9,7 +9,7 @@ GET /api/manager/query/chart?widgetId=12&rangePreset=today&window=15m&seriesMode
 ```
 
 관련 위젯 정의: [PAGE_WIDGET_API.md](../device/PAGE_WIDGET_API.md)  
-DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (`page_widget_chart` + `page_widget_model`)
+DDL: [`18_page_widget_chart.sql`](../../sql/schema/18_page_widget_chart.sql), [`21_page_widget_model.sql`](../../sql/schema/21_page_widget_model.sql)
 
 ---
 

@@ -5,7 +5,7 @@
 > API prefix: `/api/manager/device-models/{modelId}/protocols/{protocolId}/snmp-points`  
 > 부모 API: [DEVICE_MODEL_API.md](DEVICE_MODEL_API.md)  
 > 관련 ERD: [ERD.md — device_model_snmp_point](../ERD.md#device_model_snmp_point--모델별-snmp-수집-point-devicemodel-모듈)  
-> DDL: [V006__create_device_model_snmp_point.sql](../../sql/history/V006__create_device_model_snmp_point.sql)
+> DDL: [`07_device_model_snmp_point.sql`](../../sql/schema/07_device_model_snmp_point.sql)
 
 ---
 
@@ -446,7 +446,7 @@ V2에서 `GET .../snmp-points/script-template?deviceId=` export API 검토.
 
 ## 11. 구현 순서 (권장)
 
-1. `V006__create_device_model_snmp_point.sql`
+1. [`07_device_model_snmp_point.sql`](../../sql/schema/07_device_model_snmp_point.sql)
 2. `DeviceModelSnmpPoint` 엔티티 + validation
 3. `DeviceModelSnmpPointRepository` + QueryService
 4. `DeviceModelSnmpPointController` + DTO

@@ -5,7 +5,7 @@
 > API prefix: `/api/manager/devices`  
 > 아키텍처: [DEVICE_ARCHITECTURE.md](./DEVICE_ARCHITECTURE.md)  
 > 관련 ERD: [ERD.md — devices](../ERD.md#devices--장비-인스턴스-device-모듈)  
-> DDL: [V007__create_devices_table.sql](../../sql/history/V007__create_devices_table.sql)
+> DDL: [`09_devices.sql`](../../sql/schema/09_devices.sql)
 
 ---
 
@@ -324,7 +324,7 @@ erDiagram
 
 ## 8. 구현 순서 (권장)
 
-1. `V007__create_devices_table.sql` 적용
+1. [`09_devices.sql`](../../sql/schema/09_devices.sql) 적용
 2. `Device` 엔티티 (현재 스켈레톤 교체: `id` INT PK)
 3. `DeviceRepository` + JPA
 4. DTO (Create/Update Request, Response)

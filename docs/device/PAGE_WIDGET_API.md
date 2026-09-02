@@ -4,7 +4,7 @@
 페이지를 고르면 위젯 목록이 나오고, 종류(`query_kind`)에 따라 값을 조회합니다.
 
 > API prefix: `/api/manager/widgets`  
-> DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (core + kind별 1:1 확장 + 바인딩)
+> DDL: [`15_page_widget.sql`](../../sql/schema/15_page_widget.sql) ~ [`22_page_widget_layout.sql`](../../sql/schema/22_page_widget_layout.sql) (core + kind별 1:1 확장 + 바인딩)
 
 ```text
 common_code (DEVICE_PAGE)          ← 페이지

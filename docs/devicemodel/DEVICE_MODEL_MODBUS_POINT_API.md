@@ -5,7 +5,7 @@
 > API prefix: `/api/manager/device-models/{modelId}/protocols/{protocolId}/modbus-points`
 > 부모 API: [DEVICE_MODEL_API.md](DEVICE_MODEL_API.md)
 > 대응 문서: [DEVICE_MODEL_SNMP_POINT_API.md](DEVICE_MODEL_SNMP_POINT_API.md) — SNMP 버전(구조 동일)
-> DDL: [V010__create_device_model_modbus_point.sql](../../sql/history/V010__create_device_model_modbus_point.sql)
+> DDL: [`08_device_model_modbus_point.sql`](../../sql/schema/08_device_model_modbus_point.sql)
 
 ---
 
@@ -230,7 +230,7 @@ readInputRegisters(host, port, unitId, address, quantity)   → Integer[]  (raw 
 ## 7. 구현 순서 (권장)
 
 1. 도메인 엔티티 + enum — `DeviceModelModbusPoint`, `ModbusRegisterType`, `ModbusDataType`, `ModbusByteOrder` (완료)
-2. DDL — `V010__create_device_model_modbus_point.sql` (완료)
+2. DDL — [`08_device_model_modbus_point.sql`](../../sql/schema/08_device_model_modbus_point.sql) (완료)
 3. Repository — `domain/repository` + `infrastructure/persistence`
 4. Service — `application`
 5. Controller + DTO — `api`, `api/dto`

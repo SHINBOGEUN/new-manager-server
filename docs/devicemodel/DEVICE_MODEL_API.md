@@ -4,7 +4,7 @@
 
 > API prefix: `/api/manager/device-models`  
 > 관련 ERD: [ERD.md — device_model](../ERD.md#device_model--장비-제품-모델-devicemodel-모듈)  
-> DDL: [V005__create_device_model_tables.sql](../../sql/history/V005__create_device_model_tables.sql)
+> DDL: [`05_device_model.sql`](../../sql/schema/05_device_model.sql), [`06_device_model_protocol.sql`](../../sql/schema/06_device_model_protocol.sql)
 
 ---
 

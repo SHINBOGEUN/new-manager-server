@@ -4,7 +4,7 @@
 
 > API prefix: `/api/manager/location-node`  
 > 관련 ERD: [ERD.md — location_node](../ERD.md#location_node--위치-트리-노드-location-모듈)  
-> DDL: [V004__create_location_node_table.sql](../../sql/history/V004__create_location_node_table.sql)
+> DDL: [`04_location_node.sql`](../../sql/schema/04_location_node.sql)
 
 ---
 
@@ -51,7 +51,7 @@
 | `common_code` | `UNASSIGNED`, `CONTAINER`, `ZONE`, `ROW`, `RACK` |
 | `location_node` | `code=UNASSIGNED`, `name=미배정`, `parent_code=NULL` |
 
-> API·DDL: [DEVICE_API.md](../device/DEVICE_API.md), [V007__create_devices_table.sql](../../sql/history/V007__create_devices_table.sql)
+> API·DDL: [DEVICE_API.md](../device/DEVICE_API.md), [`09_devices.sql`](../../sql/schema/09_devices.sql)
 
 ---
 

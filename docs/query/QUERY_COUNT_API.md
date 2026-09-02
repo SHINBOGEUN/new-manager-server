@@ -11,7 +11,7 @@ GET /api/manager/query/count?widgetId=12&countMode=model&countModelId=10
 ```
 
 관련 위젯 정의: [PAGE_WIDGET_API.md](../device/PAGE_WIDGET_API.md)  
-DDL: [V018__create_page_widget.sql](../../sql/history/V018__create_page_widget.sql) (`page_widget_count` 1:1 확장)
+DDL: [`17_page_widget_count.sql`](../../sql/schema/17_page_widget_count.sql)
 
 ---
 

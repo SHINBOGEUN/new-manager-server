@@ -6,7 +6,7 @@
 > 아키텍처: [DEVICE_ARCHITECTURE.md](./DEVICE_ARCHITECTURE.md) §2.2  
 > 부모 API: [DEVICE_ENDPOINT_API.md](./DEVICE_ENDPOINT_API.md)  
 > 모델 카탈로그: [DEVICE_MODEL_SNMP_POINT_API.md](../devicemodel/DEVICE_MODEL_SNMP_POINT_API.md)  
-> DDL: [V011__create_device_snmp_instance.sql](../../sql/history/V011__create_device_snmp_instance.sql)
+> DDL: [`11_device_snmp_instance.sql`](../../sql/schema/11_device_snmp_instance.sql)
 
 ---
 

@@ -6,7 +6,7 @@
 > 아키텍처: [DEVICE_ARCHITECTURE.md](./DEVICE_ARCHITECTURE.md) §2.2  
 > 부모 API: [DEVICE_API.md](./DEVICE_API.md)  
 > 관련 ERD: [ERD.md — device_protocol_endpoint](../ERD.md#device_protocol_endpoint--프로토콜-엔드포인트-공통-전송층)  
-> DDL: [V009__create_device_protocol_endpoint.sql](../../sql/history/V009__create_device_protocol_endpoint.sql)
+> DDL: [`10_device_protocol_endpoint.sql`](../../sql/schema/10_device_protocol_endpoint.sql)
 
 ---
 
