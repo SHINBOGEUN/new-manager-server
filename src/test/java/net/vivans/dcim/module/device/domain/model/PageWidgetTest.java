@@ -251,7 +251,6 @@ class PageWidgetTest {
         assertThat(widget.getAggregateRangePreset()).isEqualTo(PageWidgetChartRangePreset.today);
         assertThat(widget.pointNames()).containsExactly("TOTAL_KWH");
         assertThat(widget.deviceIds()).containsExactly(1);
-        assertThat(widget.itDeviceIds()).isEmpty();
     }
 
     @Test
@@ -271,47 +270,6 @@ class PageWidgetTest {
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("pointNames is required for aggregate");
-    }
-
-    @Test
-    void create_pueRequiresBothDeviceSets() {
-        assertThatThrownBy(() -> PageWidget.create(
-                pageCode("dashboard", "dashboard"),
-                "PUE",
-                true,
-                PageWidgetQueryKind.aggregate,
-                PageWidgetOp.pue, null, PageWidgetChartRangePreset.last_24h,
-                null, null,
-                null, null, null, null,
-                List.of(),
-                List.of(device(1)),
-                List.of(),
-                List.of()
-        ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("itDeviceIds");
-    }
-
-    @Test
-    void create_pueAssignsRoles() {
-        PageWidget widget = PageWidget.create(
-                pageCode("dashboard", "dashboard"),
-                "PUE",
-                true,
-                PageWidgetQueryKind.aggregate,
-                PageWidgetOp.pue, null, PageWidgetChartRangePreset.last_24h,
-                null, null,
-                null, null, null, null,
-                List.of("TOTAL_WT"),
-                List.of(device(1), device(2)),
-                List.of(device(3)),
-                List.of()
-        );
-
-        assertThat(widget.totalDeviceIds()).containsExactly(1, 2);
-        assertThat(widget.itDeviceIds()).containsExactly(3);
-        assertThat(widget.deviceIds()).containsExactly(1, 2);
-        assertThat(widget.pointNames()).containsExactly("TOTAL_WT");
     }
 
     @Test

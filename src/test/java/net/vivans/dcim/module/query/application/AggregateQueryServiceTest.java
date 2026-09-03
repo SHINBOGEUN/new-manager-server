@@ -143,35 +143,6 @@ class AggregateQueryServiceTest {
     }
 
     @Test
-    void pueDividesTotalWByItW() {
-        Device total1 = device(101);
-        Device total2 = device(102);
-        Device it1 = device(201);
-        PageWidget widget = aggregateWidget(
-                12, "PUE", PageWidgetOp.pue, PageWidgetChartRangePreset.last_24h,
-                List.of(
-                        mapping(total1, PageWidgetDeviceRole.TOTAL),
-                        mapping(total2, PageWidgetDeviceRole.TOTAL),
-                        mapping(it1, PageWidgetDeviceRole.IT)
-                ),
-                "TOTAL_WT");
-        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(pointQuery.findLastInRange(eq(List.of(101, 102)), eq(List.of("TOTAL_WT")), any(), any()))
-                .thenReturn(List.of(
-                        new LastPoint(101, "TOTAL_WT", 200.0, T1),
-                        new LastPoint(102, "TOTAL_WT", 100.0, T1)
-                ));
-        when(pointQuery.findLastInRange(eq(List.of(201)), eq(List.of("TOTAL_WT")), any(), any()))
-                .thenReturn(List.of(new LastPoint(201, "TOTAL_WT", 150.0, T1)));
-
-        AggregateWidgetResponse response = service.getAggregate(12, "last_24h");
-
-        assertThat(response.aggregatePreset()).isEqualTo("pue");
-        assertThat(response.value()).isEqualByComparingTo("2.00");
-        assertThat(response.unit()).isNull();
-    }
-
-    @Test
     void defaultsUsageRangePresetToToday() {
         Device d1 = device(101);
         PageWidget widget = aggregateWidget(

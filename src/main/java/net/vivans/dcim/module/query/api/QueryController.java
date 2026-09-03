@@ -88,8 +88,8 @@ public class QueryController {
     @GetMapping("/aggregate")
     @Operation(
             summary = "위젯 집계값 조회",
-            description = "queryKind=aggregate 위젯의 preset(usage|power|pue)으로 구간 집계값을 조회합니다. "
-                    + "rangePreset 미지정 시 위젯 aggregateRangePreset, 없으면 usage→today / power·pue→last_24h."
+            description = "queryKind=aggregate 위젯의 preset(usage|power)으로 구간 집계값을 조회합니다. "
+                    + "rangePreset 미지정 시 위젯 aggregateRangePreset, 없으면 usage→today / power→last_24h."
     )
     public ResponseEntity<ApiResponse<AggregateWidgetResponse>> getAggregate(
             @Parameter(description = "page_widget id", example = "12", required = true)

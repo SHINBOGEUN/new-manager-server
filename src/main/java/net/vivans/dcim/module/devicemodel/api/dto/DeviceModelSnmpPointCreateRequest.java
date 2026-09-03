@@ -2,8 +2,13 @@ package net.vivans.dcim.module.devicemodel.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public record DeviceModelSnmpPointCreateRequest(
+        @Schema(description = "DATA_POINT_TYPE common_code.id", example = "101")
+        @NotNull(message = "dataPointTypeId is required")
+        Integer dataPointTypeId,
+
         @Schema(description = "식별자·표시명", example = "PRI-FLOW")
         @NotBlank(message = "name must not be empty")
         String name,

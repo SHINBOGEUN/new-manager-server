@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mariadb://${MARIADB_HOST:192.168.10.14}:${MARIADB_PORT:20181}/dcim_new
+    url: jdbc:mariadb://${MARIADB_HOST:192.168.10.14}:${MARIADB_PORT:20191}/dcim
     username: ${DB_USER:dcim}
     password: ${DB_PASS:dcim123}
     driver-class-name: org.mariadb.jdbc.Driver

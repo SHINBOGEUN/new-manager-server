@@ -50,7 +50,6 @@ public class AggregateQueryService {
         return switch (preset) {
             case usage -> computeUsage(widget, preset, rangePreset, range);
             case power -> computePower(widget, preset, rangePreset, range);
-            case pue -> computePue(widget, preset, rangePreset, range);
         };
     }
 
@@ -116,29 +115,6 @@ public class AggregateQueryService {
             return empty(widget, preset, rangePreset, range, null);
         }
         return sumLastPower(widget, preset, rangePreset, range, devices, PageWidgetDeviceRole.DEFAULT);
-    }
-
-    private AggregateWidgetResponse computePue(
-            PageWidget widget,
-            PageWidgetOp preset,
-            PageWidgetChartRangePreset rangePreset,
-            QueryRanges.Range range
-    ) {
-        List<Device> totalDevices = resolveEnabledDevices(widget, PageWidgetDeviceRole.TOTAL);
-        List<Device> itDevices = resolveEnabledDevices(widget, PageWidgetDeviceRole.IT);
-        if (totalDevices.isEmpty() || itDevices.isEmpty()) {
-            return empty(widget, preset, rangePreset, range, null);
-        }
-
-        List<AggregateDeviceValueResponse> rows = new ArrayList<>();
-        SumResult total = sumLastInRange(totalDevices, range, PageWidgetDeviceRole.TOTAL, rows, widget);
-        SumResult it = sumLastInRange(itDevices, range, PageWidgetDeviceRole.IT, rows, widget);
-
-        Double value = null;
-        if (total.hasValue && it.hasValue && it.sum != 0) {
-            value = total.sum / it.sum;
-        }
-        return response(widget, preset, rangePreset, range, value, null, rows);
     }
 
     private AggregateWidgetResponse sumLastPower(
@@ -271,7 +247,7 @@ public class AggregateQueryService {
         }
         return switch (preset) {
             case usage -> PageWidgetChartRangePreset.today;
-            case power, pue -> PageWidgetChartRangePreset.last_24h;
+            case power -> PageWidgetChartRangePreset.last_24h;
         };
     }
 

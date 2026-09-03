@@ -89,7 +89,7 @@ mysql -h HOST -P PORT -u dcim -p dcim_new < sql/schema/23_alter_example.sql
 | 13 | `13_collection_task_group.sql` | collection_task_group |
 | 14 | `14_collection_task_device.sql` | collection_task_device |
 | 15 | `15_page_widget.sql` | page_widget |
-| 16 | `16_page_widget_aggregate.sql` | page_widget_aggregate (usage/power/pue) |
+| 16 | `16_page_widget_aggregate.sql` | page_widget_aggregate (usage/power) |
 | 17 | `17_page_widget_count.sql` | page_widget_count |
 | 18 | `18_page_widget_chart.sql` | page_widget_chart |
 | 19 | `19_page_widget_point.sql` | page_widget_point |

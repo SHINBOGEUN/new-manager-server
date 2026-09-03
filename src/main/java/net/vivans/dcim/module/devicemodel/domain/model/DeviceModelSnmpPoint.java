@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.vivans.dcim.shared.persistence.BaseEntity;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
 
 @Entity
 @Table(
@@ -46,6 +47,10 @@ public class DeviceModelSnmpPoint extends BaseEntity {
 
     @Column(nullable = false)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "data_point_type_id", nullable = false)
+    private CommonCode dataPointType;
 
     @Column(nullable = false, length = 512)
     private String oid;
@@ -96,6 +101,14 @@ public class DeviceModelSnmpPoint extends BaseEntity {
         return new DeviceModelSnmpPoint(modelProtocol, name, oid, requiresInstance, unit, scale, enabled);
     }
 
+    public static DeviceModelSnmpPoint create(
+            DeviceModelProtocol modelProtocol, String name, String oid, boolean requiresInstance,
+            String unit, Double scale, boolean enabled, CommonCode dataPointType) {
+        DeviceModelSnmpPoint point = new DeviceModelSnmpPoint(modelProtocol, name, oid, requiresInstance, unit, scale, enabled);
+        point.dataPointType = dataPointType;
+        return point;
+    }
+
     public void update(
             String name,
             String oid,
@@ -113,6 +126,12 @@ public class DeviceModelSnmpPoint extends BaseEntity {
         this.unit = unit;
         this.scale = scale;
         this.enabled = enabled;
+    }
+
+    public void update(String name, String oid, boolean requiresInstance, String unit, Double scale,
+                       boolean enabled, CommonCode dataPointType) {
+        update(name, oid, requiresInstance, unit, scale, enabled);
+        this.dataPointType = dataPointType;
     }
 
     public String resolveOid(Integer instanceId) {

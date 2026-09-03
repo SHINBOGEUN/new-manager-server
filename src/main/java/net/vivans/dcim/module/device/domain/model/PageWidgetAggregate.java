@@ -34,15 +34,6 @@ public class PageWidgetAggregate extends BaseEntity {
     @Column(nullable = false, length = 16)
     private PageWidgetOp op;
 
-    @Column(name = "weight_point", length = 100)
-    private String weightPoint;
-
-    @Column(name = "numerator_point", length = 100)
-    private String numeratorPoint;
-
-    @Column(name = "denominator_point", length = 100)
-    private String denominatorPoint;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "range_preset", length = 16)
     private PageWidgetChartRangePreset rangePreset;
@@ -60,9 +51,6 @@ public class PageWidgetAggregate extends BaseEntity {
         }
         this.widget = widget;
         this.op = op;
-        this.weightPoint = null;
-        this.numeratorPoint = null;
-        this.denominatorPoint = null;
         this.rangePreset = resolveRangePreset(op, rangePreset);
         validate();
     }
@@ -80,9 +68,6 @@ public class PageWidgetAggregate extends BaseEntity {
             throw new IllegalArgumentException("aggregatePreset/op is required for aggregate");
         }
         this.op = op;
-        this.weightPoint = null;
-        this.numeratorPoint = null;
-        this.denominatorPoint = null;
         this.rangePreset = resolveRangePreset(op, rangePreset);
         validate();
     }

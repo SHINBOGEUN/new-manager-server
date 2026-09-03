@@ -181,27 +181,6 @@ class PageWidgetControllerIntegrationTest {
     }
 
     @Test
-    void createWidget_whenQueryKindInvalid_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-bad-kind", "password123");
-        devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
-        int deviceId = createDevice(accessToken, "Widget-Bad-Kind");
-
-        mockMvc.perform(post("/api/manager/widgets")
-                        .header("Authorization", bearerToken(accessToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "pageCode":"COOLING",
-                                  "name":"PUE",
-                                  "queryKind":"pue",
-                                  "deviceIds":[%d]
-                                }
-                                """.formatted(deviceId)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("queryKind must be last, aggregate, count, or chart"));
-    }
-
-    @Test
     void updateAndDeleteWidget() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-upd", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
