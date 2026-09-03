@@ -180,7 +180,10 @@ public class DeviceModelSnmpPointQueryService {
     }
 
     private CommonCode resolveDataPointType(Integer id) {
-        if (id == null) return null;
+        if (id == null) {
+            return commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "POWER")
+                    .orElseThrow(() -> new EntityNotFoundException("DATA_POINT_TYPE/POWER is not configured"));
+        }
         CommonCode code = commonCodeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));
         if (!"DATA_POINT_TYPE".equals(code.getCodeGroup().getGroupKey())) {
