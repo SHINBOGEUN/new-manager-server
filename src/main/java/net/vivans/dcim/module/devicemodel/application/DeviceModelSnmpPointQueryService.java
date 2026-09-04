@@ -11,6 +11,8 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
+import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class DeviceModelSnmpPointQueryService {
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CommonCodeRepository commonCodeRepository;
 
     public List<DeviceModelSnmpPointResponse> getDeviceModelSnmpPoints(Integer modelId, Integer protocolId) {
         findSnmpProtocol(modelId, protocolId);
@@ -104,7 +107,8 @@ public class DeviceModelSnmpPointQueryService {
         boolean requiresInstance = Boolean.TRUE.equals(request.requiresInstance());
         boolean enabled = request.enabled() == null || request.enabled();
 
-        point.update(request.name(), request.oid(), requiresInstance, request.unit(), request.scale(), enabled);
+        point.update(request.name(), request.oid(), requiresInstance, request.unit(), request.scale(), enabled,
+                resolveDataPointType(request.dataPointTypeId()));
 
         DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
         collectionScriptSyncService.regenerateByModelId(modelId);
@@ -170,7 +174,21 @@ public class DeviceModelSnmpPointQueryService {
                 requiresInstance,
                 request.unit(),
                 request.scale(),
-                enabled
+                enabled,
+                resolveDataPointType(request.dataPointTypeId())
         );
+    }
+
+    private CommonCode resolveDataPointType(Integer id) {
+        if (id == null) {
+            return commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "POWER")
+                    .orElseThrow(() -> new EntityNotFoundException("DATA_POINT_TYPE/POWER is not configured"));
+        }
+        CommonCode code = commonCodeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));
+        if (!"DATA_POINT_TYPE".equals(code.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("dataPointTypeId must belong to DATA_POINT_TYPE");
+        }
+        return code;
     }
 }

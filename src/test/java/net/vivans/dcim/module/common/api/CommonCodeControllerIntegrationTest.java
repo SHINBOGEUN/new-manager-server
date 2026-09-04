@@ -85,7 +85,7 @@ class CommonCodeControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data.length()").value(10))
                 .andExpect(jsonPath("$.data[*].groupId").value(hasItems(groupId, groupId)))
                 .andExpect(jsonPath("$.data[*].code").value(hasItems("pdu", "ups")))
                 .andExpect(jsonPath("$.data[*].name").value(hasItems("pdu", "ups")));

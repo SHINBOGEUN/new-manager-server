@@ -167,18 +167,6 @@ public class PageWidget extends BaseEntity {
         return aggregate == null ? null : aggregate.getRangePreset();
     }
 
-    public String getWeightPoint() {
-        return null;
-    }
-
-    public String getNumeratorPoint() {
-        return null;
-    }
-
-    public String getDenominatorPoint() {
-        return null;
-    }
-
     public PageWidgetCountMode getCountMode() {
         return count == null ? null : count.getCountMode();
     }
@@ -232,30 +220,6 @@ public class PageWidget extends BaseEntity {
         List<Integer> ids = new ArrayList<>();
         for (PageWidgetDevice mapping : devices) {
             if (mapping.getDeviceRole() != PageWidgetDeviceRole.IT) {
-                ids.add(mapping.getDevice().getId());
-            }
-        }
-        return ids;
-    }
-
-    public List<Integer> totalDeviceIds() {
-        PageWidgetOp op = getOp();
-        if (op == PageWidgetOp.pue) {
-            List<Integer> ids = new ArrayList<>();
-            for (PageWidgetDevice mapping : devices) {
-                if (mapping.getDeviceRole() == PageWidgetDeviceRole.TOTAL) {
-                    ids.add(mapping.getDevice().getId());
-                }
-            }
-            return ids;
-        }
-        return deviceIds();
-    }
-
-    public List<Integer> itDeviceIds() {
-        List<Integer> ids = new ArrayList<>();
-        for (PageWidgetDevice mapping : devices) {
-            if (mapping.getDeviceRole() == PageWidgetDeviceRole.IT) {
                 ids.add(mapping.getDevice().getId());
             }
         }
@@ -368,36 +332,6 @@ public class PageWidget extends BaseEntity {
 
     private void replaceDevices(List<Device> devices, List<Device> itDevices) {
         this.devices.clear();
-        if (queryKind == PageWidgetQueryKind.aggregate && getOp() == PageWidgetOp.pue) {
-            List<Device> totals = devices == null ? List.of() : devices;
-            List<Device> its = itDevices == null ? List.of() : itDevices;
-            if (totals.isEmpty() || its.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "deviceIds (total) and itDeviceIds are required for pue");
-            }
-            Set<Integer> totalIds = new HashSet<>();
-            Set<Integer> itIds = new HashSet<>();
-            for (Device device : totals) {
-                requireDevice(device);
-                if (!totalIds.add(device.getId())) {
-                    continue;
-                }
-                this.devices.add(PageWidgetDevice.create(this, device, PageWidgetDeviceRole.TOTAL));
-            }
-            for (Device device : its) {
-                requireDevice(device);
-                if (totalIds.contains(device.getId())) {
-                    throw new IllegalArgumentException(
-                            "deviceIds and itDeviceIds must not overlap for pue");
-                }
-                if (!itIds.add(device.getId())) {
-                    continue;
-                }
-                this.devices.add(PageWidgetDevice.create(this, device, PageWidgetDeviceRole.IT));
-            }
-            return;
-        }
-
         if (devices == null) {
             return;
         }
@@ -450,12 +384,7 @@ public class PageWidget extends BaseEntity {
             return;
         }
         if (queryKind == PageWidgetQueryKind.aggregate) {
-            if (getOp() == PageWidgetOp.pue) {
-                if (totalDeviceIds().isEmpty() || itDeviceIds().isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "deviceIds (total) and itDeviceIds are required for pue");
-                }
-            } else if (devices.isEmpty()) {
+            if (devices.isEmpty()) {
                 throw new IllegalArgumentException("deviceIds is required");
             }
             if (points.isEmpty()) {

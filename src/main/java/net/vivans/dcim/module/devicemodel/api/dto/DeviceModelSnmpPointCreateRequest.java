@@ -4,6 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record DeviceModelSnmpPointCreateRequest(
+        @Schema(description = "DATA_POINT_TYPE common_code.id", example = "101")
+        Integer dataPointTypeId,
+
         @Schema(description = "식별자·표시명", example = "PRI-FLOW")
         @NotBlank(message = "name must not be empty")
         String name,

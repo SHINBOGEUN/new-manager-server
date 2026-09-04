@@ -61,7 +61,7 @@ class CodeGroupControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data.length()").value(3))
+                .andExpect(jsonPath("$.data.length()").value(4))
                 .andExpect(jsonPath("$.data[*].groupKey").value(hasItems("DEVICE_TYPE", "SENSOR_TYPE","LOCATION_TYPE")))
                 .andExpect(jsonPath("$.data[*].groupName").value(hasItems("장비 유형", "센서 유형", "위치 유형")));
     }

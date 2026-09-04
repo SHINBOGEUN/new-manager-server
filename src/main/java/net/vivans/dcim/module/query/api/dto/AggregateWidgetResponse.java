@@ -12,11 +12,11 @@ public record AggregateWidgetResponse(
         String rangePreset,
         Instant start,
         Instant end,
-        /** 전체 합(또는 PUE 비율) */
+        /** 전체 합 */
         BigDecimal value,
         String unit,
         Integer contributingDevices,
-        /** 장비별 값 (usage/power=기여분, pue=역할별 W) */
+        /** 장비별 기여 값 */
         List<AggregateDeviceValueResponse> devices
 ) {
 }

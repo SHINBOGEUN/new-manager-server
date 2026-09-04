@@ -20,20 +20,11 @@ public record PageWidgetUpdateRequest(
         @NotBlank(message = "queryKind is required")
         String queryKind,
 
-        @Schema(description = "aggregate preset: usage | power | pue")
+        @Schema(description = "aggregate preset: usage | power")
         String op,
 
         @Schema(description = "그룹: device | point | location")
         String groupBy,
-
-        @Schema(description = "deprecated — ignored", deprecated = true)
-        String weightPoint,
-
-        @Schema(description = "deprecated — ignored", deprecated = true)
-        String numeratorPoint,
-
-        @Schema(description = "deprecated — ignored", deprecated = true)
-        String denominatorPoint,
 
         @Schema(description = "aggregate 기간 preset (usage 필수, 미지정 시 today)")
         String aggregateRangePreset,
@@ -56,11 +47,8 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "chart만: 1m | 5m | 15m | 1h | 1d")
         String chartWindow,
 
-        @Schema(description = "last/aggregate 필수. pue면 총 전력 장비. chart+devices 필수. count/chart+models는 []")
+        @Schema(description = "last/aggregate 필수. chart+devices 필수. count/chart+models는 []")
         List<Integer> deviceIds,
-
-        @Schema(description = "aggregate pue만: IT 전력 장비")
-        List<Integer> itDeviceIds,
 
         @Schema(description = "chart+models 일 때 필수")
         List<Integer> modelIds,
