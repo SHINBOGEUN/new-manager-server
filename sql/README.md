@@ -13,7 +13,8 @@ sql/
 └── schema/          ← DDL (01~22 baseline, 이후 번호로 증분 추가)
     ├── 01_users.sql
     ├── …
-    └── 22_page_widget_layout.sql
+    ├── 22_page_widget_layout.sql
+    └── 23_device_endpoint_modbus.sql
 ```
 
 운영 DB(`dcim_new`) **현재 구조**를 FK 생성 순서대로 나눈 baseline입니다 (스냅샷: `192.168.10.14:20181`, 2026-09-02).
@@ -22,7 +23,7 @@ sql/
 
 ## 신규 배포 (빈 DB)
 
-1. **스키마** — `schema/01` ~ `schema/22` 번호 순 실행
+1. **스키마** — `schema/01` ~ `schema/23` 번호 순 실행
 2. **공통코드·위치** — Ops Console(`/ops-console.html`)에서 필수 그룹/코드·`UNASSIGNED` 노드 등록
 3. **로그인 계정** — Ops Console 또는 API로 `users` 생성
 4. **현장 데이터** — 모델·장비·위젯 등 UI로 등록
@@ -47,12 +48,12 @@ Get-ChildItem sql/schema/*_*.sql | Sort-Object Name | ForEach-Object {
 
 1. `schema/`에 변경 반영
    - **신규 설치용:** 해당 테이블 DDL 파일 수정
-   - **기존 DB용:** `23_alter_설명.sql`처럼 **다음 번호**로 ALTER 스크립트 추가
+   - **기존 DB용:** `24_alter_설명.sql`처럼 **다음 번호**로 ALTER 스크립트 추가
 2. 운영 DB에 미적용분만 실행
 3. 아래 **적용 이력**에 기록
 
 ```bash
-mysql -h HOST -P PORT -u dcim -p dcim_new < sql/schema/23_alter_example.sql
+mysql -h HOST -P PORT -u dcim -p dcim_new < sql/schema/24_alter_example.sql
 ```
 
 ---
@@ -96,6 +97,7 @@ mysql -h HOST -P PORT -u dcim -p dcim_new < sql/schema/23_alter_example.sql
 | 20 | `20_page_widget_device.sql` | page_widget_device (+ device_role) |
 | 21 | `21_page_widget_model.sql` | page_widget_model |
 | 22 | `22_page_widget_layout.sql` | page_widget_layout |
+| 23 | `23_device_endpoint_modbus.sql` | device_endpoint_modbus |
 
 ---
 
@@ -104,3 +106,4 @@ mysql -h HOST -P PORT -u dcim -p dcim_new < sql/schema/23_alter_example.sql
 | 일자 | 대상 DB | 적용 내용 |
 |------|---------|-----------|
 | 2026-09-02 | — | `schema/01~22` baseline 확정. 구 `history/`, `seed/`, `dumps/` 제거 |
+| 2026-09-03 | — | `schema/23_device_endpoint_modbus.sql` 추가 (Modbus endpoint 확장, unit_id) |
