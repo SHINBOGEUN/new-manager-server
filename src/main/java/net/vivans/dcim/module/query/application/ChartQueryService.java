@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,16 +73,18 @@ public class ChartQueryService {
         List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
         Map<Integer, Device> deviceById = devices.stream()
                 .collect(Collectors.toMap(Device::getId, d -> d, (a, b) -> a, LinkedHashMap::new));
-        String unit = resolveUnit(devices, pointNames);
+        List<String> queryPointNames = pointNames;
+        ChartPointContext pointContext = buildPointContext(devices, pointNames);
+        String unit = resolveUnit(devices, queryPointNames);
 
         List<SeriesPoint> raw = pointQuery.findSeries(
-                deviceIds, pointNames, range.start(), range.end(), window);
+                deviceIds, queryPointNames, range.start(), range.end(), window);
 
         List<ChartSeriesResponse> series = switch (mode) {
-            case per_device -> buildPerDevice(raw, deviceById, pointNames);
-            case sum -> buildSum(raw);
-            case by_phase -> buildByPhase(raw);
-            case by_path -> buildByPath(raw, deviceById);
+            case per_device -> buildPerDevice(raw, deviceById, queryPointNames, pointContext);
+            case sum -> buildSum(raw, deviceById, pointContext);
+            case by_phase -> buildByPhase(raw, deviceById, pointContext);
+            case by_path -> buildByPath(raw, deviceById, pointContext);
         };
 
         PageWidgetChartScope scope = widget.getChartScope() == null
@@ -103,14 +106,37 @@ public class ChartQueryService {
         );
     }
 
+    private static String phaseSuffix(String name) {
+        if (name == null || name.length() < 4 || name.charAt(0) != 'L'
+                || (name.charAt(1) != '1' && name.charAt(1) != '2' && name.charAt(1) != '3')
+                || name.charAt(2) != '_') {
+            return null;
+        }
+        return name.substring(3);
+    }
+
+    private static String totalSuffix(String name) {
+        if (name == null) return null;
+        return switch (name) {
+            case "TOTAL_WT" -> "WATT";
+            case "AMP" -> "AMP";
+            case "PF" -> "PF";
+            default -> name.startsWith("TOTAL_") ? name.substring(6) : null;
+        };
+    }
+
     private List<ChartSeriesResponse> buildPerDevice(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
-            List<String> pointNames
+            List<String> pointNames,
+            ChartPointContext context
     ) {
         Map<String, List<SeriesPoint>> grouped = new LinkedHashMap<>();
         for (SeriesPoint point : raw) {
             if (!deviceById.containsKey(point.deviceId())) {
+                continue;
+            }
+            if (!includePerDevicePoint(point.pointName(), context)) {
                 continue;
             }
             String key = point.deviceId() + ":" + point.pointName();
@@ -138,24 +164,57 @@ public class ChartQueryService {
         return series;
     }
 
-    private List<ChartSeriesResponse> buildSum(List<SeriesPoint> raw) {
+    private List<ChartSeriesResponse> buildSum(
+            List<SeriesPoint> raw,
+            Map<Integer, Device> deviceById,
+            ChartPointContext context
+    ) {
         Map<Instant, Double> sums = new HashMap<>();
         for (SeriesPoint point : raw) {
+            if (!includeAggregatePoint(point, deviceById, context)) {
+                continue;
+            }
             sums.merge(point.time(), point.value(), Double::sum);
         }
         return List.of(toSeries("sum", "합계", null, null, null, fromInstantMap(sums)));
     }
 
-    private List<ChartSeriesResponse> buildByPhase(List<SeriesPoint> raw) {
+    private List<ChartSeriesResponse> buildByPhase(
+            List<SeriesPoint> raw,
+            Map<Integer, Device> deviceById,
+            ChartPointContext context
+    ) {
         Map<String, Map<Instant, Double>> byPoint = new LinkedHashMap<>();
+        Map<String, String> labels = new HashMap<>();
         for (SeriesPoint point : raw) {
-            byPoint.computeIfAbsent(point.pointName(), ignored -> new HashMap<>())
+            if (context.phaseSuffixes().isEmpty()) {
+                byPoint.computeIfAbsent(point.pointName(), ignored -> new HashMap<>())
+                        .merge(point.time(), point.value(), Double::sum);
+                labels.putIfAbsent(point.pointName(), point.pointName());
+                continue;
+            }
+            Device device = deviceById.get(point.deviceId());
+            if (device == null) continue;
+            boolean phaseModel = context.phaseModelIds().contains(device.getDeviceModel().getId());
+            String suffix = phaseSuffix(point.pointName());
+            String total = totalSuffix(point.pointName());
+            String key;
+            if (phaseModel && suffix != null && context.phaseSuffixes().contains(suffix)) {
+                key = point.pointName();
+                labels.putIfAbsent(key, key);
+            } else if (!phaseModel && total != null && context.phaseSuffixes().contains(total)) {
+                key = "single:" + total;
+                labels.putIfAbsent(key, context.phaseSuffixes().size() == 1 ? "단상" : "단상 " + total);
+            } else {
+                continue;
+            }
+            byPoint.computeIfAbsent(key, ignored -> new HashMap<>())
                     .merge(point.time(), point.value(), Double::sum);
         }
         List<ChartSeriesResponse> series = new ArrayList<>();
         for (Map.Entry<String, Map<Instant, Double>> entry : byPoint.entrySet()) {
             series.add(toSeries(
-                    entry.getKey(), entry.getKey(), null, entry.getKey(), null,
+                    entry.getKey(), labels.getOrDefault(entry.getKey(), entry.getKey()), null, entry.getKey(), null,
                     fromInstantMap(entry.getValue())
             ));
         }
@@ -165,13 +224,17 @@ public class ChartQueryService {
 
     private List<ChartSeriesResponse> buildByPath(
             List<SeriesPoint> raw,
-            Map<Integer, Device> deviceById
+            Map<Integer, Device> deviceById,
+            ChartPointContext context
     ) {
         Map<String, Map<Instant, Double>> byPath = new LinkedHashMap<>();
         Map<String, String> labelByPath = new LinkedHashMap<>();
         for (SeriesPoint point : raw) {
             Device device = deviceById.get(point.deviceId());
             if (device == null || device.getLocationNode() == null) {
+                continue;
+            }
+            if (!includeAggregatePoint(point, deviceById, context)) {
                 continue;
             }
             // PDU(장비)별 pathCode (A/B/C). 위치가 달라도 같은 path code면 합산.
@@ -203,6 +266,81 @@ public class ChartQueryService {
         }
         series.sort(Comparator.comparing(ChartSeriesResponse::key));
         return series;
+    }
+
+    private ChartPointContext buildPointContext(List<Device> devices, List<String> pointNames) {
+        Set<String> phaseSuffixes = pointNames.stream()
+                .map(ChartQueryService::phaseSuffix)
+                .filter(java.util.Objects::nonNull)
+                .filter(suffix -> pointNames.contains("L1_" + suffix)
+                        && pointNames.contains("L2_" + suffix)
+                        && pointNames.contains("L3_" + suffix))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> totalSuffixes = pointNames.stream()
+                .map(ChartQueryService::totalSuffix)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (phaseSuffixes.isEmpty()) {
+            return new ChartPointContext(Set.of(), Set.of(), totalSuffixes);
+        }
+
+        Set<Integer> modelIds = devices.stream()
+                .map(device -> device.getDeviceModel().getId())
+                .collect(Collectors.toSet());
+        Map<Integer, Set<String>> namesByModel = new HashMap<>();
+        for (DeviceModelSnmpPoint point : deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
+            Integer modelId = point.getModelProtocol().getDeviceModel().getId();
+            namesByModel.computeIfAbsent(modelId, ignored -> new HashSet<>()).add(point.getName());
+        }
+        Set<Integer> phaseModelIds = new HashSet<>();
+        for (Map.Entry<Integer, Set<String>> entry : namesByModel.entrySet()) {
+            for (String suffix : phaseSuffixes) {
+                Set<String> names = entry.getValue();
+                if (names.contains("L1_" + suffix) && names.contains("L2_" + suffix)
+                        && names.contains("L3_" + suffix)) {
+                    phaseModelIds.add(entry.getKey());
+                    break;
+                }
+            }
+        }
+        return new ChartPointContext(phaseSuffixes, phaseModelIds, totalSuffixes);
+    }
+
+    private static boolean includePerDevicePoint(String pointName, ChartPointContext context) {
+        String phase = phaseSuffix(pointName);
+        String total = totalSuffix(pointName);
+        if (phase != null && context.phaseSuffixes().contains(phase)
+                && context.totalSuffixes().contains(phase)) {
+            return false;
+        }
+        return total == null || !context.phaseSuffixes().contains(total)
+                || context.totalSuffixes().contains(total);
+    }
+
+    private static boolean includeAggregatePoint(
+            SeriesPoint point,
+            Map<Integer, Device> deviceById,
+            ChartPointContext context
+    ) {
+        String phase = phaseSuffix(point.pointName());
+        String total = totalSuffix(point.pointName());
+        if ((phase == null || !context.phaseSuffixes().contains(phase))
+                && (total == null || !context.phaseSuffixes().contains(total))) {
+            return true;
+        }
+        Device device = deviceById.get(point.deviceId());
+        if (device == null) return false;
+        boolean phaseModel = context.phaseModelIds().contains(device.getDeviceModel().getId());
+        return phaseModel
+                ? phase != null && context.phaseSuffixes().contains(phase)
+                : total != null && context.phaseSuffixes().contains(total);
+    }
+
+    private record ChartPointContext(
+            Set<String> phaseSuffixes,
+            Set<Integer> phaseModelIds,
+            Set<String> totalSuffixes
+    ) {
     }
 
     private static ChartSeriesResponse toSeries(

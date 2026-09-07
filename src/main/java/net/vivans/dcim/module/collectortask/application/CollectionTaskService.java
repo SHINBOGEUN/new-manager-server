@@ -21,6 +21,7 @@ import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -47,6 +48,7 @@ public class CollectionTaskService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceRepository deviceRepository;
+    private final EntityManager entityManager;
 
     public List<CollectionTaskResponse> getTasks(Integer modelId, Integer scriptTypeId, Boolean active) {
         List<CollectionTaskResponse> responses = new ArrayList<>();
@@ -110,7 +112,18 @@ public class CollectionTaskService {
     public CollectionTaskGroupResponse createGroup(Integer taskId, CollectionTaskGroupRequest request) {
         CollectionTask task = findTask(taskId);
         CollectionTaskGroup group = buildGroup(task, request, null);
+        // The task is already managed, but the newly-created child must be
+        // explicitly made persistent before its generated id is used in the
+        // collector spec.
+        entityManager.persist(group);
         collectionTaskRepository.saveAndFlush(task);
+        // The collector spec contains the generated collection_task_group.id.
+        // Force the cascade insert before generating the spec so a newly-created
+        // group can never be synchronized with a null groupId.
+        entityManager.flush();
+        if (group.getId() == null) {
+            throw new IllegalStateException("collection task group id was not generated");
+        }
         group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
         collectionTaskRepository.saveAndFlush(task);
         collectorSyncService.syncGroupSpec(group);

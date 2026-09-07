@@ -13,6 +13,8 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
@@ -137,6 +139,47 @@ class ChartQueryServiceTest {
         assertThat(response.series()).hasSize(2);
         assertThat(response.series().get(0).key()).isEqualTo("L1");
         assertThat(response.series().get(0).values().get(0)).isEqualTo(3.0);
+    }
+
+    @Test
+    void mixedSingleAndThreePhase_buildsPhaseAndSingleSeriesWithoutDoubleCounting() {
+        DeviceModel threePhaseModel = model(10);
+        DeviceModel singlePhaseModel = model(20);
+        Device threePhase = device(1, "3상 PDU", "R1", "랙1", threePhaseModel);
+        Device singlePhase = device(2, "단상 PDU", "R2", "랙2", singlePhaseModel);
+        List<String> points = List.of("TOTAL_WT", "L1_WATT", "L2_WATT", "L3_WATT");
+        PageWidget widget = chartWidget(
+                PageWidgetChartScope.devices,
+                PageWidgetChartSeriesMode.by_phase,
+                points,
+                List.of(threePhase, singlePhase),
+                List.of()
+        );
+        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
+        List<DeviceModelSnmpPoint> modelPoints = List.of(
+                snmpPoint(threePhaseModel, "TOTAL_WT", "W"),
+                snmpPoint(threePhaseModel, "L1_WATT", "W"),
+                snmpPoint(threePhaseModel, "L2_WATT", "W"),
+                snmpPoint(threePhaseModel, "L3_WATT", "W"),
+                snmpPoint(singlePhaseModel, "TOTAL_WT", "W")
+        );
+        when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(any())).thenReturn(modelPoints);
+        Instant t = Instant.parse("2026-08-27T01:00:00Z");
+        when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
+                .thenReturn(List.of(
+                        new SeriesPoint(1, "TOTAL_WT", 6.0, t),
+                        new SeriesPoint(1, "L1_WATT", 1.0, t),
+                        new SeriesPoint(1, "L2_WATT", 2.0, t),
+                        new SeriesPoint(1, "L3_WATT", 3.0, t),
+                        new SeriesPoint(2, "TOTAL_WT", 4.0, t)
+                ));
+
+        ChartWidgetResponse phase = service.getChart(12, null, null, "by_phase");
+        ChartWidgetResponse sum = service.getChart(12, null, null, "sum");
+
+        assertThat(phase.series()).extracting(series -> series.label())
+                .containsExactly("L1_WATT", "L2_WATT", "L3_WATT", "단상");
+        assertThat(sum.series().get(0).values()).containsExactly(10.0);
     }
 
     @Test
@@ -274,6 +317,16 @@ class ChartQueryServiceTest {
         DeviceModel model = mock(DeviceModel.class);
         when(model.getId()).thenReturn(id);
         return model;
+    }
+
+    private static DeviceModelSnmpPoint snmpPoint(DeviceModel model, String name, String unit) {
+        DeviceModelProtocol protocol = mock(DeviceModelProtocol.class);
+        when(protocol.getDeviceModel()).thenReturn(model);
+        DeviceModelSnmpPoint point = mock(DeviceModelSnmpPoint.class);
+        when(point.getModelProtocol()).thenReturn(protocol);
+        when(point.getName()).thenReturn(name);
+        when(point.getUnit()).thenReturn(unit);
+        return point;
     }
 
     private static CommonCode pageCode(String code) {
