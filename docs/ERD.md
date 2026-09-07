@@ -128,7 +128,7 @@ erDiagram
 | devicemodel | `device_model` | N → `common_code` (MODEL_TYPE), UK: name+manufacturer |
 | devicemodel | `device_model_protocol` | 모델 ↔ PROTOCOL_TYPE N:M (UK: model_id+protocol_type_id) |
 | devicemodel | `device_model_snmp_point` | ✅ SNMP point (UK: model_protocol_id+name) |
-| devicemodel | `device_model_modbus_point` | ⏳ Modbus point 카탈로그 (UK: model_protocol_id+name) |
+| devicemodel | `device_model_modbus_point` | ✅ Modbus point 카탈로그 (UK: model_protocol_id+name) |
 | device | `devices` | ⏳ 장비 인스턴스 (UK: location_node_code+name, 미지정=`UNASSIGNED`) |
 
 ---
@@ -540,7 +540,7 @@ erDiagram
 
 ### `device_protocol_endpoint` — 프로토콜 엔드포인트 (공통 전송층)
 
-**구현 상태:** ✅ 구현됨 (공통 테이블 + SNMP instance V011. Modbus device 확장 제외)
+**구현 상태:** ✅ 구현됨 (공통 테이블 + SNMP instance V011 + Modbus 확장 `23_device_endpoint_modbus.sql`)
 
 > 4층 아키텍처 **③ 엔드포인트층** — host/port.  
 > API: [DEVICE_ENDPOINT_API.md](device/DEVICE_ENDPOINT_API.md)  
@@ -599,6 +599,74 @@ erDiagram
     common_code ||--o{ device_protocol_endpoint : "protocol_type_id"
 ```
 
+---
+
+### `device_endpoint_modbus` — Modbus 엔드포인트 확장
+
+**구현 상태:** ✅ 구현됨
+
+> 4층 아키텍처 **④ 프로토콜 확장층** — `device_protocol_endpoint` 1:1 확장. Modbus 전용 접속값.
+> `device_snmp_instance`(SNMP `{instanceId}`)와 대칭 구조.
+> API: [DEVICE_ENDPOINT_MODBUS_API.md](device/DEVICE_ENDPOINT_MODBUS_API.md)
+> DDL: [`23_device_endpoint_modbus.sql`](../sql/schema/23_device_endpoint_modbus.sql)
+
+| 컬럼 | 타입 | NULL | 키 | 기본값 | 설명 |
+|------|------|------|-----|--------|------|
+| `endpoint_id` | INT | N | PK, FK | | `device_protocol_endpoint.id` (PK 겸 FK, 1:1) |
+| `unit_id` | INT | Y | | | Modbus unit/slave ID (CHECK 0~247) |
+| `created_dt` | TIMESTAMP(6) | Y | | | |
+| `updated_dt` | TIMESTAMP(6) | Y | | | |
+
+**`unit_id`가 nullable인 이유**
+
+| 장비 유형 | `unit_id` | 비고 |
+|-----------|-----------|------|
+| RDC 등 단순 장비 (`requires_instance=0`) | 값 지정 | 이 한 값으로 수집 가능 |
+| 분전반 등 (`requires_instance=1`) | `NULL` | 회선마다 달라서 `device_modbus_reading`(⬜)이 담당 |
+
+**엔티티:** `module/device/domain/model/DeviceEndpointModbus.java` ✅
+**상속:** `BaseEntity`
+**연관:**
+- `@OneToOne` + `@MapsId` → `DeviceProtocolEndpoint` (`endpoint_id`) — 자식 PK가 곧 부모 PK
+
+**검증 (애플리케이션)**
+- endpoint의 `protocol_type.code`가 `modbus`여야 함
+- `unit_id`는 NULL이거나 0~247
+
+**FK 제약**
+
+| FK | 참조 | ON DELETE | ON UPDATE |
+|----|------|-----------|-----------|
+| `fk_device_endpoint_modbus_endpoint_id` | `device_protocol_endpoint(id)` | CASCADE | CASCADE |
+
+**관계도**
+
+```mermaid
+erDiagram
+    device_protocol_endpoint {
+        int id PK
+        int device_id FK
+        int protocol_type_id FK
+        varchar host
+        int port
+    }
+
+    device_endpoint_modbus {
+        int endpoint_id PK "FK 겸 PK"
+        int unit_id "0~247, nullable"
+    }
+
+    device_snmp_instance {
+        int endpoint_id PK "FK 겸 PK"
+        int instance_id
+    }
+
+    device_protocol_endpoint ||--o| device_endpoint_modbus : "endpoint_id (modbus)"
+    device_protocol_endpoint ||--o| device_snmp_instance : "endpoint_id (snmp)"
+```
+
+---
+
 **이후 (본 테이블에 넣지 않음)**
 
 | 테이블 | 역할 | 상태 |
@@ -607,7 +675,8 @@ erDiagram
 | `page_widget` (+ point/device/layout) | 페이지 위젯 조회·장비·2D 배치 | ✅ V018 — [PAGE_WIDGET_API.md](./device/PAGE_WIDGET_API.md) |
 | ~~`device_page`~~ | (삭제, V018) | ❌ |
 | `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
-| `device_endpoint_modbus` | unit_id, timeout_ms | ⬜ |
+| `device_endpoint_modbus` | Modbus unit_id (endpoint 1:1 확장) | ✅ `23_device_endpoint_modbus.sql` — [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
+| `device_modbus_reading` | 분전반 회선 → 대상 장비 매핑 (unit_id/address/target_device_id) | ⬜ — [BACKLOG](./BACKLOG.md) |
 | community / version | 앱 기본값. DB 의도적 제외 | 보류 |
 | `devices.parent_device_id` | 장비 계층 | ⬜ (V011 아님) |
 

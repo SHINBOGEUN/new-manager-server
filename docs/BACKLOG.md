@@ -23,6 +23,7 @@
 | devices | V007 | CRUD | [DEVICE_API.md](./device/DEVICE_API.md) |
 | device_protocol_endpoint | V009 | CRUD | [DEVICE_ENDPOINT_API.md](./device/DEVICE_ENDPOINT_API.md) |
 | device_snmp_instance | **V011** | **CRUD 완료** | [DEVICE_SNMP_INSTANCE_API.md](./device/DEVICE_SNMP_INSTANCE_API.md) |
+| device_endpoint_modbus | `23_device_endpoint_modbus.sql` | **CRUD 완료** | [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
 
 **의도적 보류:** SNMP community/version은 DB에 두지 않음 (앱 기본값). SRC `device_snmp_point`는 나중에.
 
@@ -71,10 +72,13 @@ device C → POWER
 |----|------|------|------|
 | 1.1 | 모델 point 성격 메타 (선택) | 중 | 측정값 성격(온습도/전력) — **페이지 배정과 별개**. 나중에 capabilities용 |
 | 1.2 | `device_snmp_point` (SRC형) | 나중에 | 사용자 결정: SRC 보류 |
-| 1.3 | Device Modbus 확장 | 중 | unit_id / slave |
+| 1.3 | Device Modbus 확장 | 중 | ✅ `device_endpoint_modbus` (unit_id). 회선별 매핑은 1.7 |
 | 1.4 | Device 모델 변경 vs endpoint 정합성 | 중 | ✅ 409 거부 |
 | 1.5 | host 형식 검증 | 낮 | |
 | 1.6 | Device nested `endpoints[]` | 낮 | |
+| 1.7 | `device_modbus_reading` 매핑 | 중 | 분전반(ACCURA) 회선별 `unit_id`/`address` → `target_device_id`+`field_name`. `requires_instance=1` 전용 |
+| 1.8 | Modbus 수집 스크립트 생성 | 중 | `CollectionGroupSpecService`가 `scriptType=modbus`를 아직 미지원 ("not supported yet") |
+| 1.9 | Ops Console Modbus endpoint UI | 낮 | `snmp-instance`는 있으나 `modbus` 화면 없음 — API만 존재 |
 
 ### SRC 합의 (보류)
 
