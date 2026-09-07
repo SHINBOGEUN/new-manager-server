@@ -22,6 +22,8 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
+import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class PageWidgetQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
     private final DeviceModelRepository deviceModelRepository;
+    private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
 
     public List<PageWidgetResponse> getWidgets(String pageCode, Boolean enabled) {
         CommonCode code = findPageCode(pageCode);
@@ -70,6 +73,9 @@ public class PageWidgetQueryService {
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
+        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
+        validateChartPoints(kind, request.pointNames(), devices, modelIds);
         PageWidget widget = PageWidget.create(
                 pageCode,
                 request.name(),
@@ -85,9 +91,9 @@ public class PageWidgetQueryService {
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), kind, request.chartScope(), op),
+                devices,
                 List.of(),
-                resolveModelIds(request.modelIds(), kind, request.chartScope())
+                modelIds
         );
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
@@ -104,6 +110,9 @@ public class PageWidgetQueryService {
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
+        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
+        validateChartPoints(kind, request.pointNames(), devices, modelIds);
         widget.update(
                 name,
                 enabled,
@@ -118,9 +127,9 @@ public class PageWidgetQueryService {
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
-                resolveDevices(request.deviceIds(), kind, request.chartScope(), op),
+                devices,
                 List.of(),
-                resolveModelIds(request.modelIds(), kind, request.chartScope())
+                modelIds
         );
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
@@ -194,6 +203,46 @@ public class PageWidgetQueryService {
                     .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId)));
         }
         return devices;
+    }
+
+    private void validateChartPoints(
+            PageWidgetQueryKind kind,
+            List<String> pointNames,
+            List<Device> devices,
+            List<Integer> modelIds
+    ) {
+        if (kind != PageWidgetQueryKind.chart || pointNames == null || pointNames.isEmpty()) {
+            return;
+        }
+        Set<Integer> targetModelIds = new LinkedHashSet<>(modelIds);
+        for (Device device : devices) {
+            targetModelIds.add(device.getDeviceModel().getId());
+        }
+        if (targetModelIds.isEmpty()) {
+            return;
+        }
+        Set<String> units = new LinkedHashSet<>();
+        for (DeviceModelSnmpPoint point
+                : deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(targetModelIds)) {
+            if (!pointNames.contains(point.getName())) {
+                continue;
+            }
+            CommonCode dataPointType = point.getDataPointType();
+            if (dataPointType != null && "ENERGY".equalsIgnoreCase(dataPointType.getCode())) {
+                throw new IllegalArgumentException(
+                        "누적 ENERGY 측정항목은 차트에서 사용할 수 없습니다. 사용량 집계 위젯을 사용하세요: "
+                                + point.getName());
+            }
+            String unit = point.getUnit();
+            if (unit != null && !unit.isBlank()) {
+                units.add(unit.trim());
+            }
+        }
+        if (units.size() > 1) {
+            throw new IllegalArgumentException(
+                    "하나의 차트에는 같은 단위의 측정항목만 사용할 수 있습니다. 선택된 단위: "
+                            + String.join(", ", units));
+        }
     }
 
     private List<Integer> resolveModelIds(

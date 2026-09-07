@@ -175,6 +175,11 @@ public class DeviceModelSnmpPoint extends BaseEntity {
 
     private static void validateOidFormat(String oid) {
         String normalized = oid.replace(INSTANCE_ID_PLACEHOLDER, "0");
+        // SNMP tools commonly display an OID with a leading dot (e.g. .1.3.6...).
+        // Accept that notation while still rejecting empty segments elsewhere.
+        if (normalized.startsWith(".")) {
+            normalized = normalized.substring(1);
+        }
         if (!normalized.matches("^[0-9.]+$")) {
             throw new IllegalArgumentException("invalid oid format");
         }

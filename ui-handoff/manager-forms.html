@@ -355,7 +355,7 @@
         <a href="#device">2. 장비 등록<small>마법사 4단계</small></a>
         <a href="#device-edit">3. 장비 관리<small>수정 · endpoint</small></a>
         <a href="#task">4. 수집 작업<small>Task · 주기 그룹</small></a>
-        <a href="#widget">5. 화면 위젯<small>last · count · 배치</small></a>
+        <a href="#widget">5. 화면 위젯<small>last · count · chart · aggregate</small></a>
       </nav>
     </aside>
 
@@ -380,7 +380,7 @@
             <li>위치 트리 준비 (존/랙)</li>
             <li>장비 모델은 이미 있다고 가정</li>
             <li>장비 등록 마법사 (메타 → IP → 수집)</li>
-            <li>위젯: last(장비+point) 또는 count(enabled 전체)</li>
+            <li>위젯: 종류별 안내 흐름에 따라 대상·측정항목 선택</li>
           </ol>
         </div>
       </section>
@@ -431,7 +431,7 @@
                     </label>
                     <label class="f">
                       <span class="row-meta"><span>유형 <span class="req">*</span></span><span class="key">locationTypeId</span></span>
-                      <select><option>SITE</option><option selected>ZONE</option><option>RACK</option></select>
+                      <select><option>UNASSIGNED</option><option>SITE</option><option>ROOM</option><option selected>ZONE</option><option>CONTAINER</option><option>ROW</option><option>RACK</option></select>
                     </label>
                     <label class="f">
                       <span class="row-meta"><span>이름 <span class="req">*</span></span><span class="key">name</span></span>
@@ -476,7 +476,7 @@
               <li>하위 포함 삭제와 단일 삭제를 버튼으로 분리하세요.</li>
               <li>위치 선택 시 하위 장비 목록을 같이 보여 주면 운영이 편합니다.</li>
             </ul>
-            <div class="callout">폴더 아이콘보다 SITE / ZONE / RACK 유형이 보이게 하는 편이 좋습니다.</div>
+            <div class="callout">LOCATION_TYPE: UNASSIGNED · SITE · ROOM · ZONE · CONTAINER · ROW · RACK. 계층 제약은 코드의 sortOrder 순서를 따릅니다.</div>
           </aside>
         </div>
       </section>
@@ -696,8 +696,9 @@
                   <select><option>AP8959</option></select>
                 </label>
                 <label class="f">
-                  <span class="row-meta"><span>스크립트 타입 <span class="req">*</span></span><span class="key">scriptTypeId</span></span>
+                  <span class="row-meta"><span>수집 프로토콜 <span class="req">*</span></span><span class="key">scriptTypeId</span></span>
                   <select><option>SNMP</option></select>
+                  <p class="hint">별도 SCRIPT_TYPE 코드가 아니라 PROTOCOL_TYPE의 코드 ID를 사용합니다.</p>
                 </label>
               </form>
               <div class="subbox" style="margin-top:14px">
@@ -715,6 +716,7 @@
                   <label class="f full">
                     <span class="row-meta"><span>초기 장비</span><span class="key">groups[].deviceIds</span></span>
                     <input placeholder="비우면 빈 그룹 · 나중에 장비 마법사에서 추가" />
+                    <p class="hint">한 장비는 같은 모델의 수집 그룹 하나에만 속합니다. 다른 그룹 등록 장비는 선택 불가.</p>
                   </label>
                 </form>
               </div>
@@ -731,6 +733,7 @@
             <ul>
               <li>보통 모델당 Task 1개 + 1분 그룹</li>
               <li>장비 등록 마법사 ③에서 그룹에 합류</li>
+              <li>그룹을 옮길 때는 기존 그룹에서 장비를 제거한 뒤 새 그룹에 추가</li>
               <li>Collector 서버로 스펙이 동기화됩니다</li>
             </ul>
             <div class="callout">UI에서 cron 프리셋(1분/5분/10분)을 주면 실수가 줄어듭니다.</div>
@@ -742,7 +745,7 @@
       <section class="screen" id="widget">
         <div class="screen-head">
           <h2><span class="num">5</span> 화면 위젯</h2>
-          <span class="api">POST /widgets · GET /query/last · GET /query/count · GET /query/chart</span>
+          <span class="api">POST /widgets · GET /query/last · /count · /chart · /aggregate</span>
         </div>
         <div class="layout">
           <div class="panel">
@@ -767,7 +770,7 @@
                     <option selected>last</option>
                     <option>count</option>
                     <option>chart</option>
-                    <option>aggregate (조회 미구현)</option>
+                    <option>aggregate</option>
                   </select>
                   <p class="hint">종류에 따라 아래 필수 필드가 바뀝니다. 검증은 서버 PageWidget 도메인.</p>
                 </label>
@@ -824,47 +827,41 @@
 
               <div class="subbox" style="margin-top:12px">
                 <h4>chart 일 때 · 시계열</h4>
-                <p class="hint" style="margin:0 0 10px"><code>pointNames</code> 항상 필수. phase = point 이름 L1/L2/L3 · path = location_node.</p>
+                <div class="wiz" style="margin-top:10px">
+                  <div class="step done"><b>1</b>대상 방식</div>
+                  <div class="step done"><b>2</b>장비/모델</div>
+                  <div class="step on"><b>3</b>측정항목</div>
+                  <div class="step"><b>4</b>기간</div>
+                </div>
                 <form class="fields" onsubmit="return false">
                   <label class="f">
-                    <span class="row-meta"><span>범위 <span class="req">*</span></span><span class="key">chartScope</span></span>
+                    <span class="row-meta"><span>1. 대상 방식 <span class="req">*</span></span><span class="key">chartScope</span></span>
                     <select>
-                      <option selected>devices — deviceIds[]</option>
-                      <option>models — modelIds[]</option>
+                      <option selected>특정 장비 선택 — devices</option>
+                      <option>모델 전체 — models</option>
                     </select>
                     <p class="hint">기본 devices. models 이면 deviceIds=[] · modelIds 필수.</p>
                   </label>
                   <label class="f">
-                    <span class="row-meta"><span>시리즈 <span class="req">*</span></span><span class="key">chartSeriesMode</span></span>
+                    <span class="row-meta"><span>4. 기간</span><span class="key">chartRangePreset</span></span>
                     <select>
-                      <option selected>per_device — 장비(또는 모델 내 장비)별</option>
-                      <option>sum — 합계 1시리즈</option>
-                      <option>by_phase — L1/L2/L3 point별</option>
-                      <option>by_path — location_node별</option>
+                      <option selected>last_24h</option><option>today</option><option>yesterday</option>
+                      <option>last_7d</option><option>this_month</option><option>last_month</option>
                     </select>
                   </label>
                   <label class="f">
-                    <span class="row-meta"><span>기간</span><span class="key">chartRangePreset</span></span>
+                    <span class="row-meta"><span>조회 간격</span><span class="key">chartWindow</span></span>
                     <select>
-                      <option selected>last_24h</option>
-                      <option>today</option>
-                      <option>yesterday</option>
-                      <option>last_7d</option>
-                      <option>this_month</option>
+                      <option>1m</option><option selected>5m</option><option>15m</option><option>1h</option><option>1d</option>
                     </select>
                   </label>
                   <label class="f">
-                    <span class="row-meta"><span>윈도우</span><span class="key">chartWindow</span></span>
-                    <select>
-                      <option>1m</option>
-                      <option selected>5m</option>
-                      <option>15m</option>
-                      <option>1h</option>
-                      <option>1d</option>
-                    </select>
+                    <span class="row-meta"><span>기본 시리즈</span><span class="key">chartSeriesMode</span></span>
+                    <input value="대상과 포인트에 따라 자동 결정" disabled />
+                    <p class="hint">생성 화면에서 강제 선택하지 않고 위젯 보드에서 전환합니다.</p>
                   </label>
                   <label class="f full">
-                    <span class="row-meta"><span>대상 장비 (scope=devices)</span><span class="key">deviceIds[]</span></span>
+                    <span class="row-meta"><span>2. 대상 장비 (scope=devices)</span><span class="key">deviceIds[]</span></span>
                     <div class="chips" style="margin-top:2px">
                       <span class="chip">#101 PDU-좌 <span class="x">×</span></span>
                       <span class="chip">#102 PDU-우 <span class="x">×</span></span>
@@ -873,7 +870,7 @@
                     <p class="hint">chartScope=devices 일 때 필수. models 이면 숨기고 [].</p>
                   </label>
                   <label class="f full">
-                    <span class="row-meta"><span>대상 모델 (scope=models)</span><span class="key">modelIds[]</span></span>
+                    <span class="row-meta"><span>2. 대상 모델 (scope=models)</span><span class="key">modelIds[]</span></span>
                     <div class="chips" style="margin-top:2px">
                       <span class="chip">#10 AP8959 <span class="x">×</span></span>
                       <span class="chip add">+ 모델 고르기</span>
@@ -881,15 +878,17 @@
                     <p class="hint">chartScope=models 일 때 필수. 해당 모델의 enabled 장비 전체가 조회 대상.</p>
                   </label>
                   <label class="f full">
-                    <span class="row-meta"><span>측정 항목 <span class="req">*</span></span><span class="key">pointNames[]</span></span>
+                    <span class="row-meta"><span>3. 측정항목 <span class="req">*</span></span><span class="key">pointNames[]</span></span>
                     <div class="checks" style="margin-top:4px">
-                      <label><input type="checkbox" checked /> W <span class="u">W</span></label>
-                      <label><input type="checkbox" checked /> L1 <span class="u">phase</span></label>
-                      <label><input type="checkbox" /> L2</label>
-                      <label><input type="checkbox" /> L3</label>
+                      <label><input type="checkbox" checked /> TOTAL_WT <span class="u">W · POWER</span></label>
+                      <label><input type="checkbox" checked /> L1_WATT <span class="u">W · POWER</span></label>
+                      <label><input type="checkbox" checked /> L2_WATT <span class="u">W · POWER</span></label>
+                      <label><input type="checkbox" checked /> L3_WATT <span class="u">W · POWER</span></label>
                     </div>
+                    <p class="hint">한 차트에는 같은 단위만 선택합니다. 누적 ENERGY(kWh)는 목록에서 제외하며 aggregate usage를 사용합니다.</p>
                   </label>
                 </form>
+                <div class="callout" style="margin-top:10px">PDU 단상: 합계·장비별·위치별. 3상 포함: 합계·장비별·상별·위치별. 혼합 상별 보기에서는 L1/L2/L3와 단상 시리즈를 함께 표시합니다.</div>
                 <div class="callout" style="margin-top:10px">미리보기: <code>GET /api/manager/query/chart?widgetId=&amp;rangePreset=&amp;window=</code> · 문서 <code>docs/query/QUERY_CHART_API.md</code></div>
               </div>
 
@@ -905,18 +904,40 @@
               </div>
 
               <div class="subbox" style="margin-top:12px">
-                <h4>aggregate 일 때만 (조회 미구현 · PUE 후순위)</h4>
+                <h4>aggregate 일 때 · 측정항목 우선</h4>
+                <div class="wiz" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
+                  <div class="step done"><b>1</b>측정항목</div>
+                  <div class="step on"><b>2</b>호환 장비</div>
+                  <div class="step"><b>3</b>집계 기간</div>
+                </div>
                 <form class="fields" onsubmit="return false">
-                  <label class="f"><span class="row-meta"><span>op <span class="req">*</span></span><span class="key">op</span></span>
-                    <select><option>delta_sum</option><option>weighted_avg</option><option>divide</option></select>
+                  <label class="f full">
+                    <span class="row-meta"><span>1. 측정항목 <span class="req">*</span></span><span class="key">pointNames[0]</span></span>
+                    <div class="checks" style="margin-top:4px">
+                      <label><input type="radio" name="aggPoint" checked /> TOTAL_WT <span class="u">W · POWER · 호환 6대</span></label>
+                      <label><input type="radio" name="aggPoint" /> TOTAL_KWH <span class="u">kWh · ENERGY · 호환 6대</span></label>
+                    </div>
+                    <p class="hint">전체 장비 모델의 enabled SNMP point 중 POWER/ENERGY만 표시합니다. 같은 이름·유형·단위를 하나의 항목으로 봅니다.</p>
                   </label>
-                  <label class="f"><span class="row-meta"><span>groupBy</span><span class="key">groupBy</span></span>
-                    <select><option>device</option><option>point</option><option>location</option></select>
+                  <label class="f full">
+                    <span class="row-meta"><span>2. 호환 장비 <span class="req">*</span></span><span class="key">deviceIds[]</span></span>
+                    <div class="chips" style="margin-top:2px">
+                      <span class="chip">#101 PDU-1 <span class="x">×</span></span>
+                      <span class="chip">#102 PDU-2 <span class="x">×</span></span>
+                      <span class="chip add">+ 호환 장비 고르기</span>
+                    </div>
+                    <p class="hint">선택한 pointName + DATA_POINT_TYPE + unit을 가진 모델의 장비만 목록에 표시합니다. 측정항목을 바꾸면 기존 장비 선택은 초기화합니다.</p>
                   </label>
-                  <label class="f"><span class="row-meta"><span>가중치</span><span class="key">weightPoint</span></span><input placeholder="weighted_avg 시 필수" /></label>
-                  <label class="f"><span class="row-meta"><span>분자/분모</span><span class="key">numerator / denominator</span></span><input placeholder="divide 시 필수" /></label>
+                  <label class="f">
+                    <span class="row-meta"><span>자동 집계 방식</span><span class="key">op</span></span>
+                    <select disabled><option selected>power — POWER이면 전력 합</option><option>usage — ENERGY이면 사용량</option></select>
+                  </label>
+                  <label class="f">
+                    <span class="row-meta"><span>3. 기간 <span class="req">*</span></span><span class="key">aggregateRangePreset</span></span>
+                    <select><option selected>today</option><option>yesterday</option><option>this_month</option><option>last_month</option><option>last_24h</option><option>last_7d</option></select>
+                  </label>
                 </form>
-                <p class="hint" style="margin-top:8px">aggregate도 deviceIds(+ pointNames) 필요. count와 다름.</p>
+                <div class="callout" style="margin-top:10px">조회: <code>GET /api/manager/query/aggregate?widgetId=&amp;rangePreset=</code>. PUE는 aggregate preset이 아니라 별도 API로 분리합니다.</div>
               </div>
 
               <div class="actions">
@@ -925,6 +946,7 @@
                 <button type="button" class="ghost">last 미리보기</button>
                 <button type="button" class="ghost">count 미리보기</button>
                 <button type="button" class="ghost">chart 미리보기</button>
+                <button type="button" class="ghost">aggregate 미리보기</button>
               </div>
             </div>
           </div>
@@ -938,10 +960,12 @@
               <li><b>count</b> — 장비 없음. enabled 전체 → <code>/query/count</code></li>
               <li>countMode: total / by_model / model(+countModelId)</li>
               <li><b>chart</b> — point 필수 · devices|models → <code>/query/chart</code></li>
-              <li>seriesMode: per_device / sum / by_phase(L1·L2·L3) / by_path(location)</li>
-              <li>aggregate — 폼만 예약, 조회 API 미구현</li>
+              <li>차트 ENERGY 제외 · 동일 단위만 허용 · PDU 여부에 따라 시리즈 옵션 제한</li>
+              <li><b>aggregate</b> — point를 먼저 고르고 호환 장비만 선택 → <code>/query/aggregate</code></li>
+              <li>aggregate op: ENERGY→usage, POWER→power 자동 결정</li>
             </ul>
-            <div class="callout">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, count: <code>docs/query/QUERY_COUNT_API.md</code>, chart: <code>docs/query/QUERY_CHART_API.md</code></div>
+            <div class="callout">생성 순서: last=장비→항목, count=방식, chart=대상 방식→대상→항목→기간, aggregate=항목→호환 장비→기간.</div>
+            <div class="callout" style="margin-top:8px">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, <code>docs/query/QUERY_COUNT_API.md</code>, <code>docs/query/QUERY_CHART_API.md</code>, <code>docs/query/QUERY_AGGREGATE_API.md</code></div>
             <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code>). 폼·API JSON 필드명은 동일.</div>
             <div class="callout" style="margin-top:8px">레이아웃은 드래그 후 <code>PUT /widgets/{id}/layout</code></div>
           </aside>
