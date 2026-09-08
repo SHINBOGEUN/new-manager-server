@@ -35,6 +35,31 @@ final class LastFluxBuilder {
         );
     }
 
+    static String buildPueLastQuery(
+            String bucket,
+            String measurement,
+            Integer definitionId,
+            Duration lookback
+    ) {
+        return """
+                from(bucket: %s)
+                  |> range(start: -%s)
+                  |> filter(fn: (r) => r["_measurement"] == %s)
+                  |> filter(fn: (r) => r["metric_kind"] == "pue")
+                  |> filter(fn: (r) => r["pue_definition_id"] == %s)
+                  |> filter(fn: (r) => r["_field"] == "value" or r["_field"] == "total_power" or r["_field"] == "cooler_power")
+                  |> group()
+                  |> pivot(rowKey: ["_time", "pue_definition_id"], columnKey: ["_field"], valueColumn: "_value")
+                  |> sort(columns: ["_time"], desc: true)
+                  |> limit(n: 1)
+                """.formatted(
+                quote(bucket),
+                toFluxDuration(lookback),
+                quote(measurement),
+                quote(String.valueOf(definitionId))
+        );
+    }
+
     private static String orEquals(String tag, List<String> values) {
         return values.stream()
                 .map(value -> "r[%s] == %s".formatted(quote(tag), quote(value)))

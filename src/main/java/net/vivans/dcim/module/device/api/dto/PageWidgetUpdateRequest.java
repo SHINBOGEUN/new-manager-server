@@ -47,6 +47,15 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "chart만: 1m | 5m | 15m | 1h | 1d")
         String chartWindow,
 
+        @Schema(description = "pue만: 계속 수집되는 PUE 정의 ID")
+        Integer pueDefinitionId,
+
+        @Schema(description = "pue만: 저장된 PUE 조회 기간")
+        String pueRangePreset,
+
+        @Schema(description = "pue만: 마지막 결과 허용 경과 분")
+        Integer pueFreshnessMinutes,
+
         @Schema(description = "last/aggregate 필수. chart+devices 필수. count/chart+models는 []")
         List<Integer> deviceIds,
 

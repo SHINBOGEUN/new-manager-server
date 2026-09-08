@@ -17,5 +17,7 @@ public interface PageWidgetRepository {
 
     boolean existsByPageCodeIdAndNameAndIdNot(Integer pageCodeId, String name, Integer id);
 
+    boolean existsByPueDefinitionId(Integer pueDefinitionId);
+
     void delete(PageWidget pageWidget);
 }

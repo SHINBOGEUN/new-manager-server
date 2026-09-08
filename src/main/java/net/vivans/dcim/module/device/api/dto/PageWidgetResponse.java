@@ -23,6 +23,7 @@ public record PageWidgetResponse(
         String chartWindow,
         String pueRangePreset,
         Integer pueFreshnessMinutes,
+        Integer pueDefinitionId,
         List<PageWidgetPueSourceResponse> pueSources,
         List<Integer> deviceIds,
         List<Integer> modelIds,
@@ -50,7 +51,12 @@ public record PageWidgetResponse(
                 widget.getChartWindow(),
                 widget.getPueRangePreset() == null ? null : widget.getPueRangePreset().name(),
                 widget.getPueFreshnessMinutes(),
-                widget.getPueSources().stream().map(PageWidgetPueSourceResponse::from).toList(),
+                widget.getPueDefinitionId(),
+                widget.getPue() == null || widget.getPue().getPueDefinition() == null
+                        ? List.of()
+                        : widget.getPue().getPueDefinition().getSources().stream()
+                        .map(PageWidgetPueSourceResponse::from)
+                        .toList(),
                 widget.deviceIds(),
                 widget.modelIds(),
                 widget.pointNames(),

@@ -6,6 +6,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -14,6 +15,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.vivans.dcim.shared.persistence.BaseEntity;
+import net.vivans.dcim.module.pue.domain.model.PueDefinition;
 
 @Entity
 @Table(name = "page_widget_pue")
@@ -35,17 +37,25 @@ public class PageWidgetPue extends BaseEntity {
     @Column(nullable = false)
     private int freshnessMinutes;
 
-    private PageWidgetPue(PageWidget widget, PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "pue_definition_id", nullable = false)
+    private PueDefinition pueDefinition;
+
+    private PageWidgetPue(PageWidget widget, PueDefinition pueDefinition, PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
         this.widget = widget;
+        if (pueDefinition == null) throw new IllegalArgumentException("pueDefinition is required");
+        this.pueDefinition = pueDefinition;
         this.rangePreset = rangePreset == null ? PageWidgetChartRangePreset.last_24h : rangePreset;
         this.freshnessMinutes = normalizeFreshnessMinutes(freshnessMinutes);
     }
 
-    public static PageWidgetPue create(PageWidget widget, PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
-        return new PageWidgetPue(widget, rangePreset, freshnessMinutes);
+    public static PageWidgetPue create(PageWidget widget, PueDefinition pueDefinition, PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
+        return new PageWidgetPue(widget, pueDefinition, rangePreset, freshnessMinutes);
     }
 
-    public void update(PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
+    public void update(PueDefinition pueDefinition, PageWidgetChartRangePreset rangePreset, Integer freshnessMinutes) {
+        if (pueDefinition == null) throw new IllegalArgumentException("pueDefinition is required");
+        this.pueDefinition = pueDefinition;
         this.rangePreset = rangePreset == null ? PageWidgetChartRangePreset.last_24h : rangePreset;
         this.freshnessMinutes = normalizeFreshnessMinutes(freshnessMinutes);
     }

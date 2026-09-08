@@ -3,6 +3,7 @@ package net.vivans.dcim.module.query.domain;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface PointQuery {
 
@@ -31,4 +32,6 @@ public interface PointQuery {
             Instant start,
             Instant end
     );
+
+    Optional<PueLastPoint> findLastPue(Integer definitionId, Duration lookback);
 }

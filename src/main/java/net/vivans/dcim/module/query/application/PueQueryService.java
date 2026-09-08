@@ -5,7 +5,8 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
-import net.vivans.dcim.module.device.domain.model.PageWidgetPueSourceRole;
+import net.vivans.dcim.module.pue.domain.model.PueDefinitionSourceRole;
+import net.vivans.dcim.module.pue.domain.model.PueDefinition;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
@@ -16,6 +17,7 @@ import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
 import net.vivans.dcim.module.query.api.dto.PueSourceRequest;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import net.vivans.dcim.module.query.domain.PueLastPoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.time.Duration;
 import java.time.Instant;
 
 @Service
@@ -52,15 +56,53 @@ public class PueQueryService {
             throw new IllegalArgumentException("queryKind must be pue");
         }
         if (!widget.isEnabled()) throw new IllegalArgumentException("widget is disabled");
-        List<PueSourceRequest> total = widget.getPueSources().stream()
-                .filter(source -> source.getRole() == PageWidgetPueSourceRole.total)
-                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName())).toList();
-        List<PueSourceRequest> cooler = widget.getPueSources().stream()
-                .filter(source -> source.getRole() == PageWidgetPueSourceRole.cooler)
-                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName())).toList();
-        return getPue(new PueQueryRequest(total, cooler,
-                widget.getPueRangePreset() == null ? null : widget.getPueRangePreset().name()),
-                widget.getPueFreshnessMinutes());
+        if (widget.getPueDefinitionId() == null) {
+            throw new IllegalArgumentException("PUE widget has no definition");
+        }
+        PueDefinition definition = widget.getPue().getPueDefinition();
+        List<PueSourceRequest> total = definition.getSources().stream()
+                .filter(source -> source.getRole() == PueDefinitionSourceRole.total)
+                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName()))
+                .toList();
+        List<PueSourceRequest> cooler = definition.getSources().stream()
+                .filter(source -> source.getRole() == PueDefinitionSourceRole.cooler)
+                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName()))
+                .toList();
+
+        List<RequestedSource> sources = new ArrayList<>();
+        addResolvedSources(sources, total, ROLE_TOTAL);
+        addResolvedSources(sources, cooler, ROLE_COOLER);
+        String unit = validatePowerPointsAndResolveUnit(sources);
+
+        PageWidgetChartRangePreset rangePreset = resolveRangePreset(
+                widget.getPueRangePreset() == null ? null : widget.getPueRangePreset().name());
+        QueryRanges.Range range = QueryRanges.resolve(rangePreset);
+        Duration lookback = Duration.between(range.start(), range.end());
+        Optional<PueLastPoint> last = pointQuery.findLastPue(definition.getId(), lookback);
+        PueLastPoint point = last.orElse(null);
+        boolean stale = point != null && widget.getPueFreshnessMinutes() != null
+                && point.time().isBefore(Instant.now().minusSeconds(
+                widget.getPueFreshnessMinutes().longValue() * 60));
+        boolean complete = point != null && !stale;
+        List<Integer> sourceDeviceIds = sources.stream()
+                .map(source -> source.device().getId())
+                .distinct()
+                .toList();
+
+        return new PueQueryResponse(
+                complete ? QueryValues.round4(point.value()) : null,
+                complete ? QueryValues.round2(point.totalPower()) : null,
+                complete ? QueryValues.round2(point.coolerPower()) : null,
+                unit,
+                rangePreset.name(),
+                range.start(),
+                range.end(),
+                complete,
+                point == null ? "MISSING_DATA" : stale ? "STALE_DATA" : "OK",
+                complete ? List.of() : sourceDeviceIds,
+                stale ? sourceDeviceIds : List.of(),
+                List.of()
+        );
     }
 
     public PueQueryResponse getPue(PueQueryRequest request) {

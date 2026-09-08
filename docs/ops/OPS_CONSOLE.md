@@ -1,7 +1,7 @@
 # Ops Console
 
 경로: `http://localhost:8080/ops-console.html`  
-정적 운영 등록 UI. 업체 본 UI 아님. PUE는 독립 API (`POST /api/manager/query/pue`)로 계산합니다.
+정적 운영 등록 UI. 업체 본 UI 아님. PUE는 정의 단위로 계속 수집되고 위젯은 저장된 PUE 시계열을 표시합니다.
 
 ## 수집 장비 추가 흐름 (UI가 쓰는 API)
 
@@ -24,7 +24,7 @@
 | 장비 추가 | Device + endpoint + instance + task group attach (+ Path) | ✅ |
 | 장비 목록 | Device CRUD(Path 포함), endpoint CRUD, instance, task attach | ✅ |
 | 수집 작업 | Task CRUD/toggle, group POST/DELETE/toggle | ✅ |
-| 화면 위젯 | Widget CRUD, last/count/chart/aggregate + 독립 PUE 계산 | ✅ (layout → widget-dashboard) |
+| 화면 위젯 | Widget CRUD, last/count/chart/aggregate + PUE 수집 정의 관리 | ✅ (layout → widget-dashboard) |
 | 위치 | location-node CRUD, parent DnD (Path는 장비에) | ✅ (bulk 미연결) |
 | 장비 모델 | Model CRUD, SNMP point CRUD | ✅ (Modbus create는 API 예정으로 생략) |
 | 공통코드 | code-groups CRUD(조회·생성), common-codes CRUD | ✅ |
@@ -49,7 +49,7 @@
 ### 외부 / 미구현
 - Live: `live-test.html`
 - Query aggregate (usage / power): `GET /api/manager/query/aggregate` 구현됨.
-- Query PUE: `POST /api/manager/query/pue` 미리 계산, `GET /api/manager/query/pue?widgetId=` 저장 위젯 조회. Ops Console에서 총전력/Cooler 장비별 POWER 포인트와 freshness(기본 15분)를 저장·수정 가능.
+- Query PUE: `POST /api/manager/query/pue` 미리 계산, `GET /api/manager/query/pue?widgetId=` PUE 위젯 조회. Ops Console에서 PUE 수집 정의(총전력/Cooler POWER 포인트·cron·수집 ON/OFF)를 관리하고, 위젯은 정의를 선택해 표시한다. Collector 재기동은 Manager가 1분 주기로 자동 감지해 활성 일반 수집 그룹과 PUE 정의를 재등록한다.
 - Device capabilities: 미연결
 - Modbus point 쓰기: API 예정
 
