@@ -49,12 +49,15 @@ public class CollectorSyncService {
             save(task);
             return;
         }
+        String action = group.getCollectorJobId() == null ? "REGISTER" : "UPDATE";
+        log.info("[COLLECTOR_SYNC_START] type=REGULAR action={} taskId={} groupId={}",
+                action, task.getId(), group.getId());
         try {
             if (group.getCollectorJobId() == null) {
                 CollectorJobResponse response = collectorJobClient.register(specJson);
                 group.updateCollectorJobId(response.collectorJobId());
                 log.info(
-                        "collector job registered: taskId={}, groupId={}, collectorJobId={}",
+                        "[COLLECTOR_SYNC_END] type=REGULAR action=REGISTER taskId={} groupId={} collectorJobId={}",
                         task.getId(),
                         group.getId(),
                         response.collectorJobId()
@@ -63,7 +66,7 @@ public class CollectorSyncService {
                 CollectorJobResponse response = collectorJobClient.update(group.getCollectorJobId(), specJson);
                 group.updateCollectorJobId(response.collectorJobId());
                 log.info(
-                        "collector job updated: taskId={}, groupId={}, collectorJobId={}",
+                        "[COLLECTOR_SYNC_END] type=REGULAR action=UPDATE taskId={} groupId={} collectorJobId={}",
                         task.getId(),
                         group.getId(),
                         response.collectorJobId()
@@ -98,10 +101,12 @@ public class CollectorSyncService {
             }
             return;
         }
+        log.info("[COLLECTOR_SYNC_START] type=REGULAR action=TOGGLE taskId={} groupId={} enabled={}",
+                task.getId(), group.getId(), enabled);
         try {
             collectorJobClient.toggle(group.getCollectorJobId(), enabled);
             log.info(
-                    "collector job toggled: taskId={}, groupId={}, collectorJobId={}, enabled={}",
+                    "[COLLECTOR_SYNC_END] type=REGULAR action=TOGGLE taskId={} groupId={} collectorJobId={} enabled={}",
                     task.getId(),
                     group.getId(),
                     group.getCollectorJobId(),
@@ -144,7 +149,7 @@ public class CollectorSyncService {
             group.updateCollectorJobId(null);
             save(task);
             log.info(
-                    "collector job deleted: taskId={}, groupId={}, collectorJobId={}",
+                    "[COLLECTOR_SYNC_END] type=REGULAR action=DELETE taskId={} groupId={} collectorJobId={}",
                     task.getId(),
                     group.getId(),
                     collectorJobId
@@ -240,6 +245,8 @@ public class CollectorSyncService {
             boolean failFast,
             Exception exception
     ) {
+        log.error("[COLLECTOR_SYNC_ERROR] type=REGULAR action={} taskId={} groupId={} exception={} message={}",
+                operation, taskId, groupId, exception.getClass().getSimpleName(), exception.getMessage());
         collectorJobClient.logFailure(operation, taskId, groupId, exception);
         if (failFast) {
             throw new CollectorSyncException(

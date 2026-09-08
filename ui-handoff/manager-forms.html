@@ -771,6 +771,7 @@
                     <option>count</option>
                     <option>chart</option>
                     <option>aggregate</option>
+                    <option>pue</option>
                   </select>
                   <p class="hint">종류에 따라 아래 필수 필드가 바뀝니다. 검증은 서버 PageWidget 도메인.</p>
                 </label>
@@ -937,7 +938,20 @@
                     <select><option selected>today</option><option>yesterday</option><option>this_month</option><option>last_month</option><option>last_24h</option><option>last_7d</option></select>
                   </label>
                 </form>
-                <div class="callout" style="margin-top:10px">집계 조회: <code>GET /api/manager/query/aggregate?widgetId=&amp;rangePreset=</code>. PUE는 총전력/Cooler 장비별 POWER 포인트와 데이터 최신성 기준을 정해 <code>POST /api/manager/widgets/pue</code>로 저장하고, <code>GET /api/manager/query/pue?widgetId=</code>로 조회합니다.</div>
+                <div class="callout" style="margin-top:10px">집계 조회: <code>GET /api/manager/query/aggregate?widgetId=&amp;rangePreset=</code>.</div>
+              </div>
+
+              <div class="subbox" style="margin-top:12px">
+                <h4>PUE 일 때 · 수집 정의 선택</h4>
+                <form class="fields" onsubmit="return false">
+                  <label class="f full"><span class="row-meta"><span>PUE 수집 정의 <span class="req">*</span></span><span class="key">pueDefinitionId</span></span>
+                    <select><option selected>A동 PUE · 수집 ON · 소스 4개</option></select>
+                    <p class="hint">PUE 정의는 별도 수집 관리 화면에서 총전력/ Cooler POWER 포인트와 cron을 정합니다. 위젯은 정의를 참조해 Influx에 계속 기록된 PUE를 표시할 뿐, 위젯 ON/OFF·삭제가 수집을 바꾸지 않습니다.</p>
+                  </label>
+                  <label class="f"><span class="row-meta"><span>조회 기간</span><span class="key">pueRangePreset</span></span><select><option selected>last_24h</option><option>today</option><option>last_7d</option></select></label>
+                  <label class="f"><span class="row-meta"><span>데이터 최신성</span><span class="key">pueFreshnessMinutes</span></span><select><option>5</option><option selected>15</option><option>30</option><option>60</option></select></label>
+                </form>
+                <div class="callout" style="margin-top:10px">수집 정의 API: <code>GET/POST/PUT /api/manager/pue-definitions</code> · 수집 토글: <code>PATCH /api/manager/pue-definitions/{id}/collection-enabled</code> · 조회: <code>GET /api/manager/query/pue?widgetId=</code></div>
               </div>
 
               <div class="actions">
@@ -963,10 +977,11 @@
               <li>차트 ENERGY 제외 · 동일 단위만 허용 · PDU 여부에 따라 시리즈 옵션 제한</li>
               <li><b>aggregate</b> — point를 먼저 고르고 호환 장비만 선택 → <code>/query/aggregate</code></li>
               <li>aggregate op: ENERGY→usage, POWER→power 자동 결정</li>
+              <li><b>pue</b> — PUE 수집 정의 선택 → <code>/query/pue</code></li>
             </ul>
-            <div class="callout">생성 순서: last=장비→항목, count=방식, chart=대상 방식→대상→항목→기간, aggregate=항목→호환 장비→기간.</div>
+            <div class="callout">생성 순서: last=장비→항목, count=방식, chart=대상 방식→대상→항목→기간, aggregate=항목→호환 장비→기간, PUE=수집 정의→조회 옵션.</div>
             <div class="callout" style="margin-top:8px">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, <code>docs/query/QUERY_COUNT_API.md</code>, <code>docs/query/QUERY_CHART_API.md</code>, <code>docs/query/QUERY_AGGREGATE_API.md</code></div>
-            <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code>). 폼·API JSON 필드명은 동일.</div>
+            <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code> / <code>_pue</code>). PUE 계산 정의와 소스는 <code>pue_definition</code> / <code>pue_definition_source</code>에 독립 저장됩니다.</div>
             <div class="callout" style="margin-top:8px">레이아웃은 드래그 후 <code>PUT /widgets/{id}/layout</code></div>
           </aside>
         </div>

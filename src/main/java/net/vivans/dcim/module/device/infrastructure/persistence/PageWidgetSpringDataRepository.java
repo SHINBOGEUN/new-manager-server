@@ -11,7 +11,7 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart", "pue", "pueSources", "pueSources.device",
+            "aggregate", "count", "chart", "pue", "pue.pueDefinition",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
@@ -21,7 +21,7 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart", "pue", "pueSources", "pueSources.device",
+            "aggregate", "count", "chart", "pue", "pue.pueDefinition",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
@@ -32,4 +32,6 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
     boolean existsByPageCode_IdAndName(Integer pageCodeId, String name);
 
     boolean existsByPageCode_IdAndNameAndIdNot(Integer pageCodeId, String name, Integer id);
+
+    boolean existsByPue_PueDefinition_Id(Integer pueDefinitionId);
 }

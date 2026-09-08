@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.vivans.dcim.module.query.config.InfluxProperties;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import net.vivans.dcim.module.query.domain.PueLastPoint;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
 import net.vivans.dcim.shared.exception.QueryException;
 
@@ -16,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -112,6 +114,22 @@ public class InfluxPointQuery implements PointQuery {
         }
     }
 
+    @Override
+    public Optional<PueLastPoint> findLastPue(Integer definitionId, Duration lookback) {
+        String flux = LastFluxBuilder.buildPueLastQuery(
+                properties.getBucket(),
+                properties.getMeasurement(),
+                definitionId,
+                lookback
+        );
+        try {
+            return mapPueLast(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query last PUE failed definitionId={}: {}", definitionId, exception.getMessage(), exception);
+            throw new QueryException("InfluxDB query failed");
+        }
+    }
+
     private List<FluxTable> query(String flux) {
         QueryApi queryApi = client.getQueryApi();
         return queryApi.query(flux, properties.getOrg());
@@ -141,6 +159,24 @@ public class InfluxPointQuery implements PointQuery {
             }
         }
         return points;
+    }
+
+    private static Optional<PueLastPoint> mapPueLast(List<FluxTable> tables) {
+        for (FluxTable table : tables) {
+            for (FluxRecord record : table.getRecords()) {
+                Double value = toDouble(record.getValueByKey("value"));
+                Instant time = record.getTime();
+                if (value != null && time != null) {
+                    return Optional.of(new PueLastPoint(
+                            value,
+                            toDouble(record.getValueByKey("total_power")),
+                            toDouble(record.getValueByKey("cooler_power")),
+                            time
+                    ));
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     private static LastPoint toLastPoint(FluxRecord record) {

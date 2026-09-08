@@ -784,6 +784,7 @@
             <b>count</b>: 장비 선택 없음 · <code>devices.enabled=1</code> 전체 · 집계 방식(전체/모델별/특정 모델)만 선택.
             <b>chart</b>: 대상 방식 → 장비/모델 → 측정 항목 → 기간. 누적 ENERGY는 제외.
             <b>aggregate</b>: 측정 항목 → 호환 장비 → 기간. 유형에 따라 usage/power 자동 결정.
+            <b>PUE</b>: 계속 수집되는 PUE 정의를 선택해 저장된 결과를 표시.
           </p>
           <div class="fields">
             <label class="field">페이지
@@ -798,6 +799,7 @@
                 <option value="count">개수 (count)</option>
                 <option value="chart">차트 (chart)</option>
                 <option value="aggregate">집계 (aggregate)</option>
+                <option value="pue">PUE</option>
               </select>
             </label>
           </div>
@@ -925,6 +927,29 @@
             </div>
           </div>
 
+          <div id="wPueBlock" style="margin-top:14px;display:none">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">PUE 수집 정의 선택</div>
+            <div class="fields">
+              <label class="field full">PUE 정의
+                <select id="wPueDefinition"><option value="">PUE 수집 정의를 먼저 만드세요</option></select>
+              </label>
+              <label class="field">조회 기간
+                <select id="wPueRangePreset">
+                  <option value="last_24h" selected>최근 24시간</option><option value="today">오늘</option>
+                  <option value="yesterday">어제</option><option value="last_7d">최근 7일</option>
+                  <option value="this_month">이번 달</option><option value="last_month">지난 달</option>
+                </select>
+              </label>
+              <label class="field">데이터 최신성
+                <select id="wPueFreshnessMinutes">
+                  <option value="5">5분 이내</option><option value="15" selected>15분 이내</option>
+                  <option value="30">30분 이내</option><option value="60">60분 이내</option>
+                </select>
+              </label>
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:6px">위젯을 끄거나 삭제해도 PUE 수집은 계속됩니다. 수집 중지는 아래 정의에서만 변경합니다.</div>
+          </div>
+
           <div class="row" style="margin-top:14px;gap:8px">
             <button type="button" class="primary" id="wCreate">만들기</button>
             <button type="button" class="ghost" id="wCancelEdit" style="display:none">수정 취소</button>
@@ -934,10 +959,10 @@
         </div>
       </div>
       <div class="card" style="margin-top:16px">
-        <h2>PUE 계산</h2>
+        <h2>PUE 수집 정의</h2>
         <p class="muted" style="margin-top:-4px;font-size:13px">
-          위젯과 별도로 총전력 장비와 Cooler 장비의 대표 POWER 포인트를 지정합니다.
-          계산식: <code>totalPower / coolerPower</code>
+          총전력과 Cooler POWER 포인트를 같은 주기로 읽어 <code>totalPower / coolerPower</code>를 계속 기록합니다.
+          위젯은 위 정의를 선택해 기록값만 표시합니다.
         </p>
         <div class="grid2">
           <div>
@@ -960,34 +985,22 @@
           </div>
         </div>
         <div class="row" style="margin-top:14px">
-          <label class="field" style="min-width:220px">위젯 이름
-            <input id="pueWidgetName" placeholder="예: 사업장 PUE" />
+          <label class="field" style="min-width:220px">정의 이름
+            <input id="pueWidgetName" placeholder="예: A동 PUE" />
           </label>
-          <label class="field" style="min-width:220px">3. 조회 기간
-            <select id="pueRangePreset">
-              <option value="last_24h" selected>최근 24시간</option>
-              <option value="today">오늘</option>
-              <option value="yesterday">어제</option>
-              <option value="last_7d">최근 7일</option>
-              <option value="this_month">이번 달</option>
-              <option value="last_month">지난 달</option>
-            </select>
+          <label class="field" style="min-width:220px">수집 주기 (cron)
+            <input id="pueCalculationCron" value="0 */5 * * * *" />
           </label>
-          <label class="field" style="min-width:180px">데이터 최신성
-            <select id="pueFreshnessMinutes">
-              <option value="5">5분 이내</option>
-              <option value="15" selected>15분 이내</option>
-              <option value="30">30분 이내</option>
-              <option value="60">60분 이내</option>
-              <option value="180">3시간 이내</option>
-            </select>
+          <label class="field" style="min-width:160px">수집 상태
+            <select id="pueCollectionEnabled"><option value="true">수집 ON</option><option value="false">수집 OFF</option></select>
           </label>
           <button type="button" class="primary" id="pueCalculate">PUE 계산</button>
-          <button type="button" class="primary" id="pueWidgetAdd">위젯 추가</button>
+          <button type="button" class="primary" id="pueWidgetAdd">수집 정의 저장</button>
           <button type="button" class="ghost" id="pueEditCancel" style="display:none">수정 취소</button>
         </div>
         <div id="pueResult" style="margin-top:14px"></div>
         <details class="raw"><summary>요청·응답 상세</summary><pre id="pueOut"></pre></details>
+        <div style="overflow:auto;margin-top:14px"><table><thead><tr><th>이름</th><th>주기</th><th>수집</th><th>소스</th><th class="actions">작업</th></tr></thead><tbody id="pueDefinitionBody"></tbody></table></div>
       </div>
     </section>
 
@@ -1328,8 +1341,8 @@
       widgetPointNamesByModel: new Map(),
       pueTotalSources: [],
       pueCoolerSources: [],
-      editingPueWidgetId: null,
-      editingPueEnabled: true,
+      pueDefinitions: [],
+      editingPueDefinitionId: null,
       editingWidgetId: null,
       editingLayout: null,
       editingEnabled: true,
@@ -2451,6 +2464,7 @@
       $("wDeviceBlock").style.display = showDevices ? "block" : "none";
       $("wModelBlock").style.display = showModels ? "block" : "none";
       $("wAggBlock").style.display = kind === "aggregate" ? "block" : "none";
+      $("wPueBlock").style.display = kind === "pue" ? "block" : "none";
       arrangeWidgetForm(kind);
       const pointStepLabel = $("wPointsBlock")?.querySelector(":scope > .muted");
       if (pointStepLabel) pointStepLabel.textContent = kind === "aggregate"
@@ -2463,7 +2477,7 @@
         renderWidgetModels();
       }
 
-      if (kind === "count") {
+      if (kind === "count" || kind === "pue") {
         state.widgetPointCatalog = [];
         state.widgetPointNamesByModel = new Map();
         return;
@@ -3379,6 +3393,7 @@
         await loadLocations();
         await loadModels();
         await loadDevices();
+        await loadPueDefinitions();
         await loadTasks();
         await loadCommonCodesUi();
         if ($("taskModel").value) await refreshTaskDevicePick();
@@ -3993,6 +4008,9 @@
       delete $("wChartSeriesMode").dataset.userSelected;
       $("wChartRangePreset").value = "last_24h";
       $("wChartWindow").value = "5m";
+      $("wPueRangePreset").value = "last_24h";
+      $("wPueFreshnessMinutes").value = "15";
+      $("wPueDefinition").value = "";
       $("wOp").value = "";
       if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
       if (page) $("wCreatePage").value = page;
@@ -4009,10 +4027,6 @@
     async function startEditWidget(id) {
       try {
         const w = await api(`/api/manager/widgets/${id}`);
-        if (w.queryKind === "pue") {
-          await startEditPueWidget(w);
-          return;
-        }
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
@@ -4030,6 +4044,9 @@
         if (w.chartSeriesMode) $("wChartSeriesMode").value = w.chartSeriesMode;
         if (w.chartRangePreset) $("wChartRangePreset").value = w.chartRangePreset;
         if (w.chartWindow) $("wChartWindow").value = w.chartWindow;
+        if (w.pueDefinitionId != null) $("wPueDefinition").value = String(w.pueDefinitionId);
+        if (w.pueRangePreset) $("wPueRangePreset").value = w.pueRangePreset;
+        if (w.pueFreshnessMinutes) $("wPueFreshnessMinutes").value = String(w.pueFreshnessMinutes);
         if (w.op) $("wOp").value = w.op;
         if (w.aggregateRangePreset && $("wAggRangePreset")) $("wAggRangePreset").value = w.aggregateRangePreset;
         state.widgetDeviceIds = [...(w.deviceIds || [])];
@@ -4082,9 +4099,6 @@
       if (state.editingWidgetId === id) {
         clearWidgetForm(true);
       }
-      if (state.editingPueWidgetId === id) {
-        clearPueForm();
-      }
       $("wLastOut").innerHTML = "";
       toast(`위젯 #${id} 삭제됨`);
       await loadWidgets();
@@ -4123,14 +4137,14 @@
                 last_7d: "최근 7일",
               })[w.aggregateRangePreset] || w.aggregateRangePreset) : ""}</div>`
             : w.queryKind === "pue"
-              ? `<div class="muted">${esc(w.pueRangePreset || "last_24h")} · 최신 ${esc(w.pueFreshnessMinutes || 15)}분 · ${esc((w.pueSources || []).length)}개 소스</div>`
+              ? `<div class="muted">PUE 정의 #${esc(w.pueDefinitionId || "–")} · ${esc(w.pueRangePreset || "last_24h")} · 최신 ${esc(w.pueFreshnessMinutes || 15)}분</div>`
               : "";
         const targetCell = w.queryKind === "count"
           ? '<span class="muted">전체 enabled</span>'
           : w.queryKind === "chart" && (w.chartScope || "devices") === "models"
             ? ((w.modelIds || []).join(", ") || "–")
             : w.queryKind === "pue"
-              ? (w.pueSources || []).map((s) => `${s.role === "total" ? "총" : "Cooler"} #${s.deviceId}:${s.pointName}`).join(" · ")
+              ? `PUE 정의 #${esc(w.pueDefinitionId || "–")}`
               : ((w.deviceIds || []).join(", ") || "–");
         return `
         <tr>
@@ -4208,6 +4222,43 @@
             await loadWidgets();
           } catch (e) { toast(e.message, true); }
         };
+      });
+    }
+
+    async function loadPueDefinitions() {
+      state.pueDefinitions = await api("/api/manager/pue-definitions");
+      const select = $("wPueDefinition");
+      if (select) {
+        const selected = select.value;
+        fillSelect(select, state.pueDefinitions, (definition) =>
+          `<option value="${definition.id}">${esc(definition.name)} · ${definition.collectionEnabled ? "수집 ON" : "수집 OFF"} · 소스 ${definition.sources.length}개</option>`,
+          state.pueDefinitions.length ? "PUE 정의 선택" : "PUE 수집 정의를 먼저 만드세요");
+        if ([...select.options].some((option) => option.value === selected)) select.value = selected;
+      }
+      const body = $("pueDefinitionBody");
+      if (!body) return;
+      body.innerHTML = state.pueDefinitions.map((definition) => {
+        const sources = definition.sources.map((source) =>
+          `${source.role === "total" ? "총" : "Cooler"} ${esc(source.deviceName)}:${esc(source.pointName)}`).join(" · ");
+        return `<tr><td><b>${esc(definition.name)}</b><div class="muted mono">#${definition.id} · v${definition.configVersion}</div></td>`
+          + `<td class="mono">${esc(definition.calculationCron || "0 */5 * * * *")}</td>`
+          + `<td>${definition.collectionEnabled ? '<span class="chip ok">ON</span>' : '<span class="chip">OFF</span>'}</td>`
+          + `<td>${sources || "–"}</td><td class="actions"><div class="action-btns">`
+          + `<button type="button" class="ghost" data-pue-definition-edit="${definition.id}">수정</button>`
+          + `<button type="button" class="ghost" data-pue-definition-toggle="${definition.id}" data-pue-definition-enabled="${!definition.collectionEnabled}">${definition.collectionEnabled ? "수집 중지" : "수집 시작"}</button>`
+          + `<button type="button" class="danger" data-pue-definition-delete="${definition.id}">삭제</button></div></td></tr>`;
+      }).join("") || '<tr><td colspan="5"><div class="empty">등록된 PUE 수집 정의가 없습니다.</div></td></tr>';
+      body.querySelectorAll("[data-pue-definition-edit]").forEach((button) => button.onclick = () => editPueDefinition(Number(button.dataset.pueDefinitionEdit)));
+      body.querySelectorAll("[data-pue-definition-toggle]").forEach((button) => button.onclick = async () => {
+        try {
+          await api(`/api/manager/pue-definitions/${button.dataset.pueDefinitionToggle}/collection-enabled?enabled=${button.dataset.pueDefinitionEnabled}`, { method: "PATCH" });
+          await loadPueDefinitions();
+        } catch (e) { toast(e.message, true); }
+      });
+      body.querySelectorAll("[data-pue-definition-delete]").forEach((button) => button.onclick = async () => {
+        if (!confirm("PUE 수집 정의를 삭제할까요? 연결된 위젯은 조회할 수 없게 됩니다.")) return;
+        try { await api(`/api/manager/pue-definitions/${button.dataset.pueDefinitionDelete}`, { method: "DELETE" }); await clearPueForm(); await loadPueDefinitions(); }
+        catch (e) { toast(e.message, true); }
       });
     }
 
@@ -4297,27 +4348,28 @@
         btn.onclick = async () => {
           try {
             const data = await api(`/api/manager/query/pue?widgetId=${btn.dataset.pue}`);
-            renderPueResult(data);
+             renderPueResult(data, true);
             $("wLastOut").innerHTML = $("pueResult").innerHTML;
           } catch (e) { $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
         };
       });
     }
 
-    function renderPueResult(data) {
+    function renderPueResult(data, fromInflux = false) {
       const value = data.value == null ? "계산 불가" : Number(data.value).toFixed(4);
-      const statusLabel = { OK: "정상", MISSING_DATA: "일부 데이터 없음", ZERO_COOLER_POWER: "Cooler 전력 0" }[data.calculationStatus] || data.calculationStatus;
+      const statusLabel = { OK: "정상", MISSING_DATA: "일부 데이터 없음", STALE_DATA: "저장값 오래됨", ZERO_COOLER_POWER: "Cooler 전력 0" }[data.calculationStatus] || data.calculationStatus;
       const rows = (data.devices || []).map((d) => `<tr><td>${d.role === "total" ? "총전력" : "Cooler"}</td>`
         + `<td>${esc(d.deviceName)} (#${d.deviceId})</td><td>${esc(d.pointName)}</td>`
         + `<td>${d.value == null ? "데이터 없음" : `${esc(d.value)} ${esc(d.unit || data.unit || "")}`}</td></tr>`).join("");
+      const detailRows = rows || `<tr><td colspan="4" class="muted">PUE 수집 정의의 장비별 값은 InfluxDB에서 합산되어 저장됩니다.</td></tr>`;
       $("pueResult").innerHTML = `<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">`
         + `<div class="stat"><div class="k">PUE</div><div class="v">${esc(value)}</div></div>`
         + `<div class="stat"><div class="k">총전력</div><div class="v">${data.totalPower == null ? "–" : `${esc(data.totalPower)} ${esc(data.unit)}`}</div></div>`
         + `<div class="stat"><div class="k">Cooler Power</div><div class="v">${data.coolerPower == null ? "–" : `${esc(data.coolerPower)} ${esc(data.unit)}`}</div></div></div>`
-        + `<p class="muted" style="font-size:12px">상태: ${esc(statusLabel)} · 기간: ${esc(data.rangePreset)}`
+        + `<p class="muted" style="font-size:12px">${fromInflux ? "값 출처: InfluxDB 저장 최신값 · " : "값 출처: 원본 포인트 계산 · "}상태: ${esc(statusLabel)} · 기간: ${esc(data.rangePreset)}`
         + `${data.missingDeviceIds?.length ? ` · 데이터 없는 장비: ${data.missingDeviceIds.map((id) => `#${id}`).join(", ")}` : ""}`
         + `${data.staleDeviceIds?.length ? ` · 오래된 데이터: ${data.staleDeviceIds.map((id) => `#${id}`).join(", ")}` : ""}</p>`
-        + `<div class="table-wrap"><table><thead><tr><th>역할</th><th>장비</th><th>측정항목</th><th>최신값</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        + `<div class="table-wrap"><table><thead><tr><th>역할</th><th>장비</th><th>측정항목</th><th>최신값</th></tr></thead><tbody>${detailRows}</tbody></table></div>`;
     }
 
     $("pueTotalDevice")?.addEventListener("change", () => loadPuePointPick("total"));
@@ -4334,7 +4386,7 @@
         const body = {
           totalSources: state.pueTotalSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
           coolerSources: state.pueCoolerSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
-          rangePreset: $("pueRangePreset").value,
+          rangePreset: "last_24h",
         };
         const data = await api("/api/manager/query/pue", { method: "POST", body: JSON.stringify(body) });
         $("pueOut").textContent = JSON.stringify({ request: body, response: data }, null, 2);
@@ -4347,64 +4399,58 @@
     $("pueWidgetAdd")?.addEventListener("click", async () => {
       try {
         const name = $("pueWidgetName").value.trim();
-        if (!name) throw new Error("위젯 이름을 입력하세요");
+        if (!name) throw new Error("PUE 정의 이름을 입력하세요");
         if (!state.pueTotalSources.length || !state.pueCoolerSources.length) {
           throw new Error("총전력 장비와 Cooler 장비를 각각 하나 이상 추가하세요");
         }
         const body = {
-          pageCode: $("wPage").value,
           name,
-          enabled: true,
-          rangePreset: $("pueRangePreset").value,
-          freshnessMinutes: Number($("pueFreshnessMinutes").value),
+          calculationCron: $("pueCalculationCron").value.trim() || null,
+          collectionEnabled: $("pueCollectionEnabled").value === "true",
           totalSources: state.pueTotalSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
           coolerSources: state.pueCoolerSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
         };
-        const editingId = state.editingPueWidgetId;
-        if (editingId) {
-          delete body.pageCode;
-          body.enabled = state.editingPueEnabled;
-        }
-        const saved = await api(editingId ? `/api/manager/widgets/${editingId}/pue` : "/api/manager/widgets/pue", {
+        const editingId = state.editingPueDefinitionId;
+        const saved = await api(editingId ? `/api/manager/pue-definitions/${editingId}` : "/api/manager/pue-definitions", {
           method: editingId ? "PUT" : "POST", body: JSON.stringify(body)
         });
         $("pueOut").textContent = JSON.stringify({ request: body, response: saved }, null, 2);
-        toast(`PUE 위젯 #${saved.id}${editingId ? "을 수정했습니다" : "을 추가했습니다"}`);
+        toast(`PUE 수집 정의 #${saved.id}${editingId ? "을 수정했습니다" : "을 만들었습니다"}`);
         clearPueForm();
-        await loadWidgets();
+        await loadPueDefinitions();
       } catch (e) { toast(e.message, true); }
     });
     $("pueEditCancel")?.addEventListener("click", () => clearPueForm());
 
     function clearPueForm() {
-      state.editingPueWidgetId = null;
-      state.editingPueEnabled = true;
+      state.editingPueDefinitionId = null;
       state.pueTotalSources = [];
       state.pueCoolerSources = [];
       $("pueWidgetName").value = "";
-      $("pueRangePreset").value = "last_24h";
-      $("pueFreshnessMinutes").value = "15";
-      $("pueWidgetAdd").textContent = "위젯 추가";
+      $("pueCalculationCron").value = "0 */5 * * * *";
+      $("pueCollectionEnabled").value = "true";
+      $("pueWidgetAdd").textContent = "수집 정의 저장";
       $("pueEditCancel").style.display = "none";
       renderPueSources();
       fillPueDevicePicks();
     }
 
-    async function startEditPueWidget(widget) {
-      state.editingPueWidgetId = widget.id;
-      state.editingPueEnabled = widget.enabled !== false;
-      state.pueTotalSources = (widget.pueSources || []).filter((s) => s.role === "total");
-      state.pueCoolerSources = (widget.pueSources || []).filter((s) => s.role === "cooler");
-      $("pueWidgetName").value = widget.name || "";
-      $("pueRangePreset").value = widget.pueRangePreset || "last_24h";
-      $("pueFreshnessMinutes").value = String(widget.pueFreshnessMinutes || 15);
-      $("pueWidgetAdd").textContent = `위젯 #${widget.id} 수정 저장`;
+    async function editPueDefinition(id) {
+      const definition = state.pueDefinitions.find((item) => Number(item.id) === id);
+      if (!definition) return toast("PUE 수집 정의를 찾을 수 없습니다.", true);
+      state.editingPueDefinitionId = definition.id;
+      state.pueTotalSources = definition.sources.filter((source) => source.role === "total");
+      state.pueCoolerSources = definition.sources.filter((source) => source.role === "cooler");
+      $("pueWidgetName").value = definition.name || "";
+      $("pueCalculationCron").value = definition.calculationCron || "0 */5 * * * *";
+      $("pueCollectionEnabled").value = String(definition.collectionEnabled);
+      $("pueWidgetAdd").textContent = `PUE 정의 #${definition.id} 수정 저장`;
       $("pueEditCancel").style.display = "";
       renderPueSources();
       fillPueDevicePicks();
       $("pueResult").innerHTML = "";
       $("tab-widgets")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      toast(`PUE 위젯 #${widget.id} 수정 모드`);
+      toast(`PUE 수집 정의 #${definition.id} 수정 모드`);
     }
     renderPueSources();
 
@@ -4463,7 +4509,9 @@
 
         const chartScope = kind === "chart" ? ($("wChartScope").value || "devices") : null;
         const op = kind === "aggregate" ? ($("wOp").value.trim() || null) : null;
-        const pointNames = kind === "count" ? [] : selectedWidgetPoints();
+        const pointNames = (kind === "count" || kind === "pue") ? [] : selectedWidgetPoints();
+        const pueDefinitionId = kind === "pue" ? Number($("wPueDefinition").value) || null : null;
+        if (kind === "pue" && !pueDefinitionId) throw new Error("표시할 PUE 수집 정의를 선택하세요");
         if ((kind === "last" || kind === "chart") && (!pointNames || !pointNames.length)) {
           throw new Error("측정 항목을 하나 이상 선택하세요");
         }
@@ -4478,7 +4526,7 @@
           deviceIds = [];
           modelIds = [...state.widgetModelIds];
           if (!modelIds.length) throw new Error("모델을 하나 이상 추가하세요");
-        } else {
+        } else if (kind !== "pue") {
           deviceIds = [...state.widgetDeviceIds];
           if (!deviceIds.length) throw new Error("장비를 하나 이상 추가하세요");
         }
@@ -4506,6 +4554,9 @@
           chartSeriesMode: kind === "chart" ? $("wChartSeriesMode").value : null,
           chartRangePreset: kind === "chart" ? $("wChartRangePreset").value : null,
           chartWindow: kind === "chart" ? $("wChartWindow").value : null,
+          pueDefinitionId,
+          pueRangePreset: kind === "pue" ? $("wPueRangePreset").value : null,
+          pueFreshnessMinutes: kind === "pue" ? Number($("wPueFreshnessMinutes").value) : null,
           op,
           aggregateRangePreset: kind === "aggregate" ? ($("wAggRangePreset").value || null) : null,
           groupBy: null,

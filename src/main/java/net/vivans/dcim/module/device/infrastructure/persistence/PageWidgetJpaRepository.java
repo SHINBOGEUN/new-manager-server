@@ -40,6 +40,11 @@ public class PageWidgetJpaRepository implements PageWidgetRepository {
     }
 
     @Override
+    public boolean existsByPueDefinitionId(Integer pueDefinitionId) {
+        return springDataRepository.existsByPue_PueDefinition_Id(pueDefinitionId);
+    }
+
+    @Override
     public void delete(PageWidget pageWidget) {
         springDataRepository.delete(pageWidget);
     }

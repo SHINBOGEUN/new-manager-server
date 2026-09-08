@@ -15,6 +15,9 @@ public class CollectorJobClient {
     private static final ParameterizedTypeReference<CollectorApiResponse<CollectorJobResponse>> JOB_RESPONSE_TYPE =
             new ParameterizedTypeReference<>() {
             };
+    private static final ParameterizedTypeReference<CollectorApiResponse<CollectorHealthResponse>> HEALTH_RESPONSE_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
 
     private final RestClient restClient;
     private final CollectorServiceProperties properties;
@@ -81,6 +84,15 @@ public class CollectorJobClient {
                 .toBodilessEntity());
     }
 
+    public void upsertPue(Integer definitionId, String specJson) {
+        withRetryVoid(() -> restClient.put().uri("/api/pue-jobs/{id}", definitionId)
+                .contentType(MediaType.APPLICATION_JSON).body(specJson).retrieve().toBodilessEntity());
+    }
+
+    public void deletePue(Integer definitionId) {
+        withRetryVoid(() -> restClient.delete().uri("/api/pue-jobs/{id}", definitionId).retrieve().toBodilessEntity());
+    }
+
     <T> T withRetry(java.util.function.Supplier<T> action) {
         return CollectorSyncRetryExecutor.execute(
                 action,
@@ -101,9 +113,24 @@ public class CollectorJobClient {
         return properties.isFailFast();
     }
 
+    public CollectorHealthResponse health() {
+        return requireHealth(restClient.get()
+                .uri("/api/health")
+                .retrieve()
+                .body(HEALTH_RESPONSE_TYPE));
+    }
+
     private CollectorJobResponse requireData(CollectorApiResponse<CollectorJobResponse> response, String operation) {
         if (response == null || response.data() == null) {
             throw new IllegalStateException("collector " + operation + " returned empty response");
+        }
+        return response.data();
+    }
+
+    private CollectorHealthResponse requireHealth(CollectorApiResponse<CollectorHealthResponse> response) {
+        if (response == null || response.data() == null || response.data().instanceId() == null
+                || response.data().instanceId().isBlank()) {
+            throw new IllegalStateException("collector health returned no instanceId");
         }
         return response.data();
     }

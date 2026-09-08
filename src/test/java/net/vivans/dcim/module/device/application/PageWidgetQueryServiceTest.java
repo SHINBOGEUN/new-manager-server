@@ -64,6 +64,7 @@ class PageWidgetQueryServiceTest {
                 "POWER", "누적 전력량", true, "chart",
                 null, null, null, null, null,
                 "devices", "per_device", "today", "5m",
+                null, null, null,
                 List.of(7), List.of(), List.of("TOTAL_KWH"), null);
 
         assertThatThrownBy(() -> service.createWidget(request))

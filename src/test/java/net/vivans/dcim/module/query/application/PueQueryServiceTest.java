@@ -3,9 +3,11 @@ package net.vivans.dcim.module.query.application;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
-import net.vivans.dcim.module.device.domain.model.PageWidgetPueSource;
-import net.vivans.dcim.module.device.domain.model.PageWidgetPueSourceRole;
+import net.vivans.dcim.module.device.domain.model.PageWidgetPue;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
+import net.vivans.dcim.module.pue.domain.model.PueDefinition;
+import net.vivans.dcim.module.pue.domain.model.PueDefinitionSource;
+import net.vivans.dcim.module.pue.domain.model.PueDefinitionSourceRole;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
@@ -17,6 +19,7 @@ import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
 import net.vivans.dcim.module.query.api.dto.PueSourceRequest;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import net.vivans.dcim.module.query.domain.PueLastPoint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -166,32 +169,37 @@ class PueQueryServiceTest {
     void savedWidgetTreatsOldValueAsMissingUsingFreshnessMinutes() {
         Device total = device(1, 101);
         Device cooler = device(10, 110);
-        PageWidgetPueSource totalSource = pueSource(total, "TOTAL_WT", PageWidgetPueSourceRole.total);
-        PageWidgetPueSource coolerSource = pueSource(cooler, "POWER", PageWidgetPueSourceRole.cooler);
+        PueDefinitionSource totalSource = pueSource(total, "TOTAL_WT", PueDefinitionSourceRole.total);
+        PueDefinitionSource coolerSource = pueSource(cooler, "POWER", PueDefinitionSourceRole.cooler);
+        PueDefinition definition = mock(PueDefinition.class);
+        PageWidgetPue pue = mock(PageWidgetPue.class);
         PageWidget widget = mock(PageWidget.class);
         when(pageWidgetRepository.findById(30)).thenReturn(Optional.of(widget));
         when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.pue);
         when(widget.isEnabled()).thenReturn(true);
+        when(widget.getPueDefinitionId()).thenReturn(1);
         when(widget.getPueRangePreset()).thenReturn(net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset.last_24h);
         when(widget.getPueFreshnessMinutes()).thenReturn(15);
-        when(widget.getPueSources()).thenReturn(java.util.Set.of(totalSource, coolerSource));
+        when(widget.getPue()).thenReturn(pue);
+        when(pue.getPueDefinition()).thenReturn(definition);
+        when(definition.getId()).thenReturn(1);
+        when(definition.getSources()).thenReturn(java.util.Set.of(totalSource, coolerSource));
         when(deviceRepository.findById(1)).thenReturn(Optional.of(total));
         when(deviceRepository.findById(10)).thenReturn(Optional.of(cooler));
         DeviceModelSnmpPoint totalPoint = point(101, "TOTAL_WT", "W", "POWER");
         DeviceModelSnmpPoint coolerPoint = point(110, "POWER", "W", "POWER");
         when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(any()))
                 .thenReturn(List.of(totalPoint, coolerPoint));
-        when(pointQuery.findLastInRange(anyList(), anyList(), any(), any())).thenReturn(List.of(
-                new LastPoint(1, "TOTAL_WT", 100.0, Instant.now().minusSeconds(16 * 60)),
-                new LastPoint(10, "POWER", 50.0, Instant.now())
+        when(pointQuery.findLastPue(any(), any())).thenReturn(Optional.of(
+                new PueLastPoint(3.0, 150.0, 50.0, Instant.now().minusSeconds(16 * 60))
         ));
 
         PueQueryResponse response = service.getPue(30);
 
         assertThat(response.value()).isNull();
-        assertThat(response.calculationStatus()).isEqualTo("MISSING_DATA");
-        assertThat(response.staleDeviceIds()).containsExactly(1);
-        assertThat(response.missingDeviceIds()).containsExactly(1);
+        assertThat(response.calculationStatus()).isEqualTo("STALE_DATA");
+        assertThat(response.staleDeviceIds()).containsExactly(1, 10);
+        assertThat(response.missingDeviceIds()).containsExactly(1, 10);
     }
 
     private void prepareDevicesAndPowerPoints() {
@@ -241,8 +249,8 @@ class PueQueryServiceTest {
         return point;
     }
 
-    private static PageWidgetPueSource pueSource(Device device, String pointName, PageWidgetPueSourceRole role) {
-        PageWidgetPueSource source = mock(PageWidgetPueSource.class);
+    private static PueDefinitionSource pueSource(Device device, String pointName, PueDefinitionSourceRole role) {
+        PueDefinitionSource source = mock(PueDefinitionSource.class);
         when(source.getDevice()).thenReturn(device);
         when(source.getPointName()).thenReturn(pointName);
         when(source.getRole()).thenReturn(role);
