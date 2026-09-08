@@ -201,7 +201,7 @@ net.vivans.dcim
 |--------|------|------|
 | GET | `/power/total` | 총 전력 |
 | GET | `/power/pie` | 전력 파이 차트 |
-| GET | `/pue` | PUE |
+| POST | `/api/manager/query/pue` | PUE 독립 조회 |
 | GET | `/chiller` | 칠러 상태 |
 | GET | `/cooler` | 쿨러 상태 |
 | GET | `/psychrometric/chart` | 공기선도 차트 |

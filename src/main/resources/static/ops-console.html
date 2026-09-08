@@ -933,6 +933,62 @@
           <details class="raw"><summary>응답 상세</summary><pre id="wOut"></pre></details>
         </div>
       </div>
+      <div class="card" style="margin-top:16px">
+        <h2>PUE 계산</h2>
+        <p class="muted" style="margin-top:-4px;font-size:13px">
+          위젯과 별도로 총전력 장비와 Cooler 장비의 대표 POWER 포인트를 지정합니다.
+          계산식: <code>totalPower / coolerPower</code>
+        </p>
+        <div class="grid2">
+          <div>
+            <h3 style="margin:0 0 8px;font-size:14px">1. 총전력 장비</h3>
+            <div class="row">
+              <select id="pueTotalDevice" style="flex:1;min-width:180px"></select>
+              <select id="pueTotalPoint" style="flex:1;min-width:160px" disabled><option value="">장비 먼저 선택</option></select>
+              <button type="button" class="primary" id="pueTotalAdd" disabled>추가</button>
+            </div>
+            <div id="pueTotalList" class="pick-list"></div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 8px;font-size:14px">2. Cooler Power 장비</h3>
+            <div class="row">
+              <select id="pueCoolerDevice" style="flex:1;min-width:180px"></select>
+              <select id="pueCoolerPoint" style="flex:1;min-width:160px" disabled><option value="">장비 먼저 선택</option></select>
+              <button type="button" class="primary" id="pueCoolerAdd" disabled>추가</button>
+            </div>
+            <div id="pueCoolerList" class="pick-list"></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <label class="field" style="min-width:220px">위젯 이름
+            <input id="pueWidgetName" placeholder="예: 사업장 PUE" />
+          </label>
+          <label class="field" style="min-width:220px">3. 조회 기간
+            <select id="pueRangePreset">
+              <option value="last_24h" selected>최근 24시간</option>
+              <option value="today">오늘</option>
+              <option value="yesterday">어제</option>
+              <option value="last_7d">최근 7일</option>
+              <option value="this_month">이번 달</option>
+              <option value="last_month">지난 달</option>
+            </select>
+          </label>
+          <label class="field" style="min-width:180px">데이터 최신성
+            <select id="pueFreshnessMinutes">
+              <option value="5">5분 이내</option>
+              <option value="15" selected>15분 이내</option>
+              <option value="30">30분 이내</option>
+              <option value="60">60분 이내</option>
+              <option value="180">3시간 이내</option>
+            </select>
+          </label>
+          <button type="button" class="primary" id="pueCalculate">PUE 계산</button>
+          <button type="button" class="primary" id="pueWidgetAdd">위젯 추가</button>
+          <button type="button" class="ghost" id="pueEditCancel" style="display:none">수정 취소</button>
+        </div>
+        <div id="pueResult" style="margin-top:14px"></div>
+        <details class="raw"><summary>요청·응답 상세</summary><pre id="pueOut"></pre></details>
+      </div>
     </section>
 
     <!-- LOCATIONS -->
@@ -1270,6 +1326,10 @@
       widgetModelIds: [],
       widgetPointCatalog: [], // [{name, unit, models:[]}]
       widgetPointNamesByModel: new Map(),
+      pueTotalSources: [],
+      pueCoolerSources: [],
+      editingPueWidgetId: null,
+      editingPueEnabled: true,
       editingWidgetId: null,
       editingLayout: null,
       editingEnabled: true,
@@ -2147,6 +2207,7 @@
       }
       updateStats();
       fillWidgetDevicePick();
+      fillPueDevicePicks();
     }
 
     function fillWidgetDevicePick() {
@@ -3948,6 +4009,10 @@
     async function startEditWidget(id) {
       try {
         const w = await api(`/api/manager/widgets/${id}`);
+        if (w.queryKind === "pue") {
+          await startEditPueWidget(w);
+          return;
+        }
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
@@ -4017,6 +4082,9 @@
       if (state.editingWidgetId === id) {
         clearWidgetForm(true);
       }
+      if (state.editingPueWidgetId === id) {
+        clearPueForm();
+      }
       $("wLastOut").innerHTML = "";
       toast(`위젯 #${id} 삭제됨`);
       await loadWidgets();
@@ -4036,6 +4104,8 @@
           queryBtn = `<button type="button" class="ghost" data-chart="${w.id}">차트</button>`;
         } else if (w.queryKind === "aggregate") {
           queryBtn = `<button type="button" class="ghost" data-agg="${w.id}">집계</button>`;
+        } else if (w.queryKind === "pue") {
+          queryBtn = `<button type="button" class="ghost" data-pue="${w.id}">PUE</button>`;
         }
         const chartMeta = w.queryKind === "chart"
           ? `<div class="muted">${esc(w.chartScope || "devices")} · ${esc(w.chartSeriesMode || "per_device")} · ${esc(w.chartRangePreset || "")} · ${esc(w.chartWindow || "")}</div>`
@@ -4052,13 +4122,15 @@
                 last_24h: "최근 24시간",
                 last_7d: "최근 7일",
               })[w.aggregateRangePreset] || w.aggregateRangePreset) : ""}</div>`
-            : "";
+            : w.queryKind === "pue"
+              ? `<div class="muted">${esc(w.pueRangePreset || "last_24h")} · 최신 ${esc(w.pueFreshnessMinutes || 15)}분 · ${esc((w.pueSources || []).length)}개 소스</div>`
+              : "";
         const targetCell = w.queryKind === "count"
           ? '<span class="muted">전체 enabled</span>'
           : w.queryKind === "chart" && (w.chartScope || "devices") === "models"
             ? ((w.modelIds || []).join(", ") || "–")
-            : w.queryKind === "aggregate" && w.op === "pue"
-              ? `총 ${(w.deviceIds || []).join(", ") || "–"} · IT ${(w.itDeviceIds || []).join(", ") || "–"}`
+            : w.queryKind === "pue"
+              ? (w.pueSources || []).map((s) => `${s.role === "total" ? "총" : "Cooler"} #${s.deviceId}:${s.pointName}`).join(" · ")
               : ((w.deviceIds || []).join(", ") || "–");
         return `
         <tr>
@@ -4138,6 +4210,203 @@
         };
       });
     }
+
+    function pueSources(role) {
+      return role === "total" ? state.pueTotalSources : state.pueCoolerSources;
+    }
+
+    function fillPueDevicePicks() {
+      if (!$("pueTotalDevice")) return;
+      const selected = new Set([...state.pueTotalSources, ...state.pueCoolerSources].map((s) => s.deviceId));
+      const available = state.devices.filter((d) => d.enabled !== false && !selected.has(d.id));
+      for (const role of ["total", "cooler"]) {
+        const deviceSelect = $(`pue${role === "total" ? "Total" : "Cooler"}Device`);
+        fillSelect(deviceSelect, available, (d) =>
+          `<option value="${d.id}">${esc(d.name)} · ${esc(d.modelName || "")} (#${d.id})</option>`,
+          available.length ? "장비 선택" : "추가할 장비 없음");
+        deviceSelect.value = "";
+        resetPuePointPick(role);
+      }
+    }
+
+    function resetPuePointPick(role) {
+      const prefix = role === "total" ? "pueTotal" : "pueCooler";
+      const pointSelect = $(prefix + "Point");
+      const addButton = $(prefix + "Add");
+      pointSelect.innerHTML = '<option value="">장비 먼저 선택</option>';
+      pointSelect.disabled = true;
+      addButton.disabled = true;
+    }
+
+    async function loadPuePointPick(role) {
+      const prefix = role === "total" ? "pueTotal" : "pueCooler";
+      const deviceId = Number($(prefix + "Device").value);
+      const pointSelect = $(prefix + "Point");
+      const addButton = $(prefix + "Add");
+      if (!deviceId) return resetPuePointPick(role);
+      try {
+        const device = state.devices.find((d) => d.id === deviceId);
+        const points = (await loadSnmpPointsForModel(Number(device.modelId)))
+          .filter((p) => String(p.dataPointType || "").toUpperCase() === "POWER");
+        fillSelect(pointSelect, points, (p) =>
+          `<option value="${esc(p.name)}" data-unit="${esc(p.unit || "")}">${esc(formatPointLabel(p))}</option>`,
+          points.length ? "POWER 측정항목 선택" : "POWER 측정항목 없음");
+        pointSelect.value = "";
+        pointSelect.disabled = !points.length;
+        addButton.disabled = true;
+      } catch (e) {
+        resetPuePointPick(role);
+        toast("측정항목 조회 실패: " + e.message, true);
+      }
+    }
+
+    function addPueSource(role) {
+      const prefix = role === "total" ? "pueTotal" : "pueCooler";
+      const deviceId = Number($(prefix + "Device").value);
+      const pointSelect = $(prefix + "Point");
+      const pointName = pointSelect.value;
+      if (!deviceId || !pointName) return toast("장비와 POWER 측정항목을 선택하세요", true);
+      const option = pointSelect.selectedOptions[0];
+      pueSources(role).push({ deviceId, pointName, unit: option?.dataset.unit || "" });
+      renderPueSources();
+      fillPueDevicePicks();
+    }
+
+    function renderPueSources() {
+      for (const role of ["total", "cooler"]) {
+        const list = pueSources(role);
+        const box = $(role === "total" ? "pueTotalList" : "pueCoolerList");
+        box.innerHTML = list.length ? list.map((source) => {
+          const device = state.devices.find((d) => d.id === source.deviceId);
+          return `<div class="pick-item"><div><b>${esc(device?.name || `장비 #${source.deviceId}`)}</b>`
+            + `<div class="muted" style="font-size:12px">${esc(source.pointName)}${source.unit ? ` · ${esc(source.unit)}` : ""}</div></div>`
+            + `<button type="button" class="ghost" data-pue-role="${role}" data-pue-device="${source.deviceId}">제거</button></div>`;
+        }).join("") : '<div class="empty" style="padding:12px">아직 선택된 장비가 없습니다.</div>';
+      }
+      document.querySelectorAll("[data-pue-device]").forEach((button) => {
+        button.onclick = () => {
+          const role = button.dataset.pueRole;
+          const id = Number(button.dataset.pueDevice);
+          if (role === "total") state.pueTotalSources = state.pueTotalSources.filter((s) => s.deviceId !== id);
+          else state.pueCoolerSources = state.pueCoolerSources.filter((s) => s.deviceId !== id);
+          renderPueSources();
+          fillPueDevicePicks();
+        };
+      });
+      $("wBody").querySelectorAll("[data-pue]").forEach((btn) => {
+        btn.onclick = async () => {
+          try {
+            const data = await api(`/api/manager/query/pue?widgetId=${btn.dataset.pue}`);
+            renderPueResult(data);
+            $("wLastOut").innerHTML = $("pueResult").innerHTML;
+          } catch (e) { $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+        };
+      });
+    }
+
+    function renderPueResult(data) {
+      const value = data.value == null ? "계산 불가" : Number(data.value).toFixed(4);
+      const statusLabel = { OK: "정상", MISSING_DATA: "일부 데이터 없음", ZERO_COOLER_POWER: "Cooler 전력 0" }[data.calculationStatus] || data.calculationStatus;
+      const rows = (data.devices || []).map((d) => `<tr><td>${d.role === "total" ? "총전력" : "Cooler"}</td>`
+        + `<td>${esc(d.deviceName)} (#${d.deviceId})</td><td>${esc(d.pointName)}</td>`
+        + `<td>${d.value == null ? "데이터 없음" : `${esc(d.value)} ${esc(d.unit || data.unit || "")}`}</td></tr>`).join("");
+      $("pueResult").innerHTML = `<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">`
+        + `<div class="stat"><div class="k">PUE</div><div class="v">${esc(value)}</div></div>`
+        + `<div class="stat"><div class="k">총전력</div><div class="v">${data.totalPower == null ? "–" : `${esc(data.totalPower)} ${esc(data.unit)}`}</div></div>`
+        + `<div class="stat"><div class="k">Cooler Power</div><div class="v">${data.coolerPower == null ? "–" : `${esc(data.coolerPower)} ${esc(data.unit)}`}</div></div></div>`
+        + `<p class="muted" style="font-size:12px">상태: ${esc(statusLabel)} · 기간: ${esc(data.rangePreset)}`
+        + `${data.missingDeviceIds?.length ? ` · 데이터 없는 장비: ${data.missingDeviceIds.map((id) => `#${id}`).join(", ")}` : ""}`
+        + `${data.staleDeviceIds?.length ? ` · 오래된 데이터: ${data.staleDeviceIds.map((id) => `#${id}`).join(", ")}` : ""}</p>`
+        + `<div class="table-wrap"><table><thead><tr><th>역할</th><th>장비</th><th>측정항목</th><th>최신값</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    $("pueTotalDevice")?.addEventListener("change", () => loadPuePointPick("total"));
+    $("pueCoolerDevice")?.addEventListener("change", () => loadPuePointPick("cooler"));
+    $("pueTotalPoint")?.addEventListener("change", () => { $("pueTotalAdd").disabled = !$("pueTotalPoint").value; });
+    $("pueCoolerPoint")?.addEventListener("change", () => { $("pueCoolerAdd").disabled = !$("pueCoolerPoint").value; });
+    $("pueTotalAdd")?.addEventListener("click", () => addPueSource("total"));
+    $("pueCoolerAdd")?.addEventListener("click", () => addPueSource("cooler"));
+    $("pueCalculate")?.addEventListener("click", async () => {
+      try {
+        if (!state.pueTotalSources.length || !state.pueCoolerSources.length) {
+          throw new Error("총전력 장비와 Cooler 장비를 각각 하나 이상 추가하세요");
+        }
+        const body = {
+          totalSources: state.pueTotalSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+          coolerSources: state.pueCoolerSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+          rangePreset: $("pueRangePreset").value,
+        };
+        const data = await api("/api/manager/query/pue", { method: "POST", body: JSON.stringify(body) });
+        $("pueOut").textContent = JSON.stringify({ request: body, response: data }, null, 2);
+        renderPueResult(data);
+      } catch (e) {
+        $("pueResult").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+        toast(e.message, true);
+      }
+    });
+    $("pueWidgetAdd")?.addEventListener("click", async () => {
+      try {
+        const name = $("pueWidgetName").value.trim();
+        if (!name) throw new Error("위젯 이름을 입력하세요");
+        if (!state.pueTotalSources.length || !state.pueCoolerSources.length) {
+          throw new Error("총전력 장비와 Cooler 장비를 각각 하나 이상 추가하세요");
+        }
+        const body = {
+          pageCode: $("wPage").value,
+          name,
+          enabled: true,
+          rangePreset: $("pueRangePreset").value,
+          freshnessMinutes: Number($("pueFreshnessMinutes").value),
+          totalSources: state.pueTotalSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+          coolerSources: state.pueCoolerSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+        };
+        const editingId = state.editingPueWidgetId;
+        if (editingId) {
+          delete body.pageCode;
+          body.enabled = state.editingPueEnabled;
+        }
+        const saved = await api(editingId ? `/api/manager/widgets/${editingId}/pue` : "/api/manager/widgets/pue", {
+          method: editingId ? "PUT" : "POST", body: JSON.stringify(body)
+        });
+        $("pueOut").textContent = JSON.stringify({ request: body, response: saved }, null, 2);
+        toast(`PUE 위젯 #${saved.id}${editingId ? "을 수정했습니다" : "을 추가했습니다"}`);
+        clearPueForm();
+        await loadWidgets();
+      } catch (e) { toast(e.message, true); }
+    });
+    $("pueEditCancel")?.addEventListener("click", () => clearPueForm());
+
+    function clearPueForm() {
+      state.editingPueWidgetId = null;
+      state.editingPueEnabled = true;
+      state.pueTotalSources = [];
+      state.pueCoolerSources = [];
+      $("pueWidgetName").value = "";
+      $("pueRangePreset").value = "last_24h";
+      $("pueFreshnessMinutes").value = "15";
+      $("pueWidgetAdd").textContent = "위젯 추가";
+      $("pueEditCancel").style.display = "none";
+      renderPueSources();
+      fillPueDevicePicks();
+    }
+
+    async function startEditPueWidget(widget) {
+      state.editingPueWidgetId = widget.id;
+      state.editingPueEnabled = widget.enabled !== false;
+      state.pueTotalSources = (widget.pueSources || []).filter((s) => s.role === "total");
+      state.pueCoolerSources = (widget.pueSources || []).filter((s) => s.role === "cooler");
+      $("pueWidgetName").value = widget.name || "";
+      $("pueRangePreset").value = widget.pueRangePreset || "last_24h";
+      $("pueFreshnessMinutes").value = String(widget.pueFreshnessMinutes || 15);
+      $("pueWidgetAdd").textContent = `위젯 #${widget.id} 수정 저장`;
+      $("pueEditCancel").style.display = "";
+      renderPueSources();
+      fillPueDevicePicks();
+      $("pueResult").innerHTML = "";
+      $("tab-widgets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast(`PUE 위젯 #${widget.id} 수정 모드`);
+    }
+    renderPueSources();
 
     $("wReload").onclick = () => loadWidgets().catch((e) => toast(e.message, true));
     $("wPage").addEventListener("change", () => loadWidgets().catch(() => {}));

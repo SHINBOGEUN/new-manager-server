@@ -21,4 +21,11 @@ final class QueryValues {
         }
         return value.setScale(2, RoundingMode.HALF_UP);
     }
+
+    static BigDecimal round4(Double value) {
+        if (value == null || value.isNaN() || value.isInfinite()) {
+            return null;
+        }
+        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP);
+    }
 }

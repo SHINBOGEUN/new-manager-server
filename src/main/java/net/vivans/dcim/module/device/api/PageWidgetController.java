@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.application.PageWidgetQueryService;
@@ -59,6 +61,23 @@ public class PageWidgetController {
             @Valid @RequestBody PageWidgetCreateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createWidget(request)));
+    }
+
+    @PostMapping("/pue")
+    @Operation(summary = "PUE 위젯 등록")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> createPueWidget(
+            @Valid @RequestBody PageWidgetPueCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPueWidget(request)));
+    }
+
+    @PutMapping("/{id}/pue")
+    @Operation(summary = "PUE 위젯 수정")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePueWidget(
+            @PathVariable Integer id,
+            @Valid @RequestBody PageWidgetPueUpdateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePueWidget(id, request)));
     }
 
     @PutMapping("/{id}")

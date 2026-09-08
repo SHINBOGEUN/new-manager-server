@@ -55,7 +55,7 @@ DTO `@NotEmpty`로 kind 공통 필수를 걸지 않음.
 | `query_kind` | 필수 | 선택 | 금지(넣으면 400) |
 |--------------|------|------|------------------|
 | **last** | `deviceIds` (≥1), `pointNames` (≥1) | `layout`, `groupBy` | `op`, count/chart 옵션 |
-| **aggregate** | `deviceIds` (≥1), `op` (usage\|power\|pue), `pointNames` (정확히 1개). pue는 `itDeviceIds`도 필수 | `aggregateRangePreset`, `groupBy`, `layout` | count/chart 옵션 |
+| **aggregate** | `deviceIds` (≥1), `op` (usage\|power), `pointNames` (정확히 1개) | `aggregateRangePreset`, `groupBy`, `layout` | count/chart 옵션 |
 | **count** | — | `countMode`, `layout` | `op`, chart 옵션, device/point 불필요 |
 | **chart** | `pointNames` (≥1), scope에 따른 범위 | chart 옵션, `layout` | `op`, count 옵션 |
 
@@ -81,7 +81,8 @@ DTO `@NotEmpty`로 kind 공통 필수를 걸지 않음.
 |------|------|-----------|
 | `usage` | 선택 포인트 구간 차분 합 | `aggregateRangePreset` (미지정 시 `today`) |
 | `power` | 선택 포인트 마지막값 합 | — (기간 기본 `last_24h`) |
-| `pue` | total last / it last | `deviceIds`(total) + `itDeviceIds`(it), 겹침 불가, 동일 `pointNames` 1개 |
+
+PUE는 위젯에서 분리되어 `POST /api/manager/query/pue`로 조회합니다.
 
 `pointNames` 예: `TOTAL_WT`, `W`, `TOTAL_KWH` — 모델 카탈로그 이름 그대로. `weightPoint` / `numeratorPoint` / `denominatorPoint`는 deprecated(항상 null).
 
@@ -127,8 +128,7 @@ kind별 옵션 컬럼은 core에 두지 않습니다. 아래 **1:1 확장**에�
 
 ### 3.3 `page_widget_device`
 
-last / aggregate / chart(scope=devices) 용. **count·chart(models)는 비움.**  
-aggregate `pue`는 `device_role`: `total` / `it` (그 외·NULL = `default`).
+last / aggregate / chart(scope=devices) 용. **count·chart(models)는 비움.** PUE API는 이 테이블을 사용하지 않습니다.
 
 ### 3.4 `page_widget_model`
 
