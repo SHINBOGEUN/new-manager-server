@@ -937,7 +937,7 @@
                     <select><option selected>today</option><option>yesterday</option><option>this_month</option><option>last_month</option><option>last_24h</option><option>last_7d</option></select>
                   </label>
                 </form>
-                <div class="callout" style="margin-top:10px">조회: <code>GET /api/manager/query/aggregate?widgetId=&amp;rangePreset=</code>. PUE는 aggregate preset이 아니라 별도 API로 분리합니다.</div>
+                <div class="callout" style="margin-top:10px">집계 조회: <code>GET /api/manager/query/aggregate?widgetId=&amp;rangePreset=</code>. PUE는 총전력/Cooler 장비별 POWER 포인트와 데이터 최신성 기준을 정해 <code>POST /api/manager/widgets/pue</code>로 저장하고, <code>GET /api/manager/query/pue?widgetId=</code>로 조회합니다.</div>
               </div>
 
               <div class="actions">

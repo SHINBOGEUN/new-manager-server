@@ -1,7 +1,7 @@
 # Ops Console
 
 경로: `http://localhost:8080/ops-console.html`  
-정적 운영 등록 UI. 업체 본 UI 아님. **계산(PUE 등)은 서버 aggregate API** (`GET /api/manager/query/aggregate`).
+정적 운영 등록 UI. 업체 본 UI 아님. PUE는 독립 API (`POST /api/manager/query/pue`)로 계산합니다.
 
 ## 수집 장비 추가 흐름 (UI가 쓰는 API)
 
@@ -24,7 +24,7 @@
 | 장비 추가 | Device + endpoint + instance + task group attach (+ Path) | ✅ |
 | 장비 목록 | Device CRUD(Path 포함), endpoint CRUD, instance, task attach | ✅ |
 | 수집 작업 | Task CRUD/toggle, group POST/DELETE/toggle | ✅ |
-| 화면 위젯 | Widget CRUD, last/count/chart | ✅ (layout → widget-dashboard) |
+| 화면 위젯 | Widget CRUD, last/count/chart/aggregate + 독립 PUE 계산 | ✅ (layout → widget-dashboard) |
 | 위치 | location-node CRUD, parent DnD (Path는 장비에) | ✅ (bulk 미연결) |
 | 장비 모델 | Model CRUD, SNMP point CRUD | ✅ (Modbus create는 API 예정으로 생략) |
 | 공통코드 | code-groups CRUD(조회·생성), common-codes CRUD | ✅ |
@@ -48,7 +48,8 @@
 
 ### 외부 / 미구현
 - Live: `live-test.html`
-- Query aggregate (usage / power / pue): `GET /api/manager/query/aggregate` 구현됨. Ops Console 위젯에서 preset·기간·(pue) IT 장비 선택 후 집계 조회 가능.
+- Query aggregate (usage / power): `GET /api/manager/query/aggregate` 구현됨.
+- Query PUE: `POST /api/manager/query/pue` 미리 계산, `GET /api/manager/query/pue?widgetId=` 저장 위젯 조회. Ops Console에서 총전력/Cooler 장비별 POWER 포인트와 freshness(기본 15분)를 저장·수정 가능.
 - Device capabilities: 미연결
 - Modbus point 쓰기: API 예정
 
@@ -66,5 +67,5 @@
 |-----|------|
 | `/` | 도구 인덱스 |
 | `/ops-console.html` | **등록·운영 UI** (코드·위치·모델·장비·Task·위젯·Query) |
-| `/widget-dashboard.html` | 위젯 배치 · last · count · chart(Chart.js) |
+| `/widget-dashboard.html` | 위젯 배치 · last · count · chart(Chart.js) · aggregate · PUE |
 | `/live-test.html` | 실시간 MQTT |

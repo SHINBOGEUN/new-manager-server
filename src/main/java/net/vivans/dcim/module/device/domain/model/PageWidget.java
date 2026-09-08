@@ -24,8 +24,10 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Entity
@@ -70,6 +72,13 @@ public class PageWidget extends BaseEntity {
 
     @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private PageWidgetChart chart;
+
+    @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private PageWidgetPue pue;
+
+    @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private final Set<PageWidgetPueSource> pueSources = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
@@ -127,6 +136,21 @@ public class PageWidget extends BaseEntity {
         widget.syncKindConfig(op, aggregateRangePreset, countMode, countModelId,
                 chartScope, chartSeriesMode, chartRangePreset, chartWindow);
         widget.applyBindings(pointNames, devices, itDevices, modelIds);
+        return widget;
+    }
+
+    public static PageWidget createPue(
+            CommonCode pageCode,
+            String name,
+            boolean enabled,
+            PageWidgetChartRangePreset rangePreset,
+            Integer freshnessMinutes,
+            List<PageWidgetPueSourceDefinition> sources
+    ) {
+        PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.pue, null);
+        widget.pue = PageWidgetPue.create(widget, rangePreset, freshnessMinutes);
+        widget.replacePueSources(sources);
+        widget.validatePueSources();
         return widget;
     }
 
@@ -191,6 +215,66 @@ public class PageWidget extends BaseEntity {
         return chart == null ? null : chart.getChartWindow();
     }
 
+    public PageWidgetChartRangePreset getPueRangePreset() {
+        return pue == null ? null : pue.getRangePreset();
+    }
+
+    public Integer getPueFreshnessMinutes() {
+        return pue == null ? null : pue.getFreshnessMinutes();
+    }
+
+    public void updatePue(
+            String name,
+            boolean enabled,
+            PageWidgetChartRangePreset rangePreset,
+            Integer freshnessMinutes,
+            List<PageWidgetPueSourceDefinition> sources
+    ) {
+        if (queryKind != PageWidgetQueryKind.pue || pue == null) {
+            throw new IllegalArgumentException("queryKind must be pue");
+        }
+        validateName(name);
+        this.name = name.trim();
+        this.enabled = enabled;
+        pue.update(rangePreset, freshnessMinutes);
+        replacePueSources(sources);
+        validatePueSources();
+    }
+
+    private void replacePueSources(List<PageWidgetPueSourceDefinition> sources) {
+        Set<Integer> deviceIds = new HashSet<>();
+        Map<Integer, PageWidgetPueSourceDefinition> definitions = new LinkedHashMap<>();
+        if (sources != null) {
+            for (PageWidgetPueSourceDefinition source : sources) {
+                if (!deviceIds.add(source.device().getId())) {
+                    throw new IllegalArgumentException("PUE device cannot be assigned more than once: " + source.device().getId());
+                }
+                definitions.put(source.device().getId(), source);
+            }
+        }
+        pueSources.removeIf(source -> !definitions.containsKey(source.getDevice().getId()));
+        for (PageWidgetPueSourceDefinition source : definitions.values()) {
+            PageWidgetPueSource existing = pueSources.stream()
+                    .filter(current -> current.getDevice().getId().equals(source.device().getId()))
+                    .findFirst()
+                    .orElse(null);
+            if (existing == null) {
+                pueSources.add(PageWidgetPueSource.create(this, source.device(), source.role(), source.pointName()));
+            } else {
+                existing.update(source.role(), source.pointName());
+            }
+        }
+    }
+
+    private void validatePueSources() {
+        boolean total = pueSources.stream().anyMatch(s -> s.getRole() == PageWidgetPueSourceRole.total);
+        boolean cooler = pueSources.stream().anyMatch(s -> s.getRole() == PageWidgetPueSourceRole.cooler);
+        if (!total || !cooler) throw new IllegalArgumentException("PUE requires total and cooler sources");
+    }
+
+    public record PageWidgetPueSourceDefinition(Device device, PageWidgetPueSourceRole role, String pointName) {
+    }
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -253,6 +337,10 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.chart) {
             this.chart = null;
         }
+        if (queryKind != PageWidgetQueryKind.pue) {
+            this.pue = null;
+            this.pueSources.clear();
+        }
 
         switch (queryKind) {
             case aggregate -> {
@@ -289,7 +377,7 @@ public class PageWidget extends BaseEntity {
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
-        if (queryKind == PageWidgetQueryKind.count) {
+        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
             replacePoints(List.of());
             replaceDevices(List.of(), List.of());
             replaceModels(List.of());
@@ -367,7 +455,7 @@ public class PageWidget extends BaseEntity {
     }
 
     private void validateBindings() {
-        if (queryKind == PageWidgetQueryKind.count) {
+        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
             return;
         }
         if (queryKind == PageWidgetQueryKind.chart) {

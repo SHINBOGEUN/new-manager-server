@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS `page_widget` (
   CONSTRAINT `fk_page_widget_page_code_id` FOREIGN KEY (`page_code_id`) REFERENCES `common_code` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `chk_page_widget_enabled` CHECK (`enabled` in (0,1)),
   CONSTRAINT `chk_page_widget_group_by` CHECK (`group_by` is null or `group_by` in ('device','point','location')),
-  CONSTRAINT `chk_page_widget_query_kind` CHECK (`query_kind` in ('last','aggregate','count','chart'))
+  CONSTRAINT `chk_page_widget_query_kind` CHECK (`query_kind` in ('last','aggregate','count','chart','pue'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='페이지 위젯 카드 정의 (DEVICE_PAGE 자식)'

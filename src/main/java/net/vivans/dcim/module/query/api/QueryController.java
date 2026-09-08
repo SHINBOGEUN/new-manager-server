@@ -8,16 +8,22 @@ import net.vivans.dcim.module.query.api.dto.AggregateWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
+import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
 import net.vivans.dcim.module.query.application.AggregateQueryService;
 import net.vivans.dcim.module.query.application.ChartQueryService;
 import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
+import net.vivans.dcim.module.query.application.PueQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
 
 @RestController
 @RequiredArgsConstructor
@@ -29,6 +35,7 @@ public class QueryController {
     private final CountQueryService countQueryService;
     private final ChartQueryService chartQueryService;
     private final AggregateQueryService aggregateQueryService;
+    private final PueQueryService pueQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -99,5 +106,25 @@ public class QueryController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 aggregateQueryService.getAggregate(widgetId, rangePreset)));
+    }
+
+    @PostMapping("/pue")
+    @Operation(
+            summary = "PUE 계산",
+            description = "위젯과 독립적으로 totalSources와 coolerSources의 장비별 POWER 포인트 최신값을 합산해 "
+                    + "totalPower / coolerPower를 계산합니다."
+    )
+    public ResponseEntity<ApiResponse<PueQueryResponse>> getPue(
+            @Valid @RequestBody PueQueryRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pueQueryService.getPue(request)));
+    }
+
+    @GetMapping("/pue")
+    @Operation(summary = "저장된 PUE 위젯 조회")
+    public ResponseEntity<ApiResponse<PueQueryResponse>> getPue(
+            @RequestParam Integer widgetId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pueQueryService.getPue(widgetId)));
     }
 }

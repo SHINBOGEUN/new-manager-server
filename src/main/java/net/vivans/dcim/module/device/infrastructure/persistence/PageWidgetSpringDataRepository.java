@@ -11,7 +11,7 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart",
+            "aggregate", "count", "chart", "pue", "pueSources", "pueSources.device",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
@@ -21,7 +21,7 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart",
+            "aggregate", "count", "chart", "pue", "pueSources", "pueSources.device",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",

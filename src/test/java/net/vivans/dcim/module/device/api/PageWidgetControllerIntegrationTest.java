@@ -282,6 +282,54 @@ class PageWidgetControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.layout.h").value(2));
     }
 
+    @Test
+    void pueWidget_createUpdateToggleAndDelete() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-pue", "password123");
+        devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
+        int totalDevice = createDevice(accessToken, "Pue-Total");
+        int coolerDevice = createDevice(accessToken, "Pue-Cooler");
+
+        String created = mockMvc.perform(post("/api/manager/widgets/pue")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pageCode":"dashboard","name":"사업장 PUE","rangePreset":"last_24h","freshnessMinutes":30,
+                                 "totalSources":[{"deviceId":%d,"pointName":"TOTAL_WT"}],
+                                 "coolerSources":[{"deviceId":%d,"pointName":"TOTAL_WT"}]}
+                                """.formatted(totalDevice, coolerDevice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.queryKind").value("pue"))
+                .andExpect(jsonPath("$.data.pueFreshnessMinutes").value(30))
+                .andExpect(jsonPath("$.data.pueSources", hasSize(2)))
+                .andReturn().getResponse().getContentAsString();
+        int widgetId = objectMapper.readTree(created).path("data").path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/widgets/{id}/pue", widgetId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"사업장 PUE 수정","enabled":true,"rangePreset":"today","freshnessMinutes":60,
+                                 "totalSources":[{"deviceId":%d,"pointName":"TOTAL_WT"}],
+                                 "coolerSources":[{"deviceId":%d,"pointName":"TOTAL_WT"}]}
+                                """.formatted(totalDevice, coolerDevice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("사업장 PUE 수정"))
+                .andExpect(jsonPath("$.data.pueFreshnessMinutes").value(60));
+
+        mockMvc.perform(patch("/api/manager/widgets/{id}/enabled", widgetId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"enabled\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.enabled").value(false));
+        mockMvc.perform(delete("/api/manager/widgets/{id}", widgetId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/manager/widgets/{id}", widgetId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isNotFound());
+    }
+
     private int createDevice(String accessToken, String name) throws Exception {
         Integer protocolGroupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = findOrCreateCommonCode(accessToken, protocolGroupId, "snmp", "SNMP", 1);
@@ -304,6 +352,16 @@ class PageWidgetControllerIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         int modelId = objectMapper.readTree(modelResponse).path("data").path("id").asInt();
+        int protocolId = objectMapper.readTree(modelResponse).path("data").path("protocols").get(0).path("id").asInt();
+        Integer dataPointTypeGroupId = findOrCreateCodeGroup(accessToken, "DATA_POINT_TYPE", "Data Point Type");
+        Integer powerTypeId = findOrCreateCommonCode(accessToken, dataPointTypeGroupId, "POWER", "전력", 1);
+        mockMvc.perform(post("/api/manager/device-models/{modelId}/protocols/{protocolId}/snmp-points", modelId, protocolId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"dataPointTypeId":%d,"name":"TOTAL_WT","oid":".1.3.6.1.4.1.9999.1","unit":"W","enabled":true}
+                                """.formatted(powerTypeId)))
+                .andExpect(status().isOk());
 
         Integer locationGroupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
         Integer rackTypeId = findOrCreateCommonCode(accessToken, locationGroupId, "RACK", "랙", 3);

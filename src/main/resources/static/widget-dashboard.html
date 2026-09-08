@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>DCIM Widget Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #171d25;
+      --panel-2: #1d2530;
+      --line: #2a3544;
+      --text: #e8edf4;
+      --muted: #8b98a8;
+      --accent: #3d9cf0;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --bad: #f07178;
+      --chip: #243044;
+      --cols: 48;
+      --row-h: 24px;
+      --gap: 6px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Malgun Gothic", sans-serif; }
+    body { display: grid; grid-template-rows: auto 1fr; }
+    header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+    }
+    h1 { font-size: 16px; margin: 0; font-weight: 650; }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    label { font-size: 12px; color: var(--muted); }
+    input, button, select {
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 6px; padding: 7px 10px; font-size: 13px;
+    }
+    input { min-width: 120px; }
+    button { cursor: pointer; background: var(--accent); border-color: transparent; color: #061018; font-weight: 650; }
+    button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+    button.danger { background: var(--bad); border-color: transparent; color: #fff; font-weight: 650; }
+    button.danger:hover { filter: brightness(1.08); }
+    button.active { background: var(--ok); color: #061018; border-color: transparent; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #editBtn {
+      background: #243044; color: var(--text); border: 1px solid var(--accent);
+      font-weight: 700; min-width: 110px;
+    }
+    #editBtn.active { background: var(--ok); color: #061018; border-color: transparent; }
+    .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+    main { display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
+    aside {
+      border-right: 1px solid var(--line); background: var(--panel);
+      overflow: auto; padding: 12px;
+    }
+    .panel-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
+    .hint { font-size: 11px; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
+    .widget-item {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+      padding: 10px; margin-bottom: 8px;
+    }
+    .widget-item.disabled { opacity: .55; }
+    .widget-item h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .widget-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .widget-actions button { padding: 6px 10px; font-size: 12px; flex: 1; min-width: 72px; }
+    .widget-actions button.danger { flex: 1.2; min-width: 80px; }
+    .meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+    .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #3a4658; border-radius: 999px; cursor: pointer; transition: .2s;
+    }
+    .slider:before {
+      content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: .2s;
+    }
+    .switch input:checked + .slider { background: var(--ok); }
+    .switch input:checked + .slider:before { transform: translateX(18px); }
+    .board-wrap { overflow: auto; padding: 12px; min-height: 0; position: relative; }
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      gap: var(--gap);
+      grid-auto-rows: var(--row-h);
+      min-height: calc(24 * var(--row-h) + 23 * var(--gap));
+      background-image:
+        linear-gradient(to right, rgba(42,53,68,.55) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(42,53,68,.55) 1px, transparent 1px);
+      background-size:
+        calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols) + var(--gap)) calc(var(--row-h) + var(--gap));
+      background-position: 0 0;
+    }
+    body.edit-mode .board {
+      outline: 1px dashed var(--accent);
+      outline-offset: 4px;
+    }
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      padding: 0; overflow: visible; display: flex; flex-direction: column; min-height: 0;
+      position: relative; user-select: none;
+    }
+    .card.dragging,
+    .card.resizing { opacity: .2; }
+    .card-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px 6px; border-bottom: 1px solid transparent;
+    }
+    body.edit-mode .card-head {
+      cursor: grab;
+      border-bottom-color: var(--line);
+      background: rgba(61,156,240,.08);
+    }
+    .card-head-tools { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .chart-series-select { font-size: 11px; padding: 4px 8px; min-width: 92px; background: var(--panel-2); }
+    body.edit-mode .card-head:active { cursor: grabbing; }
+    .drag-handle {
+      display: none; color: var(--muted); font-size: 14px; letter-spacing: -1px; line-height: 1;
+    }
+    body.edit-mode .drag-handle { display: inline-block; }
+    .resize-handle {
+      display: none;
+      position: absolute;
+      z-index: 3;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    body.edit-mode .resize-handle { display: block; }
+    .resize-e {
+      top: 18px; right: 0; width: 8px; bottom: 18px;
+      cursor: ew-resize; opacity: .55;
+    }
+    .resize-s {
+      left: 18px; bottom: 0; height: 8px; right: 18px;
+      cursor: ns-resize; opacity: .55;
+    }
+    .resize-se {
+      right: 0; bottom: 0; width: 16px; height: 16px;
+      cursor: nwse-resize; opacity: .9;
+      border-radius: 4px 0 8px 0;
+      clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    }
+    .card-body { padding: 8px 12px 12px; overflow: auto; flex: 1; min-height: 0; }
+    .card h2 { margin: 0; font-size: 14px; flex: 1; }
+    .card .sub { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+    .device-block { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+    .device-block:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+    .device-name { font-size: 12px; font-weight: 650; margin-bottom: 4px; }
+    .point-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
+    .point-row .val { color: var(--accent); font-variant-numeric: tabular-nums; }
+    .count-total {
+      font-size: 36px; font-weight: 800; letter-spacing: -.03em;
+      color: var(--ok); line-height: 1; margin: 4px 0 10px;
+    }
+    .count-label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+    .model-row {
+      display: flex; justify-content: space-between; gap: 8px;
+      font-size: 12px; padding: 5px 0; border-top: 1px solid var(--line);
+    }
+    .model-row:first-of-type { border-top: 0; }
+    .model-row .cnt { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .series-row {
+      display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+      font-size: 12px; padding: 5px 0; border-top: 1px solid var(--line);
+    }
+    .series-row:first-of-type { border-top: 0; }
+    .series-row .val { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .series-row .meta-line { font-size: 11px; color: var(--muted); }
+    .card.chart-card .card-body {
+      display: flex; flex-direction: column; padding-bottom: 8px;
+    }
+    .chart-wrap {
+      position: relative; flex: 1; min-height: 140px; width: 100%;
+    }
+    .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+    .chart-legend {
+      display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px;
+      font-size: 11px; color: var(--muted);
+    }
+    .chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .chart-legend i {
+      width: 10px; height: 10px; border-radius: 2px; display: inline-block;
+    }
+    .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
+    .placeholder {
+      grid-column: span 12; background: rgba(255,255,255,.02); border: 1px dashed var(--line);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted);
+      min-height: 160px;
+    }
+    .ghost {
+      position: absolute; pointer-events: none; z-index: 20;
+      border: 2px solid var(--accent); border-radius: 10px;
+      background: rgba(61,156,240,.22);
+      box-shadow: 0 10px 32px rgba(0,0,0,.5);
+      display: none;
+      will-change: left, top, width, height;
+    }
+    .ghost-label {
+      position: absolute; left: 8px; top: 6px;
+      font-size: 11px; color: #dff0ff; font-weight: 650;
+      text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    }
+    .snap-guide {
+      position: absolute; pointer-events: none; z-index: 15;
+      border: 1px dashed rgba(62,207,142,.75);
+      border-radius: 10px;
+      display: none;
+    }
+    .log {
+      margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px; font-family: Consolas, monospace; font-size: 11px;
+      color: var(--muted); max-height: 120px; overflow: auto; white-space: pre-wrap;
+    }
+    a.chip.link {
+      text-decoration: none; color: var(--text); border: 1px solid var(--line);
+      display: inline-block; background: var(--chip);
+    }
+    a.chip.link:hover { border-color: var(--accent); color: var(--accent); }
+    .nav-links { flex: 1 1 100%; justify-content: flex-end; }
+    #countModelWrap { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Widget Dashboard</h1>
+    <span class="chip">last · count · chart</span>
+    <button id="editBtn" type="button" title="클릭 후 이동·리사이즈">배치 편집</button>
+    <div class="row">
+      <label>Manager</label>
+      <input id="managerUrl" placeholder="http://localhost:8080" />
+      <label>pageCode</label>
+      <select id="pageCode">
+        <option value="dashboard" selected>dashboard</option>
+        <option value="ENVIRONMENT">ENVIRONMENT</option>
+        <option value="COOLING">COOLING</option>
+        <option value="POWER">POWER</option>
+      </select>
+      <label>lookback(h)</label>
+      <input id="lookbackHours" type="number" min="1" max="168" value="24" style="width:72px" />
+    </div>
+    <div class="row">
+      <label>ID</label>
+      <input id="username" placeholder="username" />
+      <label>PW</label>
+      <input id="password" type="password" placeholder="password" />
+      <button id="loginBtn" type="button">로그인</button>
+      <span id="authStatus" class="chip">미로그인</span>
+      <button id="reloadBtn" class="ghost" type="button">새로고침</button>
+    </div>
+    <div class="row nav-links">
+      <a class="chip link" href="/">도구 목록</a>
+      <a class="chip link" href="/ops-console.html">운영 콘솔</a>
+      <a class="chip link" href="/live-test.html">실시간</a>
+      <a class="chip link" href="/swagger-ui/index.html" target="_blank" rel="noopener">Swagger</a>
+    </div>
+    <div class="row">
+      <label>count 모드</label>
+      <select id="countModeOverride" title="비우면 위젯에 저장된 countMode 사용">
+        <option value="">위젯 설정</option>
+        <option value="total">전체 (숫자만)</option>
+        <option value="by_model">모델별</option>
+        <option value="model">특정 모델</option>
+      </select>
+      <span id="countModelWrap">
+        <label>모델</label>
+        <select id="countModelOverride"><option value="">선택</option></select>
+      </span>
+      <span class="chip">대상: devices.enabled=1</span>
+    </div>
+    <div class="row">
+      <label>chart 기간</label>
+      <select id="chartRangeOverride" title="비우면 위젯 chartRangePreset 사용">
+        <option value="">위젯 설정</option>
+        <option value="last_24h">최근 24시간</option>
+        <option value="today">오늘</option>
+        <option value="yesterday">어제</option>
+        <option value="last_7d">최근 7일</option>
+        <option value="this_month">이번 달</option>
+      </select>
+      <label>window</label>
+      <select id="chartWindowOverride" title="비우면 위젯 chartWindow 사용">
+        <option value="">위젯 설정</option>
+        <option value="1m">1분</option>
+        <option value="5m">5분</option>
+        <option value="15m">15분</option>
+        <option value="1h">1시간</option>
+        <option value="1d">1일</option>
+      </select>
+      <label>series</label>
+      <select id="chartSeriesOverride" title="비우면 위젯/카드 chartSeriesMode 사용">
+        <option value="">위젯 설정</option>
+        <option value="sum">Total</option>
+        <option value="by_phase">Phase</option>
+        <option value="by_path">Path</option>
+        <option value="per_device">PDU</option>
+      </select>
+      <span class="chip">GET /query/chart</span>
+    </div>
+  </header>
+  <main>
+    <aside>
+      <p class="panel-title">위젯 on/off</p>
+      <p class="hint">토글 = 페이지 표시 여부.<br/>count는 장비 매핑 없이 DB enabled 전체를 셉니다.<br/>chart는 Chart.js 라인 차트(시리즈별).<br/>aggregate는 사용량/전력합/PUE 집계.<br/>「배치 편집」: 상단=이동, 모서리/변=크기. chart는 세로 h를 키우면 보기 좋습니다.</p>
+      <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
+    </aside>
+    <section class="board-wrap">
+      <div id="board" class="board">
+        <div class="placeholder">enabled 위젯만 표시됩니다.</div>
+        <div id="snapGuide" class="snap-guide"></div>
+        <div id="ghost" class="ghost"><span class="ghost-label" id="ghostLabel"></span></div>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </main>
+  <script>
+    const POLL_MS = 15000;
+    const COLS = 48;
+    const DEFAULT_W = 16;  // 화면상 예전 4/12 ≈ 같은 너비
+    const DEFAULT_H = 8;   // 화면상 예전 2행 ≈ 같은 높이
+    const DEFAULT_CHART_H = 16; // chart 카드는 라인 차트용으로 더 높게
+    const CHART_PALETTE = ["#3d9cf0", "#3ecf8e", "#f0b429", "#f07178", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
+    // 스케일: 12칸→×4, 24칸→×2, 이미 48칸이면 그대로
+
+    const state = {
+      token: sessionStorage.getItem("widgetDashToken") || "",
+      widgets: [],
+      devices: [],
+      models: [],
+      lastByWidget: new Map(),
+      countByWidget: new Map(),
+      chartByWidget: new Map(),
+        aggregateByWidget: new Map(),
+        pueByWidget: new Map(),
+      chartSeriesModeByWidget: new Map(),
+      chartInstances: new Map(),
+      pollTimer: null,
+      editMode: false,
+      drag: null,
+      saving: false,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function defaultManagerUrl() {
+      if (location.protocol.startsWith("http") && location.port === "8080") return "";
+      return "http://localhost:8080";
+    }
+
+    $("managerUrl").value = localStorage.getItem("widgetDashManagerUrl") ?? defaultManagerUrl();
+    $("pageCode").value = localStorage.getItem("widgetDashPageCode") || "dashboard";
+
+    function managerBase() {
+      return $("managerUrl").value.replace(/\/$/, "");
+    }
+
+    function log(line) {
+      const el = $("log");
+      const ts = new Date().toLocaleTimeString();
+      el.textContent = `[${ts}] ${line}\n` + el.textContent;
+      if (el.textContent.length > 6000) el.textContent = el.textContent.slice(0, 6000);
+    }
+
+    function setAuthStatus() {
+      $("authStatus").textContent = state.token ? "로그인됨" : "미로그인";
+    }
+
+    async function api(path, options = {}) {
+      const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+      if (state.token) headers.Authorization = "Bearer " + state.token;
+      const res = await fetch(managerBase() + path, { ...options, headers });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json.error || json.message || `HTTP ${res.status}`);
+      }
+      return json.data;
+    }
+
+    /** 저장된 레이아웃을 현재 48칸 그리드 단위로 맞춤 */
+    function toFineLayout(layout) {
+      if (!layout) return null;
+      let { gridX, gridY, w, h } = layout;
+      // 12칸 시대 (작은 w/h)
+      if (w <= 6 && h <= 3) {
+        gridX *= 4; gridY *= 4; w *= 4; h *= 4;
+      }
+      // 24칸 시대
+      else if (w <= 12 && h <= 6) {
+        gridX *= 2; gridY *= 2; w *= 2; h *= 2;
+      }
+      return {
+        gridX: Math.max(0, gridX),
+        gridY: Math.max(0, gridY),
+        w: Math.max(1, Math.min(COLS, w)),
+        h: Math.max(1, h),
+      };
+    }
+
+    function widgetLayout(widget) {
+      if (widget.layout) return toFineLayout(widget.layout);
+      if (widget._tempLayout) return widget._tempLayout;
+      return null;
+    }
+
+    async function login() {
+      const username = $("username").value.trim();
+      const password = $("password").value;
+      const data = await api("/api/manager/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      });
+      state.token = data.accessToken;
+      sessionStorage.setItem("widgetDashToken", state.token);
+      setAuthStatus();
+      log("로그인: " + data.username);
+      await reload();
+    }
+
+    function ensureLayout(widget, index) {
+      const w = DEFAULT_W;
+      const h = widget.queryKind === "chart" ? DEFAULT_CHART_H : DEFAULT_H;
+      const perRow = Math.floor(COLS / w) || 1;
+      const gridX = (index % perRow) * w;
+      const gridY = Math.floor(index / perRow) * h;
+      return { gridX, gridY, w, h };
+    }
+
+    async function deleteWidget(id, name) {
+      const label = name ? `"${name}" (#${id})` : `#${id}`;
+      if (!confirm(`${label} 위젯을 삭제할까요?\nlayout·point·device 매핑도 함께 삭제됩니다.`)) {
+        return;
+      }
+      await api(`/api/manager/widgets/${id}`, { method: "DELETE" });
+      const chart = state.chartInstances.get(id);
+      if (chart) {
+        chart.destroy();
+        state.chartInstances.delete(id);
+      }
+      state.lastByWidget.delete(id);
+      state.countByWidget.delete(id);
+      state.chartByWidget.delete(id);
+      log(`위젯 #${id} 삭제됨`);
+      await loadWidgets();
+    }
+
+    async function loadWidgets() {
+      const pageCode = $("pageCode").value;
+      localStorage.setItem("widgetDashPageCode", pageCode);
+      localStorage.setItem("widgetDashManagerUrl", $("managerUrl").value);
+      const [widgets, devicePage, models] = await Promise.all([
+        api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`),
+        api("/api/manager/devices?page=1&size=500"),
+        api("/api/manager/device-models"),
+      ]);
+      state.widgets = widgets || [];
+      state.devices = devicePage?.content || [];
+      state.models = models?.content || models || [];
+      let autoIdx = 0;
+      for (const w of state.widgets) {
+        if (w.enabled && !w.layout) {
+          w._tempLayout = ensureLayout(w, autoIdx++);
+        }
+      }
+      renderWidgetList();
+      await refreshBoard(true);
+    }
+
+    function renderWidgetList() {
+      if (!state.widgets.length) {
+        $("widgetList").innerHTML = '<p class="empty">위젯이 없습니다.</p>';
+        return;
+      }
+      $("widgetList").innerHTML = state.widgets.map((w) => {
+        const L = widgetLayout(w);
+        const pos = L ? `(${L.gridX},${L.gridY}) ${L.w}×${L.h}` : "no layout";
+        const countMeta = w.queryKind === "count" && w.countMode
+          ? ` · ${escapeHtml(countModeLabel(w.countMode))}`
+          : "";
+        const chartMeta = w.queryKind === "chart"
+          ? ` · ${escapeHtml(w.chartScope || "devices")} · ${escapeHtml(w.chartSeriesMode || "per_device")}`
+          : w.queryKind === "aggregate"
+            ? ` · ${escapeHtml(w.op || "")}${w.aggregateRangePreset ? " · " + escapeHtml(w.aggregateRangePreset) : ""}`
+            : "";
+        return `
+        <article class="widget-item ${w.enabled ? "" : "disabled"}" data-id="${w.id}">
+          <h3>
+            <span>${escapeHtml(w.name)}</span>
+            <label class="switch" title="UI 표시">
+              <input type="checkbox" data-toggle="${w.id}" ${w.enabled ? "checked" : ""} />
+              <span class="slider"></span>
+            </label>
+          </h3>
+          <div class="meta">#${w.id} · ${escapeHtml(w.queryKind)}${countMeta}${chartMeta} · ${pos}</div>
+          <div class="widget-actions">
+            <button type="button" class="ghost" data-edit-scroll="${w.id}">선택</button>
+            <button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}">삭제</button>
+          </div>
+        </article>`;
+      }).join("");
+
+      $("widgetList").querySelectorAll("input[data-toggle]").forEach((input) => {
+        input.addEventListener("change", async (e) => {
+          const id = Number(e.target.dataset.toggle);
+          const enabled = e.target.checked;
+          try {
+            const updated = await api(`/api/manager/widgets/${id}/enabled`, {
+              method: "PATCH",
+              body: JSON.stringify({ enabled }),
+            });
+            const idx = state.widgets.findIndex((w) => w.id === id);
+            if (idx >= 0) {
+              updated._tempLayout = state.widgets[idx]._tempLayout;
+              state.widgets[idx] = updated;
+            }
+            renderWidgetList();
+            await refreshBoard(true);
+            log(`위젯 #${id} ${enabled ? "ON" : "OFF"}`);
+          } catch (err) {
+            e.target.checked = !enabled;
+            log("토글 실패: " + err.message);
+          }
+        });
+      });
+      $("widgetList").querySelectorAll("[data-delete]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          deleteWidget(Number(btn.dataset.delete), btn.dataset.name).catch((err) => log("삭제 실패: " + err.message));
+        });
+      });
+      $("widgetList").querySelectorAll("[data-edit-scroll]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const card = document.querySelector(`.card[data-widget-id="${btn.dataset.editScroll}"]`);
+          card?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+    }
+
+    function layoutStyle(layout) {
+      const x = layout.gridX + 1;
+      const y = layout.gridY + 1;
+      return `grid-column: ${x} / span ${layout.w}; grid-row: ${y} / span ${layout.h};`;
+    }
+
+    async function fetchLast(widget) {
+      const hours = Number($("lookbackHours").value) || 24;
+      try {
+        return await api(`/api/manager/query/last?widgetId=${widget.id}&lookbackHours=${hours}`);
+      } catch (err) {
+        return { widgetId: widget.id, widgetName: widget.name, devices: [], error: err.message };
+      }
+    }
+
+    async function fetchCount(widget) {
+      try {
+        const params = new URLSearchParams({ widgetId: String(widget.id) });
+        const modeOverride = $("countModeOverride").value;
+        if (modeOverride) params.set("countMode", modeOverride);
+        else if (widget.countMode) params.set("countMode", widget.countMode);
+        const modelOverride = $("countModelOverride").value;
+        const effectiveMode = modeOverride || widget.countMode || "by_model";
+        if (effectiveMode === "model") {
+          const mid = modelOverride || (widget.countModelId != null ? String(widget.countModelId) : "");
+          if (mid) params.set("countModelId", mid);
+        }
+        return await api(`/api/manager/query/count?${params}`);
+      } catch (err) {
+        return { widgetId: widget.id, widgetName: widget.name, count: 0, byModel: [], error: err.message };
+      }
+    }
+
+    async function fetchChart(widget) {
+      try {
+        const params = new URLSearchParams({ widgetId: String(widget.id) });
+        const rangeOverride = $("chartRangeOverride")?.value;
+        const windowOverride = $("chartWindowOverride")?.value;
+        const seriesMode = chartSeriesModeForWidget(widget);
+        if (rangeOverride) params.set("rangePreset", rangeOverride);
+        else if (widget.chartRangePreset) params.set("rangePreset", widget.chartRangePreset);
+        if (windowOverride) params.set("window", windowOverride);
+        else if (widget.chartWindow) params.set("window", widget.chartWindow);
+        if (seriesMode) params.set("seriesMode", seriesMode);
+        return await api(`/api/manager/query/chart?${params}`);
+      } catch (err) {
+        return { widgetId: widget.id, widgetName: widget.name, series: [], error: err.message };
+      }
+    }
+
+    async function fetchAggregate(widget) {
+      try {
+        const params = new URLSearchParams({ widgetId: String(widget.id) });
+        if (widget.aggregateRangePreset) params.set("rangePreset", widget.aggregateRangePreset);
+        return await api(`/api/manager/query/aggregate?${params}`);
+      } catch (err) {
+        return { widgetId: widget.id, widgetName: widget.name, value: null, devices: [], error: err.message };
+      }
+    }
+
+    function aggregatePresetLabel(op) {
+      return ({ usage: "사용량", power: "전력 합", pue: "PUE" }[op] || op || "");
+    }
+
+    function renderAggregateBody(agg) {
+      if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
+      if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
+      const unit = agg.unit ? " " + escapeHtml(agg.unit) : "";
+      const rows = (agg.devices || []).map((d) => `
+        <div class="point-row">
+          <span>${escapeHtml(d.deviceName || ("#" + d.deviceId))}${d.role && d.role !== "default" ? ` <span class="chip">${escapeHtml(d.role)}</span>` : ""}</span>
+          <span class="val">${formatValue(d.value)}${unit}</span>
+        </div>`).join("") || '<div class="meta">장비별 값 없음</div>';
+      return `
+        <div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>
+        <div class="count-total">${formatValue(agg.value)}${unit}</div>
+        <div class="count-label">장비별</div>
+        ${rows}`;
+    }
+
+    function countModeLabel(mode) {
+      return ({ total: "전체", by_model: "모델별", model: "특정 모델" }[mode] || mode || "by_model");
+    }
+
+    function chartSeriesModeLabel(mode) {
+      return ({
+        sum: "합계",
+        by_phase: "상별",
+        by_path: "위치별",
+        per_device: "장비별",
+      }[mode] || mode || "장비별");
+    }
+
+    async function fetchPue(widget) {
+      try {
+        return await api(`/api/manager/query/pue?widgetId=${widget.id}`);
+      } catch (err) {
+        return { value: null, error: err.message };
+      }
+    }
+
+    function renderPueBody(pue) {
+      if (!pue || pue.error) return `<div class="empty" style="padding:12px">${escapeHtml(pue?.error || "데이터 없음")}</div>`;
+      const status = ({ OK: "정상", MISSING_DATA: "일부 데이터 없음", ZERO_COOLER_POWER: "Cooler 전력 0" })[pue.calculationStatus] || pue.calculationStatus;
+      const rows = (pue.devices || []).map((d) => `<div class="series-row"><div><b>${escapeHtml(d.role === "total" ? "총전력" : "Cooler")}</b> · ${escapeHtml(d.deviceName || "")}</div>`
+        + `<div class="meta-line">${escapeHtml(d.pointName || "")} · ${d.time ? escapeHtml(new Date(d.time).toLocaleString()) : "데이터 없음"}</div>`
+        + `<div class="val">${d.value == null ? "–" : formatValue(d.value)} ${escapeHtml(d.unit || pue.unit || "")}</div></div>`).join("");
+      const issue = [
+        ...(pue.staleDeviceIds || []).map((id) => `오래된 데이터 #${id}`),
+        ...(pue.missingDeviceIds || []).filter((id) => !(pue.staleDeviceIds || []).includes(id)).map((id) => `데이터 없음 #${id}`),
+      ];
+      return `<div class="count-label">${escapeHtml(pue.rangePreset || "")} · ${escapeHtml(status || "")}</div>`
+        + `<div class="count-total">${pue.value == null ? "–" : formatValue(pue.value)}</div>`
+        + `<div class="count-label">총전력 ${formatValue(pue.totalPower)} ${escapeHtml(pue.unit || "")} · Cooler ${formatValue(pue.coolerPower)} ${escapeHtml(pue.unit || "")}</div>`
+        + (issue.length ? `<div class="meta" style="margin-top:6px">${escapeHtml(issue.join(" · "))}</div>` : "")
+        + `<details style="margin-top:9px"><summary class="meta">장비별 상세</summary>${rows || '<div class="meta">소스 없음</div>'}</details>`;
+    }
+
+    function chartSeriesModesForWidget(widget) {
+      const targets = (widget.chartScope || "devices") === "models"
+        ? (widget.modelIds || []).map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
+        : (widget.deviceIds || []).map((id) => state.devices.find((device) => Number(device.id) === Number(id))).filter(Boolean);
+      const allPdu = targets.length > 0
+        && targets.every((target) => String(target.deviceTypeCode || "").toUpperCase() === "PDU");
+      const pointNames = widget.pointNames || [];
+      const hasPhaseFamily = [...new Set(pointNames
+        .map((name) => /^L[123]_(.+)$/.exec(name)?.[1])
+        .filter(Boolean))]
+        .some((suffix) => ["L1_", "L2_", "L3_"].every((prefix) => pointNames.includes(prefix + suffix)));
+      const modes = [["sum", "합계"], ["per_device", "장비별"]];
+      if (allPdu && hasPhaseFamily) modes.push(["by_phase", "상별"]);
+      if (allPdu) modes.push(["by_path", "위치별"]);
+      return modes;
+    }
+
+    function chartSeriesModeForWidget(widget) {
+      const requested = state.chartSeriesModeByWidget.get(widget.id)
+        || $("chartSeriesOverride")?.value
+        || widget.chartSeriesMode
+        || "per_device";
+      const available = chartSeriesModesForWidget(widget).map(([mode]) => mode);
+      return available.includes(requested) ? requested : available[0] || "per_device";
+    }
+
+    function chartSeriesSelectHtml(widget, selected) {
+      const modes = chartSeriesModesForWidget(widget);
+      const opts = modes.map(([v, label]) =>
+        `<option value="${v}"${selected === v ? " selected" : ""}>${label}</option>`
+      ).join("");
+      return `<select class="chart-series-select" data-widget-id="${widget.id}" title="차트 표시 방식">${opts}</select>`;
+    }
+
+    async function reloadChartWidget(widgetId) {
+      const w = state.widgets.find((x) => x.id === widgetId);
+      if (!w || w.queryKind !== "chart") return;
+      const data = await fetchChart(w);
+      state.chartByWidget.set(widgetId, data);
+      const card = document.querySelector(`.card[data-widget-id="${widgetId}"]`);
+      if (!card) return;
+      const bodyEl = card.querySelector(".card-body");
+      if (bodyEl) bodyEl.innerHTML = renderChartBody(data);
+      const inst = state.chartInstances.get(widgetId);
+      if (inst) {
+        try { inst.destroy(); } catch (_) { /* ignore */ }
+        state.chartInstances.delete(widgetId);
+      }
+      mountChartInstance(widgetId, data);
+      log(`chart #${widgetId} · ${chartSeriesModeLabel(data.seriesMode)}`);
+    }
+
+    function renderCountBody(count) {
+      if (!count) return '<div class="empty" style="padding:12px">데이터 없음</div>';
+      if (count.error) return `<div class="empty" style="padding:12px">${escapeHtml(count.error)}</div>`;
+      const mode = count.countMode || "by_model";
+      if (mode === "total") {
+        return `
+          <div class="count-label">${escapeHtml(countModeLabel(mode))} · enabled 장비</div>
+          <div class="count-total">${count.count ?? 0}</div>`;
+      }
+      const models = (count.byModel || []).map((m) => `
+        <div class="model-row">
+          <span>${escapeHtml(m.modelName)} <span class="chip">${escapeHtml(m.manufacturer || "")}</span></span>
+          <span class="cnt">${m.count}</span>
+        </div>`).join("");
+      return `
+        <div class="count-label">${escapeHtml(countModeLabel(mode))}${mode === "model" && count.countModelId ? ` · #${count.countModelId}` : ""}</div>
+        <div class="count-total">${count.count ?? 0}</div>
+        ${mode === "by_model" || (mode === "model" && models) ? `<div class="count-label">모델별</div>${models || '<div class="meta">0</div>'}` : ""}`;
+    }
+
+    function renderChartBody(chart) {
+      if (!chart) return '<div class="empty" style="padding:12px">데이터 없음</div>';
+      if (chart.error) return `<div class="empty" style="padding:12px">${escapeHtml(chart.error)}</div>`;
+      const series = chart.series || [];
+      const meta = [
+        chart.chartScope || "",
+        chartSeriesModeLabel(chart.seriesMode),
+        chart.rangePreset || "",
+        chart.window || "",
+        chart.unit || "",
+      ].filter(Boolean).join(" · ");
+      if (!series.length) {
+        return `<div class="count-label">${escapeHtml(meta)}</div><div class="empty" style="padding:12px">시리즈 없음</div>`;
+      }
+      const legend = series.slice(0, 8).map((s, i) =>
+        `<span><i style="background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></i>${escapeHtml(s.label || s.key || "")}</span>`
+      ).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
+      return `
+        <div class="count-label">${escapeHtml(meta)} · ${series.length} series</div>
+        <div class="chart-wrap"><canvas data-chart-id="${chart.widgetId}"></canvas></div>
+        <div class="chart-legend">${legend}</div>`;
+    }
+
+    function destroyChartInstances() {
+      for (const chart of state.chartInstances.values()) {
+        try { chart.destroy(); } catch (_) { /* ignore */ }
+      }
+      state.chartInstances.clear();
+    }
+
+    function formatChartTime(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString("ko-KR", {
+        month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+    }
+
+    function mountChartInstance(widgetId, data) {
+      if (typeof Chart === "undefined" || !data || data.error) return;
+      const series = data.series || [];
+      if (!series.length) return;
+      const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
+      if (!canvas) return;
+
+      const timeSet = new Set();
+      for (const s of series) {
+        for (const t of (s.times || [])) {
+          if (t) timeSet.add(t);
+        }
+      }
+      const times = [...timeSet].sort();
+      const labels = times.map(formatChartTime);
+      const datasets = series.map((s, i) => {
+        const byTime = new Map((s.times || []).map((t, idx) => [t, s.values[idx]]));
+        const color = CHART_PALETTE[i % CHART_PALETTE.length];
+        return {
+          label: s.label || s.key || `series-${i}`,
+          data: times.map((t) => {
+            const v = byTime.get(t);
+            return v == null ? null : Number(v);
+          }),
+          borderColor: color,
+          backgroundColor: color + "33",
+          fill: series.length === 1,
+          tension: 0.25,
+          pointRadius: times.length > 80 ? 0 : 2,
+          borderWidth: 2,
+          spanGaps: true,
+        };
+      });
+
+      const chart = new Chart(canvas, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const v = ctx.parsed.y;
+                  const unit = data.unit ? ` ${data.unit}` : "";
+                  return `${ctx.dataset.label}: ${v == null ? "-" : formatValue(v)}${unit}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#8b98a8", maxTicksLimit: 6, maxRotation: 0 },
+              grid: { color: "#2a3544" },
+            },
+            y: {
+              ticks: { color: "#8b98a8" },
+              grid: { color: "#2a3544" },
+            },
+          },
+        },
+      });
+      state.chartInstances.set(widgetId, chart);
+    }
+
+    function mountChartInstances() {
+      if (typeof Chart === "undefined") return;
+      destroyChartInstances();
+      for (const [widgetId, data] of state.chartByWidget) {
+        mountChartInstance(widgetId, data);
+      }
+    }
+
+    function refreshCountModelOverrideOptions() {
+      const wrap = $("countModelWrap");
+      const sel = $("countModelOverride");
+      const mode = $("countModeOverride").value;
+      wrap.style.display = mode === "model" ? "inline-flex" : "none";
+      if (mode !== "model") return Promise.resolve();
+      return api("/api/manager/device-models").then((models) => {
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">선택</option>' + (models || []).map((m) =>
+          `<option value="${m.id}">${escapeHtml(m.name)} (${escapeHtml(m.manufacturer || "")})</option>`
+        ).join("");
+        if (prev) sel.value = prev;
+      }).catch((e) => log("모델 목록: " + e.message));
+    }
+
+    /** @param {boolean} fetchData last/count/chart/aggregate 값도 다시 가져올지 */
+    async function refreshBoard(fetchData) {
+      if (state.drag) return;
+
+      const enabled = state.widgets.filter((w) => w.enabled);
+      if (!enabled.length) {
+        destroyChartInstances();
+        $("board").innerHTML = '<div class="placeholder">표시할 enabled 위젯이 없습니다.</div><div id="ghost" class="ghost"></div>';
+        return;
+      }
+
+      if (fetchData) {
+        const lastWidgets = enabled.filter((w) => w.queryKind === "last");
+        const countWidgets = enabled.filter((w) => w.queryKind === "count");
+        const chartWidgets = enabled.filter((w) => w.queryKind === "chart");
+        const aggregateWidgets = enabled.filter((w) => w.queryKind === "aggregate");
+        const pueWidgets = enabled.filter((w) => w.queryKind === "pue");
+        const [lastResults, countResults, chartResults, aggregateResults, pueResults] = await Promise.all([
+          Promise.all(lastWidgets.map(fetchLast)),
+          Promise.all(countWidgets.map(fetchCount)),
+          Promise.all(chartWidgets.map(fetchChart)),
+          Promise.all(aggregateWidgets.map(fetchAggregate)),
+          Promise.all(pueWidgets.map(fetchPue)),
+        ]);
+        state.lastByWidget = new Map(lastResults.map((r) => [r.widgetId, r]));
+        state.countByWidget = new Map(countResults.map((r) => [r.widgetId, r]));
+        state.chartByWidget = new Map(chartResults.map((r) => [r.widgetId, r]));
+        state.aggregateByWidget = new Map(aggregateResults.map((r) => [r.widgetId, r]));
+        state.pueByWidget = new Map(pueWidgets.map((w, index) => [w.id, pueResults[index]]));
+        await refreshCountModelOverrideOptions();
+      }
+
+      // 임시 레이아웃 재배치 (layout 없는 것만)
+      let autoIdx = 0;
+      for (const w of enabled) {
+        if (!w.layout) w._tempLayout = ensureLayout(w, autoIdx++);
+      }
+
+      destroyChartInstances();
+
+      const cardsHtml = enabled.map((w) => {
+        const layout = widgetLayout(w);
+        const style = layoutStyle(layout);
+        let body;
+        let subExtra = "";
+        let cardClass = "card";
+        if (w.queryKind === "count") {
+          body = renderCountBody(state.countByWidget.get(w.id));
+          if (w.countMode) subExtra = " · " + escapeHtml(countModeLabel(w.countMode));
+        } else if (w.queryKind === "last") {
+          const last = state.lastByWidget.get(w.id);
+          const devices = (last && last.devices) || [];
+          const totalHtml = last && last.total != null
+            ? `<div class="count-label">전체 합</div><div class="count-total" style="font-size:22px;margin-bottom:8px">${formatValue(last.total)}${last.totalUnit ? " " + escapeHtml(last.totalUnit) : ""}</div>`
+            : "";
+          body = devices.length
+            ? totalHtml + devices.map((d) => `
+                <div class="device-block">
+                  <div class="device-name">${escapeHtml(d.deviceName)} <span class="chip">${escapeHtml(d.locationNodeName || d.locationNodeCode || "")}</span></div>
+                  ${(d.points || []).map((p) => `
+                    <div class="point-row">
+                      <span>${escapeHtml(p.pointName)}</span>
+                      <span class="val">${formatValue(p.value)}${p.unit ? " " + escapeHtml(p.unit) : ""}</span>
+                    </div>
+                  `).join("")}
+                </div>
+              `).join("")
+            : `<div class="empty" style="padding:12px">${last && last.error ? escapeHtml(last.error) : "Influx 데이터 없음"}</div>`;
+        } else if (w.queryKind === "chart") {
+          body = renderChartBody(state.chartByWidget.get(w.id));
+          const sm = chartSeriesModeForWidget(w);
+          subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
+          cardClass = "card chart-card";
+        } else if (w.queryKind === "aggregate") {
+          body = renderAggregateBody(state.aggregateByWidget.get(w.id));
+          subExtra = ` · ${escapeHtml(aggregatePresetLabel(w.op))} · ${escapeHtml(w.aggregateRangePreset || "")}`;
+        } else if (w.queryKind === "pue") {
+          body = renderPueBody(state.pueByWidget.get(w.id));
+          subExtra = ` · ${escapeHtml(w.pueRangePreset || "last_24h")}`;
+        } else {
+          body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
+        }
+        const chartHeadTools = w.queryKind === "chart"
+          ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
+          : "";
+        return `
+          <article class="${cardClass}" data-widget-id="${w.id}" style="${style}">
+            <div class="card-head" data-drag-handle>
+              <span class="drag-handle">⠿</span>
+              <div>
+                <h2>${escapeHtml(w.name)}</h2>
+                <div class="sub">${escapeHtml(w.queryKind)}${subExtra} · (${layout.gridX},${layout.gridY}) ${layout.w}×${layout.h}</div>
+              </div>
+              ${chartHeadTools}
+            </div>
+            <div class="card-body">${body}</div>
+            <div class="resize-handle resize-e" data-resize="e" title="가로 크기"></div>
+            <div class="resize-handle resize-s" data-resize="s" title="세로 크기"></div>
+            <div class="resize-handle resize-se" data-resize="se" title="크기 조절"></div>
+          </article>`;
+      }).join("");
+
+      $("board").innerHTML = cardsHtml
+        + '<div id="snapGuide" class="snap-guide"></div>'
+        + '<div id="ghost" class="ghost"><span class="ghost-label" id="ghostLabel"></span></div>';
+      bindEditHandlers();
+      bindChartCardHandlers();
+      mountChartInstances();
+    }
+
+    function bindChartCardHandlers() {
+      $("board").querySelectorAll(".chart-series-select").forEach((sel) => {
+        sel.addEventListener("change", (e) => {
+          const widgetId = Number(e.target.dataset.widgetId);
+          state.chartSeriesModeByWidget.set(widgetId, e.target.value);
+          reloadChartWidget(widgetId).catch((err) => log("chart series: " + err.message));
+        });
+      });
+    }
+
+    function boardMetrics() {
+      const board = $("board");
+      const rect = board.getBoundingClientRect();
+      const styles = getComputedStyle(board);
+      const gap = parseFloat(styles.gap) || 6;
+      const rowH = parseFloat(styles.gridAutoRows) || 24;
+      const colW = (rect.width - gap * (COLS - 1)) / COLS;
+      const stepX = colW + gap;
+      const stepY = rowH + gap;
+      return { board, rect, gap, rowH, colW, stepX, stepY };
+    }
+
+    function layoutToPixels(layout) {
+      const { gap, rowH, colW } = boardMetrics();
+      return {
+        left: layout.gridX * (colW + gap),
+        top: layout.gridY * (rowH + gap),
+        width: layout.w * colW + (layout.w - 1) * gap,
+        height: layout.h * rowH + (layout.h - 1) * gap,
+      };
+    }
+
+    function pixelsToLayout(left, top, width, height) {
+      const { gap, stepX, stepY } = boardMetrics();
+      let gridX = Math.round(left / stepX);
+      let gridY = Math.round(top / stepY);
+      let w = Math.max(1, Math.round((width + gap) / stepX));
+      let h = Math.max(1, Math.round((height + gap) / stepY));
+      gridX = Math.max(0, Math.min(COLS - 1, gridX));
+      w = Math.max(1, Math.min(COLS - gridX, w));
+      gridY = Math.max(0, gridY);
+      h = Math.max(1, Math.min(80, h));
+      return { gridX, gridY, w, h };
+    }
+
+    /** 리사이즈(e/s/se): 좌상단 칸 고정, 크기만 스냅 — 위치 순간이동 방지 */
+    function snapFromInteraction(d, live) {
+      if (d.mode === "move") {
+        const snap = pixelsToLayout(live.left, live.top, live.width, live.height);
+        snap.w = d.layout.w;
+        snap.h = d.layout.h;
+        snap.gridX = Math.max(0, Math.min(COLS - snap.w, snap.gridX));
+        snap.gridY = Math.max(0, snap.gridY);
+        return snap;
+      }
+      const { gap, stepX, stepY } = boardMetrics();
+      let w = d.layout.w;
+      let h = d.layout.h;
+      if (d.resizeMode === "e" || d.resizeMode === "se") {
+        w = Math.max(1, Math.round((live.width + gap) / stepX));
+        w = Math.min(COLS - d.layout.gridX, w);
+      }
+      if (d.resizeMode === "s" || d.resizeMode === "se") {
+        h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
+      }
+      return { gridX: d.layout.gridX, gridY: d.layout.gridY, w, h };
+    }
+
+    function placeLiveBox(left, top, width, height, snap) {
+      const ghost = $("ghost");
+      const guide = $("snapGuide");
+      const label = $("ghostLabel");
+      if (!ghost) return;
+      const minW = 40;
+      const minH = 32;
+      width = Math.max(minW, width);
+      height = Math.max(minH, height);
+      ghost.style.display = "block";
+      ghost.style.left = left + "px";
+      ghost.style.top = top + "px";
+      ghost.style.width = width + "px";
+      ghost.style.height = height + "px";
+      if (label && snap) {
+        label.textContent = `${snap.w}×${snap.h}  @(${snap.gridX},${snap.gridY})`;
+      }
+      if (guide && snap) {
+        const px = layoutToPixels(snap);
+        guide.style.display = "block";
+        guide.style.left = px.left + "px";
+        guide.style.top = px.top + "px";
+        guide.style.width = px.width + "px";
+        guide.style.height = px.height + "px";
+      }
+    }
+
+    function hideGhost() {
+      const ghost = $("ghost");
+      const guide = $("snapGuide");
+      if (ghost) ghost.style.display = "none";
+      if (guide) guide.style.display = "none";
+    }
+
+    function bindEditHandlers() {
+      if (!state.editMode) return;
+      $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
+        handle.addEventListener("pointerdown", onDragStart);
+      });
+      $("board").querySelectorAll("[data-resize]").forEach((handle) => {
+        handle.addEventListener("pointerdown", onResizeStart);
+      });
+    }
+
+    function beginInteraction(e, card, mode) {
+      const id = Number(card.dataset.widgetId);
+      const widget = state.widgets.find((w) => w.id === id);
+      if (!widget) return null;
+      const layout = { ...(widgetLayout(widget) || ensureLayout(widget, 0)) };
+      const { rect } = boardMetrics();
+      const cardRect = card.getBoundingClientRect();
+      const origin = {
+        left: cardRect.left - rect.left,
+        top: cardRect.top - rect.top,
+        width: cardRect.width,
+        height: cardRect.height,
+      };
+
+      e.preventDefault();
+      e.stopPropagation();
+      card.setPointerCapture(e.pointerId);
+      card.classList.add(mode === "move" ? "dragging" : "resizing");
+
+      const interaction = {
+        mode,
+        resizeMode: mode === "move" ? null : mode,
+        id,
+        card,
+        layout,
+        origin,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        live: { ...origin },
+        pending: { ...layout },
+        raf: 0,
+      };
+      state.drag = interaction;
+      placeLiveBox(origin.left, origin.top, origin.width, origin.height, layout);
+      card.addEventListener("pointermove", onInteractMove);
+      card.addEventListener("pointerup", onInteractEnd);
+      card.addEventListener("pointercancel", onInteractEnd);
+      return interaction;
+    }
+
+    function onDragStart(e) {
+      if (!state.editMode || e.button !== 0) return;
+      const card = e.currentTarget.closest(".card");
+      if (!card) return;
+      beginInteraction(e, card, "move");
+    }
+
+    function onResizeStart(e) {
+      if (!state.editMode || e.button !== 0) return;
+      const card = e.currentTarget.closest(".card");
+      if (!card) return;
+      beginInteraction(e, card, e.currentTarget.dataset.resize);
+    }
+
+    function computeLiveBox(d, clientX, clientY) {
+      const dx = clientX - d.startX;
+      const dy = clientY - d.startY;
+      const { rect, stepX } = boardMetrics();
+      const boardW = rect.width;
+      let left = d.origin.left;
+      let top = d.origin.top;
+      let width = d.origin.width;
+      let height = d.origin.height;
+
+      if (d.mode === "move") {
+        left = d.origin.left + dx;
+        top = d.origin.top + dy;
+        left = Math.max(0, Math.min(boardW - width, left));
+        top = Math.max(0, top);
+      } else {
+        if (d.resizeMode === "e" || d.resizeMode === "se") {
+          width = d.origin.width + dx;
+        }
+        if (d.resizeMode === "s" || d.resizeMode === "se") {
+          height = d.origin.height + dy;
+        }
+        const maxW = boardW - left;
+        width = Math.max(stepX * 0.5, Math.min(maxW, width));
+        height = Math.max(20, height);
+      }
+      return { left, top, width, height };
+    }
+
+    function onInteractMove(e) {
+      const d = state.drag;
+      if (!d || e.pointerId !== d.pointerId) return;
+      d._lastX = e.clientX;
+      d._lastY = e.clientY;
+      if (d.raf) return;
+      d.raf = requestAnimationFrame(() => {
+        d.raf = 0;
+        if (!state.drag) return;
+        const live = computeLiveBox(d, d._lastX, d._lastY);
+        d.live = live;
+        const snap = snapFromInteraction(d, live);
+        d.pending = snap;
+        placeLiveBox(live.left, live.top, live.width, live.height, snap);
+      });
+    }
+
+    async function onInteractEnd(e) {
+      const d = state.drag;
+      if (!d || e.pointerId !== d.pointerId) return;
+      if (d.raf) cancelAnimationFrame(d.raf);
+      d.card.releasePointerCapture(e.pointerId);
+      d.card.removeEventListener("pointermove", onInteractMove);
+      d.card.removeEventListener("pointerup", onInteractEnd);
+      d.card.removeEventListener("pointercancel", onInteractEnd);
+      d.card.classList.remove("dragging", "resizing");
+
+      // 마지막 픽셀 → 스냅 (리사이즈 시 좌상단 칸 유지)
+      const live = computeLiveBox(d, e.clientX, e.clientY);
+      const next = snapFromInteraction(d, live);
+      hideGhost();
+      state.drag = null;
+
+      const widget = state.widgets.find((w) => w.id === d.id);
+      const prev = widget && widgetLayout(widget);
+      if (prev && prev.gridX === next.gridX && prev.gridY === next.gridY
+          && prev.w === next.w && prev.h === next.h) {
+        await refreshBoard(false);
+        return;
+      }
+
+      try {
+        state.saving = true;
+        const updated = await api(`/api/manager/widgets/${d.id}/layout`, {
+          method: "PUT",
+          body: JSON.stringify({
+            gridX: next.gridX,
+            gridY: next.gridY,
+            w: next.w,
+            h: next.h,
+          }),
+        });
+        const idx = state.widgets.findIndex((w) => w.id === d.id);
+        if (idx >= 0) {
+          updated._tempLayout = undefined;
+          state.widgets[idx] = updated;
+        }
+        const verb = d.mode === "move" ? "이동" : "크기";
+        log(`${verb} 저장 #${d.id} → (${next.gridX},${next.gridY}) ${next.w}×${next.h}`);
+        renderWidgetList();
+        await refreshBoard(false);
+      } catch (err) {
+        log("배치 저장 실패: " + err.message);
+        await refreshBoard(false);
+      } finally {
+        state.saving = false;
+      }
+    }
+
+    function setEditMode(on) {
+      state.editMode = on;
+      document.body.classList.toggle("edit-mode", on);
+      $("editBtn").classList.toggle("active", on);
+      $("editBtn").textContent = on ? "배치 편집 중" : "배치 편집";
+      if (on) {
+        stopPolling();
+        log("배치 편집 ON — 드래그 중 부드럽게, 놓으면 그리드 스냅");
+      } else {
+        hideGhost();
+        state.drag = null;
+        startPolling();
+        log("배치 편집 OFF");
+      }
+      refreshBoard(false);
+    }
+
+    function formatValue(v) {
+      if (v == null || v === "") return "-";
+      const n = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(n)) return String(v);
+      return n.toLocaleString("ko-KR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function stopPolling() {
+      if (state.pollTimer) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = null;
+      }
+    }
+
+    function startPolling() {
+      stopPolling();
+      if (state.editMode) return;
+      state.pollTimer = setInterval(() => {
+        if (state.drag || state.saving) return;
+        refreshBoard(true).catch((e) => log("poll: " + e.message));
+      }, POLL_MS);
+    }
+
+    async function reload() {
+      await loadWidgets();
+      if (!state.editMode) startPolling();
+    }
+
+    $("loginBtn").addEventListener("click", () => login().catch((e) => log("login: " + e.message)));
+    $("reloadBtn").addEventListener("click", () => reload().catch((e) => log("reload: " + e.message)));
+    $("pageCode").addEventListener("change", () => reload().catch((e) => log("page: " + e.message)));
+    $("countModeOverride").addEventListener("change", () => {
+      refreshCountModelOverrideOptions()
+        .then(() => refreshBoard(true))
+        .catch((e) => log("count mode: " + e.message));
+    });
+    $("countModelOverride").addEventListener("change", () => {
+      refreshBoard(true).catch((e) => log("count model: " + e.message));
+    });
+    $("chartRangeOverride")?.addEventListener("change", () => {
+      refreshBoard(true).catch((e) => log("chart range: " + e.message));
+    });
+    $("chartWindowOverride")?.addEventListener("change", () => {
+      refreshBoard(true).catch((e) => log("chart window: " + e.message));
+    });
+    $("chartSeriesOverride")?.addEventListener("change", () => {
+      state.chartSeriesModeByWidget.clear();
+      refreshBoard(true).catch((e) => log("chart series: " + e.message));
+    });
+    $("editBtn").addEventListener("click", () => setEditMode(!state.editMode));
+
+    setAuthStatus();
+    if (state.token) {
+      reload().catch(() => {
+        state.token = "";
+        sessionStorage.removeItem("widgetDashToken");
+        setAuthStatus();
+      });
+    }
+  </script>
+</body>
+</html>

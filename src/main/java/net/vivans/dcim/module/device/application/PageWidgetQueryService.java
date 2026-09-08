@@ -7,6 +7,9 @@ import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPueSourceRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -19,6 +22,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetCountMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
+import net.vivans.dcim.module.device.domain.model.PageWidgetPueSourceRole;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
@@ -31,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Set;
 
 @Service
@@ -97,6 +104,94 @@ public class PageWidgetQueryService {
         );
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse createPueWidget(PageWidgetPueCreateRequest request) {
+        CommonCode pageCode = findPageCode(request.pageCode());
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndName(pageCode.getId(), name)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        List<PageWidget.PageWidgetPueSourceDefinition> sources = new ArrayList<>();
+        addPueSources(sources, request.totalSources(), PageWidgetPueSourceRole.total);
+        addPueSources(sources, request.coolerSources(), PageWidgetPueSourceRole.cooler);
+        if (sources.size() > 200) throw new IllegalArgumentException("PUE supports at most 200 sources");
+        validatePuePoints(sources);
+        PageWidget widget = PageWidget.createPue(pageCode, name,
+                request.enabled() == null || request.enabled(),
+                request.rangePreset() == null || request.rangePreset().isBlank()
+                        ? PageWidgetChartRangePreset.last_24h
+                        : PageWidgetChartRangePreset.from(request.rangePreset()),
+                request.freshnessMinutes(), sources);
+        applyLayout(widget, request.layout());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse updatePueWidget(Integer id, PageWidgetPueUpdateRequest request) {
+        PageWidget widget = findWidget(id);
+        if (widget.getQueryKind() != PageWidgetQueryKind.pue) {
+            throw new IllegalArgumentException("queryKind must be pue");
+        }
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndNameAndIdNot(widget.getPageCode().getId(), name, id)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        List<PageWidget.PageWidgetPueSourceDefinition> sources = new ArrayList<>();
+        addPueSources(sources, request.totalSources(), PageWidgetPueSourceRole.total);
+        addPueSources(sources, request.coolerSources(), PageWidgetPueSourceRole.cooler);
+        if (sources.size() > 200) throw new IllegalArgumentException("PUE supports at most 200 sources");
+        validatePuePoints(sources);
+        widget.updatePue(name, request.enabled() == null ? widget.isEnabled() : request.enabled(),
+                request.rangePreset() == null || request.rangePreset().isBlank()
+                        ? widget.getPueRangePreset() : PageWidgetChartRangePreset.from(request.rangePreset()),
+                request.freshnessMinutes(), sources);
+        if (request.layout() != null) applyLayout(widget, request.layout());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    private void validatePuePoints(List<PageWidget.PageWidgetPueSourceDefinition> sources) {
+        Set<Integer> modelIds = new LinkedHashSet<>();
+        for (var source : sources) modelIds.add(source.device().getDeviceModel().getId());
+        Map<String, DeviceModelSnmpPoint> catalog = new HashMap<>();
+        for (DeviceModelSnmpPoint point : deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
+            catalog.put(point.getModelProtocol().getDeviceModel().getId() + "|"
+                    + point.getName().toUpperCase(Locale.ROOT), point);
+        }
+        String unit = null;
+        for (var source : sources) {
+            DeviceModelSnmpPoint point = catalog.get(source.device().getDeviceModel().getId() + "|"
+                    + source.pointName().trim().toUpperCase(Locale.ROOT));
+            if (point == null || point.getDataPointType() == null
+                    || !"POWER".equalsIgnoreCase(point.getDataPointType().getCode())) {
+                throw new IllegalArgumentException("PUE source must be an enabled POWER point: device "
+                        + source.device().getId() + ", point " + source.pointName());
+            }
+            if (point.getUnit() == null || point.getUnit().isBlank()) {
+                throw new IllegalArgumentException("PUE source unit is required: " + source.pointName());
+            }
+            if (unit == null) unit = point.getUnit().trim();
+            else if (!unit.equalsIgnoreCase(point.getUnit().trim())) {
+                throw new IllegalArgumentException("PUE source points must use the same unit");
+            }
+        }
+    }
+
+    private void addPueSources(
+            List<PageWidget.PageWidgetPueSourceDefinition> target,
+            List<PageWidgetPueSourceRequest> requests,
+            PageWidgetPueSourceRole role
+    ) {
+        if (requests == null) return;
+        for (PageWidgetPueSourceRequest source : requests) {
+            Device device = deviceRepository.findById(source.deviceId())
+                    .orElseThrow(() -> new EntityNotFoundException("Device not found: " + source.deviceId()));
+            if (!device.isEnabled()) {
+                throw new IllegalArgumentException("PUE source device is disabled: " + source.deviceId());
+            }
+            target.add(new PageWidget.PageWidgetPueSourceDefinition(device, role, source.pointName()));
+        }
     }
 
     @Transactional
@@ -172,7 +267,7 @@ public class PageWidgetQueryService {
             PageWidgetOp op
     ) {
         if (deviceIds == null || deviceIds.isEmpty()) {
-            if (queryKind == PageWidgetQueryKind.count) {
+            if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
                 return List.of();
             }
             if (queryKind == PageWidgetQueryKind.chart

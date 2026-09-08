@@ -15,7 +15,7 @@ GET /api/manager/query/aggregate?widgetId=12&rangePreset=this_month
 | 이름 | 필수 | 설명 |
 |------|------|------|
 | `widgetId` | ✅ | `page_widget.id` (`queryKind=aggregate`) |
-| `rangePreset` | | `last_24h` \| `today` \| `yesterday` \| `last_7d` \| `this_month` \| `last_month`. 미지정 시 위젯 `aggregateRangePreset`, 없으면 usage→`today` / power·pue→`last_24h` |
+| `rangePreset` | | `last_24h` \| `today` \| `yesterday` \| `last_7d` \| `this_month` \| `last_month`. 미지정 시 위젯 `aggregateRangePreset`, 없으면 usage→`today` / power→`last_24h` |
 
 ### 동작
 
@@ -30,7 +30,8 @@ GET /api/manager/query/aggregate?widgetId=12&rangePreset=this_month
 |------------------------|------|
 | `usage` | 선택 포인트 구간 **첫값→끝값** 차분. `value` = 합. 음수(카운터 리셋) 스킵 |
 | `power` | 선택 포인트 구간 **마지막값**. `value` = 합 |
-| `pue` | `devices[].role=total|it` 각각 last. `value` = Σtotal / Σit |
+
+PUE는 aggregate 위젯에서 지원하지 않습니다. [PUE Query API](./QUERY_PUE_API.md)를 사용합니다.
 
 위젯 생성 시 `pointNames`에 **정확히 1개** (예: `TOTAL_WT`, `TOTAL_KWH`, `W`). 모델마다 이름이 달라도 사용자가 선택합니다.
 

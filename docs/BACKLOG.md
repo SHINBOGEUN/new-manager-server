@@ -152,5 +152,6 @@ Environment / Cooling / Analysis / Dashboard는 **페이지 위젯에 묶인 장
 **완료(이 브랜치):** 페이지 위젯(CRUD + device + 2D layout), `GET /query/last?widgetId=`, `device_page` 제거(V018).
 **완료 추가:** `GET /query/count` + countMode, `GET /query/chart` + chartScope/seriesMode (스키마는 V018 `page_widget_count` / `page_widget_chart`).
 **다음:** chart compareMode(어제/전월 비교) 등 후속.
-**완료 추가:** `GET /query/aggregate` (usage / power / pue presets) — [QUERY_AGGREGATE_API.md](./query/QUERY_AGGREGATE_API.md).
-**참고:** last/aggregate/chart(devices) 범위 = `page_widget_device` (pue는 total/it role). chart(models) = `page_widget_model` → enabled 장비. count = `devices.enabled=1` 전체.
+**완료 추가:** `GET /query/aggregate` (usage / power) — [QUERY_AGGREGATE_API.md](./query/QUERY_AGGREGATE_API.md).
+**완료 추가:** 독립 `POST /query/pue` — [QUERY_PUE_API.md](./query/QUERY_PUE_API.md).
+**참고:** last/aggregate/chart(devices) 범위 = `page_widget_device`. chart(models) = `page_widget_model` → enabled 장비. count = `devices.enabled=1` 전체. PUE는 요청 본문의 장비·포인트를 직접 사용.
