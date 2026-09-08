@@ -58,8 +58,23 @@ public class PueDefinition extends BaseEntity {
             cooler |= source.role() == PueDefinitionSourceRole.cooler;
         }
         if (!total || !cooler) throw new IllegalArgumentException("PUE requires total and cooler sources");
-        sources.clear();
-        for (SourceDefinition source : sourceDefinitions) sources.add(PueDefinitionSource.create(this, source.device(), source.role(), source.pointName()));
+        Map<Integer, PueDefinitionSource> existingByDeviceId = new HashMap<>();
+        for (PueDefinitionSource source : sources) {
+            existingByDeviceId.put(source.getDevice().getId(), source);
+        }
+
+        Set<Integer> requestedIds = new HashSet<>();
+        for (SourceDefinition source : sourceDefinitions) {
+            Integer deviceId = source.device().getId();
+            requestedIds.add(deviceId);
+            PueDefinitionSource existing = existingByDeviceId.get(deviceId);
+            if (existing == null) {
+                sources.add(PueDefinitionSource.create(this, source.device(), source.role(), source.pointName()));
+            } else {
+                existing.update(source.role(), source.pointName());
+            }
+        }
+        sources.removeIf(source -> !requestedIds.contains(source.getDevice().getId()));
     }
     private static String requireName(String value) { if (value == null || value.isBlank()) throw new IllegalArgumentException("name is required"); return value.trim(); }
     private static String normalizeCron(String value) { return value == null || value.isBlank() ? DEFAULT_CRON : value.trim(); }

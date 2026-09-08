@@ -42,4 +42,11 @@ public class PueDefinitionSource {
     static PueDefinitionSource create(PueDefinition definition, Device device, PueDefinitionSourceRole role, String pointName) {
         return new PueDefinitionSource(definition, device, role, pointName);
     }
+
+    void update(PueDefinitionSourceRole role, String pointName) {
+        if (role == null) throw new IllegalArgumentException("PUE source role is required");
+        if (pointName == null || pointName.isBlank()) throw new IllegalArgumentException("PUE source pointName is required");
+        this.role = role;
+        this.pointName = pointName.trim();
+    }
 }

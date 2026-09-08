@@ -24,6 +24,7 @@ public record PageWidgetResponse(
         String pueRangePreset,
         Integer pueFreshnessMinutes,
         Integer pueDefinitionId,
+        List<PageWidgetPueSourceResponse> pueSources,
         List<Integer> deviceIds,
         List<Integer> modelIds,
         List<String> pointNames,
@@ -51,6 +52,11 @@ public record PageWidgetResponse(
                 widget.getPueRangePreset() == null ? null : widget.getPueRangePreset().name(),
                 widget.getPueFreshnessMinutes(),
                 widget.getPueDefinitionId(),
+                widget.getPue() == null || widget.getPue().getPueDefinition() == null
+                        ? List.of()
+                        : widget.getPue().getPueDefinition().getSources().stream()
+                        .map(PageWidgetPueSourceResponse::from)
+                        .toList(),
                 widget.deviceIds(),
                 widget.modelIds(),
                 widget.pointNames(),
