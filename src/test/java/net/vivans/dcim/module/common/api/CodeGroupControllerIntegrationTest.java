@@ -15,6 +15,7 @@ import static net.vivans.dcim.support.AuthTestSupport.bearerToken;
 import static net.vivans.dcim.support.AuthTestSupport.loginAndGetAccessToken;
 import static org.hamcrest.Matchers.hasItems;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -170,6 +171,18 @@ class CodeGroupControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("400"))
                 .andExpect(jsonPath("$.error").value("GroupKey already exists"));
+    }
+
+    @Test
+    void deleteCodeGroup_removesEmptyGroup() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-delete-user", "password123");
+        Integer id = createCodeGroup(accessToken, "DELETE_TYPE", "삭제 유형");
+
+        mockMvc.perform(delete("/api/manager/code-groups/{id}", id)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data").value(id));
     }
 
     @Test

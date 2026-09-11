@@ -36,6 +36,14 @@ public class CommonCodeController {
         return ResponseEntity.ok(ApiResponse.ok(commonCodeQueryService.updateCommonCode(id, request)));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "공통 코드 삭제 API")
+    public ResponseEntity<ApiResponse<Integer>> deleteCommonCode(
+            @Parameter(description = "공통 코드 ID") @PathVariable Integer id
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(commonCodeQueryService.deleteCommonCode(id)));
+    }
+
     @GetMapping
     @Operation(summary = "공통 코드 조회 API")
     public ResponseEntity<ApiResponse<List<CommonCodeResponse>>> getCommonCodeList(

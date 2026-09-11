@@ -9,7 +9,9 @@ import net.vivans.dcim.module.common.domain.model.CodeGroup;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CodeGroupRepository;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
+import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -44,17 +46,24 @@ public class CommonCodeQueryService {
         CodeGroup codeGroup = codeGroupRepository.findById(request.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("CodeGroup not found: " + request.groupId()));
 
-        boolean existsCode = commonCodeRepository.existsByCodeAndIdNot(request.code(), id);
-        boolean existsName = commonCodeRepository.existsByNameAndIdNot(request.name(), id);
-        if (existsCode){
-            throw new IllegalArgumentException("code already exists");
-        }
-        if (existsName) {
-            throw new IllegalArgumentException("name already exists");
+        if (commonCodeRepository.existsByCodeGroupIdAndCodeAndIdNot(codeGroup.getId(), request.code(), id)) {
+            throw new IllegalArgumentException("Code already exists in this group");
         }
         code.update(codeGroup, request.code(), request.name(), request.sortOrder());
 
         return CommonCodeResponse.from(commonCodeRepository.save(code));
+    }
+
+    @Transactional
+    public Integer deleteCommonCode(Integer id) {
+        CommonCode code = commonCodeRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));
+        try {
+            commonCodeRepository.delete(code);
+            return id;
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("공통 코드가 다른 설정에서 사용 중이라 삭제할 수 없습니다.");
+        }
     }
 
     public List<CommonCodeResponse> getCommonCodeList(Integer codeGroupId) {

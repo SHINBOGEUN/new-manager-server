@@ -4,6 +4,7 @@ import net.vivans.dcim.module.common.api.dto.CodeGroupRequest;
 import net.vivans.dcim.module.common.api.dto.CodeGroupResponse;
 import net.vivans.dcim.module.common.domain.model.CodeGroup;
 import net.vivans.dcim.module.common.domain.repository.CodeGroupRepository;
+import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,9 @@ class CodeGroupQueryServiceTest {
 
     @Mock
     private CodeGroupRepository codeGroupRepository;
+
+    @Mock
+    private CommonCodeRepository commonCodeRepository;
 
     @InjectMocks
     private CodeGroupQueryService codeGroupQueryService;

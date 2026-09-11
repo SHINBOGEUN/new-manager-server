@@ -67,8 +67,7 @@ public class CommonCodeQueryServiceTest {
         given(commonCodeRepository.findById(1)).willReturn(Optional.of(code));
         given(codeGroupRepository.findById(1)).willReturn(Optional.of(codeGroup));
 
-        given(commonCodeRepository.existsByNameAndIdNot("ups", 1)).willReturn(false);
-        given(commonCodeRepository.existsByCodeAndIdNot("ups", 1)).willReturn(false);
+        given(commonCodeRepository.existsByCodeGroupIdAndCodeAndIdNot(1, "ups", 1)).willReturn(false);
         given(commonCodeRepository.save(any(CommonCode.class))).willAnswer(invocation -> invocation.getArgument(0));
 
          CommonCodeRequest updateRequest = new CommonCodeRequest(1, "ups", "ups", 1);

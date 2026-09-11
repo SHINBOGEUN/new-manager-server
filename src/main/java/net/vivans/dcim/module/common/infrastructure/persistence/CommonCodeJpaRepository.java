@@ -20,6 +20,12 @@ public class CommonCodeJpaRepository implements CommonCodeRepository {
     }
 
     @Override
+    public void delete(CommonCode code) {
+        springDataRepository.delete(code);
+        springDataRepository.flush();
+    }
+
+    @Override
     public Optional<CommonCode> findById(Integer id){
         return springDataRepository.findById(id);
     }
@@ -35,13 +41,13 @@ public class CommonCodeJpaRepository implements CommonCodeRepository {
     }
 
     @Override
-    public boolean existsByCodeAndIdNot(String code, Integer id) {
-        return springDataRepository.existsByCodeAndIdNot(code, id);
+    public boolean existsByCodeGroupIdAndCodeAndIdNot(Integer groupId, String code, Integer id) {
+        return springDataRepository.existsByCodeGroupIdAndCodeAndIdNot(groupId, code, id);
     }
 
     @Override
-    public boolean existsByNameAndIdNot(String name, Integer id) {
-        return springDataRepository.existsByNameAndIdNot(name, id);
+    public boolean existsByCodeGroupId(Integer groupId) {
+        return springDataRepository.existsByCodeGroupId(groupId);
     }
 
     @Override

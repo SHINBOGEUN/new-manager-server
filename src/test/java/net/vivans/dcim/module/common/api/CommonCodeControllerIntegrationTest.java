@@ -138,6 +138,27 @@ class CommonCodeControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(0));
     }
 
+    @Test
+    void delete_removesCommonCode() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "delete-code-user", "password123");
+
+        Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
+        Integer codeId = createCommonCode(accessToken, groupId, "pdu", "pdu", 1);
+
+        mockMvc.perform(delete("/api/manager/common-codes/{id}", codeId)
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data").value(codeId));
+
+        mockMvc.perform(get("/api/manager/common-codes")
+                        .param("codeGroupId", groupId.toString())
+                        .header("Authorization", bearerToken(accessToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
     private Integer createCodeGroup(String accessToken, String groupKey, String groupName) throws Exception {
         String response = mockMvc.perform(post("/api/manager/code-groups")
                         .header("Authorization", bearerToken(accessToken))

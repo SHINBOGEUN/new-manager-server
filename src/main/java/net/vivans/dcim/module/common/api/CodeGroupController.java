@@ -36,6 +36,14 @@ public class CodeGroupController {
         return ResponseEntity.ok(ApiResponse.ok(codeGroupQueryService.updateCodeGroup(id, request)));
     }
 
+    @Operation(summary = "코드 그룹 삭제 API")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Integer>> deleteCodeGroup(
+            @Parameter(description = "코드 그룹 ID") @PathVariable Integer id
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(codeGroupQueryService.deleteCodeGroup(id)));
+    }
+
     @Operation(summary = "코드 그룹 전체 목록 조회 API")
     @GetMapping
     public ResponseEntity<ApiResponse<List<CodeGroupResponse>>> getCodeGroups() {

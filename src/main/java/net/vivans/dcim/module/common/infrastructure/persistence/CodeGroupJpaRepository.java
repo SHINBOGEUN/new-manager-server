@@ -39,4 +39,9 @@ public class CodeGroupJpaRepository implements CodeGroupRepository {
         return springDataRepository.save(codeGroup);
     }
 
+    @Override
+    public void delete(CodeGroup codeGroup) {
+        springDataRepository.delete(codeGroup);
+    }
+
 }
