@@ -25,6 +25,7 @@ final class QueryRanges {
                         todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC)
                 );
             }
+            case last_3d -> new Range(now.minus(3, ChronoUnit.DAYS), now);
             case last_7d -> new Range(now.minus(7, ChronoUnit.DAYS), now);
             case this_month -> new Range(
                     todayUtc.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC),
@@ -45,6 +46,7 @@ final class QueryRanges {
     static String defaultWindow(PageWidgetChartRangePreset preset) {
         return switch (preset) {
             case last_24h, today, yesterday -> "5m";
+            case last_3d -> "15m";
             case last_7d, this_month, last_month -> "1h";
         };
     }

@@ -183,6 +183,40 @@
     .chart-legend i {
       width: 10px; height: 10px; border-radius: 2px; display: inline-block;
     }
+    .trend-modal { position: fixed; z-index: 100; inset: 0; display: none; padding: 28px; background: rgba(4,8,14,.72); }
+    .trend-modal.open { display: flex; align-items: center; justify-content: center; }
+    .trend-dialog { width: min(1120px, 96vw); height: min(720px, 90vh); display: flex; flex-direction: column; padding: 18px; background: #171d25; border: 1px solid #44536a; border-radius: 12px; box-shadow: 0 18px 56px rgba(0,0,0,.55); }
+    .trend-dialog-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .trend-dialog-head h2 { margin: 0; flex: 1; font-size: 17px; }
+    .trend-dialog-head button { padding: 4px 10px; font-size: 20px; line-height: 1; background: transparent; color: var(--muted); border-color: transparent; }
+    .trend-dialog-meta { padding: 9px 0; font-size: 12px; color: var(--muted); }
+    .trend-dialog-chart { position: relative; min-height: 0; flex: 1; }
+    .trend-dialog-chart canvas { width: 100% !important; height: 100% !important; }
+    .card.psychrometric-card .card-body {
+      display: flex; flex-direction: column; padding-bottom: 8px;
+    }
+    .psychrometric-wrap { position: relative; flex: 1; min-height: 220px; width: 100%; }
+    .psychrometric-wrap canvas { width: 100%; height: 100%; display: block; }
+    .psychrometric-tooltip {
+      position: absolute; z-index: 4; display: none; pointer-events: none;
+      padding: 7px 9px; border: 1px solid rgba(184,210,239,.45); border-radius: 6px;
+      background: rgba(15,23,35,.94); box-shadow: 0 4px 14px rgba(0,0,0,.3);
+      color: #edf5ff; font-size: 11px; line-height: 1.45; white-space: nowrap;
+    }
+    .psychrometric-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--muted); }
+    .psychrometric-legend b { color: var(--text); }
+    .power-distribution { display: flex; gap: 18px; align-items: center; min-height: 150px; }
+    .power-donut { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 50%; position: relative; }
+    .power-donut::after { content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--card); }
+    .power-donut-center { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: var(--muted); }
+    .power-donut-center b { color: var(--text); font-size: 18px; margin-top: 3px; }
+    .power-groups { flex: 1; min-width: 0; display: grid; gap: 9px; }
+    .power-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
+    .power-group-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+    .power-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+    .power-group-bar { height: 5px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+    .power-group-bar i { display: block; height: 100%; border-radius: inherit; }
+    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }
     .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
     .placeholder {
       grid-column: span 12; background: rgba(255,255,255,.02); border: 1px dashed var(--line);
@@ -276,6 +310,7 @@
         <option value="last_24h">최근 24시간</option>
         <option value="today">오늘</option>
         <option value="yesterday">어제</option>
+        <option value="last_3d">최근 3일</option>
         <option value="last_7d">최근 7일</option>
         <option value="this_month">이번 달</option>
       </select>
@@ -302,7 +337,7 @@
   <main>
     <aside>
       <p class="panel-title">위젯 on/off</p>
-      <p class="hint">토글 = 페이지 표시 여부.<br/>count는 장비 매핑 없이 DB enabled 전체를 셉니다.<br/>chart는 Chart.js 라인 차트(시리즈별).<br/>aggregate는 사용량/전력합/PUE 집계.<br/>「배치 편집」: 상단=이동, 모서리/변=크기. chart는 세로 h를 키우면 보기 좋습니다.</p>
+      <p class="hint">토글 = 페이지 표시 여부.<br/>count는 장비 매핑 없이 DB enabled 전체를 셉니다.<br/>chart는 Chart.js 라인 차트(시리즈별).<br/>사이코메트릭은 Influx 온도·습도 평균을 습공기선에 표시합니다.<br/>「배치 편집」: 상단=이동, 모서리/변=크기. 차트와 습공기선은 세로 h를 키우면 보기 좋습니다.</p>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -314,6 +349,16 @@
       <div class="log" id="log"></div>
     </section>
   </main>
+  <div id="trendModal" class="trend-modal" role="dialog" aria-modal="true" aria-labelledby="trendModalTitle">
+    <div class="trend-dialog">
+      <div class="trend-dialog-head">
+        <h2 id="trendModalTitle">트렌드</h2>
+        <button type="button" id="trendModalClose" aria-label="닫기">×</button>
+      </div>
+      <div id="trendModalMeta" class="trend-dialog-meta">최근 3일 데이터를 불러오는 중…</div>
+      <div class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
+    </div>
+  </div>
   <script>
     const POLL_MS = 15000;
     const COLS = 48;
@@ -333,8 +378,11 @@
       chartByWidget: new Map(),
         aggregateByWidget: new Map(),
         pueByWidget: new Map(),
+      psychrometricByWidget: new Map(),
+      powerDistributionByWidget: new Map(),
       chartSeriesModeByWidget: new Map(),
       chartInstances: new Map(),
+      trendModalChart: null,
       pollTimer: null,
       editMode: false,
       drag: null,
@@ -419,7 +467,7 @@
 
     function ensureLayout(widget, index) {
       const w = DEFAULT_W;
-      const h = widget.queryKind === "chart" ? DEFAULT_CHART_H : DEFAULT_H;
+      const h = widget.queryKind === "chart" || widget.queryKind === "psychrometric" ? DEFAULT_CHART_H : DEFAULT_H;
       const perRow = Math.floor(COLS / w) || 1;
       const gridX = (index % perRow) * w;
       const gridY = Math.floor(index / perRow) * h;
@@ -440,6 +488,8 @@
       state.lastByWidget.delete(id);
       state.countByWidget.delete(id);
       state.chartByWidget.delete(id);
+      state.psychrometricByWidget.delete(id);
+      state.powerDistributionByWidget.delete(id);
       log(`위젯 #${id} 삭제됨`);
       await loadWidgets();
     }
@@ -568,12 +618,12 @@
       }
     }
 
-    async function fetchChart(widget) {
+    async function fetchChart(widget, overrides = {}) {
       try {
         const params = new URLSearchParams({ widgetId: String(widget.id) });
-        const rangeOverride = $("chartRangeOverride")?.value;
-        const windowOverride = $("chartWindowOverride")?.value;
-        const seriesMode = chartSeriesModeForWidget(widget);
+        const rangeOverride = overrides.rangePreset || $("chartRangeOverride")?.value;
+        const windowOverride = overrides.window || $("chartWindowOverride")?.value;
+        const seriesMode = overrides.seriesMode || chartSeriesModeForWidget(widget);
         if (rangeOverride) params.set("rangePreset", rangeOverride);
         else if (widget.chartRangePreset) params.set("rangePreset", widget.chartRangePreset);
         if (windowOverride) params.set("window", windowOverride);
@@ -636,6 +686,52 @@
       }
     }
 
+    async function fetchPsychrometric(widget) {
+      try {
+        return await api(`/api/manager/query/psychrometric?widgetId=${widget.id}`);
+      } catch (err) {
+        return { title: widget.name, error: err.message, timeLabels: [], data: [] };
+      }
+    }
+
+    async function fetchPowerDistribution(widget) {
+      try {
+        return await api(`/api/manager/query/power-distribution?widgetId=${widget.id}`);
+      } catch (err) {
+        return { title: widget.name, error: err.message, groups: [] };
+      }
+    }
+
+    function formatPowerW(value) {
+      if (value == null) return "–";
+      const number = Number(value);
+      return Math.abs(number) >= 1000
+        ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW`
+        : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
+    }
+
+    function renderPowerDistributionBody(data) {
+      if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
+      const groups = data.groups || [];
+      const colors = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#22d3ee", "#f97316", "#a3e635"];
+      const resolved = groups.map((group, index) => ({ ...group, color: group.color || colors[index % colors.length] }));
+      const conic = resolved.length && data.complete
+        ? `conic-gradient(${resolved.map((group, index) => `${group.color} ${resolved.slice(0, index).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}% ${resolved.slice(0, index + 1).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}%`).join(", ")})`
+        : "conic-gradient(#334155 0 100%)";
+      const groupRows = resolved.map((group) => {
+        const ratio = group.ratio == null ? 0 : Number(group.ratio);
+        const details = (group.sources || []).map((source) => `<div class="series-row"><div>${escapeHtml(source.deviceName || `#${source.deviceId}`)} · ${escapeHtml(source.pointName)}</div><div class="val">${formatPowerW(source.powerW)}</div></div>`).join("");
+        return `<div><div class="power-group-head"><span class="power-group-name"><i class="power-group-dot" style="background:${escapeHtml(group.color)}"></i><b>${escapeHtml(group.name)}</b></span>`
+          + `<span><b>${formatPowerW(group.powerW)}</b> <span class="meta">${group.ratio == null ? "–" : `${formatValue(group.ratio)}%`}</span></span></div>`
+          + `<div class="power-group-bar"><i style="width:${Math.max(0, Math.min(100, ratio))}%;background:${escapeHtml(group.color)}"></i></div>`
+          + (group.complete ? "" : '<div class="meta" style="margin-top:3px">일부 데이터 없음</div>')
+          + `<details><summary class="meta">장비별 상세</summary>${details}</details></div>`;
+      }).join("");
+      return `<div class="power-distribution"><div class="power-donut" style="background:${conic}"><div class="power-donut-center">TOTAL POWER<b>${formatPowerW(data.totalPowerW)}</b></div></div>`
+        + `<div class="power-groups">${groupRows}</div></div>`
+        + (!data.complete ? '<div class="meta">누락된 소스가 있어 전체 전력·비율은 계산하지 않습니다.</div>' : "");
+    }
+
     function renderPueBody(pue) {
       if (!pue || pue.error) return `<div class="empty" style="padding:12px">${escapeHtml(pue?.error || "데이터 없음")}</div>`;
       const status = ({ OK: "정상", MISSING_DATA: "일부 데이터 없음", ZERO_COOLER_POWER: "Cooler 전력 0" })[pue.calculationStatus] || pue.calculationStatus;
@@ -653,7 +749,38 @@
         + `<details style="margin-top:9px"><summary class="meta">장비별 상세</summary>${rows || '<div class="meta">소스 없음</div>'}</details>`;
     }
 
+    function psychrometricSeries(data, label) {
+      return (data?.data || []).find((item) => item.label === label) || { values: [] };
+    }
+
+    function psychrometricPoints(data) {
+      const timeLabels = data?.timeLabels || [];
+      const temperatures = psychrometricSeries(data, "TEMP_AVG").values || [];
+      const humidities = psychrometricSeries(data, "HUM_AVG").values || [];
+      return timeLabels.map((time, index) => ({
+        time,
+        temperature: Number(temperatures[index]),
+        humidity: Number(humidities[index]),
+      })).filter((point) => Number.isFinite(point.temperature) && Number.isFinite(point.humidity));
+    }
+
+    function renderPsychrometricBody(data, widgetId) {
+      if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
+      const points = psychrometricPoints(data);
+      if (!points.length) {
+        return '<div class="empty" style="padding:12px">InfluxDB에 온도·습도 평균 데이터가 없습니다.</div>';
+      }
+      const latest = points[points.length - 1];
+      return `<div class="count-label">최근 5개 시간 평균 + 최신 평균 · ${points.length} point</div>`
+        + `<div class="psychrometric-wrap"><canvas data-psychrometric-id="${widgetId}"></canvas><div class="psychrometric-tooltip" aria-hidden="true"></div></div>`
+        + `<div class="psychrometric-legend"><span>최신 <b>${formatValue(latest.temperature)} °C · ${formatValue(latest.humidity)} %RH</b></span>`
+        + `<span>${escapeHtml(formatChartTime(latest.time))}</span></div>`;
+    }
+
     function chartSeriesModesForWidget(widget) {
+      const chart = state.chartByWidget.get(widget.id);
+      const units = chart?.units || (chart?.unit ? [chart.unit] : []);
+      if (units.length > 1) return [["per_device", "장비별"]];
       const targets = (widget.chartScope || "devices") === "models"
         ? (widget.modelIds || []).map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
         : (widget.deviceIds || []).map((id) => state.devices.find((device) => Number(device.id) === Number(id))).filter(Boolean);
@@ -734,7 +861,7 @@
         chartSeriesModeLabel(chart.seriesMode),
         chart.rangePreset || "",
         chart.window || "",
-        chart.unit || "",
+        ...(chart.units || (chart.unit ? [chart.unit] : [])),
       ].filter(Boolean).join(" · ");
       if (!series.length) {
         return `<div class="count-label">${escapeHtml(meta)}</div><div class="empty" style="padding:12px">시리즈 없음</div>`;
@@ -765,12 +892,10 @@
       });
     }
 
-    function mountChartInstance(widgetId, data) {
-      if (typeof Chart === "undefined" || !data || data.error) return;
+    function createChartInstance(canvas, data) {
+      if (typeof Chart === "undefined" || !data || data.error || !canvas) return null;
       const series = data.series || [];
-      if (!series.length) return;
-      const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
-      if (!canvas) return;
+      if (!series.length) return null;
 
       const timeSet = new Set();
       for (const s of series) {
@@ -780,11 +905,14 @@
       }
       const times = [...timeSet].sort();
       const labels = times.map(formatChartTime);
+      const units = data.units || (data.unit ? [data.unit] : []);
+      const hasRightAxis = units.length === 2;
       const datasets = series.map((s, i) => {
         const byTime = new Map((s.times || []).map((t, idx) => [t, s.values[idx]]));
         const color = CHART_PALETTE[i % CHART_PALETTE.length];
         return {
           label: s.label || s.key || `series-${i}`,
+          unit: s.unit || data.unit || "",
           data: times.map((t) => {
             const v = byTime.get(t);
             return v == null ? null : Number(v);
@@ -796,6 +924,7 @@
           pointRadius: times.length > 80 ? 0 : 2,
           borderWidth: 2,
           spanGaps: true,
+          yAxisID: hasRightAxis && s.axis === "right" ? "y1" : "y",
         };
       });
 
@@ -813,7 +942,7 @@
               callbacks: {
                 label: (ctx) => {
                   const v = ctx.parsed.y;
-                  const unit = data.unit ? ` ${data.unit}` : "";
+                  const unit = ctx.dataset.unit ? ` ${ctx.dataset.unit}` : "";
                   return `${ctx.dataset.label}: ${v == null ? "-" : formatValue(v)}${unit}`;
                 },
               },
@@ -825,12 +954,28 @@
               grid: { color: "#2a3544" },
             },
             y: {
+              position: "left",
+              title: { display: Boolean(units[0]), text: units[0] || "", color: "#8b98a8" },
               ticks: { color: "#8b98a8" },
               grid: { color: "#2a3544" },
+            },
+            y1: {
+              display: hasRightAxis,
+              position: "right",
+              title: { display: hasRightAxis, text: units[1] || "", color: "#8b98a8" },
+              ticks: { color: "#8b98a8" },
+              grid: { drawOnChartArea: false },
             },
           },
         },
       });
+      return chart;
+    }
+
+    function mountChartInstance(widgetId, data) {
+      const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
+      const chart = createChartInstance(canvas, data);
+      if (!chart) return;
       state.chartInstances.set(widgetId, chart);
     }
 
@@ -839,6 +984,199 @@
       destroyChartInstances();
       for (const [widgetId, data] of state.chartByWidget) {
         mountChartInstance(widgetId, data);
+      }
+    }
+
+    function closeTrendModal() {
+      $("trendModal")?.classList.remove("open");
+      if (state.trendModalChart) {
+        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
+        state.trendModalChart = null;
+      }
+    }
+
+    async function openTrendModal(widgetId) {
+      if (state.editMode) return;
+      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
+      if (!widget || widget.queryKind !== "chart") return;
+      const modal = $("trendModal");
+      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
+      $("trendModalMeta").textContent = "최근 3일 · 15분 평균 데이터를 불러오는 중…";
+      modal.classList.add("open");
+      if (state.trendModalChart) {
+        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
+        state.trendModalChart = null;
+      }
+      const data = await fetchChart(widget, { rangePreset: "last_3d", window: "15m", seriesMode: "per_device" });
+      if (data.error) {
+        $("trendModalMeta").textContent = data.error;
+        return;
+      }
+      const units = data.units || (data.unit ? [data.unit] : []);
+      $("trendModalMeta").textContent = ["최근 3일", "15분 평균", ...units].filter(Boolean).join(" · ");
+      state.trendModalChart = createChartInstance($("trendModalCanvas"), data);
+      if (!state.trendModalChart) $("trendModalMeta").textContent += " · InfluxDB 시계열 데이터 없음";
+    }
+
+    function pueTrendChartData(data) {
+      const trend = data.trend || [];
+      return {
+        units: ["PUE", data.unit || "W"],
+        series: [
+          { label: "PUE", unit: "PUE", axis: "left", times: trend.map((point) => point.time), values: trend.map((point) => point.value) },
+          { label: "총전력", unit: data.unit || "W", axis: "right", times: trend.map((point) => point.time), values: trend.map((point) => point.totalPower) },
+          { label: "Cooler 전력", unit: data.unit || "W", axis: "right", times: trend.map((point) => point.time), values: trend.map((point) => point.coolerPower) },
+        ],
+      };
+    }
+
+    async function openPueTrendModal(widgetId) {
+      if (state.editMode) return;
+      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
+      if (!widget || widget.queryKind !== "pue") return;
+      const modal = $("trendModal");
+      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
+      $("trendModalMeta").textContent = "최근 3일 · 15분 평균 데이터를 불러오는 중…";
+      modal.classList.add("open");
+      if (state.trendModalChart) {
+        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
+        state.trendModalChart = null;
+      }
+      const data = await api(`/api/manager/query/pue?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
+      if (!data.trend?.length) {
+        $("trendModalMeta").textContent = "최근 3일 PUE 시계열 데이터가 없습니다.";
+        return;
+      }
+      $("trendModalMeta").textContent = `최근 3일 · 15분 평균 · PUE / ${data.unit || "W"}`;
+      state.trendModalChart = createChartInstance($("trendModalCanvas"), pueTrendChartData(data));
+    }
+
+    function saturationPressureKpa(temperature) {
+      return 0.61094 * Math.exp((17.625 * temperature) / (temperature + 243.04));
+    }
+
+    function humidityRatioGPerKg(temperature, relativeHumidity) {
+      const rh = Math.max(0, Math.min(100, relativeHumidity)) / 100;
+      const vaporPressure = rh * saturationPressureKpa(temperature);
+      return 1000 * 0.62198 * vaporPressure / Math.max(0.001, 101.325 - vaporPressure);
+    }
+
+    function drawPsychrometricCanvas(widgetId, data) {
+      const canvas = document.querySelector(`canvas[data-psychrometric-id="${widgetId}"]`);
+      if (!canvas) return;
+      const points = psychrometricPoints(data);
+      if (!points.length) return;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width < 10 || rect.height < 10) return;
+      const ratio = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      const width = rect.width;
+      const height = rect.height;
+      const plot = { left: 44, top: 16, right: width - 42, bottom: height - 32 };
+      const maxTemperature = 40;
+      const maxHumidityRatio = Math.max(20, Math.min(35, Math.ceil(Math.max(...points.map((p) => humidityRatioGPerKg(p.temperature, p.humidity))) / 5) * 5));
+      const x = (temperature) => plot.left + (Math.max(0, Math.min(maxTemperature, temperature)) / maxTemperature) * (plot.right - plot.left);
+      const y = (ratioValue) => plot.bottom - (Math.max(0, Math.min(maxHumidityRatio, ratioValue)) / maxHumidityRatio) * (plot.bottom - plot.top);
+
+      ctx.fillStyle = "#1d2530";
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "rgba(139,152,168,.2)";
+      ctx.lineWidth = 1;
+      ctx.font = "10px Segoe UI, Malgun Gothic, sans-serif";
+      ctx.fillStyle = "#8b98a8";
+      for (let temperature = 0; temperature <= maxTemperature; temperature += 5) {
+        const px = x(temperature);
+        ctx.beginPath(); ctx.moveTo(px, plot.top); ctx.lineTo(px, plot.bottom); ctx.stroke();
+        ctx.fillText(String(temperature), px - 4, plot.bottom + 16);
+      }
+      for (let ratioValue = 0; ratioValue <= maxHumidityRatio; ratioValue += 5) {
+        const py = y(ratioValue);
+        ctx.beginPath(); ctx.moveTo(plot.left, py); ctx.lineTo(plot.right, py); ctx.stroke();
+        ctx.fillText(String(ratioValue), plot.right + 6, py + 3);
+      }
+
+      for (let rh = 10; rh <= 100; rh += 10) {
+        ctx.beginPath();
+        for (let temperature = 0; temperature <= maxTemperature; temperature += 0.5) {
+          const px = x(temperature);
+          const py = y(humidityRatioGPerKg(temperature, rh));
+          if (temperature === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = rh === 100 ? "#8ea0b8" : "rgba(174,190,210,.55)";
+        ctx.lineWidth = rh === 100 ? 1.4 : 1;
+        ctx.stroke();
+        if (rh % 20 === 0) {
+          const labelTemperature = rh >= 80 ? 27 : 33;
+          ctx.fillStyle = "#c9d6e5";
+          ctx.fillText(`${rh}%`, x(labelTemperature) + 4, y(humidityRatioGPerKg(labelTemperature, rh)) - 4);
+        }
+      }
+
+      ctx.strokeStyle = "#62748a";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(plot.left, plot.top); ctx.lineTo(plot.left, plot.bottom); ctx.lineTo(plot.right, plot.bottom); ctx.stroke();
+      ctx.fillStyle = "#9eb7d7";
+      ctx.font = "11px Segoe UI, Malgun Gothic, sans-serif";
+      ctx.fillText("Dry bulb Temperature · °C", plot.left + (plot.right - plot.left) / 2 - 58, height - 7);
+      ctx.save();
+      ctx.translate(width - 9, plot.top + (plot.bottom - plot.top) / 2 + 42);
+      ctx.rotate(Math.PI / 2);
+      ctx.fillText("Humidity ratio · g/kg", 0, 0);
+      ctx.restore();
+
+      points.forEach((point, index) => {
+        const isLatest = index === points.length - 1;
+        ctx.beginPath();
+        ctx.arc(x(point.temperature), y(humidityRatioGPerKg(point.temperature, point.humidity)), isLatest ? 6 : 4, 0, Math.PI * 2);
+        ctx.fillStyle = isLatest ? "#f07178" : `rgba(61,156,240,${0.35 + (index / Math.max(1, points.length - 1)) * 0.5})`;
+        ctx.fill();
+        ctx.strokeStyle = isLatest ? "#ffd4d7" : "#d7efff";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      const tooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
+      canvas._psychrometricHoverPoints = points.map((point) => ({
+        ...point,
+        x: x(point.temperature),
+        y: y(humidityRatioGPerKg(point.temperature, point.humidity)),
+      }));
+      if (canvas.dataset.psychrometricHoverBound) return;
+      canvas.dataset.psychrometricHoverBound = "true";
+      canvas.addEventListener("pointermove", (event) => {
+        const currentTooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
+        const canvasRect = canvas.getBoundingClientRect();
+        const pointerX = event.clientX - canvasRect.left;
+        const pointerY = event.clientY - canvasRect.top;
+        const nearest = (canvas._psychrometricHoverPoints || []).reduce((best, point) => {
+          const distance = Math.hypot(point.x - pointerX, point.y - pointerY);
+          return !best || distance < best.distance ? { point, distance } : best;
+        }, null);
+        if (!currentTooltip || !nearest || nearest.distance > 12) {
+          if (currentTooltip) currentTooltip.style.display = "none";
+          canvas.style.cursor = "default";
+          return;
+        }
+        const point = nearest.point;
+        currentTooltip.textContent = `${formatChartTime(point.time)} · ${formatValue(point.temperature)} °C · ${formatValue(point.humidity)} %RH`;
+        currentTooltip.style.display = "block";
+        currentTooltip.style.left = `${Math.max(6, Math.min(canvasRect.width - 190, pointerX + 12))}px`;
+        currentTooltip.style.top = `${Math.max(6, pointerY - 34)}px`;
+        canvas.style.cursor = "pointer";
+      });
+      canvas.addEventListener("pointerleave", () => {
+        const currentTooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
+        if (currentTooltip) currentTooltip.style.display = "none";
+        canvas.style.cursor = "default";
+      });
+    }
+
+    function drawPsychrometricCanvases() {
+      for (const [widgetId, data] of state.psychrometricByWidget) {
+        drawPsychrometricCanvas(widgetId, data);
       }
     }
 
@@ -874,18 +1212,24 @@
         const chartWidgets = enabled.filter((w) => w.queryKind === "chart");
         const aggregateWidgets = enabled.filter((w) => w.queryKind === "aggregate");
         const pueWidgets = enabled.filter((w) => w.queryKind === "pue");
-        const [lastResults, countResults, chartResults, aggregateResults, pueResults] = await Promise.all([
+        const psychrometricWidgets = enabled.filter((w) => w.queryKind === "psychrometric");
+        const powerDistributionWidgets = enabled.filter((w) => w.queryKind === "power_distribution");
+        const [lastResults, countResults, chartResults, aggregateResults, pueResults, psychrometricResults, powerDistributionResults] = await Promise.all([
           Promise.all(lastWidgets.map(fetchLast)),
           Promise.all(countWidgets.map(fetchCount)),
           Promise.all(chartWidgets.map(fetchChart)),
           Promise.all(aggregateWidgets.map(fetchAggregate)),
           Promise.all(pueWidgets.map(fetchPue)),
+          Promise.all(psychrometricWidgets.map(fetchPsychrometric)),
+          Promise.all(powerDistributionWidgets.map(fetchPowerDistribution)),
         ]);
         state.lastByWidget = new Map(lastResults.map((r) => [r.widgetId, r]));
         state.countByWidget = new Map(countResults.map((r) => [r.widgetId, r]));
         state.chartByWidget = new Map(chartResults.map((r) => [r.widgetId, r]));
         state.aggregateByWidget = new Map(aggregateResults.map((r) => [r.widgetId, r]));
         state.pueByWidget = new Map(pueWidgets.map((w, index) => [w.id, pueResults[index]]));
+        state.psychrometricByWidget = new Map(psychrometricWidgets.map((w, index) => [w.id, psychrometricResults[index]]));
+        state.powerDistributionByWidget = new Map(powerDistributionWidgets.map((w, index) => [w.id, powerDistributionResults[index]]));
         await refreshCountModelOverrideOptions();
       }
 
@@ -936,6 +1280,14 @@
         } else if (w.queryKind === "pue") {
           body = renderPueBody(state.pueByWidget.get(w.id));
           subExtra = ` · ${escapeHtml(w.pueRangePreset || "last_24h")}`;
+          cardClass = "card pue-card";
+        } else if (w.queryKind === "psychrometric") {
+          body = renderPsychrometricBody(state.psychrometricByWidget.get(w.id), w.id);
+          subExtra = " · 온도·상대습도 평균";
+          cardClass = "card psychrometric-card";
+        } else if (w.queryKind === "power_distribution") {
+          body = renderPowerDistributionBody(state.powerDistributionByWidget.get(w.id));
+          subExtra = " · W 단위 최신값 분배";
         } else {
           body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
         }
@@ -965,6 +1317,7 @@
       bindEditHandlers();
       bindChartCardHandlers();
       mountChartInstances();
+      drawPsychrometricCanvases();
     }
 
     function bindChartCardHandlers() {
@@ -973,6 +1326,22 @@
           const widgetId = Number(e.target.dataset.widgetId);
           state.chartSeriesModeByWidget.set(widgetId, e.target.value);
           reloadChartWidget(widgetId).catch((err) => log("chart series: " + err.message));
+        });
+      });
+      $("board").querySelectorAll(".chart-card").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          if (state.editMode || event.target.closest("select, button, .resize-handle")) return;
+          openTrendModal(Number(card.dataset.widgetId)).catch((error) => {
+            $("trendModalMeta").textContent = error.message || "트렌드 조회 실패";
+          });
+        });
+      });
+      $("board").querySelectorAll(".pue-card").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          if (state.editMode || event.target.closest("select, button, .resize-handle")) return;
+          openPueTrendModal(Number(card.dataset.widgetId)).catch((error) => {
+            $("trendModalMeta").textContent = error.message || "PUE 트렌드 조회 실패";
+          });
         });
       });
     }
@@ -1285,6 +1654,13 @@
 
     $("loginBtn").addEventListener("click", () => login().catch((e) => log("login: " + e.message)));
     $("reloadBtn").addEventListener("click", () => reload().catch((e) => log("reload: " + e.message)));
+    $("trendModalClose")?.addEventListener("click", closeTrendModal);
+    $("trendModal")?.addEventListener("click", (event) => {
+      if (event.target === $("trendModal")) closeTrendModal();
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeTrendModal();
+    });
     $("pageCode").addEventListener("change", () => reload().catch((e) => log("page: " + e.message)));
     $("countModeOverride").addEventListener("change", () => {
       refreshCountModelOverrideOptions()
@@ -1305,6 +1681,7 @@
       refreshBoard(true).catch((e) => log("chart series: " + e.message));
     });
     $("editBtn").addEventListener("click", () => setEditMode(!state.editMode));
+    window.addEventListener("resize", () => drawPsychrometricCanvases());
 
     setAuthStatus();
     if (state.token) {

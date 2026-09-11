@@ -4,6 +4,7 @@ public enum PageWidgetChartRangePreset {
     last_24h,
     today,
     yesterday,
+    last_3d,
     last_7d,
     this_month,
     last_month;
@@ -16,7 +17,7 @@ public enum PageWidgetChartRangePreset {
             return valueOf(raw.trim());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                    "chartRangePreset must be last_24h, today, yesterday, last_7d, this_month, or last_month");
+                    "chartRangePreset must be last_24h, today, yesterday, last_3d, last_7d, this_month, or last_month");
         }
     }
 }

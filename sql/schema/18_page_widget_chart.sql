@@ -12,5 +12,5 @@ CREATE TABLE IF NOT EXISTS `page_widget_chart` (
   CONSTRAINT `fk_pwch_widget_id` FOREIGN KEY (`widget_id`) REFERENCES `page_widget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `chk_pwch_scope` CHECK (`chart_scope` in ('devices','models')),
   CONSTRAINT `chk_pwch_series_mode` CHECK (`chart_series_mode` in ('per_device','sum','by_phase','by_path')),
-  CONSTRAINT `chk_pwch_range_preset` CHECK (`chart_range_preset` in ('last_24h','today','yesterday','last_7d','this_month'))
+  CONSTRAINT `chk_pwch_range_preset` CHECK (`chart_range_preset` in ('last_24h','today','yesterday','last_3d','last_7d','this_month','last_month'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

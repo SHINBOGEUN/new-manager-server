@@ -117,6 +117,39 @@ class LastQueryServiceTest {
     }
 
     @Test
+    void returnsOnlyPointsSelectedForEachDevice() {
+        Device first = device(101, "PDU-A", "RACK01", "랙1", "PDU");
+        Device second = device(102, "PDU-B", "RACK02", "랙2", "PDU");
+        PageWidget widget = PageWidget.createLast(
+                pageCode("dashboard"),
+                "장비별 최신값",
+                true,
+                List.of(
+                        new PageWidget.LastSourceDefinition(first, List.of("temp")),
+                        new PageWidget.LastSourceDefinition(second, List.of("V"))
+                )
+        );
+        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
+        when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(any()))
+                .thenReturn(List.of());
+        when(pointQuery.findLast(eq(List.of(101, 102)), eq(List.of("temp", "V")), eq(Duration.ofHours(24))))
+                .thenReturn(List.of(
+                        new LastPoint(101, "temp", 24.1, TIME),
+                        new LastPoint(101, "V", 220.0, TIME),
+                        new LastPoint(102, "temp", 23.0, TIME),
+                        new LastPoint(102, "V", 219.0, TIME)
+                ));
+
+        LastWidgetResponse response = service.getLast(12, null);
+
+        assertThat(response.devices()).hasSize(2);
+        assertThat(response.devices().get(0).points()).extracting(point -> point.pointName())
+                .containsExactly("temp");
+        assertThat(response.devices().get(1).points()).extracting(point -> point.pointName())
+                .containsExactly("V");
+    }
+
+    @Test
     void skipsDisabledDevices() {
         Device enabled = device(101, "PDU-A", "RACK01", "랙1", "PDU");
         Device disabled = device(102, "PDU-B", "RACK02", "랙2", "PDU");

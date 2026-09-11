@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.PueLastPoint;
+import net.vivans.dcim.module.query.domain.PueSeriesPoint;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
 
 import java.time.Duration;
@@ -58,5 +59,11 @@ public class DisabledPointQuery implements PointQuery {
     public Optional<PueLastPoint> findLastPue(Integer definitionId, Duration lookback) {
         log.warn("InfluxDB query disabled; returning empty last PUE value definitionId={}", definitionId);
         return Optional.empty();
+    }
+
+    @Override
+    public List<PueSeriesPoint> findPueSeries(Integer definitionId, Instant start, Instant end, String window) {
+        log.warn("InfluxDB query disabled; returning empty PUE series definitionId={}", definitionId);
+        return List.of();
     }
 }

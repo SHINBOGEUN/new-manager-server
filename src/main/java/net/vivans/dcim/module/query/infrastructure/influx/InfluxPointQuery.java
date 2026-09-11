@@ -10,6 +10,7 @@ import net.vivans.dcim.module.query.config.InfluxProperties;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.PueLastPoint;
+import net.vivans.dcim.module.query.domain.PueSeriesPoint;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
 import net.vivans.dcim.shared.exception.QueryException;
 
@@ -130,6 +131,18 @@ public class InfluxPointQuery implements PointQuery {
         }
     }
 
+    @Override
+    public List<PueSeriesPoint> findPueSeries(Integer definitionId, Instant start, Instant end, String window) {
+        String flux = PueFluxBuilder.buildSeriesQuery(
+                properties.getBucket(), properties.getMeasurement(), definitionId, start, end, window);
+        try {
+            return mapPueSeries(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query PUE series failed definitionId={}: {}", definitionId, exception.getMessage(), exception);
+            throw new QueryException("InfluxDB PUE series query failed");
+        }
+    }
+
     private List<FluxTable> query(String flux) {
         QueryApi queryApi = client.getQueryApi();
         return queryApi.query(flux, properties.getOrg());
@@ -177,6 +190,25 @@ public class InfluxPointQuery implements PointQuery {
             }
         }
         return Optional.empty();
+    }
+
+    private static List<PueSeriesPoint> mapPueSeries(List<FluxTable> tables) {
+        List<PueSeriesPoint> points = new ArrayList<>();
+        for (FluxTable table : tables) {
+            for (FluxRecord record : table.getRecords()) {
+                Double value = toDouble(record.getValueByKey("value"));
+                Instant time = record.getTime();
+                if (value != null && time != null) {
+                    points.add(new PueSeriesPoint(
+                            value,
+                            toDouble(record.getValueByKey("total_power")),
+                            toDouble(record.getValueByKey("cooler_power")),
+                            time
+                    ));
+                }
+            }
+        }
+        return points;
     }
 
     private static LastPoint toLastPoint(FluxRecord record) {

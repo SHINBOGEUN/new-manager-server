@@ -10,11 +10,15 @@ import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
 import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
+import net.vivans.dcim.module.query.api.dto.PsychrometricWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.PowerDistributionWidgetResponse;
 import net.vivans.dcim.module.query.application.AggregateQueryService;
 import net.vivans.dcim.module.query.application.ChartQueryService;
 import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
 import net.vivans.dcim.module.query.application.PueQueryService;
+import net.vivans.dcim.module.query.application.PsychrometricQueryService;
+import net.vivans.dcim.module.query.application.PowerDistributionQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +40,8 @@ public class QueryController {
     private final ChartQueryService chartQueryService;
     private final AggregateQueryService aggregateQueryService;
     private final PueQueryService pueQueryService;
+    private final PsychrometricQueryService psychrometricQueryService;
+    private final PowerDistributionQueryService powerDistributionQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -76,12 +82,13 @@ public class QueryController {
     @Operation(
             summary = "위젯 시계열 차트 조회",
             description = "queryKind=chart 위젯의 장비/모델 범위 + pointNames로 Influx 시계열을 조회합니다. "
+                    + "최대 두 단위를 허용하며, 두 단위일 때는 per_device 시리즈에 left/right 축 정보를 반환합니다. "
                     + "seriesMode: per_device | sum | by_phase(point L1/L2/L3) | by_path(location_node)."
     )
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getChart(
             @Parameter(description = "page_widget id", example = "12", required = true)
             @RequestParam Integer widgetId,
-            @Parameter(description = "기간 preset override")
+            @Parameter(description = "기간 preset override: last_24h|today|yesterday|last_3d|last_7d|this_month|last_month")
             @RequestParam(required = false) String rangePreset,
             @Parameter(description = "aggregateWindow override: 1m|5m|15m|1h|1d")
             @RequestParam(required = false) String window,
@@ -121,10 +128,32 @@ public class QueryController {
     }
 
     @GetMapping("/pue")
-    @Operation(summary = "저장된 PUE 위젯 조회")
+    @Operation(summary = "저장된 PUE 위젯 조회", description = "rangePreset과 window를 함께 보내면 저장된 PUE 시계열 trend도 반환합니다.")
     public ResponseEntity<ApiResponse<PueQueryResponse>> getPue(
+            @RequestParam Integer widgetId,
+            @RequestParam(required = false) String rangePreset,
+            @RequestParam(required = false) String window
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pueQueryService.getPue(widgetId, rangePreset, window)));
+    }
+
+    @GetMapping("/psychrometric")
+    @Operation(
+            summary = "사이코메트릭 위젯 조회",
+            description = "선택한 온도·습도 소스의 InfluxDB 최근 5개 시간 평균과 최신 평균을 조회합니다. "
+                    + "응답 data에는 TEMP_AVG(°C), HUM_AVG(%)를 같은 timeLabels 순서로 반환합니다."
+    )
+    public ResponseEntity<ApiResponse<PsychrometricWidgetResponse>> getPsychrometric(
             @RequestParam Integer widgetId
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(pueQueryService.getPue(widgetId)));
+        return ResponseEntity.ok(ApiResponse.ok(psychrometricQueryService.getPsychrometric(widgetId)));
+    }
+
+    @GetMapping("/power-distribution")
+    @Operation(summary = "전력 분배 위젯 조회", description = "W 단위 POWER 포인트의 최신값을 그룹별로 합산하고 비율을 반환합니다.")
+    public ResponseEntity<ApiResponse<PowerDistributionWidgetResponse>> getPowerDistribution(
+            @RequestParam Integer widgetId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(powerDistributionQueryService.getPowerDistribution(widgetId)));
     }
 }

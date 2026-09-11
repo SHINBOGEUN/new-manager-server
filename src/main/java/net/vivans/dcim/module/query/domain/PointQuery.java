@@ -34,4 +34,6 @@ public interface PointQuery {
     );
 
     Optional<PueLastPoint> findLastPue(Integer definitionId, Duration lookback);
+
+    List<PueSeriesPoint> findPueSeries(Integer definitionId, Instant start, Instant end, String window);
 }

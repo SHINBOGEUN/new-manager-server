@@ -13,7 +13,7 @@ public interface CommonCodeSpringDataRepository extends JpaRepository<CommonCode
     Optional<CommonCode> findByCodeGroup_GroupKeyAndCode(String groupKey, String code);
 
     boolean existsByCodeGroupIdAndCode(Integer groupId, String code);
-    boolean existsByCodeAndIdNot(String code, Integer id);
-    boolean existsByNameAndIdNot(String name, Integer id);
+    boolean existsByCodeGroupIdAndCodeAndIdNot(Integer groupId, String code, Integer id);
+    boolean existsByCodeGroupId(Integer groupId);
     List<CommonCode> findByCodeGroupId(Integer codeGroupId);
 }

@@ -181,8 +181,10 @@ public class DeviceModelSnmpPointQueryService {
 
     private CommonCode resolveDataPointType(Integer id) {
         if (id == null) {
-            return commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "POWER")
-                    .orElseThrow(() -> new EntityNotFoundException("DATA_POINT_TYPE/POWER is not configured"));
+            return commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "UNCLASSIFIED")
+                    // 기존 테스트·구버전 DB에는 UNCLASSIFIED가 없을 수 있어 호환용으로만 POWER를 사용한다.
+                    .or(() -> commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "POWER"))
+                    .orElseThrow(() -> new EntityNotFoundException("DATA_POINT_TYPE/UNCLASSIFIED is not configured"));
         }
         CommonCode code = commonCodeRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));

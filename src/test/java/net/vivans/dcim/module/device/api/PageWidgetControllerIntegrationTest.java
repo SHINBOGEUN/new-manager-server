@@ -160,6 +160,36 @@ class PageWidgetControllerIntegrationTest {
     }
 
     @Test
+    void createLastWidget_savesPointsPerDevice() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-last-sources", "password123");
+        devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
+        int deviceA = createDevice(accessToken, "Widget-Last-A");
+        int deviceB = createDevice(accessToken, "Widget-Last-B");
+
+        mockMvc.perform(post("/api/manager/widgets")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "pageCode":"COOLING",
+                                  "name":"장비별 현재값",
+                                  "queryKind":"last",
+                                  "lastSources":[
+                                    {"deviceId":%d,"pointNames":["TEMP","HUM"]},
+                                    {"deviceId":%d,"pointNames":["POWER"]}
+                                  ]
+                                }
+                                """.formatted(deviceA, deviceB)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.deviceIds", hasSize(2)))
+                .andExpect(jsonPath("$.data.lastSources", hasSize(2)))
+                .andExpect(jsonPath("$.data.lastSources[0].deviceId").value(deviceA))
+                .andExpect(jsonPath("$.data.lastSources[0].pointNames", hasSize(2)))
+                .andExpect(jsonPath("$.data.lastSources[1].deviceId").value(deviceB))
+                .andExpect(jsonPath("$.data.lastSources[1].pointNames[0]").value("POWER"));
+    }
+
+    @Test
     void createWidget_whenPageCodeMissing_returnsNotFound() throws Exception {
         String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-missing-page", "password123");
         int deviceId = createDevice(accessToken, "Widget-Missing-Page");
@@ -328,6 +358,40 @@ class PageWidgetControllerIntegrationTest {
         mockMvc.perform(get("/api/manager/widgets/{id}", widgetId)
                         .header("Authorization", bearerToken(accessToken)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void psychrometricWidget_createAndUpdate_keepsExistingSources() throws Exception {
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-psychrometric", "password123");
+        devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
+        int temperatureDevice = createDevice(accessToken, "Psych-Temperature");
+        int humidityDevice = createDevice(accessToken, "Psych-Humidity");
+
+        String created = mockMvc.perform(post("/api/manager/widgets/psychrometric")
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"pageCode":"dashboard","name":"센터 온습도","enabled":true,
+                                 "temperatureSources":[{"deviceId":%d,"pointName":"TEMP"}],
+                                 "humiditySources":[{"deviceId":%d,"pointName":"HUM"}]}
+                                """.formatted(temperatureDevice, humidityDevice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.queryKind").value("psychrometric"))
+                .andExpect(jsonPath("$.data.psychrometricSources", hasSize(2)))
+                .andReturn().getResponse().getContentAsString();
+        int widgetId = objectMapper.readTree(created).path("data").path("id").asInt();
+
+        mockMvc.perform(put("/api/manager/widgets/{id}/psychrometric", widgetId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"센터 온습도 수정","enabled":true,
+                                 "temperatureSources":[{"deviceId":%d,"pointName":"TEMP"}],
+                                 "humiditySources":[{"deviceId":%d,"pointName":"HUM"}]}
+                                """.formatted(temperatureDevice, humidityDevice)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("센터 온습도 수정"))
+                .andExpect(jsonPath("$.data.psychrometricSources", hasSize(2)));
     }
 
     private int createDevice(String accessToken, String name) throws Exception {

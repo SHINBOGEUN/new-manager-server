@@ -25,6 +25,9 @@ public record PageWidgetResponse(
         Integer pueFreshnessMinutes,
         Integer pueDefinitionId,
         List<PageWidgetPueSourceResponse> pueSources,
+        List<PageWidgetLastSourceResponse> lastSources,
+        List<PageWidgetPsychrometricSourceResponse> psychrometricSources,
+        List<PageWidgetPowerDistributionGroupResponse> powerDistributionGroups,
         List<Integer> deviceIds,
         List<Integer> modelIds,
         List<String> pointNames,
@@ -56,6 +59,21 @@ public record PageWidgetResponse(
                         ? List.of()
                         : widget.getPue().getPueDefinition().getSources().stream()
                         .map(PageWidgetPueSourceResponse::from)
+                        .toList(),
+                widget.getQueryKind().name().equals("last")
+                        ? widget.lastSourceDefinitions().stream()
+                        .map(PageWidgetLastSourceResponse::from)
+                        .toList()
+                        : List.of(),
+                widget.getPsychrometric() == null
+                        ? List.of()
+                        : widget.getPsychrometric().getSources().stream()
+                        .map(PageWidgetPsychrometricSourceResponse::from)
+                        .toList(),
+                widget.getPowerDistribution() == null
+                        ? List.of()
+                        : widget.getPowerDistribution().getGroups().stream()
+                        .map(PageWidgetPowerDistributionGroupResponse::from)
                         .toList(),
                 widget.deviceIds(),
                 widget.modelIds(),

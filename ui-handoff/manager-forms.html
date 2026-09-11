@@ -355,7 +355,7 @@
         <a href="#device">2. 장비 등록<small>마법사 4단계</small></a>
         <a href="#device-edit">3. 장비 관리<small>수정 · endpoint</small></a>
         <a href="#task">4. 수집 작업<small>Task · 주기 그룹</small></a>
-        <a href="#widget">5. 화면 위젯<small>last · count · chart · aggregate</small></a>
+        <a href="#widget">5. 화면 위젯<small>last · count · chart · aggregate · psychrometric</small></a>
       </nav>
     </aside>
 
@@ -745,7 +745,7 @@
       <section class="screen" id="widget">
         <div class="screen-head">
           <h2><span class="num">5</span> 화면 위젯</h2>
-          <span class="api">POST /widgets · GET /query/last · /count · /chart · /aggregate</span>
+          <span class="api">POST /widgets · GET /query/last · /count · /chart · /aggregate · /psychrometric</span>
         </div>
         <div class="layout">
           <div class="panel">
@@ -772,6 +772,7 @@
                     <option>chart</option>
                     <option>aggregate</option>
                     <option>pue</option>
+                    <option>psychrometric</option>
                   </select>
                   <p class="hint">종류에 따라 아래 필수 필드가 바뀝니다. 검증은 서버 PageWidget 도메인.</p>
                 </label>
@@ -954,6 +955,27 @@
                 <div class="callout" style="margin-top:10px">수집 정의 API: <code>GET/POST/PUT /api/manager/pue-definitions</code> · 수집 토글: <code>PATCH /api/manager/pue-definitions/{id}/collection-enabled</code> · 조회: <code>GET /api/manager/query/pue?widgetId=</code></div>
               </div>
 
+              <div class="subbox" style="margin-top:12px">
+                <h4>psychrometric 일 때 · 온도/상대습도 소스</h4>
+                <div class="wiz" style="grid-template-columns:repeat(3,1fr);margin-top:10px">
+                  <div class="step done"><b>1</b>온도 장비·항목</div>
+                  <div class="step on"><b>2</b>습도 장비·항목</div>
+                  <div class="step"><b>3</b>위젯 저장</div>
+                </div>
+                <form class="fields" onsubmit="return false">
+                  <label class="f full">
+                    <span class="row-meta"><span>온도 소스 <span class="req">*</span></span><span class="key">temperatureSources[]</span></span>
+                    <div class="chips" style="margin-top:2px"><span class="chip">#201 TH-01 · TEMP <span class="u">°C · TEMPERATURE</span></span><span class="chip add">+ 장비·항목 추가</span></div>
+                  </label>
+                  <label class="f full">
+                    <span class="row-meta"><span>상대습도 소스 <span class="req">*</span></span><span class="key">humiditySources[]</span></span>
+                    <div class="chips" style="margin-top:2px"><span class="chip">#201 TH-01 · HUM <span class="u">%RH</span></span><span class="chip add">+ 장비·항목 추가</span></div>
+                    <p class="hint">각 역할은 하나 이상 필수입니다. 장비명이나 point name 규칙에 의존하지 않고, 사용자가 온도/습도 역할로 직접 선택합니다.</p>
+                  </label>
+                </form>
+                <div class="callout" style="margin-top:10px">저장: <code>POST /api/manager/widgets/psychrometric</code> · 수정: <code>PUT /api/manager/widgets/{id}/psychrometric</code> · 조회: <code>GET /api/manager/query/psychrometric?widgetId=</code>. InfluxDB에서 최근 5개 시간 평균과 최신 평균을 <code>TEMP_AVG</code> / <code>HUM_AVG</code>로 반환합니다.</div>
+              </div>
+
               <div class="actions">
                 <button type="button" class="teal">위젯 생성</button>
                 <button type="button" class="ghost">표시 토글 PATCH /{id}/enabled</button>
@@ -978,10 +1000,11 @@
               <li><b>aggregate</b> — point를 먼저 고르고 호환 장비만 선택 → <code>/query/aggregate</code></li>
               <li>aggregate op: ENERGY→usage, POWER→power 자동 결정</li>
               <li><b>pue</b> — PUE 수집 정의 선택 → <code>/query/pue</code></li>
+              <li><b>psychrometric</b> — 온도·상대습도 소스를 각각 선택 → <code>/query/psychrometric</code></li>
             </ul>
-            <div class="callout">생성 순서: last=장비→항목, count=방식, chart=대상 방식→대상→항목→기간, aggregate=항목→호환 장비→기간, PUE=수집 정의→조회 옵션.</div>
+            <div class="callout">생성 순서: last=장비→항목, count=방식, chart=대상 방식→대상→항목→기간, aggregate=항목→호환 장비→기간, PUE=수집 정의→조회 옵션, psychrometric=온도 소스→상대습도 소스.</div>
             <div class="callout" style="margin-top:8px">규칙 문서: <code>docs/device/PAGE_WIDGET_API.md</code>, <code>docs/query/QUERY_COUNT_API.md</code>, <code>docs/query/QUERY_CHART_API.md</code>, <code>docs/query/QUERY_AGGREGATE_API.md</code></div>
-            <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code> / <code>_pue</code>). PUE 계산 정의와 소스는 <code>pue_definition</code> / <code>pue_definition_source</code>에 독립 저장됩니다.</div>
+            <div class="callout" style="margin-top:8px">DB: <code>page_widget</code> core + kind별 1:1 확장(<code>page_widget_aggregate</code> / <code>_count</code> / <code>_chart</code> / <code>_pue</code> / <code>_psychrometric</code>). 사이코메트릭 소스는 <code>page_widget_psychrometric_source</code>에 역할(temperature/humidity)별로 저장됩니다.</div>
             <div class="callout" style="margin-top:8px">레이아웃은 드래그 후 <code>PUT /widgets/{id}/layout</code></div>
           </aside>
         </div>
