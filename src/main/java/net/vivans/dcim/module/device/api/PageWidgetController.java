@@ -10,6 +10,10 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.application.PageWidgetQueryService;
@@ -78,6 +82,40 @@ public class PageWidgetController {
             @Valid @RequestBody PageWidgetPueUpdateRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePueWidget(id, request)));
+    }
+
+    @PostMapping("/psychrometric")
+    @Operation(summary = "사이코메트릭 위젯 등록")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> createPsychrometricWidget(
+            @Valid @RequestBody PageWidgetPsychrometricCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPsychrometricWidget(request)));
+    }
+
+    @PutMapping("/{id}/psychrometric")
+    @Operation(summary = "사이코메트릭 위젯 수정")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePsychrometricWidget(
+            @PathVariable Integer id,
+            @Valid @RequestBody PageWidgetPsychrometricUpdateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePsychrometricWidget(id, request)));
+    }
+
+    @PostMapping("/power-distribution")
+    @Operation(summary = "전력 분배 위젯 등록", description = "모든 소스는 W 단위의 POWER 포인트여야 합니다.")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> createPowerDistributionWidget(
+            @Valid @RequestBody PageWidgetPowerDistributionCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPowerDistributionWidget(request)));
+    }
+
+    @PutMapping("/{id}/power-distribution")
+    @Operation(summary = "전력 분배 위젯 수정")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePowerDistributionWidget(
+            @PathVariable Integer id,
+            @Valid @RequestBody PageWidgetPowerDistributionUpdateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePowerDistributionWidget(id, request)));
     }
 
     @PutMapping("/{id}")

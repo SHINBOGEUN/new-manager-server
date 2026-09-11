@@ -15,9 +15,11 @@ import net.vivans.dcim.module.query.api.dto.PueDeviceValueResponse;
 import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
 import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
 import net.vivans.dcim.module.query.api.dto.PueSourceRequest;
+import net.vivans.dcim.module.query.api.dto.PueTrendPointResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.PueLastPoint;
+import net.vivans.dcim.module.query.domain.PueSeriesPoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,7 +103,31 @@ public class PueQueryService {
                 point == null ? "MISSING_DATA" : stale ? "STALE_DATA" : "OK",
                 complete ? List.of() : sourceDeviceIds,
                 stale ? sourceDeviceIds : List.of(),
+                List.of(),
                 List.of()
+        );
+    }
+
+    public PueQueryResponse getPue(Integer widgetId, String rangePresetOverride, String windowOverride) {
+        PueQueryResponse latest = getPue(widgetId);
+        if ((rangePresetOverride == null || rangePresetOverride.isBlank())
+                && (windowOverride == null || windowOverride.isBlank())) {
+            return latest;
+        }
+        PageWidget widget = pageWidgetRepository.findById(widgetId)
+                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidgetChartRangePreset preset = resolveRangePreset(rangePresetOverride);
+        String window = resolveTrendWindow(windowOverride);
+        QueryRanges.Range range = QueryRanges.resolve(preset);
+        List<PueTrendPointResponse> trend = pointQuery.findPueSeries(
+                        widget.getPueDefinitionId(), range.start(), range.end(), window)
+                .stream()
+                .map(this::toTrendPoint)
+                .toList();
+        return new PueQueryResponse(
+                latest.value(), latest.totalPower(), latest.coolerPower(), latest.unit(),
+                preset.name(), range.start(), range.end(), latest.complete(), latest.calculationStatus(),
+                latest.missingDeviceIds(), latest.staleDeviceIds(), latest.devices(), trend
         );
     }
 
@@ -200,8 +226,24 @@ public class PueQueryService {
                 status,
                 List.copyOf(missingDeviceIds),
                 List.copyOf(staleDeviceIds),
-                List.copyOf(rows)
+                List.copyOf(rows),
+                List.of()
         );
+    }
+
+    private PueTrendPointResponse toTrendPoint(PueSeriesPoint point) {
+        return new PueTrendPointResponse(
+                point.time(), QueryValues.round4(point.value()),
+                QueryValues.round2(point.totalPower()), QueryValues.round2(point.coolerPower())
+        );
+    }
+
+    private static String resolveTrendWindow(String raw) {
+        String window = raw == null || raw.isBlank() ? "15m" : raw.trim();
+        if (!Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {
+            throw new IllegalArgumentException("window must be 1m, 5m, 15m, 1h, or 1d");
+        }
+        return window;
     }
 
     private void addResolvedSources(

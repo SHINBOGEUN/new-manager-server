@@ -65,6 +65,10 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "last/aggregate/chart: pointNames (aggregate는 1개). count는 []")
         List<String> pointNames,
 
+        @Schema(description = "last만: 장비별 측정항목 선택. 지정하면 deviceIds/pointNames 대신 사용")
+        @Valid
+        List<PageWidgetLastSourceRequest> lastSources,
+
         @Schema(description = "2D 그리드 배치. null이면 기존 layout 유지")
         @Valid
         PageWidgetLayoutRequest layout

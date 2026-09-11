@@ -16,6 +16,7 @@ public record PueQueryResponse(
         String calculationStatus,
         List<Integer> missingDeviceIds,
         List<Integer> staleDeviceIds,
-        List<PueDeviceValueResponse> devices
+        List<PueDeviceValueResponse> devices,
+        List<PueTrendPointResponse> trend
 ) {
 }

@@ -260,6 +260,29 @@
     tr.selected td { background: var(--accent-soft); }
     .muted { color: var(--muted); }
     .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    #codeTreeBody .code-group-row td {
+      padding-top: 13px; padding-bottom: 13px;
+      background: #edf4fb; border-top: 1px solid #c6d8eb; border-bottom-color: #c6d8eb;
+    }
+    #codeTreeBody .code-group-row:hover td { background: #e4f0fb; }
+    #codeTreeBody .code-group-row.selected td { background: #dbeaf9; }
+    #codeTreeBody .code-group-key {
+      font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: #123e69; white-space: nowrap;
+    }
+    #codeTreeBody .code-group-name { font-size: 14px; }
+    #codeTreeBody .code-tree-child td { padding-top: 8px; padding-bottom: 8px; }
+    #codeTreeBody .code-tree-branch {
+      width: 42px; padding-right: 2px; text-align: right; color: #4f79a3; font-size: 16px; font-weight: 700;
+    }
+    #codeTreeBody .code-tree-actions { justify-content: flex-end; gap: 6px; }
+    #codeTreeBody .code-tree-actions button { flex: 0 0 auto; padding: 5px 9px; font-size: 12px; white-space: nowrap; }
+    #codeTreeTable { min-width: 980px; table-layout: fixed; }
+    #codeTreeTable th:nth-child(1) { width: 18%; }
+    #codeTreeTable th:nth-child(2) { width: 16%; }
+    #codeTreeTable th:nth-child(3) { width: 16%; }
+    #codeTreeTable th:nth-child(4) { width: 18%; }
+    #codeTreeTable th:nth-child(5) { width: 8%; }
+    #codeTreeTable th:nth-child(6) { width: 240px; }
     .empty {
       padding: 28px 12px; text-align: center; color: var(--muted);
       background: var(--surface2); border-radius: 10px; border: 1px dashed var(--line);
@@ -785,6 +808,7 @@
             <b>chart</b>: 대상 방식 → 장비/모델 → 측정 항목 → 기간. 누적 ENERGY는 제외.
             <b>aggregate</b>: 측정 항목 → 호환 장비 → 기간. 유형에 따라 usage/power 자동 결정.
             <b>PUE</b>: 계속 수집되는 PUE 정의를 선택해 저장된 결과를 표시.
+            <b>사이코메트릭</b>: 온도·상대습도 소스를 각각 선택해 InfluxDB 평균값을 습공기선으로 표시.
           </p>
           <div class="fields">
             <label class="field">페이지
@@ -800,6 +824,8 @@
                 <option value="chart">차트 (chart)</option>
                 <option value="aggregate">집계 (aggregate)</option>
                 <option value="pue">PUE</option>
+                <option value="psychrometric">사이코메트릭 (psychrometric)</option>
+                <option value="power_distribution">전력 분배 (power distribution)</option>
               </select>
             </label>
           </div>
@@ -844,10 +870,9 @@
               <button type="button" class="primary" id="wAddDevice" disabled>장비·측정항목 추가</button>
             </div>
             <div id="wDevicePointPick" style="margin-top:8px;display:none">
-              <label class="field">이 장비의 측정항목
-                <select id="wPickDevicePoint"></select>
-              </label>
-              <div class="muted" style="font-size:12px;margin-top:5px">장비를 추가할 때 선택한 측정항목도 함께 등록됩니다.</div>
+              <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">이 장비의 측정항목 (하나 이상 선택)</div>
+              <div id="wPickDevicePoints" class="point-grid" style="display:grid"></div>
+              <div class="muted" style="font-size:12px;margin-top:5px">측정항목을 고른 뒤 추가하면, 다음 장비도 같은 방식으로 이어서 추가할 수 있습니다.</div>
             </div>
             <div id="wDeviceList" class="pick-list"></div>
           </div>
@@ -884,6 +909,7 @@
                   <option value="last_24h" selected>최근 24시간</option>
                   <option value="today">오늘</option>
                   <option value="yesterday">어제</option>
+                  <option value="last_3d">최근 3일</option>
                   <option value="last_7d">최근 7일</option>
                   <option value="this_month">이번 달</option>
                   <option value="last_month">지난 달</option>
@@ -948,6 +974,53 @@
               </label>
             </div>
             <div class="muted" style="font-size:12px;margin-top:6px">위젯을 끄거나 삭제해도 PUE 수집은 계속됩니다. 수집 중지는 아래 정의에서만 변경합니다.</div>
+          </div>
+
+          <div id="wPsychrometricBlock" style="margin-top:14px;display:none">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">온도·습도 데이터 선택</div>
+            <div class="muted" style="font-size:12px;margin-bottom:10px">
+              선택한 소스의 최근 5개 시간 평균과 최신 평균을 InfluxDB에서 조회합니다. 온도는 °C, 습도는 상대습도(%)를 선택하세요.
+            </div>
+            <div class="grid2">
+              <div>
+                <h3 style="margin:0 0 8px;font-size:14px">1. 온도 소스</h3>
+                <div class="row">
+                  <select id="wPsychTemperatureDevice" style="flex:1;min-width:140px"></select>
+                  <select id="wPsychTemperaturePoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
+                  <button type="button" class="primary" id="wPsychTemperatureAdd" disabled>추가</button>
+                </div>
+                <div id="wPsychTemperatureList" class="pick-list"></div>
+              </div>
+              <div>
+                <h3 style="margin:0 0 8px;font-size:14px">2. 상대습도 소스</h3>
+                <div class="row">
+                  <select id="wPsychHumidityDevice" style="flex:1;min-width:140px"></select>
+                  <select id="wPsychHumidityPoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
+                  <button type="button" class="primary" id="wPsychHumidityAdd" disabled>추가</button>
+                </div>
+                <div id="wPsychHumidityList" class="pick-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="wPowerDistributionBlock" style="margin-top:14px;display:none">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">전력 그룹 구성</div>
+            <div class="muted" style="font-size:12px;margin-bottom:10px">
+              POWER 데이터 유형이며 InfluxDB에 W 단위로 저장되는 측정항목만 등록할 수 있습니다. 모든 그룹의 최신값 합으로 전체 전력과 비율을 계산합니다.
+            </div>
+            <div class="row">
+              <input id="wPowerGroupName" style="flex:1;min-width:140px" placeholder="예: IT Power" />
+              <input id="wPowerGroupColor" type="color" value="#38BDF8" title="그룹 표시 색상" style="width:46px;padding:3px" />
+              <button type="button" class="primary" id="wPowerGroupAdd">그룹 추가</button>
+            </div>
+            <div id="wPowerGroupList" class="pick-list"></div>
+            <div class="muted" style="font-size:12px;font-weight:650;margin:12px 0 6px">그룹에 전력 소스 추가</div>
+            <div class="row">
+              <select id="wPowerGroupPick" style="flex:1;min-width:130px"><option value="">그룹 선택</option></select>
+              <select id="wPowerDevice" style="flex:1;min-width:150px"><option value="">장비 선택</option></select>
+              <select id="wPowerPoint" style="flex:1;min-width:150px" disabled><option value="">장비 먼저 선택</option></select>
+              <button type="button" class="primary" id="wPowerSourceAdd" disabled>소스 추가</button>
+            </div>
           </div>
 
           <div class="row" style="margin-top:14px;gap:8px">
@@ -1203,23 +1276,26 @@
     <!-- CODES -->
     <section class="panel" id="tab-codes">
       <h1 class="page-title">공통코드</h1>
-      <p class="page-desc">코드 그룹과 코드 값을 관리합니다. 위치 유형·Path·모델 유형·프로토콜 등이 여기 있습니다.</p>
+      <p class="page-desc">코드 그룹과 그 하위 코드 값을 한 표에서 관리합니다. 위치 유형·Path·모델 유형·프로토콜 등이 여기 있습니다.</p>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <div>
+            <h2 style="margin:0">코드 그룹 · 공통 코드</h2>
+            <div class="muted" style="font-size:12px;margin-top:4px">그룹 행 아래에 소속 코드가 표시됩니다.</div>
+          </div>
+          <button type="button" class="ghost" id="cgReload">새로고침</button>
+        </div>
+        <div style="overflow:auto;max-height:520px">
+          <table id="codeTreeTable">
+            <thead><tr><th>그룹 키</th><th>그룹 이름</th><th>코드</th><th>코드 이름</th><th>정렬</th><th>작업</th></tr></thead>
+            <tbody id="codeTreeBody"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="grid2">
         <div>
           <div class="card">
-            <h2>코드 그룹</h2>
-            <div class="row" style="margin-bottom:10px">
-              <button type="button" class="ghost" id="cgReload">새로고침</button>
-            </div>
-            <div style="overflow:auto;max-height:320px">
-              <table>
-                <thead><tr><th>키</th><th>이름</th><th>ID</th></tr></thead>
-                <tbody id="cgBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="card">
-            <h2>그룹 추가</h2>
+            <h2 id="cgFormTitle">그룹 추가</h2>
             <div class="fields">
               <label class="field">groupKey
                 <input id="cgKey" placeholder="예: CUSTOM_TYPE" class="mono" />
@@ -1228,25 +1304,13 @@
                 <input id="cgName" placeholder="표시 이름" />
               </label>
             </div>
-            <button type="button" class="primary" style="margin-top:12px" id="cgCreate">그룹 등록</button>
+            <div class="row" style="margin-top:12px">
+              <button type="button" class="primary" id="cgSave">그룹 등록</button>
+              <button type="button" class="ghost" id="cgCancelEdit" style="display:none">취소</button>
+            </div>
           </div>
         </div>
         <div>
-          <div class="card">
-            <h2>공통 코드</h2>
-            <div class="row" style="margin-bottom:10px">
-              <label class="field" style="flex:1;min-width:180px">그룹 필터
-                <select id="ccGroupFilter"></select>
-              </label>
-              <button type="button" class="ghost" id="ccReload" style="align-self:flex-end">조회</button>
-            </div>
-            <div style="overflow:auto;max-height:280px">
-              <table>
-                <thead><tr><th>코드</th><th>이름</th><th>정렬</th><th></th></tr></thead>
-                <tbody id="ccBody"></tbody>
-              </table>
-            </div>
-          </div>
           <div class="card">
             <h2 id="ccFormTitle">코드 추가</h2>
             <div class="fields">
@@ -1334,6 +1398,7 @@
       locByCode: {},
       deviceCountByLoc: {},
       widgetDeviceIds: [],
+      lastWidgetSources: [],
       widgetPendingPointName: "",
       widgetItDeviceIds: [],
       widgetModelIds: [],
@@ -1341,6 +1406,9 @@
       widgetPointNamesByModel: new Map(),
       pueTotalSources: [],
       pueCoolerSources: [],
+      psychrometricTemperatureSources: [],
+      psychrometricHumiditySources: [],
+      powerDistributionGroups: [],
       pueDefinitions: [],
       editingPueDefinitionId: null,
       editingWidgetId: null,
@@ -1348,6 +1416,7 @@
       editingEnabled: true,
       editingEndpointId: null,
       editingCodeId: null,
+      editingCodeGroupId: null,
       selectedCodeGroupId: null,
     };
 
@@ -1980,7 +2049,7 @@
             <td><b>${esc(p.name)}</b>${p.requiresInstance ? ' <span class="chip warn">inst</span>' : ""}${p.enabled === false ? ' <span class="chip warn">off</span>' : ""}</td>
             <td class="mono oid-cell">${esc(p.oid)}</td>
             <td>${esc(p.unit || "–")}</td>
-            <td>${esc(p.dataPointType || "미지정")}</td>
+            <td>${esc(p.dataPointType || "UNCLASSIFIED")}</td>
             <td class="mono">${p.scale == null ? "–" : esc(String(p.scale))}</td>
             <td class="actions">
               <div class="row">
@@ -2023,9 +2092,10 @@
 
     function fillDataPointTypeSelect(select, selectedId) {
       const types = state.codes.DATA_POINT_TYPE || [];
+      const unclassified = types.find((type) => String(type.code || "").toUpperCase() === "UNCLASSIFIED");
       select.innerHTML = `<option value="">선택하세요</option>` + types.map((c) =>
         `<option value="${c.id}">${esc(c.name)} (${esc(c.code)})</option>`).join("");
-      select.value = selectedId == null ? "" : String(selectedId);
+      select.value = selectedId == null ? (unclassified ? String(unclassified.id) : "") : String(selectedId);
     }
 
     function clearMpEdit() {
@@ -2049,7 +2119,7 @@
       $("mpEditName").value = point.name || "";
       $("mpEditOid").value = point.oid || "";
       $("mpEditUnit").value = point.unit || "";
-      $("mpEditDataPointTypeId").value = point.dataPointTypeId == null ? "" : String(point.dataPointTypeId);
+      fillDataPointTypeSelect($("mpEditDataPointTypeId"), point.dataPointTypeId);
       $("mpEditScale").value = point.scale == null ? "" : String(point.scale);
       $("mpEditInst").value = point.requiresInstance ? "true" : "false";
       $("mpEditEnabled").value = point.enabled === false ? "false" : "true";
@@ -2245,37 +2315,54 @@
       if ($("wAddDevice")) {
         const pointFirst = kind === "chart" || kind === "aggregate";
         $("wAddDevice").textContent = pointFirst ? "장비 추가" : "장비·측정항목 추가";
-        $("wAddDevice").disabled = !$("wPickDevice").value || (!pointFirst && !$("wPickDevicePoint")?.value);
+        $("wAddDevice").disabled = !$("wPickDevice").value || (!pointFirst && !selectedLastDevicePoints().length);
       }
+    }
+
+    function selectedLastDevicePoints() {
+      return [...($("wPickDevicePoints")?.querySelectorAll("input[data-last-point]:checked") || [])]
+        .map((input) => input.dataset.lastPoint)
+        .filter(Boolean);
+    }
+
+    function syncLastWidgetDeviceIds() {
+      state.widgetDeviceIds = state.lastWidgetSources.map((source) => Number(source.deviceId));
     }
 
     async function loadDevicePointPicker() {
       const deviceId = Number($("wPickDevice")?.value);
       const wrap = $("wDevicePointPick");
-      const select = $("wPickDevicePoint");
+      const grid = $("wPickDevicePoints");
       if (!deviceId) {
         wrap.style.display = "none";
-        select.innerHTML = "";
+        grid.innerHTML = "";
         $("wAddDevice").disabled = true;
         return;
       }
       if ($("wKind")?.value === "chart" || $("wKind")?.value === "aggregate") {
         state.widgetPendingPointName = "";
         wrap.style.display = "none";
-        select.innerHTML = "";
+        grid.innerHTML = "";
         $("wAddDevice").disabled = !$("wPickDevice").value;
         return;
       }
       try {
         const device = state.devices.find((d) => d.id === deviceId);
         const points = await loadSnmpPointsForModel(device.modelId);
-        select.innerHTML = "<option value=\"\">측정항목 선택</option>" + points.map((p) =>
-          `<option value="${esc(p.name)}">${esc(formatPointLabel(p))}</option>`).join("");
+        grid.innerHTML = points.length ? points.map((point) => `
+          <label><input type="checkbox" data-last-point="${esc(point.name)}" />
+            <span><b>${esc(formatPointLabel(point))}</b></span>
+          </label>`).join("") : '<div class="empty" style="grid-column:1/-1;padding:12px">사용 가능한 측정항목이 없습니다.</div>';
         wrap.style.display = "block";
-        $("wAddDevice").disabled = !select.value;
+        $("wAddDevice").disabled = true;
+        grid.querySelectorAll("input[data-last-point]").forEach((input) => {
+          input.addEventListener("change", () => {
+            $("wAddDevice").disabled = selectedLastDevicePoints().length === 0;
+          });
+        });
       } catch (e) {
         wrap.style.display = "block";
-        select.innerHTML = "<option value=\"\">측정항목을 불러오지 못했습니다</option>";
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:12px">측정항목을 불러오지 못했습니다.</div>';
         $("wAddDevice").disabled = true;
         toast(e.message, true);
       }
@@ -2301,19 +2388,27 @@
         const kind = $("wKind")?.value;
         label.textContent = kind === "chart"
           ? "2. 대상 장비 선택"
-          : kind === "aggregate" ? "2. 호환 장비 선택" : "1. 장비 추가";
+          : kind === "aggregate" ? "2. 호환 장비 선택"
+          : kind === "last" ? "1. 장비·측정항목 추가" : "1. 장비 추가";
       }
+      const isLast = $("wKind")?.value === "last";
       if (!state.widgetDeviceIds.length) {
         const aggregate = $("wKind")?.value === "aggregate";
         box.innerHTML = aggregate
           ? '<div class="empty" style="padding:12px">측정항목을 먼저 선택한 다음 호환 장비를 추가하세요.</div>'
-          : '<div class="empty" style="padding:12px">아직 없음 — 위에서 장비를 고르고 「추가」</div>';
+          : isLast
+            ? '<div class="empty" style="padding:12px">장비를 고르고 측정항목을 하나 이상 선택한 뒤 「장비·측정항목 추가」를 누르세요.</div>'
+            : '<div class="empty" style="padding:12px">아직 없음 — 위에서 장비를 고르고 「추가」</div>';
         return;
       }
       box.innerHTML = state.widgetDeviceIds.map((id) => {
         const d = state.devices.find((x) => x.id === id);
+        const source = state.lastWidgetSources.find((item) => Number(item.deviceId) === Number(id));
+        const pointLabel = isLast && source
+          ? `<div class="muted" style="font-size:12px;margin-top:3px">측정항목: ${esc((source.pointNames || []).join(", "))}</div>`
+          : "";
         const itemLabel = d
-          ? `<b>${esc(d.name)}</b><div class="muted" style="font-size:12px">${esc(d.manufacturer || "–")} · ${esc(d.modelName)} · #${id}</div>`
+          ? `<b>${esc(d.name)}</b><div class="muted" style="font-size:12px">${esc(d.manufacturer || "–")} · ${esc(d.modelName)} · #${id}</div>${pointLabel}`
           : `<b>장비 #${id}</b>`;
         return `<div class="pick-item"><div>${itemLabel}</div><button type="button" class="ghost" data-rm-dev="${id}">제거</button></div>`;
       }).join("");
@@ -2321,9 +2416,12 @@
         btn.onclick = () => {
           const id = Number(btn.dataset.rmDev);
           state.widgetDeviceIds = state.widgetDeviceIds.filter((x) => x !== id);
+          if ($("wKind")?.value === "last") {
+            state.lastWidgetSources = state.lastWidgetSources.filter((source) => Number(source.deviceId) !== id);
+          }
           renderWidgetDevices();
           fillWidgetDevicePick();
-          if ($("wKind")?.value !== "aggregate") refreshWidgetPoints();
+          if ($("wKind")?.value !== "aggregate" && $("wKind")?.value !== "last") refreshWidgetPoints();
         };
       });
     }
@@ -2455,7 +2553,7 @@
       const aggOp = $("wOp")?.value || "";
       const showDevices = kind === "last" || kind === "aggregate" || (kind === "chart" && chartScope === "devices");
       const showModels = kind === "chart" && chartScope === "models";
-      const showPoints = kind === "last" || kind === "chart" || kind === "aggregate";
+      const showPoints = kind === "chart" || kind === "aggregate";
 
       $("wPointsBlock").style.display = showPoints ? "block" : "none";
       $("wCountBlock").style.display = kind === "count" ? "block" : "none";
@@ -2465,6 +2563,8 @@
       $("wModelBlock").style.display = showModels ? "block" : "none";
       $("wAggBlock").style.display = kind === "aggregate" ? "block" : "none";
       $("wPueBlock").style.display = kind === "pue" ? "block" : "none";
+      $("wPsychrometricBlock").style.display = kind === "psychrometric" ? "block" : "none";
+      $("wPowerDistributionBlock").style.display = kind === "power_distribution" ? "block" : "none";
       arrangeWidgetForm(kind);
       const pointStepLabel = $("wPointsBlock")?.querySelector(":scope > .muted");
       if (pointStepLabel) pointStepLabel.textContent = kind === "aggregate"
@@ -2477,9 +2577,26 @@
         renderWidgetModels();
       }
 
-      if (kind === "count" || kind === "pue") {
+      if (kind === "psychrometric") {
         state.widgetPointCatalog = [];
         state.widgetPointNamesByModel = new Map();
+        renderPsychrometricSources();
+        fillPsychrometricDevicePicks();
+        return;
+      }
+
+      if (kind === "power_distribution") {
+        state.widgetPointCatalog = [];
+        state.widgetPointNamesByModel = new Map();
+        renderPowerDistributionGroups();
+        fillPowerDistributionPicks();
+        return;
+      }
+
+      if (kind === "count" || kind === "pue" || kind === "last") {
+        state.widgetPointCatalog = [];
+        state.widgetPointNamesByModel = new Map();
+        if (kind === "last") fillWidgetDevicePick();
         return;
       }
 
@@ -2700,13 +2817,13 @@
       const selectedPoint = state.widgetPointCatalog.find((point) => point.name === input.dataset.point);
       const unit = String(selectedPoint?.unit || "").trim();
       if (!unit) return true;
-      const otherUnits = selectedWidgetPoints()
-        .filter((name) => name !== input.dataset.point)
+      const units = new Set(selectedWidgetPoints()
         .map((name) => state.widgetPointCatalog.find((point) => point.name === name)?.unit)
-        .filter(Boolean);
-      if (otherUnits.some((other) => String(other).trim() !== unit)) {
+        .filter(Boolean)
+        .map((other) => String(other).trim()));
+      if (units.size > 2) {
         input.checked = false;
-        toast(`하나의 차트에는 같은 단위만 선택할 수 있습니다. 선택 단위: ${unit}`, true);
+        toast(`하나의 차트에는 최대 두 단위만 선택할 수 있습니다. 현재 단위: ${[...units].join(", ")}`, true);
         refreshChartSeriesOptions();
         return false;
       }
@@ -2731,6 +2848,11 @@
       const select = $("wChartSeriesMode");
       const hint = $("wChartSeriesHint");
       let points = selectedWidgetPoints();
+      const selectedUnits = [...new Set(points
+        .map((name) => state.widgetPointCatalog.find((point) => point.name === name)?.unit)
+        .filter(Boolean)
+        .map((unit) => String(unit).trim()))];
+      const hasTwoUnits = selectedUnits.length === 2;
       select.disabled = points.length === 0;
       if (!points.length) {
         select.title = "장비와 측정항목을 먼저 선택하세요.";
@@ -2744,6 +2866,7 @@
         .some((suffix) => ["L1_", "L2_", "L3_"].every((prefix) => points.includes(prefix + suffix)));
       const phaseOption = select.querySelector('option[value="by_phase"]');
       const pathOption = select.querySelector('option[value="by_path"]');
+      const sumOption = select.querySelector('option[value="sum"]');
       const chartScope = $("wChartScope").value || "devices";
       const targets = chartScope === "models"
         ? state.widgetModelIds.map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
@@ -2752,21 +2875,29 @@
         && targets.every((target) => String(target.deviceTypeCode || "").toUpperCase() === "PDU");
       const supportsPhase = allPdu && hasAllPhases;
       if (phaseOption) {
-        phaseOption.hidden = !supportsPhase;
-        phaseOption.disabled = !supportsPhase;
+        phaseOption.hidden = hasTwoUnits || !supportsPhase;
+        phaseOption.disabled = hasTwoUnits || !supportsPhase;
       }
       if (pathOption) {
-        pathOption.hidden = !allPdu;
-        pathOption.disabled = !allPdu;
+        pathOption.hidden = hasTwoUnits || !allPdu;
+        pathOption.disabled = hasTwoUnits || !allPdu;
       }
+      if (sumOption) {
+        sumOption.hidden = hasTwoUnits;
+        sumOption.disabled = hasTwoUnits;
+      }
+      if (hasTwoUnits && select.value !== "per_device") select.value = "per_device";
       if (!supportsPhase && select.value === "by_phase") select.value = "per_device";
       if (!allPdu && select.value === "by_path") select.value = "per_device";
       if (!select.dataset.userSelected) {
-        if (supportsPhase) select.value = "by_phase";
+        if (hasTwoUnits) select.value = "per_device";
+        else if (supportsPhase) select.value = "by_phase";
         else if (allPdu && targets.length > 1) select.value = "sum";
         else select.value = "per_device";
       }
-      if (hint) hint.textContent = allPdu
+      if (hint) hint.textContent = hasTwoUnits
+        ? `두 단위(${selectedUnits.join(" · ")}) 차트입니다. 서로 다른 단위는 합산할 수 없어 장비별 표시와 좌·우 축으로 표시합니다.`
+        : allPdu
         ? supportsPhase
           ? "3상 PDU가 포함됩니다. 위젯 보드에서 합계·장비별·상별·위치별을 전환할 수 있습니다."
           : "단상 PDU 대상입니다. 위젯 보드에서 합계·장비별·위치별을 전환할 수 있습니다."
@@ -2792,13 +2923,33 @@
         toast(id ? "이미 추가된 장비입니다" : "장비를 선택하세요", true);
         return;
       }
+      if ($("wKind")?.value === "last") {
+        const pointNames = selectedLastDevicePoints();
+        if (!pointNames.length) {
+          toast("이 장비의 측정항목을 하나 이상 선택하세요", true);
+          return;
+        }
+        state.lastWidgetSources.push({ deviceId: id, pointNames });
+        syncLastWidgetDeviceIds();
+        renderWidgetDevices();
+        fillWidgetDevicePick();
+        $("wPickDevice").value = "";
+        $("wPickDevicePoints").innerHTML = "";
+        $("wDevicePointPick").style.display = "none";
+        $("wAddDevice").disabled = true;
+        if (!$("wName").value.trim()) {
+          const device = state.devices.find((item) => item.id === id);
+          if (device) $("wName").value = device.name;
+        }
+        return;
+      }
       state.widgetDeviceIds.push(id);
       const pointName = state.widgetPendingPointName;
       state.widgetPendingPointName = "";
       renderWidgetDevices();
       fillWidgetDevicePick();
       $("wPickDevice").value = "";
-      $("wPickDevicePoint").innerHTML = "";
+      $("wPickDevicePoints").innerHTML = "";
       $("wDevicePointPick").style.display = "none";
       $("wAddDevice").disabled = true;
       if ($("wKind")?.value !== "aggregate") await refreshWidgetPoints();
@@ -3300,60 +3451,129 @@
 
     function renderCodeGroups() {
       const groups = state.codeGroups || [];
-      $("cgBody").innerHTML = groups.map((g) => `
-        <tr class="clickable" data-cg="${g.id}">
-          <td class="mono">${esc(g.groupKey)}</td>
-          <td>${esc(g.groupName)}</td>
-          <td class="muted">#${g.id}</td>
-        </tr>`).join("") || `<tr><td colspan="3"><div class="empty">그룹 없음</div></td></tr>`;
-      $("cgBody").querySelectorAll("tr[data-cg]").forEach((tr) => {
-        tr.onclick = () => {
+      const allCodes = groups.flatMap((group) =>
+        (state.codes[group.groupKey] || []).map((code) => ({ ...code, group })));
+      $("codeTreeBody").innerHTML = groups.flatMap((group) => {
+        const codes = state.codes[group.groupKey] || [];
+        const groupRow = `
+          <tr class="clickable code-group-row ${state.selectedCodeGroupId === group.id ? "selected" : ""}" data-cg="${group.id}">
+            <td class="mono code-group-key">${esc(group.groupKey)}</td>
+            <td class="code-group-name"><b>${esc(group.groupName)}</b> <span class="muted">#${group.id}</span></td>
+            <td colspan="3" class="muted">하위 코드 ${codes.length}개</td>
+            <td class="actions"><div class="action-btns code-tree-actions">
+              <button type="button" class="primary" data-add-cc="${group.id}">코드 추가</button>
+              <button type="button" class="ghost" data-edit-cg="${group.id}">그룹 수정</button>
+              <button type="button" class="danger" data-delete-cg="${group.id}">삭제</button>
+            </div></td>
+          </tr>`;
+        const codeRows = codes.length ? codes.map((code) => `
+          <tr class="code-tree-child" data-cc="${code.id}">
+            <td class="code-tree-branch">↳</td>
+            <td></td>
+            <td class="mono">${esc(code.code)}</td>
+            <td>${esc(code.name)}</td>
+            <td>${code.sortOrder ?? "–"}</td>
+            <td class="actions"><div class="action-btns code-tree-actions">
+              <button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>
+              <button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>
+            </div></td>
+          </tr>`).join("") : `
+          <tr class="code-tree-child"><td class="code-tree-branch">↳</td><td></td><td colspan="4" class="muted">등록된 코드 없음</td></tr>`;
+        return groupRow + codeRows;
+      }).join("") || `<tr><td colspan="6"><div class="empty">그룹 없음</div></td></tr>`;
+
+      const map = (group) => `<option value="${group.id}">${esc(group.groupKey)} — ${esc(group.groupName)}</option>`;
+      const currentCodeGroupId = state.selectedCodeGroupId || Number($("ccGroup")?.value) || null;
+      fillSelect($("ccGroup"), groups, map, "그룹 선택");
+      if (currentCodeGroupId && groups.some((group) => group.id === currentCodeGroupId)) {
+        $("ccGroup").value = String(currentCodeGroupId);
+      }
+
+      $("codeTreeBody").querySelectorAll("tr[data-cg]").forEach((tr) => {
+        tr.onclick = (event) => {
+          if (event.target.closest("button")) return;
           state.selectedCodeGroupId = Number(tr.dataset.cg);
-          $("ccGroupFilter").value = String(state.selectedCodeGroupId);
           $("ccGroup").value = String(state.selectedCodeGroupId);
-          document.querySelectorAll("#cgBody tr").forEach((r) =>
+          document.querySelectorAll("#codeTreeBody tr[data-cg]").forEach((r) =>
             r.classList.toggle("selected", r.dataset.cg === tr.dataset.cg));
-          loadCommonCodesUi();
+          startCreateCode(groups.find((group) => group.id === state.selectedCodeGroupId));
         };
       });
-      const map = (g) => `<option value="${g.id}">${esc(g.groupKey)} — ${esc(g.groupName)}</option>`;
-      fillSelect($("ccGroupFilter"), groups, map, "전체");
-      fillSelect($("ccGroup"), groups, map);
-      if (state.selectedCodeGroupId) {
-        $("ccGroupFilter").value = String(state.selectedCodeGroupId);
-        $("ccGroup").value = String(state.selectedCodeGroupId);
-      }
+      $("codeTreeBody").querySelectorAll("[data-add-cc]").forEach((button) => {
+        button.onclick = () => startCreateCode(groups.find((group) => group.id === Number(button.dataset.addCc)));
+      });
+      $("codeTreeBody").querySelectorAll("[data-edit-cg]").forEach((button) => {
+        button.onclick = () => {
+          const group = groups.find((item) => item.id === Number(button.dataset.editCg));
+          if (!group) return;
+          state.editingCodeGroupId = group.id;
+          $("cgKey").value = group.groupKey || "";
+          $("cgName").value = group.groupName || "";
+          $("cgFormTitle").textContent = `그룹 수정 #${group.id}`;
+          $("cgSave").textContent = "저장";
+          $("cgCancelEdit").style.display = "";
+        };
+      });
+      $("codeTreeBody").querySelectorAll("[data-delete-cg]").forEach((button) => {
+        button.onclick = async () => {
+          const group = groups.find((item) => item.id === Number(button.dataset.deleteCg));
+          if (!group || !confirm(`「${group.groupKey}」 그룹을 삭제할까요?\n포함된 공통 코드가 있으면 삭제할 수 없습니다.`)) return;
+          try {
+            await api(`/api/manager/code-groups/${group.id}`, { method: "DELETE" });
+            if (state.selectedCodeGroupId === group.id) state.selectedCodeGroupId = null;
+            if (state.editingCodeGroupId === group.id) clearCodeGroupEdit();
+            toast("코드 그룹을 삭제했습니다");
+            await loadCodes();
+          } catch (e) { toast(e.message, true); }
+        };
+      });
+      $("codeTreeBody").querySelectorAll("[data-edit-cc]").forEach((button) => {
+        button.onclick = () => {
+          const code = allCodes.find((item) => item.id === Number(button.dataset.editCc));
+          if (!code) return;
+          state.editingCodeId = code.id;
+          state.selectedCodeGroupId = code.group.id;
+          $("ccGroup").value = String(code.group.id);
+          $("ccCode").value = code.code || "";
+          $("ccName").value = code.name || "";
+          $("ccSort").value = code.sortOrder ?? 0;
+          $("ccFormTitle").textContent = `코드 수정 — ${code.group.groupKey}`;
+          $("ccSave").textContent = "저장";
+          $("ccCancelEdit").style.display = "";
+        };
+      });
+      $("codeTreeBody").querySelectorAll("[data-delete-cc]").forEach((button) => {
+        button.onclick = async () => {
+          const code = allCodes.find((item) => item.id === Number(button.dataset.deleteCc));
+          if (!code || !confirm(`「${code.code}」 공통 코드를 삭제할까요?\n다른 설정에서 사용 중이면 삭제할 수 없습니다.`)) return;
+          try {
+            await api(`/api/manager/common-codes/${code.id}`, { method: "DELETE" });
+            if (state.editingCodeId === code.id) clearCodeEdit();
+            toast("공통 코드를 삭제했습니다");
+            await loadCodes();
+          } catch (e) { toast(e.message, true); }
+        };
+      });
+    }
+
+    function startCreateCode(group) {
+      if (!group) return;
+      state.editingCodeId = null;
+      state.selectedCodeGroupId = group.id;
+      $("ccGroup").value = String(group.id);
+      document.querySelectorAll("#codeTreeBody tr[data-cg]").forEach((row) =>
+        row.classList.toggle("selected", Number(row.dataset.cg) === group.id));
+      $("ccCode").value = "";
+      $("ccName").value = "";
+      $("ccSort").value = "0";
+      $("ccFormTitle").textContent = `코드 추가 — ${group.groupKey}`;
+      $("ccSave").textContent = "등록";
+      $("ccCancelEdit").style.display = "none";
+      $("ccCode").focus();
     }
 
     async function loadCommonCodesUi() {
-      const gid = $("ccGroupFilter")?.value;
-      const qs = gid ? `?codeGroupId=${gid}` : "";
-      try {
-        const list = await api(`/api/manager/common-codes${qs}`) || [];
-        $("ccBody").innerHTML = list.map((c) => `
-          <tr>
-            <td class="mono">${esc(c.code)}</td>
-            <td>${esc(c.name)}</td>
-            <td>${c.sortOrder ?? "–"}</td>
-            <td><button type="button" class="ghost" data-edit-cc="${c.id}" style="padding:4px 8px;font-size:12px">수정</button></td>
-          </tr>`).join("") || `<tr><td colspan="4"><div class="empty">코드 없음</div></td></tr>`;
-        $("ccBody").querySelectorAll("[data-edit-cc]").forEach((btn) => {
-          btn.onclick = () => {
-            const c = list.find((x) => x.id === Number(btn.dataset.editCc));
-            if (!c) return;
-            state.editingCodeId = c.id;
-            $("ccGroup").value = String(c.groupId);
-            $("ccCode").value = c.code || "";
-            $("ccName").value = c.name || "";
-            $("ccSort").value = c.sortOrder ?? 0;
-            $("ccFormTitle").textContent = "코드 수정";
-            $("ccSave").textContent = "저장";
-            $("ccCancelEdit").style.display = "";
-          };
-        });
-      } catch (e) {
-        $("ccBody").innerHTML = `<tr><td colspan="4"><div class="empty">${esc(e.message)}</div></td></tr>`;
-      }
+      renderCodeGroups();
     }
 
     function clearCodeEdit() {
@@ -3364,6 +3584,15 @@
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
+    }
+
+    function clearCodeGroupEdit() {
+      state.editingCodeGroupId = null;
+      $("cgFormTitle").textContent = "그룹 추가";
+      $("cgSave").textContent = "그룹 등록";
+      $("cgCancelEdit").style.display = "none";
+      $("cgKey").value = "";
+      $("cgName").value = "";
     }
 
     function updateStats() {
@@ -3422,28 +3651,28 @@
     $("taskModel").addEventListener("change", () => refreshTaskDevicePick().catch((e) => toast(e.message, true)));
     $("epReload").onclick = () => reloadEndpoints();
     $("cgReload").onclick = async () => {
-      try { await loadCodes(); await loadCommonCodesUi(); toast("코드 그룹을 새로고침했습니다"); }
+      try { await loadCodes(); toast("코드 그룹을 새로고침했습니다"); }
       catch (e) { toast(e.message, true); }
     };
-    $("ccReload").onclick = () => loadCommonCodesUi();
-    $("ccGroupFilter").onchange = () => loadCommonCodesUi();
 
-    $("cgCreate").onclick = async () => {
+    $("cgSave").onclick = async () => {
       const groupKey = $("cgKey").value.trim();
       const groupName = $("cgName").value.trim();
       if (!groupKey || !groupName) return toast("groupKey와 groupName을 입력하세요", true);
       try {
-        await api("/api/manager/code-groups", {
-          method: "POST",
+        await api(state.editingCodeGroupId
+          ? `/api/manager/code-groups/${state.editingCodeGroupId}`
+          : "/api/manager/code-groups", {
+          method: state.editingCodeGroupId ? "PUT" : "POST",
           body: JSON.stringify({ groupKey, groupName }),
         });
-        toast("코드 그룹을 등록했습니다");
-        $("cgKey").value = "";
-        $("cgName").value = "";
+        toast(state.editingCodeGroupId ? "코드 그룹을 수정했습니다" : "코드 그룹을 등록했습니다");
+        clearCodeGroupEdit();
         await loadCodes();
-        await loadCommonCodesUi();
       } catch (e) { toast(e.message, true); }
     };
+
+    $("cgCancelEdit").onclick = () => clearCodeGroupEdit();
 
     $("ccSave").onclick = async () => {
       const groupId = Number($("ccGroup").value);
@@ -3467,7 +3696,6 @@
         }
         clearCodeEdit();
         await loadCodes();
-        await loadCommonCodesUi();
       } catch (e) { toast(e.message, true); }
     };
 
@@ -3987,15 +4215,52 @@
         </div>`;
     }
 
+    function renderPsychrometricPretty(data) {
+      const timeLabels = data.timeLabels || [];
+      const temp = (data.data || []).find((item) => item.label === "TEMP_AVG") || { values: [], unit: "°C" };
+      const hum = (data.data || []).find((item) => item.label === "HUM_AVG") || { values: [], unit: "%" };
+      const rows = timeLabels.map((time, index) => `<tr><td>${esc(new Date(time).toLocaleString())}</td>`
+        + `<td>${temp.values?.[index] == null ? "–" : `${esc(temp.values[index])} ${esc(temp.unit || "°C")}`}</td>`
+        + `<td>${hum.values?.[index] == null ? "–" : `${esc(hum.values[index])} ${esc(hum.unit || "%")}`}</td></tr>`).join("");
+      return `<div class="card" style="margin:0;box-shadow:none"><h3 style="margin:0 0 8px">${esc(data.title || "Psychrometric Chart")}</h3>`
+        + `<div class="muted">InfluxDB 최근 5개 시간 평균 + 최신 평균</div>`
+        + `<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>시간</th><th>TEMP_AVG</th><th>HUM_AVG</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="muted">Influx 데이터 없음</td></tr>'}</tbody></table></div></div>`;
+    }
+
+    function formatPowerW(value) {
+      if (value == null) return "–";
+      const number = Number(value);
+      return Math.abs(number) >= 1000 ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW` : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
+    }
+
+    function renderPowerDistributionPretty(data) {
+      if (!data) return '<div class="empty">결과 없음</div>';
+      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
+      const groups = (data.groups || []).map((group) => {
+        const rows = (group.sources || []).map((source) => `<div class="row" style="justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)">`
+          + `<span>${esc(source.deviceName || `#${source.deviceId}`)} · ${esc(source.pointName)}</span><b>${esc(formatPowerW(source.powerW))}</b></div>`).join("");
+        return `<div class="pick-item" style="display:block;border-left:4px solid ${esc(group.color || "#38BDF8")}">`
+          + `<div class="row" style="justify-content:space-between"><b>${esc(group.name)}</b><b>${esc(formatPowerW(group.powerW))}</b></div>`
+          + `<div class="muted" style="font-size:12px;margin:3px 0">${group.ratio == null ? "비율 계산 불가" : `${esc(group.ratio)}%`}${group.complete ? "" : " · 일부 데이터 없음"}</div>${rows}</div>`;
+      }).join("");
+      return `<div class="card" style="margin:0;box-shadow:none"><h3 style="margin:0 0 8px">${esc(data.title || "전력 분배")}</h3>`
+        + `<div class="muted">${data.complete ? "모든 W 단위 POWER 최신값" : "일부 소스 데이터 없음 — 전체·비율은 계산하지 않음"}</div>`
+        + `<div style="font-size:30px;font-weight:800;margin:8px 0">${esc(formatPowerW(data.totalPowerW))}</div>${groups}</div>`;
+    }
+
     function clearWidgetForm(keepPage) {
       const page = keepPage ? $("wCreatePage").value : null;
       state.editingWidgetId = null;
       state.editingLayout = null;
       state.editingEnabled = true;
       state.widgetDeviceIds = [];
+      state.lastWidgetSources = [];
       state.widgetPendingPointName = "";
       state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
+      state.psychrometricTemperatureSources = [];
+      state.psychrometricHumiditySources = [];
+      state.powerDistributionGroups = [];
       $("wFormTitle").textContent = "위젯 만들기";
       $("wCreate").textContent = "만들기";
       $("wCancelEdit").style.display = "none";
@@ -4016,11 +4281,15 @@
       if (page) $("wCreatePage").value = page;
       renderWidgetDevices();
       if ($("wDevicePointPick")) $("wDevicePointPick").style.display = "none";
-      if ($("wPickDevicePoint")) $("wPickDevicePoint").innerHTML = "";
+      if ($("wPickDevicePoints")) $("wPickDevicePoints").innerHTML = "";
       renderWidgetItDevices();
       fillWidgetDevicePick();
       renderWidgetModels();
       fillWidgetModelPick();
+      renderPsychrometricSources();
+      fillPsychrometricDevicePicks();
+      renderPowerDistributionGroups();
+      fillPowerDistributionPicks();
       refreshWidgetPoints();
     }
 
@@ -4049,14 +4318,33 @@
         if (w.pueFreshnessMinutes) $("wPueFreshnessMinutes").value = String(w.pueFreshnessMinutes);
         if (w.op) $("wOp").value = w.op;
         if (w.aggregateRangePreset && $("wAggRangePreset")) $("wAggRangePreset").value = w.aggregateRangePreset;
-        state.widgetDeviceIds = [...(w.deviceIds || [])];
+        state.lastWidgetSources = (w.lastSources || []).map((source) => ({
+          deviceId: Number(source.deviceId),
+          pointNames: [...(source.pointNames || [])],
+        }));
+        state.widgetDeviceIds = w.queryKind === "last" && state.lastWidgetSources.length
+          ? state.lastWidgetSources.map((source) => source.deviceId)
+          : [...(w.deviceIds || [])];
         state.widgetItDeviceIds = [...(w.itDeviceIds || [])];
         state.widgetModelIds = [...(w.modelIds || [])];
+        state.psychrometricTemperatureSources = (w.psychrometricSources || [])
+          .filter((source) => source.role === "temperature");
+        state.psychrometricHumiditySources = (w.psychrometricSources || [])
+          .filter((source) => source.role === "humidity");
+        state.powerDistributionGroups = (w.powerDistributionGroups || []).map((group) => ({
+          name: group.name,
+          color: group.color || POWER_GROUP_COLORS[0],
+          sources: (group.sources || []).map((source) => ({ deviceId: Number(source.deviceId), pointName: source.pointName })),
+        }));
         renderWidgetDevices();
         renderWidgetItDevices();
         fillWidgetDevicePick();
         renderWidgetModels();
         fillWidgetModelPick();
+        renderPsychrometricSources();
+        fillPsychrometricDevicePicks();
+        renderPowerDistributionGroups();
+        fillPowerDistributionPicks();
         await refreshWidgetPoints();
         if (w.countMode === "model" && w.countModelId != null) {
           refreshCountModelPick();
@@ -4077,7 +4365,7 @@
             syncAggregateOpFromPoint(input.dataset.point);
           }
           fillWidgetDevicePick();
-        } else {
+        } else if (w.queryKind !== "last") {
           $("wPointGrid")?.querySelectorAll("input[data-point]").forEach((el) => {
             el.checked = wanted.has(el.dataset.point);
           });
@@ -4120,6 +4408,10 @@
           queryBtn = `<button type="button" class="ghost" data-agg="${w.id}">집계</button>`;
         } else if (w.queryKind === "pue") {
           queryBtn = `<button type="button" class="ghost" data-pue="${w.id}">PUE</button>`;
+        } else if (w.queryKind === "psychrometric") {
+          queryBtn = `<button type="button" class="ghost" data-psychrometric="${w.id}">습공기선</button>`;
+        } else if (w.queryKind === "power_distribution") {
+          queryBtn = `<button type="button" class="ghost" data-power-distribution="${w.id}">전력 분배</button>`;
         }
         const chartMeta = w.queryKind === "chart"
           ? `<div class="muted">${esc(w.chartScope || "devices")} · ${esc(w.chartSeriesMode || "per_device")} · ${esc(w.chartRangePreset || "")} · ${esc(w.chartWindow || "")}</div>`
@@ -4138,13 +4430,25 @@
               })[w.aggregateRangePreset] || w.aggregateRangePreset) : ""}</div>`
             : w.queryKind === "pue"
               ? `<div class="muted">PUE 정의 #${esc(w.pueDefinitionId || "–")} · ${esc(w.pueRangePreset || "last_24h")} · 최신 ${esc(w.pueFreshnessMinutes || 15)}분</div>`
+              : w.queryKind === "psychrometric"
+                ? `<div class="muted">온도·상대습도 소스 ${esc((w.psychrometricSources || []).length)}개 · 최근 5개 평균</div>`
+                : w.queryKind === "power_distribution"
+                  ? `<div class="muted">전력 그룹 ${esc((w.powerDistributionGroups || []).length)}개 · W 단위 최신값 합계</div>`
               : "";
         const targetCell = w.queryKind === "count"
           ? '<span class="muted">전체 enabled</span>'
+          : w.queryKind === "last"
+            ? (w.lastSources || []).map((source) =>
+              `#${esc(source.deviceId)}: ${esc((source.pointNames || []).join(", "))}`).join("<br>") || "–"
           : w.queryKind === "chart" && (w.chartScope || "devices") === "models"
             ? ((w.modelIds || []).join(", ") || "–")
             : w.queryKind === "pue"
               ? `PUE 정의 #${esc(w.pueDefinitionId || "–")}`
+              : w.queryKind === "psychrometric"
+                ? `소스 ${(w.psychrometricSources || []).length}개`
+                : w.queryKind === "power_distribution"
+                  ? (w.powerDistributionGroups || []).map((group) =>
+                    `${esc(group.name)}: ${(group.sources || []).length}개`).join("<br>") || "–"
               : ((w.deviceIds || []).join(", ") || "–");
         return `
         <tr>
@@ -4201,6 +4505,26 @@
             const range = w.aggregateRangePreset || "today";
             const data = await api(`/api/manager/query/aggregate?widgetId=${btn.dataset.agg}&rangePreset=${encodeURIComponent(range)}`);
             $("wLastOut").innerHTML = renderAggregatePretty(data);
+          } catch (e) {
+            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+          }
+        };
+      });
+      $("wBody").querySelectorAll("[data-psychrometric]").forEach((btn) => {
+        btn.onclick = async () => {
+          try {
+            const data = await api(`/api/manager/query/psychrometric?widgetId=${btn.dataset.psychrometric}`);
+            $("wLastOut").innerHTML = renderPsychrometricPretty(data);
+          } catch (e) {
+            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+          }
+        };
+      });
+      $("wBody").querySelectorAll("[data-power-distribution]").forEach((btn) => {
+        btn.onclick = async () => {
+          try {
+            const data = await api(`/api/manager/query/power-distribution?widgetId=${btn.dataset.powerDistribution}`);
+            $("wLastOut").innerHTML = renderPowerDistributionPretty(data);
           } catch (e) {
             $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
           }
@@ -4372,12 +4696,235 @@
         + `<div class="table-wrap"><table><thead><tr><th>역할</th><th>장비</th><th>측정항목</th><th>최신값</th></tr></thead><tbody>${detailRows}</tbody></table></div>`;
     }
 
+    function psychrometricSources(role) {
+      return role === "temperature" ? state.psychrometricTemperatureSources : state.psychrometricHumiditySources;
+    }
+
+    function psychrometricPrefix(role) {
+      return role === "temperature" ? "wPsychTemperature" : "wPsychHumidity";
+    }
+
+    function fillPsychrometricDevicePicks() {
+      if (!$("wPsychTemperatureDevice")) return;
+      const available = state.devices.filter((d) => d.enabled !== false);
+      for (const role of ["temperature", "humidity"]) {
+        const prefix = psychrometricPrefix(role);
+        const select = $(prefix + "Device");
+        fillSelect(select, available, (d) =>
+          `<option value="${d.id}">${esc(d.name)} · ${esc(d.modelName || "")} (#${d.id})</option>`,
+          available.length ? "장비 선택" : "등록된 장비 없음");
+        select.value = "";
+        resetPsychrometricPointPick(role);
+      }
+    }
+
+    function resetPsychrometricPointPick(role) {
+      const prefix = psychrometricPrefix(role);
+      const point = $(prefix + "Point");
+      const add = $(prefix + "Add");
+      point.innerHTML = '<option value="">장비 먼저 선택</option>';
+      point.disabled = true;
+      add.disabled = true;
+    }
+
+    async function loadPsychrometricPointPick(role) {
+      const prefix = psychrometricPrefix(role);
+      const deviceId = Number($(prefix + "Device").value);
+      const point = $(prefix + "Point");
+      const add = $(prefix + "Add");
+      if (!deviceId) return resetPsychrometricPointPick(role);
+      try {
+        const device = state.devices.find((d) => Number(d.id) === deviceId);
+        const points = (await loadSnmpPointsForModel(Number(device.modelId))).filter((p) => {
+          const type = String(p.dataPointType || "").toUpperCase();
+          const unit = String(p.unit || "").trim();
+          return role === "temperature"
+            ? type === "TEMPERATURE" || unit === "°C" || unit.toUpperCase() === "C"
+            : unit === "%" && type !== "POWER_FACTOR";
+        });
+        const label = role === "temperature" ? "온도 측정항목 선택" : "상대습도(%) 측정항목 선택";
+        fillSelect(point, points, (p) =>
+          `<option value="${esc(p.name)}" data-unit="${esc(p.unit || "")}">${esc(formatPointLabel(p))}</option>`,
+          points.length ? label : `${role === "temperature" ? "온도" : "상대습도"} 측정항목 없음`);
+        point.value = "";
+        point.disabled = !points.length;
+        add.disabled = true;
+      } catch (e) {
+        resetPsychrometricPointPick(role);
+        toast("측정항목 조회 실패: " + e.message, true);
+      }
+    }
+
+    function addPsychrometricSource(role) {
+      const prefix = psychrometricPrefix(role);
+      const deviceId = Number($(prefix + "Device").value);
+      const point = $(prefix + "Point");
+      const pointName = point.value;
+      if (!deviceId || !pointName) return toast("장비와 측정항목을 선택하세요", true);
+      const all = [...state.psychrometricTemperatureSources, ...state.psychrometricHumiditySources];
+      if (all.some((source) => source.deviceId === deviceId && source.pointName === pointName)) {
+        return toast("같은 장비·측정항목은 온도 또는 습도 중 한 역할에만 추가할 수 있습니다", true);
+      }
+      psychrometricSources(role).push({
+        deviceId,
+        pointName,
+        unit: point.selectedOptions[0]?.dataset.unit || "",
+      });
+      renderPsychrometricSources();
+      fillPsychrometricDevicePicks();
+    }
+
+    function renderPsychrometricSources() {
+      for (const role of ["temperature", "humidity"]) {
+        const list = psychrometricSources(role);
+        const box = $(psychrometricPrefix(role) + "List");
+        if (!box) continue;
+        box.innerHTML = list.length ? list.map((source, index) => {
+          const device = state.devices.find((d) => Number(d.id) === Number(source.deviceId));
+          return `<div class="pick-item"><div><b>${esc(device?.name || `장비 #${source.deviceId}`)}</b>`
+            + `<div class="muted" style="font-size:12px">${esc(source.pointName)}${source.unit ? ` · ${esc(source.unit)}` : ""}</div></div>`
+            + `<button type="button" class="ghost" data-psych-role="${role}" data-psych-index="${index}">제거</button></div>`;
+        }).join("") : `<div class="empty" style="padding:12px">${role === "temperature" ? "온도" : "상대습도"} 소스를 하나 이상 추가하세요.</div>`;
+      }
+      document.querySelectorAll("[data-psych-index]").forEach((button) => {
+        button.onclick = () => {
+          const role = button.dataset.psychRole;
+          const index = Number(button.dataset.psychIndex);
+          psychrometricSources(role).splice(index, 1);
+          renderPsychrometricSources();
+          fillPsychrometricDevicePicks();
+        };
+      });
+    }
+
+    const POWER_GROUP_COLORS = ["#38BDF8", "#A78BFA", "#34D399", "#FBBF24", "#FB7185", "#22D3EE", "#F97316", "#A3E635"];
+
+    function resetPowerDistributionPointPick() {
+      $("wPowerPoint").innerHTML = '<option value="">장비 먼저 선택</option>';
+      $("wPowerPoint").disabled = true;
+      $("wPowerSourceAdd").disabled = true;
+    }
+
+    function fillPowerDistributionPicks() {
+      const group = $("wPowerGroupPick");
+      const device = $("wPowerDevice");
+      if (!group || !device) return;
+      const selectedGroup = group.value;
+      fillSelect(group, state.powerDistributionGroups, (item, index) =>
+        `<option value="${index}">${esc(item.name)}</option>`, "그룹 선택");
+      if (selectedGroup !== "" && Number(selectedGroup) < state.powerDistributionGroups.length) group.value = selectedGroup;
+      const selectedDevice = device.value;
+      const enabledDevices = state.devices.filter((item) => item.enabled !== false);
+      fillSelect(device, enabledDevices, (item) =>
+        `<option value="${item.id}">${esc(item.name)} · ${esc(item.modelName || "")} (#${item.id})</option>`, "장비 선택");
+      if (selectedDevice && enabledDevices.some((item) => Number(item.id) === Number(selectedDevice))) device.value = selectedDevice;
+      resetPowerDistributionPointPick();
+    }
+
+    async function loadPowerDistributionPointPick() {
+      const deviceId = Number($("wPowerDevice").value);
+      const point = $("wPowerPoint");
+      if (!deviceId) return resetPowerDistributionPointPick();
+      try {
+        const device = state.devices.find((item) => Number(item.id) === deviceId);
+        if (!device) throw new Error("장비를 찾을 수 없습니다");
+        const points = (await loadSnmpPointsForModel(Number(device.modelId))).filter((item) =>
+          String(item.dataPointType || "").toUpperCase() === "POWER"
+          && String(item.unit || "").trim().toUpperCase() === "W");
+        fillSelect(point, points, (item) =>
+          `<option value="${esc(item.name)}">${esc(formatPointLabel(item))}</option>`,
+          points.length ? "W 단위 POWER 선택" : "W 단위 POWER 측정항목 없음");
+        point.value = "";
+        point.disabled = !points.length;
+        $("wPowerSourceAdd").disabled = true;
+      } catch (e) {
+        resetPowerDistributionPointPick();
+        toast("전력 측정항목 조회 실패: " + e.message, true);
+      }
+    }
+
+    function renderPowerDistributionGroups() {
+      const box = $("wPowerGroupList");
+      if (!box) return;
+      box.innerHTML = state.powerDistributionGroups.length
+        ? state.powerDistributionGroups.map((group, groupIndex) => {
+          const sources = group.sources.map((source, sourceIndex) => {
+            const device = state.devices.find((item) => Number(item.id) === Number(source.deviceId));
+            return `<div class="row" style="justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)">`
+              + `<span>${esc(device?.name || `장비 #${source.deviceId}`)} · <b>${esc(source.pointName)}</b> <span class="muted">W</span></span>`
+              + `<button type="button" class="danger small" data-power-source-remove="${groupIndex}" data-power-source-index="${sourceIndex}">제거</button></div>`;
+          }).join("") || '<div class="muted" style="font-size:12px;margin-top:5px">아래에서 W 단위 POWER 소스를 하나 이상 추가하세요.</div>';
+          return `<div class="pick-item" style="display:block;border-left:4px solid ${esc(group.color || POWER_GROUP_COLORS[groupIndex % POWER_GROUP_COLORS.length])}">`
+            + `<div class="row" style="justify-content:space-between"><b>${esc(group.name)}</b>`
+            + `<button type="button" class="danger small" data-power-group-remove="${groupIndex}">그룹 제거</button></div>${sources}</div>`;
+        }).join("")
+        : '<div class="muted" style="font-size:12px">IT Power, Cooling Power처럼 전력 그룹을 두 개 이상 추가하세요.</div>';
+      document.querySelectorAll("[data-power-group-remove]").forEach((button) => {
+        button.onclick = () => {
+          state.powerDistributionGroups.splice(Number(button.dataset.powerGroupRemove), 1);
+          renderPowerDistributionGroups();
+          fillPowerDistributionPicks();
+        };
+      });
+      document.querySelectorAll("[data-power-source-remove]").forEach((button) => {
+        button.onclick = () => {
+          state.powerDistributionGroups[Number(button.dataset.powerSourceRemove)]?.sources
+            .splice(Number(button.dataset.powerSourceIndex), 1);
+          renderPowerDistributionGroups();
+          fillPowerDistributionPicks();
+        };
+      });
+    }
+
+    function addPowerDistributionGroup() {
+      const name = $("wPowerGroupName").value.trim();
+      if (!name) return toast("전력 그룹 이름을 입력하세요", true);
+      if (state.powerDistributionGroups.some((group) => group.name.toLowerCase() === name.toLowerCase())) {
+        return toast("같은 전력 그룹 이름이 이미 있습니다", true);
+      }
+      state.powerDistributionGroups.push({
+        name,
+        color: $("wPowerGroupColor").value || POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length],
+        sources: [],
+      });
+      $("wPowerGroupName").value = "";
+      $("wPowerGroupColor").value = POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length];
+      renderPowerDistributionGroups();
+      fillPowerDistributionPicks();
+      $("wPowerGroupPick").value = String(state.powerDistributionGroups.length - 1);
+    }
+
+    function addPowerDistributionSource() {
+      const selectedGroup = $("wPowerGroupPick").value;
+      const groupIndex = selectedGroup === "" ? NaN : Number(selectedGroup);
+      const deviceId = Number($("wPowerDevice").value);
+      const pointName = $("wPowerPoint").value;
+      if (!Number.isInteger(groupIndex) || !state.powerDistributionGroups[groupIndex]) return toast("먼저 전력 그룹을 선택하세요", true);
+      if (!deviceId || !pointName) return toast("장비와 W 단위 POWER 측정항목을 선택하세요", true);
+      const duplicate = state.powerDistributionGroups.some((group) =>
+        group.sources.some((source) => Number(source.deviceId) === deviceId && source.pointName === pointName));
+      if (duplicate) return toast("같은 장비·측정항목은 하나의 전력 그룹에만 등록할 수 있습니다", true);
+      state.powerDistributionGroups[groupIndex].sources.push({ deviceId, pointName });
+      renderPowerDistributionGroups();
+      fillPowerDistributionPicks();
+    }
+
     $("pueTotalDevice")?.addEventListener("change", () => loadPuePointPick("total"));
     $("pueCoolerDevice")?.addEventListener("change", () => loadPuePointPick("cooler"));
     $("pueTotalPoint")?.addEventListener("change", () => { $("pueTotalAdd").disabled = !$("pueTotalPoint").value; });
     $("pueCoolerPoint")?.addEventListener("change", () => { $("pueCoolerAdd").disabled = !$("pueCoolerPoint").value; });
     $("pueTotalAdd")?.addEventListener("click", () => addPueSource("total"));
     $("pueCoolerAdd")?.addEventListener("click", () => addPueSource("cooler"));
+    $("wPsychTemperatureDevice")?.addEventListener("change", () => loadPsychrometricPointPick("temperature"));
+    $("wPsychHumidityDevice")?.addEventListener("change", () => loadPsychrometricPointPick("humidity"));
+    $("wPsychTemperaturePoint")?.addEventListener("change", () => { $("wPsychTemperatureAdd").disabled = !$("wPsychTemperaturePoint").value; });
+    $("wPsychHumidityPoint")?.addEventListener("change", () => { $("wPsychHumidityAdd").disabled = !$("wPsychHumidityPoint").value; });
+    $("wPsychTemperatureAdd")?.addEventListener("click", () => addPsychrometricSource("temperature"));
+    $("wPsychHumidityAdd")?.addEventListener("click", () => addPsychrometricSource("humidity"));
+    $("wPowerGroupAdd")?.addEventListener("click", addPowerDistributionGroup);
+    $("wPowerDevice")?.addEventListener("change", loadPowerDistributionPointPick);
+    $("wPowerPoint")?.addEventListener("change", () => { $("wPowerSourceAdd").disabled = !$("wPowerPoint").value; });
+    $("wPowerSourceAdd")?.addEventListener("click", addPowerDistributionSource);
     $("pueCalculate")?.addEventListener("click", async () => {
       try {
         if (!state.pueTotalSources.length || !state.pueCoolerSources.length) {
@@ -4458,10 +5005,6 @@
     $("wPage").addEventListener("change", () => loadWidgets().catch(() => {}));
     $("wAddDevice").onclick = () => addWidgetDevice(Number($("wPickDevice").value));
     $("wPickDevice")?.addEventListener("change", () => loadDevicePointPicker());
-    $("wPickDevicePoint")?.addEventListener("change", () => {
-      state.widgetPendingPointName = $("wPickDevicePoint").value || "";
-      $("wAddDevice").disabled = !state.widgetPendingPointName;
-    });
     $("wAddItDevice")?.addEventListener("click", () => addWidgetItDevice(Number($("wPickItDevice").value)));
     $("wAddModel")?.addEventListener("click", () => addWidgetModel(Number($("wPickModel").value)));
     $("wChartScope")?.addEventListener("change", () => {
@@ -4487,19 +5030,28 @@
     });
     $("wKind").addEventListener("change", () => {
       state.widgetDeviceIds = [];
+      state.lastWidgetSources = [];
       state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
       state.widgetPointCatalog = [];
+      state.psychrometricTemperatureSources = [];
+      state.psychrometricHumiditySources = [];
+      state.powerDistributionGroups = [];
       renderWidgetDevices();
       renderWidgetItDevices();
       fillWidgetDevicePick();
       renderWidgetModels();
       fillWidgetModelPick();
+      renderPsychrometricSources();
+      fillPsychrometricDevicePicks();
+      renderPowerDistributionGroups();
+      fillPowerDistributionPicks();
       refreshWidgetPoints();
     });
     renderWidgetDevices();
     renderWidgetItDevices();
     renderWidgetModels();
+    renderPsychrometricSources();
 
     $("wCreate").onclick = async () => {
       try {
@@ -4507,11 +5059,95 @@
         const name = $("wName").value.trim();
         if (!name) throw new Error("표시 이름을 입력하세요");
 
+        if (kind === "power_distribution") {
+          if (state.powerDistributionGroups.length < 2) {
+            throw new Error("전력 그룹을 두 개 이상 추가하세요");
+          }
+          if (state.powerDistributionGroups.some((group) => !group.sources.length)) {
+            throw new Error("각 전력 그룹에 W 단위 POWER 소스를 하나 이상 추가하세요");
+          }
+          const powerBody = {
+            pageCode: $("wCreatePage").value,
+            name,
+            enabled: state.editingWidgetId ? state.editingEnabled : true,
+            groups: state.powerDistributionGroups.map((group) => ({
+              name: group.name,
+              color: group.color,
+              sources: group.sources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+            })),
+            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 10 },
+          };
+          let powerRequestBody = powerBody;
+          if (state.editingWidgetId) {
+            const { pageCode, ...updateBody } = powerBody;
+            powerRequestBody = updateBody;
+          }
+          const saved = await api(
+            state.editingWidgetId
+              ? `/api/manager/widgets/${state.editingWidgetId}/power-distribution`
+              : "/api/manager/widgets/power-distribution",
+            { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(powerRequestBody) }
+          );
+          $("wOut").textContent = JSON.stringify(saved, null, 2);
+          toast(state.editingWidgetId ? "전력 분배 위젯을 저장했습니다" : "전력 분배 위젯을 만들었습니다");
+          $("wPage").value = powerBody.pageCode;
+          clearWidgetForm(false);
+          $("wCreatePage").value = powerBody.pageCode;
+          await loadWidgets();
+          return;
+        }
+
+        if (kind === "psychrometric") {
+          if (!state.psychrometricTemperatureSources.length || !state.psychrometricHumiditySources.length) {
+            throw new Error("온도 소스와 상대습도 소스를 각각 하나 이상 추가하세요");
+          }
+          const psychBody = {
+            pageCode: $("wCreatePage").value,
+            name,
+            enabled: state.editingWidgetId ? state.editingEnabled : true,
+            temperatureSources: state.psychrometricTemperatureSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+            humiditySources: state.psychrometricHumiditySources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
+            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 16 },
+          };
+        let psychRequestBody = psychBody;
+        if (state.editingWidgetId) {
+          const { pageCode, ...updateBody } = psychBody;
+          psychRequestBody = updateBody;
+        }
+        const saved = await api(
+          state.editingWidgetId
+            ? `/api/manager/widgets/${state.editingWidgetId}/psychrometric`
+            : "/api/manager/widgets/psychrometric",
+          {
+            method: state.editingWidgetId ? "PUT" : "POST",
+            body: JSON.stringify(psychRequestBody),
+          }
+        );
+          $("wOut").textContent = JSON.stringify(saved, null, 2);
+          toast(state.editingWidgetId ? "사이코메트릭 위젯을 저장했습니다" : "사이코메트릭 위젯을 만들었습니다");
+          $("wPage").value = psychBody.pageCode;
+          clearWidgetForm(false);
+          $("wCreatePage").value = psychBody.pageCode;
+          await loadWidgets();
+          return;
+        }
+
         const chartScope = kind === "chart" ? ($("wChartScope").value || "devices") : null;
         const op = kind === "aggregate" ? ($("wOp").value.trim() || null) : null;
-        const pointNames = (kind === "count" || kind === "pue") ? [] : selectedWidgetPoints();
+        const lastSources = kind === "last"
+          ? state.lastWidgetSources.map((source) => ({
+            deviceId: Number(source.deviceId),
+            pointNames: [...new Set(source.pointNames || [])],
+          }))
+          : [];
+        const pointNames = kind === "last"
+          ? [...new Set(lastSources.flatMap((source) => source.pointNames))]
+          : (kind === "count" || kind === "pue") ? [] : selectedWidgetPoints();
         const pueDefinitionId = kind === "pue" ? Number($("wPueDefinition").value) || null : null;
         if (kind === "pue" && !pueDefinitionId) throw new Error("표시할 PUE 수집 정의를 선택하세요");
+        if (kind === "last" && !lastSources.length) {
+          throw new Error("장비마다 측정항목을 하나 이상 선택해 추가하세요");
+        }
         if ((kind === "last" || kind === "chart") && (!pointNames || !pointNames.length)) {
           throw new Error("측정 항목을 하나 이상 선택하세요");
         }
@@ -4563,6 +5199,7 @@
           deviceIds,
           modelIds: kind === "chart" && chartScope === "models" ? modelIds : [],
           pointNames,
+          lastSources: kind === "last" ? lastSources : null,
           layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: layoutH },
         };
 

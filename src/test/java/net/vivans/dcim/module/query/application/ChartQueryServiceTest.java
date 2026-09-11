@@ -113,6 +113,40 @@ class ChartQueryServiceTest {
     }
 
     @Test
+    void twoUnits_assignsSeriesToLeftAndRightAxes() {
+        DeviceModel model = model(10);
+        Device device = device(1, "CHILLER", "R1", "랙1", model);
+        PageWidget widget = chartWidget(
+                PageWidgetChartScope.devices,
+                PageWidgetChartSeriesMode.per_device,
+                List.of("TOTAL_WT", "IN_TEMP"),
+                List.of(device),
+                List.of()
+        );
+        DeviceModelSnmpPoint totalPower = snmpPoint(model, "TOTAL_WT", "W");
+        DeviceModelSnmpPoint inletTemperature = snmpPoint(model, "IN_TEMP", "°C");
+        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
+        when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(any())).thenReturn(List.of(
+                totalPower,
+                inletTemperature
+        ));
+        Instant t = Instant.parse("2026-08-27T01:00:00Z");
+        when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
+                .thenReturn(List.of(
+                        new SeriesPoint(1, "TOTAL_WT", 12000.0, t),
+                        new SeriesPoint(1, "IN_TEMP", 24.5, t)
+                ));
+
+        ChartWidgetResponse response = service.getChart(12, "last_3d", "15m", null);
+
+        assertThat(response.rangePreset()).isEqualTo("last_3d");
+        assertThat(response.units()).containsExactly("W", "°C");
+        assertThat(response.unit()).isNull();
+        assertThat(response.series()).extracting(series -> series.unit()).containsExactly("°C", "W");
+        assertThat(response.series()).extracting(series -> series.axis()).containsExactly("right", "left");
+    }
+
+    @Test
     void byPhase_sumsAcrossDevicesPerPoint() {
         DeviceModel model = model(10);
         Device d1 = device(1, "A", "R1", "랙1", model);

@@ -45,7 +45,11 @@ public class LastQueryService {
 
     public LastWidgetResponse getLast(Integer widgetId, Integer lookbackHours) {
         PageWidget widget = findLastWidget(widgetId);
-        List<String> pointNames = resolvePointNames(widget);
+        Map<Integer, Set<String>> requestedPointsByDevice = resolveRequestedPointsByDevice(widget);
+        List<String> pointNames = requestedPointsByDevice.values().stream()
+                .flatMap(Set::stream)
+                .distinct()
+                .toList();
         Duration lookback = resolveLookback(lookbackHours);
 
         if (pointNames.isEmpty()) {
@@ -85,7 +89,9 @@ public class LastQueryService {
                     Map.of()
             );
             List<LastPointValueResponse> pointResponses = new ArrayList<>();
+            Set<String> requestedPoints = requestedPointsByDevice.getOrDefault(device.getId(), Set.of());
             for (LastPoint point : devicePoints.stream()
+                    .filter(point -> requestedPoints.contains(point.pointName()))
                     .sorted(Comparator.comparing(LastPoint::pointName))
                     .toList()) {
                 String unit = unitByPoint.get(point.pointName());
@@ -114,7 +120,9 @@ public class LastQueryService {
                     }
                 }
             }
-            deviceResponses.add(LastDeviceResponse.from(device, pointResponses));
+            if (!pointResponses.isEmpty()) {
+                deviceResponses.add(LastDeviceResponse.from(device, pointResponses));
+            }
         }
 
         if (!totalCompatible || totalCount == 0) {
@@ -192,13 +200,23 @@ public class LastQueryService {
         return widget;
     }
 
-    private static List<String> resolvePointNames(PageWidget widget) {
-        return widget.getPoints().stream()
+    private static Map<Integer, Set<String>> resolveRequestedPointsByDevice(PageWidget widget) {
+        Map<Integer, Set<String>> result = new LinkedHashMap<>();
+        List<PageWidget.LastSourceDefinition> sources = widget.lastSourceDefinitions();
+        if (sources != null && !sources.isEmpty()) {
+            for (PageWidget.LastSourceDefinition source : sources) {
+                result.computeIfAbsent(source.device().getId(), ignored -> new LinkedHashSet<>())
+                        .addAll(source.pointNames());
+            }
+            return result;
+        }
+        Set<String> pointNames = widget.getPoints().stream()
                 .map(PageWidgetPoint::getPointName)
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toCollection(LinkedHashSet::new),
-                        List::copyOf
-                ));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        for (PageWidgetDevice mapping : widget.getDevices()) {
+            result.put(mapping.getDevice().getId(), pointNames);
+        }
+        return result;
     }
 
     private List<Device> resolveDevices(PageWidget widget) {

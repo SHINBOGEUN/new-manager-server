@@ -11,20 +11,26 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart", "pue", "pue.pueDefinition",
+            "aggregate", "count", "chart", "pue", "pue.pueDefinition", "psychrometric", "psychrometric.sources", "psychrometric.sources.device",
+            "powerDistribution", "powerDistribution.groups", "powerDistribution.groups.sources", "powerDistribution.groups.sources.device",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
+            "lastSources", "lastSources.device", "lastSources.device.deviceModel",
+            "lastSources.device.deviceModel.deviceType", "lastSources.device.locationNode",
             "models"
     })
     Optional<PageWidget> findById(Integer id);
 
     @EntityGraph(attributePaths = {
             "pageCode", "pageCode.codeGroup", "points", "layout",
-            "aggregate", "count", "chart", "pue", "pue.pueDefinition",
+            "aggregate", "count", "chart", "pue", "pue.pueDefinition", "psychrometric", "psychrometric.sources", "psychrometric.sources.device",
+            "powerDistribution", "powerDistribution.groups", "powerDistribution.groups.sources", "powerDistribution.groups.sources.device",
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
+            "lastSources", "lastSources.device", "lastSources.device.deviceModel",
+            "lastSources.device.deviceModel.deviceType", "lastSources.device.locationNode",
             "models"
     })
     List<PageWidget> findAllByPageCode_IdOrderByIdAsc(Integer pageCodeId);

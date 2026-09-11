@@ -9,6 +9,8 @@ public record ChartSeriesResponse(
         Integer deviceId,
         String pointName,
         String locationNodeCode,
+        String unit,
+        String axis,
         List<Instant> times,
         List<Double> values
 ) {

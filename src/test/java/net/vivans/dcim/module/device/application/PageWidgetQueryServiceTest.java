@@ -65,11 +65,48 @@ class PageWidgetQueryServiceTest {
                 null, null, null, null, null,
                 "devices", "per_device", "today", "5m",
                 null, null, null,
-                List.of(7), List.of(), List.of("TOTAL_KWH"), null);
+                List.of(7), List.of(), List.of("TOTAL_KWH"), null, null);
 
         assertThatThrownBy(() -> service.createWidget(request))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("누적 ENERGY 측정항목은 차트에서 사용할 수 없습니다")
                 .hasMessageContaining("TOTAL_KWH");
+    }
+
+    @Test
+    void createChart_rejectsMoreThanTwoUnits() {
+        CommonCode pageCode = org.mockito.Mockito.mock(CommonCode.class);
+        Device device = org.mockito.Mockito.mock(Device.class);
+        DeviceModel model = org.mockito.Mockito.mock(DeviceModel.class);
+        DeviceModelSnmpPoint power = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
+        DeviceModelSnmpPoint temperature = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
+        DeviceModelSnmpPoint humidity = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
+
+        when(commonCodeRepository.findByCodeGroupGroupKeyAndCode("DEVICE_PAGE", "POWER"))
+                .thenReturn(Optional.of(pageCode));
+        when(pageCode.getId()).thenReturn(1);
+        when(pageWidgetRepository.existsByPageCodeIdAndName(1, "혼합 단위")).thenReturn(false);
+        when(deviceRepository.findById(7)).thenReturn(Optional.of(device));
+        when(device.getDeviceModel()).thenReturn(model);
+        when(model.getId()).thenReturn(3);
+        when(power.getName()).thenReturn("TOTAL_WT");
+        when(power.getUnit()).thenReturn("W");
+        when(temperature.getName()).thenReturn("IN_TEMP");
+        when(temperature.getUnit()).thenReturn("°C");
+        when(humidity.getName()).thenReturn("IN_HUM");
+        when(humidity.getUnit()).thenReturn("%");
+        when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(anyCollection()))
+                .thenReturn(List.of(power, temperature, humidity));
+
+        PageWidgetCreateRequest request = new PageWidgetCreateRequest(
+                "POWER", "혼합 단위", true, "chart",
+                null, null, null, null, null,
+                "devices", "per_device", "last_3d", "15m",
+                null, null, null,
+                List.of(7), List.of(), List.of("TOTAL_WT", "IN_TEMP", "IN_HUM"), null, null);
+
+        assertThatThrownBy(() -> service.createWidget(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("최대 두 단위");
     }
 }

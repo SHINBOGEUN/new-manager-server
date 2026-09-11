@@ -75,16 +75,24 @@ public class ChartQueryService {
                 .collect(Collectors.toMap(Device::getId, d -> d, (a, b) -> a, LinkedHashMap::new));
         List<String> queryPointNames = pointNames;
         ChartPointContext pointContext = buildPointContext(devices, pointNames);
-        String unit = resolveUnit(devices, queryPointNames);
+        ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames);
+        if (unitContext.units().size() > 2) {
+            throw new IllegalArgumentException("chart supports at most two units, but found: "
+                    + String.join(", ", unitContext.units()));
+        }
+        if (unitContext.units().size() > 1 && mode != PageWidgetChartSeriesMode.per_device) {
+            throw new IllegalArgumentException(
+                    "two-unit charts support only per_device series mode; select per_device to avoid summing different units");
+        }
 
         List<SeriesPoint> raw = pointQuery.findSeries(
                 deviceIds, queryPointNames, range.start(), range.end(), window);
 
         List<ChartSeriesResponse> series = switch (mode) {
-            case per_device -> buildPerDevice(raw, deviceById, queryPointNames, pointContext);
-            case sum -> buildSum(raw, deviceById, pointContext);
-            case by_phase -> buildByPhase(raw, deviceById, pointContext);
-            case by_path -> buildByPath(raw, deviceById, pointContext);
+            case per_device -> buildPerDevice(raw, deviceById, queryPointNames, pointContext, unitContext);
+            case sum -> buildSum(raw, deviceById, pointContext, unitContext);
+            case by_phase -> buildByPhase(raw, deviceById, pointContext, unitContext);
+            case by_path -> buildByPath(raw, deviceById, pointContext, unitContext);
         };
 
         PageWidgetChartScope scope = widget.getChartScope() == null
@@ -101,7 +109,8 @@ public class ChartQueryService {
                 window,
                 range.start(),
                 range.end(),
-                unit,
+                unitContext.singleUnit(),
+                unitContext.units(),
                 series
         );
     }
@@ -129,7 +138,8 @@ public class ChartQueryService {
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
             List<String> pointNames,
-            ChartPointContext context
+            ChartPointContext context,
+            ChartUnitContext unitContext
     ) {
         Map<String, List<SeriesPoint>> grouped = new LinkedHashMap<>();
         for (SeriesPoint point : raw) {
@@ -157,6 +167,8 @@ public class ChartQueryService {
                     device.getId(),
                     first.pointName(),
                     device.getLocationNode() == null ? null : device.getLocationNode().getCode(),
+                    unitContext.unitFor(first.deviceId(), first.pointName()),
+                    unitContext.axisFor(first.deviceId(), first.pointName()),
                     points
             ));
         }
@@ -167,7 +179,8 @@ public class ChartQueryService {
     private List<ChartSeriesResponse> buildSum(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
-            ChartPointContext context
+            ChartPointContext context,
+            ChartUnitContext unitContext
     ) {
         Map<Instant, Double> sums = new HashMap<>();
         for (SeriesPoint point : raw) {
@@ -176,13 +189,14 @@ public class ChartQueryService {
             }
             sums.merge(point.time(), point.value(), Double::sum);
         }
-        return List.of(toSeries("sum", "합계", null, null, null, fromInstantMap(sums)));
+        return List.of(toSeries("sum", "합계", null, null, null, unitContext.singleUnit(), "left", fromInstantMap(sums)));
     }
 
     private List<ChartSeriesResponse> buildByPhase(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
-            ChartPointContext context
+            ChartPointContext context,
+            ChartUnitContext unitContext
     ) {
         Map<String, Map<Instant, Double>> byPoint = new LinkedHashMap<>();
         Map<String, String> labels = new HashMap<>();
@@ -215,6 +229,7 @@ public class ChartQueryService {
         for (Map.Entry<String, Map<Instant, Double>> entry : byPoint.entrySet()) {
             series.add(toSeries(
                     entry.getKey(), labels.getOrDefault(entry.getKey(), entry.getKey()), null, entry.getKey(), null,
+                    unitContext.singleUnit(), "left",
                     fromInstantMap(entry.getValue())
             ));
         }
@@ -225,7 +240,8 @@ public class ChartQueryService {
     private List<ChartSeriesResponse> buildByPath(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
-            ChartPointContext context
+            ChartPointContext context,
+            ChartUnitContext unitContext
     ) {
         Map<String, Map<Instant, Double>> byPath = new LinkedHashMap<>();
         Map<String, String> labelByPath = new LinkedHashMap<>();
@@ -261,6 +277,8 @@ public class ChartQueryService {
                     null,
                     null,
                     "_none".equals(key) ? null : key,
+                    unitContext.singleUnit(),
+                    "left",
                     fromInstantMap(entry.getValue())
             ));
         }
@@ -349,6 +367,8 @@ public class ChartQueryService {
             Integer deviceId,
             String pointName,
             String locationNodeCode,
+            String unit,
+            String axis,
             List<SeriesPoint> points
     ) {
         List<SeriesPoint> sorted = new ArrayList<>(points);
@@ -359,7 +379,7 @@ public class ChartQueryService {
             times.add(point.time());
             values.add(point.value());
         }
-        return new ChartSeriesResponse(key, label, deviceId, pointName, locationNodeCode, times, values);
+        return new ChartSeriesResponse(key, label, deviceId, pointName, locationNodeCode, unit, axis, times, values);
     }
 
     private static List<SeriesPoint> fromInstantMap(Map<Instant, Double> map) {
@@ -390,27 +410,54 @@ public class ChartQueryService {
         return devices;
     }
 
-    private String resolveUnit(List<Device> devices, List<String> pointNames) {
+    private ChartUnitContext buildUnitContext(List<Device> devices, List<String> pointNames) {
         Set<Integer> modelIds = devices.stream()
                 .map(d -> d.getDeviceModel().getId())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        String unit = null;
+        Map<Integer, Map<String, String>> unitsByModel = new HashMap<>();
+        LinkedHashSet<String> units = new LinkedHashSet<>();
         for (DeviceModelSnmpPoint point : deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
             if (!pointNames.contains(point.getName())) {
                 continue;
             }
             String candidate = blankToNull(point.getUnit());
-            if (candidate == null) {
-                continue;
-            }
-            if (unit == null) {
-                unit = candidate;
-            } else if (!unit.equals(candidate)) {
-                throw new IllegalArgumentException(
-                        "chart points must share the same unit, but found " + unit + " and " + candidate);
+            if (candidate != null) {
+                Integer modelId = point.getModelProtocol().getDeviceModel().getId();
+                unitsByModel.computeIfAbsent(modelId, ignored -> new HashMap<>()).put(point.getName(), candidate);
             }
         }
-        return unit;
+        Map<String, String> unitsBySource = new HashMap<>();
+        for (Device device : devices) {
+            Map<String, String> byPoint = unitsByModel.getOrDefault(device.getDeviceModel().getId(), Map.of());
+            for (String pointName : pointNames) {
+                String unit = byPoint.get(pointName);
+                if (unit != null) {
+                    unitsBySource.put(sourceKey(device.getId(), pointName), unit);
+                    units.add(unit);
+                }
+            }
+        }
+        return new ChartUnitContext(unitsBySource, List.copyOf(units));
+    }
+
+    private static String sourceKey(int deviceId, String pointName) {
+        return deviceId + "\u0000" + pointName;
+    }
+
+    private record ChartUnitContext(Map<String, String> unitsBySource, List<String> units) {
+
+        String unitFor(int deviceId, String pointName) {
+            return unitsBySource.get(sourceKey(deviceId, pointName));
+        }
+
+        String axisFor(int deviceId, String pointName) {
+            String unit = unitFor(deviceId, pointName);
+            return units.size() == 2 && unit != null && unit.equals(units.get(1)) ? "right" : "left";
+        }
+
+        String singleUnit() {
+            return units.size() == 1 ? units.get(0) : null;
+        }
     }
 
     private static PageWidgetChartRangePreset resolvePreset(PageWidget widget, String override) {
@@ -461,6 +508,7 @@ public class ChartQueryService {
                 start,
                 end,
                 unit,
+                unit == null ? List.of() : List.of(unit),
                 List.of()
         );
     }

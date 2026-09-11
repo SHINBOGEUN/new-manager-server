@@ -20,6 +20,7 @@ import net.vivans.dcim.module.query.api.dto.PueSourceRequest;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.PueLastPoint;
+import net.vivans.dcim.module.query.domain.PueSeriesPoint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -200,6 +201,49 @@ class PueQueryServiceTest {
         assertThat(response.calculationStatus()).isEqualTo("STALE_DATA");
         assertThat(response.staleDeviceIds()).containsExactly(1, 10);
         assertThat(response.missingDeviceIds()).containsExactly(1, 10);
+    }
+
+    @Test
+    void savedWidgetReturnsStoredPueTrendWhenRangeIsRequested() {
+        Device total = device(1, 101);
+        Device cooler = device(10, 110);
+        PueDefinitionSource totalSource = pueSource(total, "TOTAL_WT", PueDefinitionSourceRole.total);
+        PueDefinitionSource coolerSource = pueSource(cooler, "POWER", PueDefinitionSourceRole.cooler);
+        PueDefinition definition = mock(PueDefinition.class);
+        PageWidgetPue pue = mock(PageWidgetPue.class);
+        PageWidget widget = mock(PageWidget.class);
+        when(pageWidgetRepository.findById(30)).thenReturn(Optional.of(widget));
+        when(widget.getQueryKind()).thenReturn(PageWidgetQueryKind.pue);
+        when(widget.isEnabled()).thenReturn(true);
+        when(widget.getPueDefinitionId()).thenReturn(1);
+        when(widget.getPueRangePreset()).thenReturn(
+                net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset.last_24h);
+        when(widget.getPueFreshnessMinutes()).thenReturn(15);
+        when(widget.getPue()).thenReturn(pue);
+        when(pue.getPueDefinition()).thenReturn(definition);
+        when(definition.getId()).thenReturn(1);
+        when(definition.getSources()).thenReturn(java.util.Set.of(totalSource, coolerSource));
+        when(deviceRepository.findById(1)).thenReturn(Optional.of(total));
+        when(deviceRepository.findById(10)).thenReturn(Optional.of(cooler));
+        DeviceModelSnmpPoint totalPoint = point(101, "TOTAL_WT", "W", "POWER");
+        DeviceModelSnmpPoint coolerPoint = point(110, "POWER", "W", "POWER");
+        when(deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(any()))
+                .thenReturn(List.of(totalPoint, coolerPoint));
+        when(pointQuery.findLastPue(any(), any())).thenReturn(Optional.of(
+                new PueLastPoint(3.0, 150.0, 50.0, Instant.now())
+        ));
+        when(pointQuery.findPueSeries(any(), any(), any(), any())).thenReturn(List.of(
+                new PueSeriesPoint(3.0, 150.0, 50.0, VALUE_TIME),
+                new PueSeriesPoint(2.8, 140.0, 50.0, VALUE_TIME.plusSeconds(900))
+        ));
+
+        PueQueryResponse response = service.getPue(30, "last_3d", "15m");
+
+        assertThat(response.rangePreset()).isEqualTo("last_3d");
+        assertThat(response.trend()).hasSize(2);
+        assertThat(response.trend().get(0).value()).isEqualByComparingTo("3.0000");
+        assertThat(response.trend().get(0).totalPower()).isEqualByComparingTo("150.00");
+        assertThat(response.trend().get(0).coolerPower()).isEqualByComparingTo("50.00");
     }
 
     private void prepareDevicesAndPowerPoints() {

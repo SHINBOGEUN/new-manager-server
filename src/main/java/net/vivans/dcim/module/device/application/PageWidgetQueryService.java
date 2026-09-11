@@ -7,9 +7,17 @@ import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetLastSourceRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueSourceRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricSourceRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionCreateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionGroupRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionSourceRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -21,6 +29,9 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetChartSeriesMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetCountMode;
 import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
+import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometric;
+import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSourceRole;
+import net.vivans.dcim.module.device.domain.model.PageWidgetPowerDistribution;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
@@ -90,11 +101,32 @@ public class PageWidgetQueryService {
             applyLayout(widget, request.layout());
             return PageWidgetResponse.from(pageWidgetRepository.save(widget));
         }
+        if (kind == PageWidgetQueryKind.psychrometric) {
+            throw new IllegalArgumentException("psychrometric widget must be created with /widgets/psychrometric");
+        }
+        if (kind == PageWidgetQueryKind.power_distribution) {
+            throw new IllegalArgumentException("power distribution widget must be created with /widgets/power-distribution");
+        }
+        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("lastSources is only allowed for last");
+        }
+        if (kind == PageWidgetQueryKind.last && request.lastSources() != null) {
+            List<PageWidget.LastSourceDefinition> lastSources = resolveLastSources(request.lastSources());
+            PageWidget widget = PageWidget.createLast(
+                    pageCode,
+                    request.name(),
+                    request.enabled() == null || request.enabled(),
+                    lastSources
+            );
+            applyLayout(widget, request.layout());
+            return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+        }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
         List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
-        validateChartPoints(kind, request.pointNames(), devices, modelIds);
+        PageWidgetChartSeriesMode chartSeriesMode = PageWidgetChartSeriesMode.from(request.chartSeriesMode());
+        validateChartPoints(kind, request.pointNames(), devices, modelIds, chartSeriesMode);
         PageWidget widget = PageWidget.create(
                 pageCode,
                 request.name(),
@@ -106,7 +138,7 @@ public class PageWidgetQueryService {
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
                 PageWidgetChartScope.from(request.chartScope()),
-                PageWidgetChartSeriesMode.from(request.chartSeriesMode()),
+                chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
@@ -170,6 +202,86 @@ public class PageWidgetQueryService {
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 
+    @Transactional
+    public PageWidgetResponse createPsychrometricWidget(PageWidgetPsychrometricCreateRequest request) {
+        CommonCode pageCode = findPageCode(request.pageCode());
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndName(pageCode.getId(), name)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        List<PageWidgetPsychrometric.SourceDefinition> sources = new ArrayList<>();
+        addPsychrometricSources(sources, request.temperatureSources(), PageWidgetPsychrometricSourceRole.temperature);
+        addPsychrometricSources(sources, request.humiditySources(), PageWidgetPsychrometricSourceRole.humidity);
+        if (sources.size() > 200) {
+            throw new IllegalArgumentException("psychrometric supports at most 200 sources");
+        }
+        PageWidget widget = PageWidget.createPsychrometric(
+                pageCode,
+                name,
+                request.enabled() == null || request.enabled(),
+                sources
+        );
+        applyLayout(widget, request.layout());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse updatePsychrometricWidget(Integer id, PageWidgetPsychrometricUpdateRequest request) {
+        PageWidget widget = findWidget(id);
+        if (widget.getQueryKind() != PageWidgetQueryKind.psychrometric) {
+            throw new IllegalArgumentException("queryKind must be psychrometric");
+        }
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndNameAndIdNot(widget.getPageCode().getId(), name, id)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        List<PageWidgetPsychrometric.SourceDefinition> sources = new ArrayList<>();
+        addPsychrometricSources(sources, request.temperatureSources(), PageWidgetPsychrometricSourceRole.temperature);
+        addPsychrometricSources(sources, request.humiditySources(), PageWidgetPsychrometricSourceRole.humidity);
+        if (sources.size() > 200) {
+            throw new IllegalArgumentException("psychrometric supports at most 200 sources");
+        }
+        widget.updatePsychrometric(
+                name,
+                request.enabled() == null ? widget.isEnabled() : request.enabled(),
+                sources
+        );
+        if (request.layout() != null) {
+            applyLayout(widget, request.layout());
+        }
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse createPowerDistributionWidget(PageWidgetPowerDistributionCreateRequest request) {
+        CommonCode pageCode = findPageCode(request.pageCode());
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndName(pageCode.getId(), name)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        PageWidget widget = PageWidget.createPowerDistribution(
+                pageCode, name, request.enabled() == null || request.enabled(),
+                resolvePowerDistributionGroups(request.groups()));
+        applyLayout(widget, request.layout());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse updatePowerDistributionWidget(Integer id, PageWidgetPowerDistributionUpdateRequest request) {
+        PageWidget widget = findWidget(id);
+        if (widget.getQueryKind() != PageWidgetQueryKind.power_distribution) {
+            throw new IllegalArgumentException("queryKind must be power_distribution");
+        }
+        String name = request.name().trim();
+        if (pageWidgetRepository.existsByPageCodeIdAndNameAndIdNot(widget.getPageCode().getId(), name, id)) {
+            throw new ConflictException(DUPLICATE_NAME_MESSAGE);
+        }
+        widget.updatePowerDistribution(name, request.enabled() == null ? widget.isEnabled() : request.enabled(),
+                resolvePowerDistributionGroups(request.groups()));
+        if (request.layout() != null) applyLayout(widget, request.layout());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
     private void validatePuePoints(List<PueDefinition.SourceDefinition> sources) {
         Set<Integer> modelIds = new LinkedHashSet<>();
         for (var source : sources) modelIds.add(source.device().getDeviceModel().getId());
@@ -213,6 +325,96 @@ public class PageWidgetQueryService {
         }
     }
 
+    private void addPsychrometricSources(
+            List<PageWidgetPsychrometric.SourceDefinition> target,
+            List<PageWidgetPsychrometricSourceRequest> requests,
+            PageWidgetPsychrometricSourceRole role
+    ) {
+        if (requests == null) {
+            return;
+        }
+        for (PageWidgetPsychrometricSourceRequest source : requests) {
+            Device device = deviceRepository.findById(source.deviceId())
+                    .orElseThrow(() -> new EntityNotFoundException("Device not found: " + source.deviceId()));
+            if (!device.isEnabled()) {
+                throw new IllegalArgumentException("psychrometric source device is disabled: " + source.deviceId());
+            }
+            target.add(new PageWidgetPsychrometric.SourceDefinition(device, role, source.pointName()));
+        }
+    }
+
+    private List<PageWidgetPowerDistribution.GroupDefinition> resolvePowerDistributionGroups(
+            List<PageWidgetPowerDistributionGroupRequest> requests
+    ) {
+        if (requests == null || requests.size() < 2) {
+            throw new IllegalArgumentException("power distribution requires at least two groups");
+        }
+        if (requests.size() > 12) throw new IllegalArgumentException("power distribution supports at most 12 groups");
+
+        List<PageWidgetPowerDistribution.GroupDefinition> groups = new ArrayList<>();
+        Set<String> uniqueNames = new LinkedHashSet<>();
+        Set<String> uniqueSources = new LinkedHashSet<>();
+        Set<Integer> modelIds = new LinkedHashSet<>();
+        List<ResolvedPowerSource> resolvedSources = new ArrayList<>();
+        for (PageWidgetPowerDistributionGroupRequest group : requests) {
+            if (group == null || group.name() == null || group.name().isBlank()) {
+                throw new IllegalArgumentException("power distribution group name is required");
+            }
+            String groupName = group.name().trim();
+            if (!uniqueNames.add(groupName.toUpperCase(Locale.ROOT))) {
+                throw new IllegalArgumentException("power distribution group names must be unique");
+            }
+            if (group.sources() == null || group.sources().isEmpty()) {
+                throw new IllegalArgumentException("power distribution group sources are required: " + groupName);
+            }
+            List<PageWidgetPowerDistribution.SourceDefinition> sources = new ArrayList<>();
+            for (PageWidgetPowerDistributionSourceRequest source : group.sources()) {
+                if (source == null || source.deviceId() == null || source.deviceId() <= 0
+                        || source.pointName() == null || source.pointName().isBlank()) {
+                    throw new IllegalArgumentException("power distribution source is invalid: " + groupName);
+                }
+                Device device = deviceRepository.findById(source.deviceId())
+                        .orElseThrow(() -> new EntityNotFoundException("Device not found: " + source.deviceId()));
+                if (!device.isEnabled()) {
+                    throw new IllegalArgumentException("power distribution source device is disabled: " + source.deviceId());
+                }
+                String pointName = source.pointName().trim();
+                String sourceKey = device.getId() + "\u0000" + pointName.toUpperCase(Locale.ROOT);
+                if (!uniqueSources.add(sourceKey)) {
+                    throw new IllegalArgumentException("a power source can belong to only one group: device "
+                            + device.getId() + ", point " + pointName);
+                }
+                modelIds.add(device.getDeviceModel().getId());
+                resolvedSources.add(new ResolvedPowerSource(groupName, device, pointName));
+                sources.add(new PageWidgetPowerDistribution.SourceDefinition(device, pointName));
+            }
+            groups.add(new PageWidgetPowerDistribution.GroupDefinition(groupName, group.color(), sources));
+        }
+
+        Map<String, DeviceModelSnmpPoint> catalog = new HashMap<>();
+        for (DeviceModelSnmpPoint point : deviceModelSnmpPointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
+            catalog.put(point.getModelProtocol().getDeviceModel().getId() + "|"
+                    + point.getName().toUpperCase(Locale.ROOT), point);
+        }
+        for (ResolvedPowerSource source : resolvedSources) {
+            DeviceModelSnmpPoint point = catalog.get(source.device().getDeviceModel().getId() + "|"
+                    + source.pointName().toUpperCase(Locale.ROOT));
+            if (point == null || point.getDataPointType() == null
+                    || !"POWER".equalsIgnoreCase(point.getDataPointType().getCode())) {
+                throw new IllegalArgumentException("power distribution source must be an enabled POWER point: device "
+                        + source.device().getId() + ", point " + source.pointName());
+            }
+            if (!"W".equalsIgnoreCase(point.getUnit() == null ? "" : point.getUnit().trim())) {
+                throw new IllegalArgumentException("power distribution source unit must be W: device "
+                        + source.device().getId() + ", point " + source.pointName());
+            }
+        }
+        return groups;
+    }
+
+    private record ResolvedPowerSource(String groupName, Device device, String pointName) {
+    }
+
     private PueDefinition findPueDefinition(Integer id) {
         if (id == null) throw new IllegalArgumentException("pueDefinitionId is required for PUE widget");
         return pueDefinitionRepository.findById(id)
@@ -245,11 +447,41 @@ public class PageWidgetQueryService {
             }
             return PageWidgetResponse.from(pageWidgetRepository.save(widget));
         }
+        if (kind == PageWidgetQueryKind.psychrometric) {
+            if (widget.getQueryKind() != PageWidgetQueryKind.psychrometric) {
+                throw new IllegalArgumentException("psychrometric widget type cannot be changed from another widget type");
+            }
+            throw new IllegalArgumentException("psychrometric widget must be updated with /widgets/{id}/psychrometric");
+        }
+        if (kind == PageWidgetQueryKind.power_distribution) {
+            if (widget.getQueryKind() != PageWidgetQueryKind.power_distribution) {
+                throw new IllegalArgumentException("power distribution widget type cannot be changed from another widget type");
+            }
+            throw new IllegalArgumentException("power distribution widget must be updated with /widgets/{id}/power-distribution");
+        }
+        if (widget.getQueryKind() == PageWidgetQueryKind.psychrometric) {
+            throw new IllegalArgumentException("psychrometric widget must be updated with /widgets/{id}/psychrometric");
+        }
+        if (widget.getQueryKind() == PageWidgetQueryKind.power_distribution) {
+            throw new IllegalArgumentException("power distribution widget must be updated with /widgets/{id}/power-distribution");
+        }
+        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("lastSources is only allowed for last");
+        }
+        if (kind == PageWidgetQueryKind.last && request.lastSources() != null) {
+            List<PageWidget.LastSourceDefinition> lastSources = resolveLastSources(request.lastSources());
+            widget.updateLast(name, request.enabled() == null ? widget.isEnabled() : request.enabled(), lastSources);
+            if (request.layout() != null) {
+                applyLayout(widget, request.layout());
+            }
+            return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+        }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
         List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
-        validateChartPoints(kind, request.pointNames(), devices, modelIds);
+        PageWidgetChartSeriesMode chartSeriesMode = PageWidgetChartSeriesMode.from(request.chartSeriesMode());
+        validateChartPoints(kind, request.pointNames(), devices, modelIds, chartSeriesMode);
         widget.update(
                 name,
                 enabled,
@@ -260,7 +492,7 @@ public class PageWidgetQueryService {
                 PageWidgetCountMode.from(request.countMode()),
                 request.countModelId(),
                 PageWidgetChartScope.from(request.chartScope()),
-                PageWidgetChartSeriesMode.from(request.chartSeriesMode()),
+                chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
                 request.pointNames(),
@@ -309,7 +541,8 @@ public class PageWidgetQueryService {
             PageWidgetOp op
     ) {
         if (deviceIds == null || deviceIds.isEmpty()) {
-            if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
+            if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue
+                    || queryKind == PageWidgetQueryKind.psychrometric) {
                 return List.of();
             }
             if (queryKind == PageWidgetQueryKind.chart
@@ -342,11 +575,45 @@ public class PageWidgetQueryService {
         return devices;
     }
 
+    private List<PageWidget.LastSourceDefinition> resolveLastSources(
+            List<PageWidgetLastSourceRequest> requests
+    ) {
+        if (requests == null || requests.isEmpty()) {
+            throw new IllegalArgumentException("lastSources is required for last");
+        }
+        List<PageWidget.LastSourceDefinition> sources = new ArrayList<>();
+        int pointCount = 0;
+        for (PageWidgetLastSourceRequest request : requests) {
+            if (request == null || request.deviceId() == null || request.deviceId() <= 0) {
+                throw new IllegalArgumentException("lastSources deviceId is required");
+            }
+            Device device = deviceRepository.findById(request.deviceId())
+                    .orElseThrow(() -> new EntityNotFoundException("Device not found: " + request.deviceId()));
+            if (request.pointNames() == null || request.pointNames().isEmpty()) {
+                throw new IllegalArgumentException("lastSources pointNames is required: device " + request.deviceId());
+            }
+            List<String> pointNames = new ArrayList<>();
+            for (String pointName : request.pointNames()) {
+                if (pointName == null || pointName.isBlank()) {
+                    throw new IllegalArgumentException("lastSources pointName is required: device " + request.deviceId());
+                }
+                pointNames.add(pointName.trim());
+                pointCount++;
+            }
+            sources.add(new PageWidget.LastSourceDefinition(device, pointNames));
+        }
+        if (pointCount > 500) {
+            throw new IllegalArgumentException("last supports at most 500 device-point selections");
+        }
+        return sources;
+    }
+
     private void validateChartPoints(
             PageWidgetQueryKind kind,
             List<String> pointNames,
             List<Device> devices,
-            List<Integer> modelIds
+            List<Integer> modelIds,
+            PageWidgetChartSeriesMode chartSeriesMode
     ) {
         if (kind != PageWidgetQueryKind.chart || pointNames == null || pointNames.isEmpty()) {
             return;
@@ -375,10 +642,14 @@ public class PageWidgetQueryService {
                 units.add(unit.trim());
             }
         }
-        if (units.size() > 1) {
+        if (units.size() > 2) {
             throw new IllegalArgumentException(
-                    "하나의 차트에는 같은 단위의 측정항목만 사용할 수 있습니다. 선택된 단위: "
+                    "하나의 차트에는 최대 두 단위의 측정항목만 사용할 수 있습니다. 선택된 단위: "
                             + String.join(", ", units));
+        }
+        if (units.size() > 1 && chartSeriesMode != null && chartSeriesMode != PageWidgetChartSeriesMode.per_device) {
+            throw new IllegalArgumentException(
+                    "두 단위 차트는 서로 다른 단위를 합산할 수 없으므로 장비별(per_device) 표시 방식만 사용할 수 있습니다");
         }
     }
 

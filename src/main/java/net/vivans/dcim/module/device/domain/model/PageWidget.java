@@ -55,7 +55,7 @@ public class PageWidget extends BaseEntity {
     private boolean enabled;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "query_kind", nullable = false, length = 16)
+    @Column(name = "query_kind", nullable = false, length = 32)
     private PageWidgetQueryKind queryKind;
 
     @Enumerated(EnumType.STRING)
@@ -74,6 +74,12 @@ public class PageWidget extends BaseEntity {
     @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private PageWidgetPue pue;
 
+    @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private PageWidgetPsychrometric psychrometric;
+
+    @OneToOne(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private PageWidgetPowerDistribution powerDistribution;
+
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private final List<PageWidgetPoint> points = new ArrayList<>();
@@ -82,6 +88,11 @@ public class PageWidget extends BaseEntity {
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private final Set<PageWidgetDevice> devices = new LinkedHashSet<>();
+
+    /** latest 위젯에서 장비마다 서로 다른 측정항목을 선택하는 매핑 */
+    @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private final Set<PageWidgetLastSource> lastSources = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
@@ -146,6 +157,41 @@ public class PageWidget extends BaseEntity {
         return widget;
     }
 
+    public static PageWidget createLast(
+            CommonCode pageCode,
+            String name,
+            boolean enabled,
+            List<LastSourceDefinition> sources
+    ) {
+        PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.last, null);
+        widget.syncKindConfig(null, null, null, null, null, null, null, null);
+        widget.replaceLastSources(sources);
+        widget.validateBindings();
+        return widget;
+    }
+
+    public static PageWidget createPsychrometric(
+            CommonCode pageCode,
+            String name,
+            boolean enabled,
+            List<PageWidgetPsychrometric.SourceDefinition> sources
+    ) {
+        PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.psychrometric, null);
+        widget.psychrometric = PageWidgetPsychrometric.create(widget, sources);
+        return widget;
+    }
+
+    public static PageWidget createPowerDistribution(
+            CommonCode pageCode,
+            String name,
+            boolean enabled,
+            List<PageWidgetPowerDistribution.GroupDefinition> groups
+    ) {
+        PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.power_distribution, null);
+        widget.powerDistribution = PageWidgetPowerDistribution.create(widget, groups);
+        return widget;
+    }
+
     public void update(
             String name,
             boolean enabled,
@@ -173,6 +219,17 @@ public class PageWidget extends BaseEntity {
         syncKindConfig(op, aggregateRangePreset, countMode, countModelId,
                 chartScope, chartSeriesMode, chartRangePreset, chartWindow);
         applyBindings(pointNames, devices, itDevices, modelIds);
+    }
+
+    public void updateLast(String name, boolean enabled, List<LastSourceDefinition> sources) {
+        validateName(name);
+        this.name = name.trim();
+        this.enabled = enabled;
+        this.queryKind = PageWidgetQueryKind.last;
+        this.groupBy = null;
+        syncKindConfig(null, null, null, null, null, null, null, null);
+        replaceLastSources(sources);
+        validateBindings();
     }
 
     public PageWidgetOp getOp() {
@@ -216,6 +273,20 @@ public class PageWidget extends BaseEntity {
     }
     public Integer getPueDefinitionId() { return pue == null ? null : pue.getPueDefinition().getId(); }
 
+    public void updatePsychrometric(
+            String name,
+            boolean enabled,
+            List<PageWidgetPsychrometric.SourceDefinition> sources
+    ) {
+        if (queryKind != PageWidgetQueryKind.psychrometric || psychrometric == null) {
+            throw new IllegalArgumentException("queryKind must be psychrometric");
+        }
+        validateName(name);
+        this.name = name.trim();
+        this.enabled = enabled;
+        psychrometric.update(sources);
+    }
+
     public void updatePue(
             String name,
             boolean enabled,
@@ -230,6 +301,20 @@ public class PageWidget extends BaseEntity {
         this.name = name.trim();
         this.enabled = enabled;
         pue.update(pueDefinition, rangePreset, freshnessMinutes);
+    }
+
+    public void updatePowerDistribution(
+            String name,
+            boolean enabled,
+            List<PageWidgetPowerDistribution.GroupDefinition> groups
+    ) {
+        if (queryKind != PageWidgetQueryKind.power_distribution || powerDistribution == null) {
+            throw new IllegalArgumentException("queryKind must be power_distribution");
+        }
+        validateName(name);
+        this.name = name.trim();
+        this.enabled = enabled;
+        powerDistribution.update(groups);
     }
 
     public void setEnabled(boolean enabled) {
@@ -275,6 +360,33 @@ public class PageWidget extends BaseEntity {
         return ids;
     }
 
+    /**
+     * 최신값 위젯의 장비별 포인트 선택. 기존 위젯은 deviceIds × pointNames 조합으로 호환 처리한다.
+     */
+    public List<LastSourceDefinition> lastSourceDefinitions() {
+        if (!lastSources.isEmpty()) {
+            java.util.Map<Integer, LastSourceDefinition> grouped = new java.util.LinkedHashMap<>();
+            for (PageWidgetLastSource source : lastSources) {
+                Device device = source.getDevice();
+                LastSourceDefinition current = grouped.get(device.getId());
+                if (current == null) {
+                    grouped.put(device.getId(), new LastSourceDefinition(device,
+                            new ArrayList<>(List.of(source.getPointName()))));
+                } else {
+                    current.pointNames().add(source.getPointName());
+                }
+            }
+            return grouped.values().stream()
+                    .map(source -> new LastSourceDefinition(source.device(), List.copyOf(source.pointNames())))
+                    .toList();
+        }
+        List<String> names = pointNames();
+        return devices.stream()
+                .filter(mapping -> mapping.getDeviceRole() != PageWidgetDeviceRole.IT)
+                .map(mapping -> new LastSourceDefinition(mapping.getDevice(), names))
+                .toList();
+    }
+
     private void syncKindConfig(
             PageWidgetOp op,
             PageWidgetChartRangePreset aggregateRangePreset,
@@ -296,6 +408,15 @@ public class PageWidget extends BaseEntity {
         }
         if (queryKind != PageWidgetQueryKind.pue) {
             this.pue = null;
+        }
+        if (queryKind != PageWidgetQueryKind.psychrometric) {
+            this.psychrometric = null;
+        }
+        if (queryKind != PageWidgetQueryKind.power_distribution) {
+            this.powerDistribution = null;
+        }
+        if (queryKind != PageWidgetQueryKind.last) {
+            this.lastSources.clear();
         }
 
         switch (queryKind) {
@@ -333,7 +454,8 @@ public class PageWidget extends BaseEntity {
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
-        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
+        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue
+                || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.power_distribution) {
             replacePoints(List.of());
             replaceDevices(List.of(), List.of());
             replaceModels(List.of());
@@ -347,6 +469,7 @@ public class PageWidget extends BaseEntity {
             replaceDevices(devices, itDevices);
             replaceModels(List.of());
         } else {
+            this.lastSources.clear();
             replacePoints(pointNames);
             replaceDevices(devices, List.of());
             replaceModels(List.of());
@@ -388,6 +511,43 @@ public class PageWidget extends BaseEntity {
         }
     }
 
+    private void replaceLastSources(List<LastSourceDefinition> sources) {
+        this.lastSources.clear();
+        if (sources == null || sources.isEmpty()) {
+            throw new IllegalArgumentException("lastSources is required for last");
+        }
+        List<Device> selectedDevices = new ArrayList<>();
+        List<String> selectedPointNames = new ArrayList<>();
+        Set<String> unique = new LinkedHashSet<>();
+        for (LastSourceDefinition source : sources) {
+            if (source == null) {
+                continue;
+            }
+            requireDevice(source.device());
+            if (source.pointNames() == null || source.pointNames().isEmpty()) {
+                throw new IllegalArgumentException("pointNames is required for last source");
+            }
+            selectedDevices.add(source.device());
+            for (String pointName : source.pointNames()) {
+                if (pointName == null || pointName.isBlank()) {
+                    throw new IllegalArgumentException("pointName is required for last source");
+                }
+                String normalized = pointName.trim();
+                String key = source.device().getId() + "\u0000" + normalized;
+                if (unique.add(key)) {
+                    this.lastSources.add(PageWidgetLastSource.create(this, source.device(), normalized));
+                    selectedPointNames.add(normalized);
+                }
+            }
+        }
+        if (this.lastSources.isEmpty()) {
+            throw new IllegalArgumentException("lastSources is required for last");
+        }
+        replacePoints(selectedPointNames);
+        replaceDevices(selectedDevices, List.of());
+        replaceModels(List.of());
+    }
+
     private static void requireDevice(Device device) {
         if (device == null || device.getId() == null) {
             throw new IllegalArgumentException("deviceId is required");
@@ -411,7 +571,8 @@ public class PageWidget extends BaseEntity {
     }
 
     private void validateBindings() {
-        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue) {
+        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue
+                || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.power_distribution) {
             return;
         }
         if (queryKind == PageWidgetQueryKind.chart) {
@@ -495,5 +656,8 @@ public class PageWidget extends BaseEntity {
         if (queryKind == null) {
             throw new IllegalArgumentException("queryKind is required");
         }
+    }
+
+    public record LastSourceDefinition(Device device, List<String> pointNames) {
     }
 }
