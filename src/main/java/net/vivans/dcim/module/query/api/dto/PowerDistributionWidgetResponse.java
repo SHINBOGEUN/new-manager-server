@@ -8,6 +8,7 @@ public record PowerDistributionWidgetResponse(
         String title,
         BigDecimal totalPowerW,
         boolean complete,
-        List<PowerDistributionGroupValueResponse> groups
+        List<PowerDistributionGroupValueResponse> groups,
+        WidgetDataStatusResponse dataStatus
 ) {
 }

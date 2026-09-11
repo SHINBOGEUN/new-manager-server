@@ -14,12 +14,15 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.query.api.dto.AggregateDeviceValueResponse;
 import net.vivans.dcim.module.query.api.dto.AggregateWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -37,6 +40,7 @@ public class AggregateQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public AggregateWidgetResponse getAggregate(Integer widgetId, String rangePresetOverride) {
         PageWidget widget = findAggregateWidget(widgetId);
@@ -47,10 +51,11 @@ public class AggregateQueryService {
         PageWidgetChartRangePreset rangePreset = resolvePreset(widget, preset, rangePresetOverride);
         QueryRanges.Range range = QueryRanges.resolve(rangePreset);
 
-        return switch (preset) {
+        AggregateWidgetResponse response = switch (preset) {
             case usage -> computeUsage(widget, preset, rangePreset, range);
             case power -> computePower(widget, preset, rangePreset, range);
         };
+        return withDataStatus(widget, response);
     }
 
     private AggregateWidgetResponse computeUsage(
@@ -301,8 +306,31 @@ public class AggregateQueryService {
                 QueryValues.round2(value),
                 unit,
                 devices.size(),
-                List.copyOf(devices)
+                List.copyOf(devices),
+                null
         );
+    }
+
+    private AggregateWidgetResponse withDataStatus(PageWidget widget, AggregateWidgetResponse response) {
+        String pointName = widget.pointNames().isEmpty() ? null : widget.pointNames().get(0);
+        List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
+        Map<String, LastPoint> latestBySource = new HashMap<>();
+        if (pointName != null && !devices.isEmpty()) {
+            List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
+            for (LastPoint point : pointQuery.findLast(deviceIds, List.of(pointName), Duration.ofHours(24))) {
+                latestBySource.put(key(point.deviceId(), point.pointName()), point);
+            }
+        }
+        List<Instant> collectedTimes = devices.stream()
+                .map(device -> latestBySource.get(key(device.getId(), pointName)))
+                .map(point -> point == null ? null : point.time())
+                .toList();
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
+        return new AggregateWidgetResponse(
+                response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
+                response.rangePreset(), response.start(), response.end(), response.value(), response.unit(),
+                response.contributingDevices(), response.devices(), dataStatus);
     }
 
     private static String blankToNull(String value) {

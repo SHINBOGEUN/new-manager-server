@@ -10,6 +10,7 @@ import java.util.List;
 public record PageWidgetPsychrometricUpdateRequest(
         @NotBlank(message = "name is required") @Size(max = 100) String name,
         Boolean enabled,
+        Integer dataFreshnessMinutes,
         @NotEmpty(message = "temperatureSources is required") List<@Valid PageWidgetPsychrometricSourceRequest> temperatureSources,
         @NotEmpty(message = "humiditySources is required") List<@Valid PageWidgetPsychrometricSourceRequest> humiditySources,
         @Valid PageWidgetLayoutRequest layout

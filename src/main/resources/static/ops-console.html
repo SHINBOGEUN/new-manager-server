@@ -773,6 +773,13 @@
               </div>
             </label>
           </div>
+
+          <div id="wDataFreshnessBlock" class="fields" style="margin-top:14px">
+            <label class="field">데이터 최신성 기준 (분)
+              <input id="wDataFreshnessMinutes" type="number" min="1" max="1440" value="15" />
+            </label>
+            <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">이 시간이 지나면 위젯에 수집 지연 상태로 표시됩니다.</div>
+          </div>
           <button type="button" class="primary" style="margin-top:12px" id="taskCreate">만들고 collector에 반영</button>
           <details class="raw"><summary>응답 상세</summary><pre id="taskOut"></pre></details>
         </div>
@@ -2565,6 +2572,7 @@
       $("wPueBlock").style.display = kind === "pue" ? "block" : "none";
       $("wPsychrometricBlock").style.display = kind === "psychrometric" ? "block" : "none";
       $("wPowerDistributionBlock").style.display = kind === "power_distribution" ? "block" : "none";
+      $("wDataFreshnessBlock").style.display = kind !== "count" && kind !== "pue" ? "grid" : "none";
       arrangeWidgetForm(kind);
       const pointStepLabel = $("wPointsBlock")?.querySelector(":scope > .muted");
       if (pointStepLabel) pointStepLabel.textContent = kind === "aggregate"
@@ -4275,6 +4283,7 @@
       $("wChartWindow").value = "5m";
       $("wPueRangePreset").value = "last_24h";
       $("wPueFreshnessMinutes").value = "15";
+      $("wDataFreshnessMinutes").value = "15";
       $("wPueDefinition").value = "";
       $("wOp").value = "";
       if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
@@ -4316,6 +4325,7 @@
         if (w.pueDefinitionId != null) $("wPueDefinition").value = String(w.pueDefinitionId);
         if (w.pueRangePreset) $("wPueRangePreset").value = w.pueRangePreset;
         if (w.pueFreshnessMinutes) $("wPueFreshnessMinutes").value = String(w.pueFreshnessMinutes);
+        if (w.dataFreshnessMinutes) $("wDataFreshnessMinutes").value = String(w.dataFreshnessMinutes);
         if (w.op) $("wOp").value = w.op;
         if (w.aggregateRangePreset && $("wAggRangePreset")) $("wAggRangePreset").value = w.aggregateRangePreset;
         state.lastWidgetSources = (w.lastSources || []).map((source) => ({
@@ -5070,6 +5080,7 @@
             pageCode: $("wCreatePage").value,
             name,
             enabled: state.editingWidgetId ? state.editingEnabled : true,
+            dataFreshnessMinutes: Number($("wDataFreshnessMinutes").value) || 15,
             groups: state.powerDistributionGroups.map((group) => ({
               name: group.name,
               color: group.color,
@@ -5105,6 +5116,7 @@
             pageCode: $("wCreatePage").value,
             name,
             enabled: state.editingWidgetId ? state.editingEnabled : true,
+            dataFreshnessMinutes: Number($("wDataFreshnessMinutes").value) || 15,
             temperatureSources: state.psychrometricTemperatureSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             humiditySources: state.psychrometricHumiditySources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 16 },
@@ -5183,6 +5195,7 @@
           pageCode: $("wCreatePage").value,
           name,
           enabled: state.editingWidgetId ? state.editingEnabled : true,
+          dataFreshnessMinutes: Number($("wDataFreshnessMinutes").value) || 15,
           queryKind: kind,
           countMode: kind === "count" ? $("wCountMode").value : null,
           countModelId,

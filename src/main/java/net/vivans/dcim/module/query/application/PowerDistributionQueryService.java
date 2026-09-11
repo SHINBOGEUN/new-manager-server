@@ -10,6 +10,7 @@ import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.query.api.dto.PowerDistributionGroupValueResponse;
 import net.vivans.dcim.module.query.api.dto.PowerDistributionSourceValueResponse;
 import net.vivans.dcim.module.query.api.dto.PowerDistributionWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class PowerDistributionQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public PowerDistributionWidgetResponse getPowerDistribution(Integer widgetId) {
         PageWidget widget = pageWidgetRepository.findById(widgetId)
@@ -88,7 +90,13 @@ public class PowerDistributionQueryService {
                             : QueryValues.round2(group.powerW().doubleValue() / total * 100),
                     group.complete(), group.sources()));
         }
-        return new PowerDistributionWidgetResponse(widget.getId(), widget.getName(), totalPowerW, complete, withRatios);
+        List<Instant> collectedTimes = sources.stream()
+                .map(source -> latestBySource.get(key(source.getDevice().getId(), source.getPointName())))
+                .map(point -> point == null ? null : point.time())
+                .toList();
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
+        return new PowerDistributionWidgetResponse(widget.getId(), widget.getName(), totalPowerW, complete, withRatios, dataStatus);
     }
 
     private static String key(int deviceId, String pointName) {

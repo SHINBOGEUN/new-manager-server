@@ -17,6 +17,7 @@ public record PueQueryResponse(
         List<Integer> missingDeviceIds,
         List<Integer> staleDeviceIds,
         List<PueDeviceValueResponse> devices,
-        List<PueTrendPointResponse> trend
+        List<PueTrendPointResponse> trend,
+        WidgetDataStatusResponse dataStatus
 ) {
 }

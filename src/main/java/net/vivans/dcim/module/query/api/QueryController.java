@@ -19,6 +19,7 @@ import net.vivans.dcim.module.query.application.LastQueryService;
 import net.vivans.dcim.module.query.application.PueQueryService;
 import net.vivans.dcim.module.query.application.PsychrometricQueryService;
 import net.vivans.dcim.module.query.application.PowerDistributionQueryService;
+import net.vivans.dcim.module.query.application.WidgetTrendQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,7 @@ public class QueryController {
     private final PueQueryService pueQueryService;
     private final PsychrometricQueryService psychrometricQueryService;
     private final PowerDistributionQueryService powerDistributionQueryService;
+    private final WidgetTrendQueryService widgetTrendQueryService;
 
     @GetMapping("/last")
     @Operation(
@@ -155,5 +157,15 @@ public class QueryController {
             @RequestParam Integer widgetId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(powerDistributionQueryService.getPowerDistribution(widgetId)));
+    }
+
+    @GetMapping("/widget-trend")
+    @Operation(summary = "공통 위젯 트렌드 조회", description = "last·aggregate·psychrometric·power_distribution 위젯의 최근 시계열을 최대 두 단위로 반환합니다.")
+    public ResponseEntity<ApiResponse<ChartWidgetResponse>> getWidgetTrend(
+            @RequestParam Integer widgetId,
+            @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
+            @RequestParam(required = false, defaultValue = "15m") String window
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.getTrend(widgetId, rangePreset, window)));
     }
 }

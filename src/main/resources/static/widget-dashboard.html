@@ -102,6 +102,8 @@
       padding: 0; overflow: visible; display: flex; flex-direction: column; min-height: 0;
       position: relative; user-select: none;
     }
+    .card.trend-available { cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+    .card.trend-available:hover { border-color: var(--accent); box-shadow: 0 8px 22px rgba(0,0,0,.22); transform: translateY(-1px); }
     .card.dragging,
     .card.resizing { opacity: .2; }
     .card-head {
@@ -145,6 +147,11 @@
     .card-body { padding: 8px 12px 12px; overflow: auto; flex: 1; min-height: 0; }
     .card h2 { margin: 0; font-size: 14px; flex: 1; }
     .card .sub { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+    .data-status { display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; }
+    .data-status::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .data-status.NORMAL { color:var(--ok); background:rgba(62,207,142,.12); }
+    .data-status.PARTIAL { color:var(--warn); background:rgba(240,180,41,.12); }
+    .data-status.STALE, .data-status.MISSING { color:var(--bad); background:rgba(240,113,120,.12); }
     .device-block { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
     .device-block:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
     .device-name { font-size: 12px; font-weight: 650; margin-bottom: 4px; }
@@ -649,6 +656,21 @@
       return ({ usage: "사용량", power: "전력 합", pue: "PUE" }[op] || op || "");
     }
 
+    function renderDataStatus(status) {
+      if (!status) return "";
+      const label = ({ NORMAL: "정상", PARTIAL: "일부 지연", STALE: "수집 지연", MISSING: "데이터 없음" })[status.status] || status.status;
+      const details = [];
+      if (status.missingSourceCount) details.push(`누락 ${status.missingSourceCount}`);
+      if (status.staleSourceCount) details.push(`지연 ${status.staleSourceCount}`);
+      const title = [
+        `최신성 기준 ${status.freshnessMinutes}분`,
+        `소스 ${status.availableSourceCount || 0}/${status.expectedSourceCount || 0}`,
+        ...details,
+        status.latestCollectedAt ? `최근 ${new Date(status.latestCollectedAt).toLocaleString()}` : "최근 데이터 없음",
+      ].join(" · ");
+      return `<span class="data-status ${escapeHtml(status.status || "MISSING")}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
+    }
+
     function renderAggregateBody(agg) {
       if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
@@ -998,24 +1020,30 @@
     async function openTrendModal(widgetId) {
       if (state.editMode) return;
       const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-      if (!widget || widget.queryKind !== "chart") return;
+      if (!widget) return;
+      if (widget.queryKind === "pue") {
+        return openPueTrendModal(widgetId);
+      }
+      if (widget.queryKind === "count") return;
+      const data = widget.queryKind === "chart"
+        ? await fetchChart(widget, { rangePreset: "last_3d", window: "15m", seriesMode: "per_device" })
+        : await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
+      if (data.error) throw new Error(data.error);
+      if (!(data.series || []).some((series) => (series.values || []).length)) {
+        log(`trend skipped #${widget.id}: Influx 시계열 데이터 없음`);
+        return;
+      }
       const modal = $("trendModal");
       $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      $("trendModalMeta").textContent = "최근 3일 · 15분 평균 데이터를 불러오는 중…";
-      modal.classList.add("open");
       if (state.trendModalChart) {
         try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
         state.trendModalChart = null;
       }
-      const data = await fetchChart(widget, { rangePreset: "last_3d", window: "15m", seriesMode: "per_device" });
-      if (data.error) {
-        $("trendModalMeta").textContent = data.error;
-        return;
-      }
       const units = data.units || (data.unit ? [data.unit] : []);
       $("trendModalMeta").textContent = ["최근 3일", "15분 평균", ...units].filter(Boolean).join(" · ");
+      modal.classList.add("open");
       state.trendModalChart = createChartInstance($("trendModalCanvas"), data);
-      if (!state.trendModalChart) $("trendModalMeta").textContent += " · InfluxDB 시계열 데이터 없음";
+      if (!state.trendModalChart) closeTrendModal();
     }
 
     function pueTrendChartData(data) {
@@ -1034,21 +1062,42 @@
       if (state.editMode) return;
       const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
       if (!widget || widget.queryKind !== "pue") return;
+      const data = await api(`/api/manager/query/pue?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
+      if (!data.trend?.length) {
+        log(`trend skipped #${widget.id}: 최근 3일 PUE 시계열 데이터 없음`);
+        return;
+      }
       const modal = $("trendModal");
       $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      $("trendModalMeta").textContent = "최근 3일 · 15분 평균 데이터를 불러오는 중…";
-      modal.classList.add("open");
       if (state.trendModalChart) {
         try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
         state.trendModalChart = null;
       }
-      const data = await api(`/api/manager/query/pue?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
-      if (!data.trend?.length) {
-        $("trendModalMeta").textContent = "최근 3일 PUE 시계열 데이터가 없습니다.";
-        return;
-      }
       $("trendModalMeta").textContent = `최근 3일 · 15분 평균 · PUE / ${data.unit || "W"}`;
+      modal.classList.add("open");
       state.trendModalChart = createChartInstance($("trendModalCanvas"), pueTrendChartData(data));
+    }
+
+    function trendAvailability(widget) {
+      if (widget.queryKind === "last") {
+        const points = (state.lastByWidget.get(widget.id)?.devices || []).flatMap((device) => device.points || [])
+          .filter((point) => point.value != null);
+        const units = new Set(points.map((point) => point.unit || "(단위 없음)"));
+        return points.length > 0 && units.size <= 2;
+      }
+      if (widget.queryKind === "aggregate") {
+        const data = state.aggregateByWidget.get(widget.id);
+        return !!data && (data.devices || []).some((device) => device.value != null) && !!data.unit;
+      }
+      if (widget.queryKind === "chart") {
+        const data = state.chartByWidget.get(widget.id);
+        const units = data?.units || (data?.unit ? [data.unit] : []);
+        return units.length <= 2 && (data?.series || []).some((series) => (series.values || []).length);
+      }
+      if (widget.queryKind === "pue") return state.pueByWidget.get(widget.id)?.value != null;
+      if (widget.queryKind === "psychrometric") return psychrometricPoints(state.psychrometricByWidget.get(widget.id)).length > 0;
+      if (widget.queryKind === "power_distribution") return state.powerDistributionByWidget.get(widget.id)?.totalPowerW != null;
+      return false;
     }
 
     function saturationPressureKpa(temperature) {
@@ -1247,11 +1296,13 @@
         let body;
         let subExtra = "";
         let cardClass = "card";
+        let dataStatus = null;
         if (w.queryKind === "count") {
           body = renderCountBody(state.countByWidget.get(w.id));
           if (w.countMode) subExtra = " · " + escapeHtml(countModeLabel(w.countMode));
         } else if (w.queryKind === "last") {
           const last = state.lastByWidget.get(w.id);
+          dataStatus = last?.dataStatus;
           const devices = (last && last.devices) || [];
           const totalHtml = last && last.total != null
             ? `<div class="count-label">전체 합</div><div class="count-total" style="font-size:22px;margin-bottom:8px">${formatValue(last.total)}${last.totalUnit ? " " + escapeHtml(last.totalUnit) : ""}</div>`
@@ -1270,27 +1321,39 @@
               `).join("")
             : `<div class="empty" style="padding:12px">${last && last.error ? escapeHtml(last.error) : "Influx 데이터 없음"}</div>`;
         } else if (w.queryKind === "chart") {
-          body = renderChartBody(state.chartByWidget.get(w.id));
+          const chart = state.chartByWidget.get(w.id);
+          dataStatus = chart?.dataStatus;
+          body = renderChartBody(chart);
           const sm = chartSeriesModeForWidget(w);
           subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
           cardClass = "card chart-card";
         } else if (w.queryKind === "aggregate") {
-          body = renderAggregateBody(state.aggregateByWidget.get(w.id));
+          const aggregate = state.aggregateByWidget.get(w.id);
+          dataStatus = aggregate?.dataStatus;
+          body = renderAggregateBody(aggregate);
           subExtra = ` · ${escapeHtml(aggregatePresetLabel(w.op))} · ${escapeHtml(w.aggregateRangePreset || "")}`;
         } else if (w.queryKind === "pue") {
-          body = renderPueBody(state.pueByWidget.get(w.id));
+          const pue = state.pueByWidget.get(w.id);
+          dataStatus = pue?.dataStatus;
+          body = renderPueBody(pue);
           subExtra = ` · ${escapeHtml(w.pueRangePreset || "last_24h")}`;
           cardClass = "card pue-card";
         } else if (w.queryKind === "psychrometric") {
-          body = renderPsychrometricBody(state.psychrometricByWidget.get(w.id), w.id);
+          const psychrometric = state.psychrometricByWidget.get(w.id);
+          dataStatus = psychrometric?.dataStatus;
+          body = renderPsychrometricBody(psychrometric, w.id);
           subExtra = " · 온도·상대습도 평균";
           cardClass = "card psychrometric-card";
         } else if (w.queryKind === "power_distribution") {
-          body = renderPowerDistributionBody(state.powerDistributionByWidget.get(w.id));
+          const distribution = state.powerDistributionByWidget.get(w.id);
+          dataStatus = distribution?.dataStatus;
+          body = renderPowerDistributionBody(distribution);
           subExtra = " · W 단위 최신값 분배";
         } else {
           body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
         }
+        const trendAvailable = trendAvailability(w);
+        if (trendAvailable) cardClass += " trend-card trend-available";
         const chartHeadTools = w.queryKind === "chart"
           ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
           : "";
@@ -1301,6 +1364,7 @@
               <div>
                 <h2>${escapeHtml(w.name)}</h2>
                 <div class="sub">${escapeHtml(w.queryKind)}${subExtra} · (${layout.gridX},${layout.gridY}) ${layout.w}×${layout.h}</div>
+                ${renderDataStatus(dataStatus)}
               </div>
               ${chartHeadTools}
             </div>
@@ -1328,19 +1392,11 @@
           reloadChartWidget(widgetId).catch((err) => log("chart series: " + err.message));
         });
       });
-      $("board").querySelectorAll(".chart-card").forEach((card) => {
+      $("board").querySelectorAll(".trend-available").forEach((card) => {
         card.addEventListener("click", (event) => {
-          if (state.editMode || event.target.closest("select, button, .resize-handle")) return;
+          if (state.editMode || event.target.closest("select, button, .resize-handle, details, summary")) return;
           openTrendModal(Number(card.dataset.widgetId)).catch((error) => {
             $("trendModalMeta").textContent = error.message || "트렌드 조회 실패";
-          });
-        });
-      });
-      $("board").querySelectorAll(".pue-card").forEach((card) => {
-        card.addEventListener("click", (event) => {
-          if (state.editMode || event.target.closest("select, button, .resize-handle")) return;
-          openPueTrendModal(Number(card.dataset.widgetId)).catch((error) => {
-            $("trendModalMeta").textContent = error.message || "PUE 트렌드 조회 실패";
           });
         });
       });

@@ -98,6 +98,7 @@ public class PageWidgetQueryService {
             PueDefinition definition = findPueDefinition(request.pueDefinitionId());
             PageWidget widget = PageWidget.createPue(pageCode, request.name(), request.enabled() == null || request.enabled(),
                     definition, PageWidgetChartRangePreset.from(request.pueRangePreset()), request.pueFreshnessMinutes());
+            widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
             applyLayout(widget, request.layout());
             return PageWidgetResponse.from(pageWidgetRepository.save(widget));
         }
@@ -118,6 +119,7 @@ public class PageWidgetQueryService {
                     request.enabled() == null || request.enabled(),
                     lastSources
             );
+            widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
             applyLayout(widget, request.layout());
             return PageWidgetResponse.from(pageWidgetRepository.save(widget));
         }
@@ -146,6 +148,7 @@ public class PageWidgetQueryService {
                 List.of(),
                 modelIds
         );
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
@@ -221,6 +224,7 @@ public class PageWidgetQueryService {
                 request.enabled() == null || request.enabled(),
                 sources
         );
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
@@ -246,6 +250,7 @@ public class PageWidgetQueryService {
                 request.enabled() == null ? widget.isEnabled() : request.enabled(),
                 sources
         );
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
         }
@@ -262,6 +267,7 @@ public class PageWidgetQueryService {
         PageWidget widget = PageWidget.createPowerDistribution(
                 pageCode, name, request.enabled() == null || request.enabled(),
                 resolvePowerDistributionGroups(request.groups()));
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
@@ -278,6 +284,7 @@ public class PageWidgetQueryService {
         }
         widget.updatePowerDistribution(name, request.enabled() == null ? widget.isEnabled() : request.enabled(),
                 resolvePowerDistributionGroups(request.groups()));
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         if (request.layout() != null) applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
@@ -442,6 +449,7 @@ public class PageWidgetQueryService {
                     PageWidgetChartRangePreset.from(request.pueRangePreset()),
                     request.pueFreshnessMinutes()
             );
+            widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
             if (request.layout() != null) {
                 applyLayout(widget, request.layout());
             }
@@ -471,6 +479,7 @@ public class PageWidgetQueryService {
         if (kind == PageWidgetQueryKind.last && request.lastSources() != null) {
             List<PageWidget.LastSourceDefinition> lastSources = resolveLastSources(request.lastSources());
             widget.updateLast(name, request.enabled() == null ? widget.isEnabled() : request.enabled(), lastSources);
+            widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
             if (request.layout() != null) {
                 applyLayout(widget, request.layout());
             }
@@ -500,6 +509,7 @@ public class PageWidgetQueryService {
                 List.of(),
                 modelIds
         );
+        widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         if (request.layout() != null) {
             applyLayout(widget, request.layout());
         }
