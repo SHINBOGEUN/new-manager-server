@@ -16,6 +16,9 @@ public record PageWidgetUpdateRequest(
         @Schema(description = "사용 여부", example = "true")
         Boolean enabled,
 
+        @Schema(description = "원천 데이터 최신으로 판단할 허용 경과 분 (기본 15, 1~1440)", example = "15")
+        Integer dataFreshnessMinutes,
+
         @Schema(description = "조회 종류: last | aggregate | count | chart", example = "last")
         @NotBlank(message = "queryKind is required")
         String queryKind,

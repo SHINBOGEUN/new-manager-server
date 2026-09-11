@@ -9,6 +9,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.query.api.dto.PsychrometricDataResponse;
 import net.vivans.dcim.module.query.api.dto.PsychrometricWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
@@ -37,6 +38,7 @@ public class PsychrometricQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public PsychrometricWidgetResponse getPsychrometric(Integer widgetId) {
         PageWidget widget = findPsychrometricWidget(widgetId);
@@ -63,8 +65,8 @@ public class PsychrometricQueryService {
             samples = samples.subList(samples.size() - HISTORY_POINT_COUNT, samples.size());
         }
 
-        java.util.Optional<Sample> latest = latestAverage(
-                pointQuery.findLast(deviceIds, pointNames, LATEST_LOOKBACK), roles);
+        List<LastPoint> latestPoints = pointQuery.findLast(deviceIds, pointNames, LATEST_LOOKBACK);
+        java.util.Optional<Sample> latest = latestAverage(latestPoints, roles);
         if (latest.isPresent() && samples.stream().noneMatch(sample -> sample.time().equals(latest.get().time()))) {
             samples.add(latest.get());
         }
@@ -72,13 +74,25 @@ public class PsychrometricQueryService {
         List<Instant> timeLabels = samples.stream().map(Sample::time).toList();
         List<Double> temperatures = samples.stream().map(Sample::temperature).toList();
         List<Double> humidities = samples.stream().map(Sample::humidity).toList();
+        Map<SourceKey, LastPoint> latestBySource = new HashMap<>();
+        for (LastPoint point : latestPoints) {
+            latestBySource.put(new SourceKey(point.deviceId(), point.pointName()), point);
+        }
+        List<Instant> collectedTimes = sources.stream()
+                .map(source -> latestBySource.get(new SourceKey(source.getDevice().getId(), source.getPointName())))
+                .map(point -> point == null ? null : point.time())
+                .toList();
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
         return new PsychrometricWidgetResponse(
+                widget.getId(),
                 widget.getName(),
                 timeLabels,
                 List.of(
                         new PsychrometricDataResponse("TEMP_AVG", temperatures, "°C"),
                         new PsychrometricDataResponse("HUM_AVG", humidities, "%")
-                )
+                ),
+                dataStatus
         );
     }
 

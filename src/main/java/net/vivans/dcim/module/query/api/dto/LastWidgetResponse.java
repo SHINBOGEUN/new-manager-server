@@ -10,6 +10,7 @@ public record LastWidgetResponse(
         /** 동일 unit 포인트들의 합 (없으면 null) */
         BigDecimal total,
         String totalUnit,
-        List<LastDeviceResponse> devices
+        List<LastDeviceResponse> devices,
+        WidgetDataStatusResponse dataStatus
 ) {
 }

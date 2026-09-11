@@ -4,8 +4,10 @@ import java.time.Instant;
 import java.util.List;
 
 public record PsychrometricWidgetResponse(
+        Integer widgetId,
         String title,
         List<Instant> timeLabels,
-        List<PsychrometricDataResponse> data
+        List<PsychrometricDataResponse> data,
+        WidgetDataStatusResponse dataStatus
 ) {
 }

@@ -15,12 +15,15 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.query.api.dto.ChartSeriesResponse;
 import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
+import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -43,6 +46,7 @@ public class ChartQueryService {
     private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public ChartWidgetResponse getChart(
             Integer widgetId,
@@ -87,6 +91,19 @@ public class ChartQueryService {
 
         List<SeriesPoint> raw = pointQuery.findSeries(
                 deviceIds, queryPointNames, range.start(), range.end(), window);
+        Map<String, LastPoint> latestBySource = new HashMap<>();
+        for (LastPoint point : pointQuery.findLast(deviceIds, queryPointNames, Duration.ofHours(24))) {
+            latestBySource.put(sourceKey(point.deviceId(), point.pointName()), point);
+        }
+        List<Instant> collectedTimes = new ArrayList<>();
+        for (Integer deviceId : deviceIds) {
+            for (String pointName : queryPointNames) {
+                LastPoint point = latestBySource.get(sourceKey(deviceId, pointName));
+                collectedTimes.add(point == null ? null : point.time());
+            }
+        }
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
 
         List<ChartSeriesResponse> series = switch (mode) {
             case per_device -> buildPerDevice(raw, deviceById, queryPointNames, pointContext, unitContext);
@@ -111,7 +128,8 @@ public class ChartQueryService {
                 range.end(),
                 unitContext.singleUnit(),
                 unitContext.units(),
-                series
+                series,
+                dataStatus
         );
     }
 
@@ -509,7 +527,8 @@ public class ChartQueryService {
                 end,
                 unit,
                 unit == null ? List.of() : List.of(unit),
-                List.of()
+                List.of(),
+                WIDGET_DATA_STATUS_RESOLVER.resolve(List.of(), widget.getDataFreshnessMinutes())
         );
     }
 

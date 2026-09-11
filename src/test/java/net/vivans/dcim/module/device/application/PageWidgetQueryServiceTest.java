@@ -61,7 +61,7 @@ class PageWidgetQueryServiceTest {
         when(energyType.getCode()).thenReturn("ENERGY");
 
         PageWidgetCreateRequest request = new PageWidgetCreateRequest(
-                "POWER", "누적 전력량", true, "chart",
+                "POWER", "누적 전력량", true, null, "chart",
                 null, null, null, null, null,
                 "devices", "per_device", "today", "5m",
                 null, null, null,
@@ -99,7 +99,7 @@ class PageWidgetQueryServiceTest {
                 .thenReturn(List.of(power, temperature, humidity));
 
         PageWidgetCreateRequest request = new PageWidgetCreateRequest(
-                "POWER", "혼합 단위", true, "chart",
+                "POWER", "혼합 단위", true, null, "chart",
                 null, null, null, null, null,
                 "devices", "per_device", "last_3d", "15m",
                 null, null, null,

@@ -40,6 +40,8 @@ import java.util.Set;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PageWidget extends BaseEntity {
 
+    private static final int DEFAULT_DATA_FRESHNESS_MINUTES = 15;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -53,6 +55,9 @@ public class PageWidget extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled;
+
+    @Column(name = "data_freshness_minutes", nullable = false)
+    private int dataFreshnessMinutes = DEFAULT_DATA_FRESHNESS_MINUTES;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "query_kind", nullable = false, length = 32)
@@ -319,6 +324,14 @@ public class PageWidget extends BaseEntity {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public void updateDataFreshnessMinutes(Integer freshnessMinutes) {
+        int value = freshnessMinutes == null ? DEFAULT_DATA_FRESHNESS_MINUTES : freshnessMinutes;
+        if (value < 1 || value > 1440) {
+            throw new IllegalArgumentException("dataFreshnessMinutes must be between 1 and 1440");
+        }
+        this.dataFreshnessMinutes = value;
     }
 
     public void upsertLayout(int gridX, int gridY, int w, int h) {

@@ -15,6 +15,7 @@ public record ChartWidgetResponse(
         Instant end,
         String unit,
         List<String> units,
-        List<ChartSeriesResponse> series
+        List<ChartSeriesResponse> series,
+        WidgetDataStatusResponse dataStatus
 ) {
 }

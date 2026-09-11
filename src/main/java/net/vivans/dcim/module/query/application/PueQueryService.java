@@ -16,6 +16,7 @@ import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
 import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
 import net.vivans.dcim.module.query.api.dto.PueSourceRequest;
 import net.vivans.dcim.module.query.api.dto.PueTrendPointResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.PueLastPoint;
@@ -50,6 +51,7 @@ public class PueQueryService {
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final PointQuery pointQuery;
     private final PageWidgetRepository pageWidgetRepository;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public PueQueryResponse getPue(Integer widgetId) {
         PageWidget widget = pageWidgetRepository.findById(widgetId)
@@ -90,6 +92,8 @@ public class PueQueryService {
                 .map(source -> source.device().getId())
                 .distinct()
                 .toList();
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER.resolve(
+                java.util.Collections.singletonList(point == null ? null : point.time()), widget.getPueFreshnessMinutes());
 
         return new PueQueryResponse(
                 complete ? QueryValues.round4(point.value()) : null,
@@ -104,7 +108,8 @@ public class PueQueryService {
                 complete ? List.of() : sourceDeviceIds,
                 stale ? sourceDeviceIds : List.of(),
                 List.of(),
-                List.of()
+                List.of(),
+                dataStatus
         );
     }
 
@@ -127,7 +132,7 @@ public class PueQueryService {
         return new PueQueryResponse(
                 latest.value(), latest.totalPower(), latest.coolerPower(), latest.unit(),
                 preset.name(), range.start(), range.end(), latest.complete(), latest.calculationStatus(),
-                latest.missingDeviceIds(), latest.staleDeviceIds(), latest.devices(), trend
+                latest.missingDeviceIds(), latest.staleDeviceIds(), latest.devices(), trend, latest.dataStatus()
         );
     }
 
@@ -227,7 +232,8 @@ public class PueQueryService {
                 List.copyOf(missingDeviceIds),
                 List.copyOf(staleDeviceIds),
                 List.copyOf(rows),
-                List.of()
+                List.of(),
+                null
         );
     }
 

@@ -13,6 +13,7 @@ import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPoint
 import net.vivans.dcim.module.query.api.dto.LastDeviceResponse;
 import net.vivans.dcim.module.query.api.dto.LastPointValueResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class LastQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
+    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
 
     public LastWidgetResponse getLast(Integer widgetId, Integer lookbackHours) {
         PageWidget widget = findLastWidget(widgetId);
@@ -67,6 +69,10 @@ public class LastQueryService {
         Map<Integer, Map<String, String>> unitsByModelId = resolveUnitsByModelId(devices);
 
         List<LastPoint> points = pointQuery.findLast(deviceIds, pointNames, lookback);
+        Map<String, LastPoint> latestBySource = new HashMap<>();
+        for (LastPoint point : points) {
+            latestBySource.put(sourceKey(point.deviceId(), point.pointName()), point);
+        }
         Map<Integer, List<LastPoint>> pointsByDevice = new LinkedHashMap<>();
         for (LastPoint point : points) {
             pointsByDevice.computeIfAbsent(point.deviceId(), ignored -> new ArrayList<>()).add(point);
@@ -132,13 +138,24 @@ public class LastQueryService {
             total = QueryValues.round2(total);
         }
 
+        List<java.time.Instant> collectedTimes = new ArrayList<>();
+        for (Map.Entry<Integer, Set<String>> entry : requestedPointsByDevice.entrySet()) {
+            for (String pointName : entry.getValue()) {
+                LastPoint point = latestBySource.get(sourceKey(entry.getKey(), pointName));
+                collectedTimes.add(point == null ? null : point.time());
+            }
+        }
+        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
+
         return new LastWidgetResponse(
                 widget.getId(),
                 widget.getName(),
                 widget.getPageCode().getCode(),
                 total,
                 totalUnit,
-                deviceResponses
+                deviceResponses,
+                dataStatus
         );
     }
 
@@ -173,14 +190,15 @@ public class LastQueryService {
         return value.trim();
     }
 
-    private static LastWidgetResponse emptyResponse(PageWidget widget) {
+    private LastWidgetResponse emptyResponse(PageWidget widget) {
         return new LastWidgetResponse(
                 widget.getId(),
                 widget.getName(),
                 widget.getPageCode().getCode(),
                 null,
                 null,
-                List.of()
+                List.of(),
+                WIDGET_DATA_STATUS_RESOLVER.resolve(List.of(), widget.getDataFreshnessMinutes())
         );
     }
 
@@ -241,5 +259,9 @@ public class LastQueryService {
                     "lookbackHours must be between 1 and " + MAX_LOOKBACK_HOURS);
         }
         return Duration.ofHours(hours);
+    }
+
+    private static String sourceKey(Integer deviceId, String pointName) {
+        return deviceId + "\u0000" + pointName;
     }
 }

@@ -17,6 +17,7 @@ public record AggregateWidgetResponse(
         String unit,
         Integer contributingDevices,
         /** 장비별 기여 값 */
-        List<AggregateDeviceValueResponse> devices
+        List<AggregateDeviceValueResponse> devices,
+        WidgetDataStatusResponse dataStatus
 ) {
 }
