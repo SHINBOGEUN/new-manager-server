@@ -5,6 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
+import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
+import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
+import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.pue.api.dto.*;
 import net.vivans.dcim.module.pue.domain.model.*;
 import net.vivans.dcim.module.pue.domain.repository.PueDefinitionRepository;
@@ -21,6 +25,8 @@ import java.util.*;
 public class PueDefinitionService {
     private final PueDefinitionRepository repository;
     private final DeviceRepository deviceRepository;
+    private final DeviceGroupRepository deviceGroupRepository;
+    private final DeviceModelSnmpPointRepository pointRepository;
     private final PageWidgetRepository pageWidgetRepository;
     private final PueCollectorSyncService collectorSyncService;
 
@@ -33,15 +39,16 @@ public class PueDefinitionService {
         if (repository.existsByName(request.name().trim())) {
             throw new ConflictException("PUE definition name already exists");
         }
+        Configuration configuration = configuration(request);
         PueDefinition definition = repository.save(PueDefinition.create(
                 request.name(),
                 request.calculationCron(),
                 request.collectionEnabled() == null || request.collectionEnabled(),
-                sources(request)
+                configuration.sources(), configuration.deviceGroups()
         ));
         collectorSyncService.sync(definition);
         log.info("[PUE_DEFINITION] action=CREATE definitionId={} name={} sourceCount={} enabled={} cron={}",
-                definition.getId(), definition.getName(), definition.getSources().size(),
+                definition.getId(), definition.getName(), definition.resolvedSources().size(),
                 definition.isCollectionEnabled(), definition.getCalculationCron());
         return PueDefinitionResponse.from(definition);
     }
@@ -52,14 +59,15 @@ public class PueDefinitionService {
         if (repository.existsByNameAndIdNot(request.name().trim(), id)) {
             throw new ConflictException("PUE definition name already exists");
         }
-        definition.update(request.name(), request.calculationCron(), sources(request));
+        Configuration configuration = configuration(request);
+        definition.update(request.name(), request.calculationCron(), configuration.sources(), configuration.deviceGroups());
         if (request.collectionEnabled() != null) {
             definition.setCollectionEnabled(request.collectionEnabled());
         }
         definition = repository.save(definition);
         collectorSyncService.sync(definition);
         log.info("[PUE_DEFINITION] action=UPDATE definitionId={} name={} sourceCount={} enabled={} cron={} version={}",
-                definition.getId(), definition.getName(), definition.getSources().size(),
+                definition.getId(), definition.getName(), definition.resolvedSources().size(),
                 definition.isCollectionEnabled(), definition.getCalculationCron(), definition.getConfigVersion());
         return PueDefinitionResponse.from(definition);
     }
@@ -90,11 +98,33 @@ public class PueDefinitionService {
                 .orElseThrow(() -> new EntityNotFoundException("PueDefinition not found: " + id));
     }
 
-    private List<PueDefinition.SourceDefinition> sources(PueDefinitionRequest request) {
+    private Configuration configuration(PueDefinitionRequest request) {
         List<PueDefinition.SourceDefinition> all = new ArrayList<>();
-        add(all, request.totalSources(), PueDefinitionSourceRole.total);
-        add(all, request.coolerSources(), PueDefinitionSourceRole.cooler);
-        return all;
+        List<PueDefinition.DeviceGroupDefinition> groups = new ArrayList<>();
+        boolean sourceConfiguration = hasItems(request.totalSources()) || hasItems(request.coolerSources());
+        boolean groupConfiguration = hasItems(request.totalDeviceGroups()) || hasItems(request.coolerDeviceGroups());
+        if (sourceConfiguration && groupConfiguration) {
+            throw new IllegalArgumentException("PUE source devices and device groups cannot be used together");
+        }
+        if (!sourceConfiguration && !groupConfiguration) {
+            throw new IllegalArgumentException("PUE requires total and cooler device groups");
+        }
+        if (sourceConfiguration) {
+            if (!hasItems(request.totalSources()) || !hasItems(request.coolerSources())) {
+                throw new IllegalArgumentException("PUE requires totalSources and coolerSources");
+            }
+            add(all, request.totalSources(), PueDefinitionSourceRole.total);
+            add(all, request.coolerSources(), PueDefinitionSourceRole.cooler);
+        } else {
+            if (!hasItems(request.totalDeviceGroups()) || !hasItems(request.coolerDeviceGroups())) {
+                throw new IllegalArgumentException("PUE requires totalDeviceGroups and coolerDeviceGroups");
+            }
+            addGroups(groups, request.totalDeviceGroups(), PueDefinitionSourceRole.total);
+            addGroups(groups, request.coolerDeviceGroups(), PueDefinitionSourceRole.cooler);
+        }
+        PueDefinition candidate = PueDefinition.create("PUE validation", null, true, all, groups);
+        validatePowerPoints(candidate.resolvedSources());
+        return new Configuration(all, groups);
     }
 
     private void add(List<PueDefinition.SourceDefinition> all,
@@ -108,5 +138,55 @@ public class PueDefinitionService {
             }
             all.add(new PueDefinition.SourceDefinition(device, role, request.pointName()));
         }
+    }
+
+    private void addGroups(List<PueDefinition.DeviceGroupDefinition> target,
+                           List<PueDefinitionDeviceGroupRequest> requests,
+                           PueDefinitionSourceRole role) {
+        for (PueDefinitionDeviceGroupRequest request : requests) {
+            DeviceGroup group = deviceGroupRepository.findById(request.deviceGroupId())
+                    .orElseThrow(() -> new EntityNotFoundException("DeviceGroup not found: " + request.deviceGroupId()));
+            if (!group.isEnabled()) {
+                throw new IllegalArgumentException("PUE device group is disabled: " + group.getName());
+            }
+            if (group.getDevices().isEmpty()) {
+                throw new IllegalArgumentException("PUE device group has no devices: " + group.getName());
+            }
+            target.add(new PueDefinition.DeviceGroupDefinition(group, role, request.pointName()));
+        }
+    }
+
+    private void validatePowerPoints(List<PueDefinition.SourceDefinition> sources) {
+        Set<Integer> modelIds = new LinkedHashSet<>();
+        for (PueDefinition.SourceDefinition source : sources) {
+            if (!source.device().isEnabled()) {
+                throw new IllegalArgumentException("PUE source device is disabled: " + source.device().getId());
+            }
+            modelIds.add(source.device().getDeviceModel().getId());
+        }
+        Map<String, DeviceModelSnmpPoint> catalog = new HashMap<>();
+        for (DeviceModelSnmpPoint point : pointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
+            catalog.put(point.getModelProtocol().getDeviceModel().getId() + "|" + point.getName().toUpperCase(Locale.ROOT), point);
+        }
+        for (PueDefinition.SourceDefinition source : sources) {
+            DeviceModelSnmpPoint point = catalog.get(source.device().getDeviceModel().getId() + "|" + source.pointName().trim().toUpperCase(Locale.ROOT));
+            if (point == null || point.getDataPointType() == null
+                    || !"POWER".equalsIgnoreCase(point.getDataPointType().getCode())) {
+                throw new IllegalArgumentException("PUE group point must be an enabled POWER point: device "
+                        + source.device().getId() + ", point " + source.pointName());
+            }
+            if (!"W".equalsIgnoreCase(point.getUnit() == null ? "" : point.getUnit().trim())) {
+                throw new IllegalArgumentException("PUE group point unit must be W: device "
+                        + source.device().getId() + ", point " + source.pointName());
+            }
+        }
+    }
+
+    private static boolean hasItems(List<?> values) {
+        return values != null && !values.isEmpty();
+    }
+
+    private record Configuration(List<PueDefinition.SourceDefinition> sources,
+                                 List<PueDefinition.DeviceGroupDefinition> deviceGroups) {
     }
 }

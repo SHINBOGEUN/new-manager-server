@@ -4,9 +4,12 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 public interface PueDefinitionSpringDataRepository extends JpaRepository<PueDefinition, Integer> {
-    @Override @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel"}) Optional<PueDefinition> findById(Integer id);
-    @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel"}) List<PueDefinition> findAllByCollectionEnabledOrderByIdAsc(boolean collectionEnabled);
-    @Override @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel"}) List<PueDefinition> findAll();
+    @Override @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel", "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices", "deviceGroups.deviceGroup.devices.deviceModel"}) Optional<PueDefinition> findById(Integer id);
+    @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel", "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices", "deviceGroups.deviceGroup.devices.deviceModel"}) List<PueDefinition> findAllByCollectionEnabledOrderByIdAsc(boolean collectionEnabled);
+    @Override @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel", "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices", "deviceGroups.deviceGroup.devices.deviceModel"}) List<PueDefinition> findAll();
+    @EntityGraph(attributePaths = {"sources", "sources.device", "sources.device.deviceModel", "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices", "deviceGroups.deviceGroup.devices.deviceModel"})
+    List<PueDefinition> findDistinctByDeviceGroupsDeviceGroupId(Integer deviceGroupId);
+    boolean existsByDeviceGroupsDeviceGroupId(Integer deviceGroupId);
     boolean existsByName(String name);
     boolean existsByNameAndIdNot(String name, Integer id);
 }

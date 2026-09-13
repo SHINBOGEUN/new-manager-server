@@ -27,6 +27,7 @@ public interface DeviceRepository {
             String name,
             Boolean enabled,
             String pageCode,
+            Integer deviceGroupId,
             Pageable pageable
     );
 

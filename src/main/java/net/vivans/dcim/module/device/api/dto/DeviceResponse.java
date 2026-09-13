@@ -1,6 +1,10 @@
 package net.vivans.dcim.module.device.api.dto;
 
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.devicegroup.api.dto.DeviceGroupSummaryResponse;
+
+import java.util.Comparator;
+import java.util.List;
 
 public record DeviceResponse(
         Integer id,
@@ -15,7 +19,8 @@ public record DeviceResponse(
         String pathName,
         String name,
         String description,
-        boolean enabled
+        boolean enabled,
+        List<DeviceGroupSummaryResponse> deviceGroups
 ) {
 
     public static DeviceResponse from(Device device) {
@@ -40,7 +45,11 @@ public record DeviceResponse(
                 pathName,
                 device.getName(),
                 device.getDescription(),
-                device.isEnabled()
+                device.isEnabled(),
+                device.getDeviceGroups().stream()
+                        .sorted(Comparator.comparing(group -> group.getName()))
+                        .map(DeviceGroupSummaryResponse::from)
+                        .toList()
         );
     }
 }

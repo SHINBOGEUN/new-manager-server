@@ -66,6 +66,9 @@ public record PageWidgetCreateRequest(
         @Schema(description = "last/aggregate 필수. chart+devices 필수. count/chart+models는 []", example = "[9]")
         List<Integer> deviceIds,
 
+        @Schema(description = "aggregate 또는 chart+devices: 동적으로 참조할 장비 그룹 ID 목록", example = "[1,2]")
+        List<Integer> deviceGroupIds,
+
         @Schema(description = "chart+models 일 때 필수 — device_model.id 목록", example = "[10,20]")
         List<Integer> modelIds,
 

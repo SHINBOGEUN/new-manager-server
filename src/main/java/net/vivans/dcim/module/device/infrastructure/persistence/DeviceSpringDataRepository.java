@@ -15,16 +15,16 @@ import java.util.Optional;
 
 public interface DeviceSpringDataRepository extends JpaRepository<Device, Integer> {
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
     Optional<Device> findById(Integer id);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
     List<Device> findByLocationNode_Code(String locationNodeCode);
 
     @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
     List<Device> findByLocationNode_CodeIn(Collection<String> locationNodeCodes);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
     @Query("SELECT d FROM Device d " +
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
@@ -35,6 +35,10 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
             "  WHERE pwd.device = d " +
             "    AND pwd.widget.pageCode.code = :pageCode " +
             "    AND pwd.widget.pageCode.codeGroup.groupKey = 'DEVICE_PAGE'" +
+            ")) " +
+            "AND (:deviceGroupId IS NULL OR EXISTS (" +
+            "  SELECT 1 FROM DeviceGroup dg JOIN dg.devices groupedDevice " +
+            "  WHERE dg.id = :deviceGroupId AND groupedDevice = d" +
             "))")
     Page<Device> findAllWithFilters(
             @Param("modelId") Integer modelId,
@@ -42,6 +46,7 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
             @Param("name") String name,
             @Param("enabled") Boolean enabled,
             @Param("pageCode") String pageCode,
+            @Param("deviceGroupId") Integer deviceGroupId,
             Pageable pageable
     );
 

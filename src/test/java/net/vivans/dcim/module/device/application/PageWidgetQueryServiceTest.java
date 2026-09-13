@@ -65,7 +65,7 @@ class PageWidgetQueryServiceTest {
                 null, null, null, null, null,
                 "devices", "per_device", "today", "5m",
                 null, null, null,
-                List.of(7), List.of(), List.of("TOTAL_KWH"), null, null);
+                List.of(7), List.of(), List.of(), List.of("TOTAL_KWH"), null, null);
 
         assertThatThrownBy(() -> service.createWidget(request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -103,7 +103,7 @@ class PageWidgetQueryServiceTest {
                 null, null, null, null, null,
                 "devices", "per_device", "last_3d", "15m",
                 null, null, null,
-                List.of(7), List.of(), List.of("TOTAL_WT", "IN_TEMP", "IN_HUM"), null, null);
+                List.of(7), List.of(), List.of(), List.of("TOTAL_WT", "IN_TEMP", "IN_HUM"), null, null);
 
         assertThatThrownBy(() -> service.createWidget(request))
                 .isInstanceOf(IllegalArgumentException.class)

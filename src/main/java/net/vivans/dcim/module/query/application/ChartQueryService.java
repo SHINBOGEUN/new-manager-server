@@ -418,14 +418,17 @@ public class ChartQueryService {
             }
             return deviceRepository.findAllEnabledByDeviceModelIds(modelIds);
         }
-        List<Device> devices = new ArrayList<>();
-        for (PageWidgetDevice mapping : widget.getDevices()) {
-            Device device = mapping.getDevice();
-            if (device.isEnabled()) {
-                devices.add(device);
-            }
+        List<Device> resolved = widget.resolvedDefaultDevices().stream()
+                .filter(Device::isEnabled)
+                .toList();
+        if (!resolved.isEmpty()) {
+            return resolved;
         }
-        return devices;
+        // Keep legacy direct-device widgets usable when no group target resolves.
+        return widget.getDevices().stream()
+                .map(mapping -> mapping.getDevice())
+                .filter(Device::isEnabled)
+                .toList();
     }
 
     private ChartUnitContext buildUnitContext(List<Device> devices, List<String> pointNames) {

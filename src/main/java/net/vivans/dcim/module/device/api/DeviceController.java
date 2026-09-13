@@ -43,10 +43,11 @@ public class DeviceController {
             @Parameter(description = "표시명 부분 일치") @RequestParam(required = false) String name,
             @Parameter(description = "사용 여부") @RequestParam(required = false) Boolean enabled,
             @Parameter(description = "페이지 code (DEVICE_PAGE). 해당 페이지 위젯에 묶인 장비만") @RequestParam(required = false) String pageCode,
+            @Parameter(description = "장비 그룹 ID. 해당 그룹에 속한 장비만") @RequestParam(required = false) Integer deviceGroupId,
             @Parameter(description = "페이지 번호 (1부터)") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기 (기본 20, 최대 100)") @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.getDevices(
-                modelId, locationNodeCode, includeSubtree, name, enabled, pageCode, page, size)));
+                modelId, locationNodeCode, includeSubtree, name, enabled, pageCode, deviceGroupId, page, size)));
     }
 
     @GetMapping("/capabilities")

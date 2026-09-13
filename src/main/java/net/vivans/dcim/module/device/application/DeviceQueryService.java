@@ -59,6 +59,7 @@ public class DeviceQueryService {
             String name,
             Boolean enabled,
             String pageCode,
+            Integer deviceGroupId,
             int page,
             int size
     ) {
@@ -72,7 +73,7 @@ public class DeviceQueryService {
         }
 
         return PageResponse.from(
-                deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, pageable),
+                deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, deviceGroupId, pageable),
                 DeviceResponse::from
         );
     }

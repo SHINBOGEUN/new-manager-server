@@ -53,6 +53,7 @@ public class DeviceJpaRepository implements DeviceRepository {
             String name,
             Boolean enabled,
             String pageCode,
+            Integer deviceGroupId,
             Pageable pageable
     ) {
         return springDataRepository.findAllWithFilters(
@@ -61,6 +62,7 @@ public class DeviceJpaRepository implements DeviceRepository {
                 blankToNull(name),
                 enabled,
                 blankToNull(pageCode),
+                deviceGroupId,
                 pageable
         );
     }
