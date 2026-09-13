@@ -64,13 +64,13 @@ public class PueQueryService {
             throw new IllegalArgumentException("PUE widget has no definition");
         }
         PueDefinition definition = widget.getPue().getPueDefinition();
-        List<PueSourceRequest> total = definition.getSources().stream()
-                .filter(source -> source.getRole() == PueDefinitionSourceRole.total)
-                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName()))
+        List<PueSourceRequest> total = definition.resolvedSources().stream()
+                .filter(source -> source.role() == PueDefinitionSourceRole.total)
+                .map(source -> new PueSourceRequest(source.device().getId(), source.pointName()))
                 .toList();
-        List<PueSourceRequest> cooler = definition.getSources().stream()
-                .filter(source -> source.getRole() == PueDefinitionSourceRole.cooler)
-                .map(source -> new PueSourceRequest(source.getDevice().getId(), source.getPointName()))
+        List<PueSourceRequest> cooler = definition.resolvedSources().stream()
+                .filter(source -> source.role() == PueDefinitionSourceRole.cooler)
+                .map(source -> new PueSourceRequest(source.device().getId(), source.pointName()))
                 .toList();
 
         List<RequestedSource> sources = new ArrayList<>();

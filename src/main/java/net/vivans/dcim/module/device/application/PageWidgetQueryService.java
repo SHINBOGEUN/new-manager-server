@@ -35,6 +35,8 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetPowerDistribution;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
+import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
+import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
@@ -64,6 +66,7 @@ public class PageWidgetQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
+    private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final PueDefinitionRepository pueDefinitionRepository;
@@ -111,6 +114,9 @@ public class PageWidgetQueryService {
         if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
             throw new IllegalArgumentException("lastSources is only allowed for last");
         }
+        if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
+            throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
+        }
         if (kind == PageWidgetQueryKind.last && request.lastSources() != null) {
             List<PageWidget.LastSourceDefinition> lastSources = resolveLastSources(request.lastSources());
             PageWidget widget = PageWidget.createLast(
@@ -126,9 +132,11 @@ public class PageWidgetQueryService {
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
         List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
+        List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
         PageWidgetChartSeriesMode chartSeriesMode = PageWidgetChartSeriesMode.from(request.chartSeriesMode());
-        validateChartPoints(kind, request.pointNames(), devices, modelIds, chartSeriesMode);
+        validateChartPoints(kind, request.pointNames(), targetDevices, modelIds, chartSeriesMode);
         PageWidget widget = PageWidget.create(
                 pageCode,
                 request.name(),
@@ -145,6 +153,7 @@ public class PageWidgetQueryService {
                 request.chartWindow(),
                 request.pointNames(),
                 devices,
+                deviceGroups,
                 List.of(),
                 modelIds
         );
@@ -476,6 +485,9 @@ public class PageWidgetQueryService {
         if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
             throw new IllegalArgumentException("lastSources is only allowed for last");
         }
+        if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
+            throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
+        }
         if (kind == PageWidgetQueryKind.last && request.lastSources() != null) {
             List<PageWidget.LastSourceDefinition> lastSources = resolveLastSources(request.lastSources());
             widget.updateLast(name, request.enabled() == null ? widget.isEnabled() : request.enabled(), lastSources);
@@ -488,9 +500,11 @@ public class PageWidgetQueryService {
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
         List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
+        List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
         PageWidgetChartSeriesMode chartSeriesMode = PageWidgetChartSeriesMode.from(request.chartSeriesMode());
-        validateChartPoints(kind, request.pointNames(), devices, modelIds, chartSeriesMode);
+        validateChartPoints(kind, request.pointNames(), targetDevices, modelIds, chartSeriesMode);
         widget.update(
                 name,
                 enabled,
@@ -506,6 +520,7 @@ public class PageWidgetQueryService {
                 request.chartWindow(),
                 request.pointNames(),
                 devices,
+                deviceGroups,
                 List.of(),
                 modelIds
         );
@@ -552,7 +567,7 @@ public class PageWidgetQueryService {
     ) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue
-                    || queryKind == PageWidgetQueryKind.psychrometric) {
+                    || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.aggregate) {
                 return List.of();
             }
             if (queryKind == PageWidgetQueryKind.chart
@@ -567,6 +582,44 @@ public class PageWidgetQueryService {
             throw new IllegalArgumentException("deviceIds is required");
         }
         return loadDevices(deviceIds);
+    }
+
+    private List<DeviceGroup> resolveDeviceGroups(
+            List<Integer> deviceGroupIds,
+            PageWidgetQueryKind queryKind,
+            String chartScopeRaw
+    ) {
+        if (deviceGroupIds == null || deviceGroupIds.isEmpty()) {
+            return List.of();
+        }
+        boolean allowed = queryKind == PageWidgetQueryKind.aggregate
+                || (queryKind == PageWidgetQueryKind.chart
+                && PageWidgetChartScope.from(chartScopeRaw) == PageWidgetChartScope.devices);
+        if (!allowed) {
+            throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
+        }
+        Set<Integer> uniqueIds = new LinkedHashSet<>();
+        List<DeviceGroup> groups = new ArrayList<>();
+        for (Integer groupId : deviceGroupIds) {
+            if (groupId == null || groupId <= 0) {
+                throw new IllegalArgumentException("deviceGroupIds must contain positive integers");
+            }
+            if (uniqueIds.add(groupId)) {
+                groups.add(deviceGroupRepository.findById(groupId)
+                        .orElseThrow(() -> new EntityNotFoundException("DeviceGroup not found: " + groupId)));
+            }
+        }
+        return groups;
+    }
+
+    private static List<Device> mergeTargetDevices(List<Device> devices, List<DeviceGroup> groups) {
+        Map<Integer, Device> targets = new java.util.LinkedHashMap<>();
+        for (Device device : devices) targets.putIfAbsent(device.getId(), device);
+        for (DeviceGroup group : groups) {
+            if (!group.isEnabled()) continue;
+            for (Device device : group.getDevices()) targets.putIfAbsent(device.getId(), device);
+        }
+        return new ArrayList<>(targets.values());
     }
 
     private List<Device> loadDevices(List<Integer> deviceIds) {

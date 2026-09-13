@@ -16,6 +16,9 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
+            "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices",
+            "deviceGroups.deviceGroup.devices.deviceModel", "deviceGroups.deviceGroup.devices.locationNode",
+            "deviceGroups.deviceGroup.devices.pathCode",
             "lastSources", "lastSources.device", "lastSources.device.deviceModel",
             "lastSources.device.deviceModel.deviceType", "lastSources.device.locationNode",
             "models"
@@ -29,6 +32,9 @@ public interface PageWidgetSpringDataRepository extends JpaRepository<PageWidget
             "devices", "devices.device", "devices.device.deviceModel",
             "devices.device.deviceModel.deviceType", "devices.device.locationNode",
             "devices.device.pathCode",
+            "deviceGroups", "deviceGroups.deviceGroup", "deviceGroups.deviceGroup.devices",
+            "deviceGroups.deviceGroup.devices.deviceModel", "deviceGroups.deviceGroup.devices.locationNode",
+            "deviceGroups.deviceGroup.devices.pathCode",
             "lastSources", "lastSources.device", "lastSources.device.deviceModel",
             "lastSources.device.deviceModel.deviceType", "lastSources.device.locationNode",
             "models"

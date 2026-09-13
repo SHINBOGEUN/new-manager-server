@@ -130,10 +130,9 @@ public class WidgetTrendQueryService {
                     .toList();
         }
         List<String> pointNames = widget.pointNames();
-        return widget.getDevices().stream()
-                .filter(mapping -> mapping.getDeviceRole() != PageWidgetDeviceRole.IT)
-                .filter(mapping -> mapping.getDevice().isEnabled())
-                .flatMap(mapping -> pointNames.stream().map(point -> new Source(mapping.getDevice(), point)))
+        return widget.resolvedDefaultDevices().stream()
+                .filter(Device::isEnabled)
+                .flatMap(device -> pointNames.stream().map(point -> new Source(device, point)))
                 .toList();
     }
 

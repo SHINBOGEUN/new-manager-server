@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -14,8 +15,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
+import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.shared.persistence.BaseEntity;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "devices")
@@ -54,6 +59,9 @@ public class Device extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled;
+
+    @ManyToMany(mappedBy = "devices", fetch = FetchType.LAZY)
+    private Set<DeviceGroup> deviceGroups = new LinkedHashSet<>();
 
     private Device(
             DeviceModel deviceModel,

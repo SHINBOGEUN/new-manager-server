@@ -215,6 +215,13 @@ public class AggregateQueryService {
                 devices.add(device);
             }
         }
+        if (allowed.contains(PageWidgetDeviceRole.DEFAULT) || allowed.contains(PageWidgetDeviceRole.TOTAL)) {
+            for (Device device : widget.resolvedDefaultDevices()) {
+                if (device.isEnabled() && devices.stream().noneMatch(existing -> existing.getId().equals(device.getId()))) {
+                    devices.add(device);
+                }
+            }
+        }
         if (devices.size() > MAX_DEVICE_IDS) {
             throw new IllegalArgumentException(
                     "widget maps to more than " + MAX_DEVICE_IDS + " enabled devices");

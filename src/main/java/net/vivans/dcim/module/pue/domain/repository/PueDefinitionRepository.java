@@ -6,6 +6,8 @@ public interface PueDefinitionRepository {
     Optional<PueDefinition> findById(Integer id);
     List<PueDefinition> findAllByCollectionEnabled(boolean enabled);
     List<PueDefinition> findAll();
+    List<PueDefinition> findAllByDeviceGroupId(Integer deviceGroupId);
+    boolean existsByDeviceGroupId(Integer deviceGroupId);
     boolean existsByName(String name);
     boolean existsByNameAndIdNot(String name, Integer id);
     void delete(PueDefinition definition);

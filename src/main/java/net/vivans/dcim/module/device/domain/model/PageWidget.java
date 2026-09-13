@@ -20,6 +20,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
+import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
 import net.vivans.dcim.module.pue.domain.model.PueDefinition;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
@@ -94,6 +95,11 @@ public class PageWidget extends BaseEntity {
     @OrderBy("id ASC")
     private final Set<PageWidgetDevice> devices = new LinkedHashSet<>();
 
+    /** 차트·집계 위젯의 동적 대상. 그룹의 장비가 바뀌면 조회 대상도 함께 바뀐다. */
+    @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private final Set<PageWidgetDeviceGroup> deviceGroups = new LinkedHashSet<>();
+
     /** latest 위젯에서 장비마다 서로 다른 측정항목을 선택하는 매핑 */
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
@@ -139,14 +145,29 @@ public class PageWidget extends BaseEntity {
             String chartWindow,
             List<String> pointNames,
             List<Device> devices,
+            List<DeviceGroup> deviceGroups,
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
         PageWidget widget = new PageWidget(pageCode, name, enabled, queryKind, groupBy);
         widget.syncKindConfig(op, aggregateRangePreset, countMode, countModelId,
                 chartScope, chartSeriesMode, chartRangePreset, chartWindow);
-        widget.applyBindings(pointNames, devices, itDevices, modelIds);
+        widget.applyBindings(pointNames, devices, deviceGroups, itDevices, modelIds);
         return widget;
+    }
+
+    /** 기존 호출부 호환용. 장비 그룹을 사용하지 않는 위젯 생성. */
+    public static PageWidget create(
+            CommonCode pageCode, String name, boolean enabled, PageWidgetQueryKind queryKind,
+            PageWidgetOp op, PageWidgetGroupBy groupBy, PageWidgetChartRangePreset aggregateRangePreset,
+            PageWidgetCountMode countMode, Integer countModelId, PageWidgetChartScope chartScope,
+            PageWidgetChartSeriesMode chartSeriesMode, PageWidgetChartRangePreset chartRangePreset,
+            String chartWindow, List<String> pointNames, List<Device> devices,
+            List<Device> itDevices, List<Integer> modelIds
+    ) {
+        return create(pageCode, name, enabled, queryKind, op, groupBy, aggregateRangePreset,
+                countMode, countModelId, chartScope, chartSeriesMode, chartRangePreset, chartWindow,
+                pointNames, devices, List.of(), itDevices, modelIds);
     }
 
     public static PageWidget createPue(
@@ -212,6 +233,7 @@ public class PageWidget extends BaseEntity {
             String chartWindow,
             List<String> pointNames,
             List<Device> devices,
+            List<DeviceGroup> deviceGroups,
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
@@ -223,7 +245,21 @@ public class PageWidget extends BaseEntity {
         this.groupBy = groupBy;
         syncKindConfig(op, aggregateRangePreset, countMode, countModelId,
                 chartScope, chartSeriesMode, chartRangePreset, chartWindow);
-        applyBindings(pointNames, devices, itDevices, modelIds);
+        applyBindings(pointNames, devices, deviceGroups, itDevices, modelIds);
+    }
+
+    /** 기존 호출부 호환용. 장비 그룹을 사용하지 않는 위젯 수정. */
+    public void update(
+            String name, boolean enabled, PageWidgetQueryKind queryKind, PageWidgetOp op,
+            PageWidgetGroupBy groupBy, PageWidgetChartRangePreset aggregateRangePreset,
+            PageWidgetCountMode countMode, Integer countModelId, PageWidgetChartScope chartScope,
+            PageWidgetChartSeriesMode chartSeriesMode, PageWidgetChartRangePreset chartRangePreset,
+            String chartWindow, List<String> pointNames, List<Device> devices,
+            List<Device> itDevices, List<Integer> modelIds
+    ) {
+        update(name, enabled, queryKind, op, groupBy, aggregateRangePreset, countMode, countModelId,
+                chartScope, chartSeriesMode, chartRangePreset, chartWindow, pointNames, devices,
+                List.of(), itDevices, modelIds);
     }
 
     public void updateLast(String name, boolean enabled, List<LastSourceDefinition> sources) {
@@ -233,6 +269,7 @@ public class PageWidget extends BaseEntity {
         this.queryKind = PageWidgetQueryKind.last;
         this.groupBy = null;
         syncKindConfig(null, null, null, null, null, null, null, null);
+        replaceDeviceGroups(List.of());
         replaceLastSources(sources);
         validateBindings();
     }
@@ -365,6 +402,30 @@ public class PageWidget extends BaseEntity {
         return ids;
     }
 
+    public List<Integer> deviceGroupIds() {
+        return deviceGroups.stream().map(mapping -> mapping.getDeviceGroup().getId()).toList();
+    }
+
+    /** 직접 선택 장비와 활성 장비 그룹의 현재 장비를 중복 없이 합친다. */
+    public List<Device> resolvedDefaultDevices() {
+        java.util.Map<Integer, Device> resolved = new java.util.LinkedHashMap<>();
+        for (PageWidgetDevice mapping : devices) {
+            if (mapping.getDeviceRole() != PageWidgetDeviceRole.IT) {
+                resolved.putIfAbsent(mapping.getDevice().getId(), mapping.getDevice());
+            }
+        }
+        for (PageWidgetDeviceGroup mapping : deviceGroups) {
+            DeviceGroup group = mapping.getDeviceGroup();
+            if (!group.isEnabled()) {
+                continue;
+            }
+            for (Device device : group.getDevices()) {
+                resolved.putIfAbsent(device.getId(), device);
+            }
+        }
+        return new ArrayList<>(resolved.values());
+    }
+
     public List<Integer> modelIds() {
         List<Integer> ids = new ArrayList<>();
         for (PageWidgetModel mapping : models) {
@@ -464,6 +525,7 @@ public class PageWidget extends BaseEntity {
     private void applyBindings(
             List<String> pointNames,
             List<Device> devices,
+            List<DeviceGroup> deviceGroups,
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
@@ -471,20 +533,24 @@ public class PageWidget extends BaseEntity {
                 || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.power_distribution) {
             replacePoints(List.of());
             replaceDevices(List.of(), List.of());
+            replaceDeviceGroups(List.of());
             replaceModels(List.of());
         } else if (queryKind == PageWidgetQueryKind.chart
                 && resolvedChartScope() == PageWidgetChartScope.models) {
             replacePoints(pointNames);
             replaceDevices(List.of(), List.of());
+            replaceDeviceGroups(List.of());
             replaceModels(modelIds);
         } else if (queryKind == PageWidgetQueryKind.aggregate) {
             replacePoints(pointNames);
             replaceDevices(devices, itDevices);
+            replaceDeviceGroups(deviceGroups);
             replaceModels(List.of());
         } else {
             this.lastSources.clear();
             replacePoints(pointNames);
             replaceDevices(devices, List.of());
+            replaceDeviceGroups(deviceGroups);
             replaceModels(List.of());
         }
         validateBindings();
@@ -520,6 +586,19 @@ public class PageWidget extends BaseEntity {
             requireDevice(device);
             if (uniqueIds.add(device.getId())) {
                 this.devices.add(PageWidgetDevice.create(this, device, PageWidgetDeviceRole.DEFAULT));
+            }
+        }
+    }
+
+    private void replaceDeviceGroups(List<DeviceGroup> groups) {
+        deviceGroups.clear();
+        if (groups == null) {
+            return;
+        }
+        Set<Integer> uniqueIds = new LinkedHashSet<>();
+        for (DeviceGroup group : groups) {
+            if (group != null && group.getId() != null && uniqueIds.add(group.getId())) {
+                deviceGroups.add(PageWidgetDeviceGroup.create(this, group));
             }
         }
     }
@@ -596,13 +675,13 @@ public class PageWidget extends BaseEntity {
                 if (models.isEmpty()) {
                     throw new IllegalArgumentException("modelIds is required when chartScope is models");
                 }
-            } else if (devices.isEmpty()) {
+            } else if (devices.isEmpty() && deviceGroups.isEmpty()) {
                 throw new IllegalArgumentException("deviceIds is required when chartScope is devices");
             }
             return;
         }
         if (queryKind == PageWidgetQueryKind.aggregate) {
-            if (devices.isEmpty()) {
+            if (devices.isEmpty() && deviceGroups.isEmpty()) {
                 throw new IllegalArgumentException("deviceIds is required");
             }
             if (points.isEmpty()) {
@@ -613,7 +692,7 @@ public class PageWidget extends BaseEntity {
             }
             return;
         }
-        if (devices.isEmpty()) {
+        if (devices.isEmpty() && deviceGroups.isEmpty()) {
             throw new IllegalArgumentException("deviceIds is required");
         }
         if (queryKind == PageWidgetQueryKind.last && points.isEmpty()) {
