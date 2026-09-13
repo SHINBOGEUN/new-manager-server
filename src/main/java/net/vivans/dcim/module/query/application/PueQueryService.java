@@ -64,11 +64,12 @@ public class PueQueryService {
             throw new IllegalArgumentException("PUE widget has no definition");
         }
         PueDefinition definition = widget.getPue().getPueDefinition();
-        List<PueSourceRequest> total = definition.resolvedSources().stream()
+        List<PueDefinition.SourceDefinition> definitionSources = resolveSources(definition);
+        List<PueSourceRequest> total = definitionSources.stream()
                 .filter(source -> source.role() == PueDefinitionSourceRole.total)
                 .map(source -> new PueSourceRequest(source.device().getId(), source.pointName()))
                 .toList();
-        List<PueSourceRequest> cooler = definition.resolvedSources().stream()
+        List<PueSourceRequest> cooler = definitionSources.stream()
                 .filter(source -> source.role() == PueDefinitionSourceRole.cooler)
                 .map(source -> new PueSourceRequest(source.device().getId(), source.pointName()))
                 .toList();
@@ -111,6 +112,18 @@ public class PueQueryService {
                 List.of(),
                 dataStatus
         );
+    }
+
+    private List<PueDefinition.SourceDefinition> resolveSources(PueDefinition definition) {
+        List<PueDefinition.SourceDefinition> resolved = definition.resolvedSources();
+        if (!resolved.isEmpty()) {
+            return resolved;
+        }
+        // Legacy definitions can contain only direct sources, without group targets.
+        return definition.getSources().stream()
+                .map(source -> new PueDefinition.SourceDefinition(
+                        source.getDevice(), source.getRole(), source.getPointName()))
+                .toList();
     }
 
     public PueQueryResponse getPue(Integer widgetId, String rangePresetOverride, String windowOverride) {
