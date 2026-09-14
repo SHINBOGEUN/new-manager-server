@@ -33,6 +33,12 @@ public class Device extends BaseEntity {
 
     /** PDU Path 피드 (A/B/C…). 차트 by_path 그룹 키 */
     public static final String LOCATION_PATH_GROUP_KEY = "LOCATION_PATH";
+    public static final String ASSET_STATUS_GROUP_KEY = "ASSET_STATUS";
+    public static final String ASSET_STATUS_ACTIVE = "ACTIVE";
+    public static final String ASSET_STATUS_INACTIVE = "INACTIVE";
+    public static final String ASSET_STATUS_MAINTENANCE = "MAINTENANCE";
+    public static final String ASSET_STATUS_FAULT = "FAULT";
+    public static final String ASSET_STATUS_RETIRED = "RETIRED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,6 +63,19 @@ public class Device extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
+    @Column(name = "asset_code", length = 100)
+    private String assetCode;
+
+    @Column(name = "serial_number", length = 200)
+    private String serialNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_status_id")
+    private CommonCode assetStatus;
+
+    @Column(name = "asset_color", length = 20)
+    private String assetColor;
+
     @Column(nullable = false)
     private boolean enabled;
 
@@ -69,18 +88,28 @@ public class Device extends BaseEntity {
             CommonCode pathCode,
             String name,
             String description,
-            boolean enabled
+            boolean enabled,
+            String assetCode,
+            String serialNumber,
+            CommonCode assetStatus,
+            String assetColor
     ) {
         validateDeviceModel(deviceModel);
         validateLocationNode(locationNode);
         validatePathCode(pathCode);
         validateName(name);
+        validateAssetStatus(assetStatus);
         this.deviceModel = deviceModel;
         this.locationNode = locationNode;
         this.pathCode = pathCode;
         this.name = name;
         this.description = description;
         this.enabled = enabled;
+        this.assetCode = blankToNull(assetCode);
+        this.serialNumber = blankToNull(serialNumber);
+        this.assetStatus = assetStatus;
+        this.assetColor = blankToNull(assetColor);
+        applyCollectionEligibility(assetStatus);
     }
 
     public static Device create(
@@ -110,7 +139,23 @@ public class Device extends BaseEntity {
             boolean enabled,
             CommonCode pathCode
     ) {
-        return new Device(deviceModel, locationNode, pathCode, name, description, enabled);
+        return new Device(deviceModel, locationNode, pathCode, name, description, enabled, null, null, null, null);
+    }
+
+    public static Device create(
+            DeviceModel deviceModel,
+            LocationNode locationNode,
+            String name,
+            String description,
+            boolean enabled,
+            CommonCode pathCode,
+            String assetCode,
+            String serialNumber,
+            CommonCode assetStatus,
+            String assetColor
+    ) {
+        return new Device(deviceModel, locationNode, pathCode, name, description, enabled,
+                assetCode, serialNumber, assetStatus, assetColor);
     }
 
     public void update(
@@ -141,6 +186,30 @@ public class Device extends BaseEntity {
         this.name = name;
         this.description = description;
         this.enabled = enabled;
+    }
+
+    public void updateAsset(String assetCode, String serialNumber, CommonCode assetStatus, String assetColor) {
+        validateAssetStatus(assetStatus);
+        this.assetCode = blankToNull(assetCode);
+        this.serialNumber = blankToNull(serialNumber);
+        this.assetStatus = assetStatus;
+        this.assetColor = blankToNull(assetColor);
+        applyCollectionEligibility(assetStatus);
+    }
+
+    /** 자산 상태 전환. 미사용·폐기는 수집/장비 기반 위젯 대상에서 제외하고, 운영중은 다시 활성화한다. */
+    public void transitionAssetStatus(CommonCode assetStatus) {
+        validateAssetStatus(assetStatus);
+        this.assetStatus = assetStatus;
+        if (assetStatus == null) {
+            return;
+        }
+        String code = assetStatus.getCode();
+        if (ASSET_STATUS_INACTIVE.equalsIgnoreCase(code) || ASSET_STATUS_RETIRED.equalsIgnoreCase(code)) {
+            this.enabled = false;
+        } else if (ASSET_STATUS_ACTIVE.equalsIgnoreCase(code)) {
+            this.enabled = true;
+        }
     }
 
     public void reassignLocation(LocationNode locationNode) {
@@ -178,5 +247,25 @@ public class Device extends BaseEntity {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required");
         }
+    }
+
+    private static void validateAssetStatus(CommonCode assetStatus) {
+        if (assetStatus == null) return;
+        if (assetStatus.getCodeGroup() == null
+                || !ASSET_STATUS_GROUP_KEY.equals(assetStatus.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("assetStatus must belong to ASSET_STATUS group");
+        }
+    }
+
+    private void applyCollectionEligibility(CommonCode assetStatus) {
+        if (assetStatus == null) return;
+        String code = assetStatus.getCode();
+        if (ASSET_STATUS_INACTIVE.equalsIgnoreCase(code) || ASSET_STATUS_RETIRED.equalsIgnoreCase(code)) {
+            this.enabled = false;
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

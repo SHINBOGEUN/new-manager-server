@@ -15,16 +15,16 @@ import java.util.Optional;
 
 public interface DeviceSpringDataRepository extends JpaRepository<Device, Integer> {
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "assetStatus", "deviceGroups"})
     Optional<Device> findById(Integer id);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "assetStatus", "deviceGroups"})
     List<Device> findByLocationNode_Code(String locationNodeCode);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "assetStatus"})
     List<Device> findByLocationNode_CodeIn(Collection<String> locationNodeCodes);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "assetStatus", "deviceGroups"})
     @Query("SELECT d FROM Device d " +
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
@@ -53,6 +53,10 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
     boolean existsByLocationNodeAndName(LocationNode locationNode, String name);
 
     boolean existsByLocationNodeAndNameAndIdNot(LocationNode locationNode, String name, Integer id);
+
+    boolean existsByAssetCode(String assetCode);
+
+    boolean existsByAssetCodeAndIdNot(String assetCode, Integer id);
 
     boolean existsByDeviceModel_Id(Integer deviceModelId);
 

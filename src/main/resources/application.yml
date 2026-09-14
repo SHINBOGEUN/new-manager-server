@@ -6,6 +6,10 @@ spring:
   jackson:
     generator:
       write-bigdecimal-as-plain: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 server:
   port: 8080
   servlet:
@@ -64,3 +68,7 @@ collector:
 live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
+
+asset:
+  image:
+    storage-path: ${ASSET_IMAGE_STORAGE_PATH:./uploads/device-images}

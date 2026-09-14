@@ -37,6 +37,10 @@ public interface DeviceRepository {
 
     boolean existsByLocationNodeAndNameAndIdNot(LocationNode locationNode, String name, Integer id);
 
+    boolean existsByAssetCode(String assetCode);
+
+    boolean existsByAssetCodeAndIdNot(String assetCode, Integer id);
+
     boolean existsByDeviceModelId(Integer deviceModelId);
 
     List<Device> findAllByDeviceModelId(Integer deviceModelId);

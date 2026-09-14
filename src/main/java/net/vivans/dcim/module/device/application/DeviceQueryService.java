@@ -8,6 +8,7 @@ import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceAssetHistory;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceProtocolEndpointRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
@@ -50,6 +51,7 @@ public class DeviceQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
+    private final DeviceAssetService deviceAssetService;
     private final CollectionScriptSyncService collectionScriptSyncService;
 
     public PageResponse<DeviceResponse> getDevices(
@@ -137,7 +139,9 @@ public class DeviceQueryService {
         DeviceModel deviceModel = findDeviceModel(request.modelId());
         LocationNode locationNode = findLocationNode(request.locationNodeCode());
         CommonCode pathCode = findPathCode(request.pathCodeId());
+        CommonCode assetStatus = findAssetStatus(request.assetStatusId());
         validateUniqueNameAtLocation(locationNode, request.name(), null);
+        validateUniqueAssetCode(request.assetCode(), null);
 
         boolean enabled = request.enabled() == null || request.enabled();
         Device device = Device.create(
@@ -146,7 +150,11 @@ public class DeviceQueryService {
                 request.name(),
                 request.description(),
                 enabled,
-                pathCode
+                pathCode,
+                request.assetCode(),
+                request.serialNumber(),
+                assetStatus,
+                request.assetColor()
         );
         Device saved = deviceRepository.save(device);
         collectionScriptSyncService.assignDeviceAndRegenerate(saved);
@@ -156,10 +164,13 @@ public class DeviceQueryService {
     @Transactional
     public DeviceResponse updateDevice(Integer id, DeviceCreateRequest request) {
         Device device = findDevice(id);
+        DeviceAssetHistory.AssetSnapshot previousAsset = deviceAssetService.snapshotAsset(device);
         DeviceModel deviceModel = findDeviceModel(request.modelId());
         LocationNode locationNode = findLocationNode(request.locationNodeCode());
         CommonCode pathCode = findPathCode(request.pathCodeId());
+        CommonCode assetStatus = findAssetStatus(request.assetStatusId());
         validateUniqueNameAtLocation(locationNode, request.name(), id);
+        validateUniqueAssetCode(request.assetCode(), id);
         if (!device.getDeviceModel().getId().equals(deviceModel.getId())) {
             validateEndpointsCompatibleWithModel(id, deviceModel);
         }
@@ -176,7 +187,10 @@ public class DeviceQueryService {
                 enabled,
                 pathCode
         );
+        device.updateAsset(request.assetCode(), request.serialNumber(), assetStatus, request.assetColor());
         DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
+        deviceAssetService.recordAssetChange(device, previousAsset);
+        deviceAssetService.removeRackPlacementIfLocationChanged(id, locationNode.getCode());
         if (modelChanged) {
             collectionScriptSyncService.removeDeviceAndRegenerate(id, oldModelId);
             collectionScriptSyncService.assignDeviceAndRegenerate(device);
@@ -192,6 +206,7 @@ public class DeviceQueryService {
         Integer modelId = device.getDeviceModel().getId();
         collectionScriptSyncService.removeDeviceAndRegenerate(id, modelId);
         deleteEndpoints(id);
+        deviceAssetService.deleteAssetData(id);
         deviceRepository.flush();
         deviceRepository.delete(device);
     }
@@ -228,6 +243,12 @@ public class DeviceQueryService {
                 .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + pathCodeId));
     }
 
+    private CommonCode findAssetStatus(Integer assetStatusId) {
+        if (assetStatusId == null) return null;
+        return commonCodeRepository.findById(assetStatusId)
+                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + assetStatusId));
+    }
+
     private void validateUniqueNameAtLocation(LocationNode locationNode, String name, Integer excludeId) {
         boolean duplicated = excludeId == null
                 ? deviceRepository.existsByLocationNodeAndName(locationNode, name)
@@ -235,6 +256,15 @@ public class DeviceQueryService {
         if (duplicated) {
             throw new IllegalArgumentException("device name already exists at this location");
         }
+    }
+
+    private void validateUniqueAssetCode(String assetCode, Integer excludeId) {
+        String normalized = blankToNull(assetCode);
+        if (normalized == null) return;
+        boolean duplicated = excludeId == null
+                ? deviceRepository.existsByAssetCode(normalized)
+                : deviceRepository.existsByAssetCodeAndIdNot(normalized, excludeId);
+        if (duplicated) throw new IllegalArgumentException("asset code already exists");
     }
 
     private void validateEndpointsCompatibleWithModel(Integer deviceId, DeviceModel newModel) {

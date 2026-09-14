@@ -20,6 +20,12 @@ public record DeviceResponse(
         String name,
         String description,
         boolean enabled,
+        String assetCode,
+        String serialNumber,
+        Integer assetStatusId,
+        String assetStatusCode,
+        String assetStatusName,
+        String assetColor,
         List<DeviceGroupSummaryResponse> deviceGroups
 ) {
 
@@ -46,6 +52,12 @@ public record DeviceResponse(
                 device.getName(),
                 device.getDescription(),
                 device.isEnabled(),
+                device.getAssetCode(),
+                device.getSerialNumber(),
+                device.getAssetStatus() == null ? null : device.getAssetStatus().getId(),
+                device.getAssetStatus() == null ? null : device.getAssetStatus().getCode(),
+                device.getAssetStatus() == null ? null : device.getAssetStatus().getName(),
+                device.getAssetColor(),
                 device.getDeviceGroups().stream()
                         .sorted(Comparator.comparing(group -> group.getName()))
                         .map(DeviceGroupSummaryResponse::from)

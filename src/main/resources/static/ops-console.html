@@ -150,6 +150,81 @@
     .stat .k { font-size: 12px; color: var(--muted); }
     .stat .v { font-size: 22px; font-weight: 700; margin-top: 4px; letter-spacing: -.02em; }
 
+    .rack-stats { grid-template-columns: repeat(5, minmax(150px, 1fr)); }
+    .rack-stats .stat { min-height: 92px; }
+    .rack-stats .v { color: #15558f; font-size: 30px; }
+    .rack-stats .stat:nth-child(2) .v { color: #9a6700; }
+    .rack-stats .stat:nth-child(3) .v { color: #287b65; }
+    .rack-stats .stat:nth-child(4) .v { color: #8b3a8d; }
+    .rack-stats .stat:nth-child(5) .v { color: #b54708; }
+    .rack-overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(390px, 1fr)); gap: 20px; align-items: start; }
+    .rack-overview-card { background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+    .rack-overview-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 11px 13px; background: #1d3655; color: #fff; }
+    .rack-overview-head b { font-size: 15px; }
+    .rack-overview-head small { display: block; color: #c7d7e8; margin-top: 2px; }
+    .rack-overview-head .chip { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); color: #fff; white-space: nowrap; }
+    .rack-visual { display: grid; grid-template-columns: 68px minmax(220px, 1fr) 68px; gap: 8px; align-items: stretch; padding: 14px; min-height: 548px; }
+    .rack-side { display: flex; flex-direction: column; gap: 5px; min-width: 0; border: 2px dashed transparent; border-radius: 8px; transition: background .12s, border-color .12s; }
+    .rack-side.drop-active { border-color: #4e9ad5; background: #dcebfa; }
+    .rack-side h4 { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-align: center; }
+    .rack-side-device { border-radius: 6px; padding: 7px 5px; font-size: 11px; line-height: 1.3; color: #fff; overflow: hidden; text-overflow: ellipsis; }
+    .rack-side-device b, .rack-side-device span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rack-side-device span { opacity: .86; }
+    .rack-side-device[data-rack-device-id], .rack-rear [data-rack-device-id] { cursor: pointer; }
+    .rack-side-device[draggable="true"] { cursor: grab; }
+    .rack-side-device[draggable="true"]:active { cursor: grabbing; }
+    .rack-frame { position: relative; border: 5px solid #2b3b4f; border-radius: 5px; background: repeating-linear-gradient(to top, #162231 0, #162231 calc(100% / var(--rack-u) - 1px), #405167 calc(100% / var(--rack-u) - 1px), #405167 calc(100% / var(--rack-u))); min-height: 520px; overflow: hidden; }
+    .rack-frame.no-capacity { background: #eef3f8; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+    .rack-unit-device { position: absolute; left: 6px; right: 6px; display: flex; flex-direction: column; justify-content: center; padding: 5px 8px; border-radius: 4px; color: #fff; font-size: 12px; line-height: 1.2; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.24); }
+    .rack-unit-device b, .rack-unit-device span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rack-unit-device span { font-size: 10px; opacity: .86; }
+    .rack-unit-device[draggable="true"] { cursor: grab; }
+    .rack-unit-device[draggable="true"]:active { cursor: grabbing; }
+    .rack-frame.drop-active { outline: 3px solid #7db5e6; outline-offset: 3px; }
+    .rack-drop-indicator { position: absolute; left: 3px; right: 3px; z-index: 4; display: grid; place-items: center; border: 2px dashed #fff; border-radius: 4px; background: rgba(30,90,150,.68); color: #fff; font-weight: 800; font-size: 12px; pointer-events: none; }
+    .rack-drop-indicator.invalid { background: rgba(180,35,24,.74); }
+    .rack-empty { display: grid; place-items: center; min-height: 100%; padding: 20px; color: #99a7b8; font-size: 12px; background: rgba(255,255,255,.05); }
+    .rack-rear { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: -2px 11px 10px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: #eef3f8; font-size: 11px; }
+    .rack-rear b { color: var(--muted); }
+    .rack-rear span { border-radius: 999px; padding: 3px 7px; color: #fff; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rack-overview-foot { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 11px 11px; }
+    .rack-overview-foot .chip { padding: 3px 8px; }
+    .rack-overview-foot button { width: 100%; padding: 7px; font-size: 12px; }
+    .rack-preview-modal { display: none; position: fixed; inset: 0; z-index: 120; padding: 28px; background: rgba(15, 28, 46, .62); overflow: auto; }
+    .rack-preview-modal.open { display: grid; place-items: start center; }
+    .rack-preview { width: min(940px, 100%); margin: auto; background: #f8fafc; border-radius: 14px; border: 1px solid #93a9c2; box-shadow: 0 24px 70px rgba(4,16,31,.35); overflow: hidden; }
+    .rack-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; background: #142d4b; color: #fff; }
+    .rack-preview-head h2 { margin: 0; font-size: 18px; }
+    .rack-preview-head p { margin: 3px 0 0; color: #c8d9eb; font-size: 12px; }
+    .rack-preview-head button { color: #fff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); font-size: 18px; line-height: 1; padding: 6px 10px; }
+    .rack-preview-body { padding: 18px; }
+    .rack-preview-visual { display: grid; grid-template-columns: 132px minmax(320px, 1fr) 132px; gap: 14px; align-items: stretch; }
+    .rack-preview-side { display: flex; flex-direction: column; gap: 8px; padding-top: 26px; border: 2px dashed transparent; border-radius: 8px; transition: background .12s, border-color .12s; }
+    .rack-preview-side.drop-active { border-color: #4e9ad5; background: #dcebfa; }
+    .rack-preview-side h3 { margin: -26px 0 6px; text-align: center; font-size: 12px; color: var(--muted); }
+    .rack-preview-side .rack-side-device { padding: 9px 8px; font-size: 12px; }
+    .rack-preview-center { display: grid; grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 6px; min-width: 0; }
+    .rack-preview-units { display: grid; color: var(--muted); font: 10px/1 ui-monospace, Consolas, monospace; text-align: center; }
+    .rack-preview-units span { display: grid; place-items: end center; padding-bottom: 1px; border-bottom: 1px solid #d4dce8; }
+    .rack-preview .rack-frame { min-height: 720px; }
+    .rack-preview .rack-unit-device { font-size: 13px; }
+    .rack-preview .rack-unit-device span { font-size: 10px; }
+    .rack-preview .rack-rear { margin: 16px 0 0; font-size: 12px; }
+    .asset-preview-modal { display: none; position: fixed; inset: 0; z-index: 140; padding: 28px; background: rgba(15, 28, 46, .72); overflow: auto; }
+    .asset-preview-modal.open { display: grid; place-items: center; }
+    .asset-preview { width: min(680px, 100%); background: #fff; border: 1px solid #93a9c2; border-radius: 14px; box-shadow: 0 24px 70px rgba(4,16,31,.4); overflow: hidden; }
+    .asset-preview-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 14px 18px; background: #142d4b; color: #fff; }
+    .asset-preview-head h2 { margin: 0; font-size: 18px; }
+    .asset-preview-head button { color: #fff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); font-size: 18px; line-height: 1; padding: 6px 10px; }
+    .asset-preview-body { padding: 18px; }
+    .asset-preview-main { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; }
+    .asset-preview-image { width: 180px; height: 142px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--surface2); overflow: hidden; color: var(--muted); }
+    .asset-preview-image img { width: 100%; height: 100%; object-fit: cover; }
+    .asset-preview-kv { margin: 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 7px 10px; font-size: 13px; }
+    .asset-preview-kv dt { color: var(--muted); }
+    .asset-preview-kv dd { margin: 0; word-break: break-word; }
+    .asset-preview-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
     /* 좌우 컬럼이 콘텐츠 영역 전체를 나눠 씀 (오른쪽 여백 낭비 방지) */
     .grid2 {
       display: grid;
@@ -201,6 +276,8 @@
       .side { display: none; }
       .stats, .grid2, .models-layout { grid-template-columns: 1fr; }
     }
+    @media (max-width: 1250px) { .rack-stats { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px) { .rack-stats { grid-template-columns: 1fr; } .rack-overview-grid { grid-template-columns: 1fr; } .rack-visual { grid-template-columns: 54px minmax(170px, 1fr) 54px; min-height: 420px; padding: 10px; } .rack-frame { min-height: 390px; } .rack-preview-modal, .asset-preview-modal { padding: 10px; } .rack-preview-body { padding: 10px; } .rack-preview-visual { grid-template-columns: 62px minmax(150px, 1fr) 62px; gap: 6px; } .rack-preview-side .rack-side-device { padding: 5px 4px; font-size: 10px; } .rack-preview .rack-frame { min-height: 520px; } .asset-preview-main { grid-template-columns: 1fr; } .asset-preview-image { width: 100%; height: 180px; } }
 
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     label.field {
@@ -483,8 +560,11 @@
     <button type="button" data-tab="wizard">장비 추가<small>등록부터 수집까지</small></button>
     <div class="group">운영</div>
     <button type="button" data-tab="devices">장비 목록<small>통신 · 수집 연결</small></button>
+    <button type="button" data-tab="assets">자산관리<small>Rack · U · 이미지</small></button>
+    <button type="button" data-tab="rack-overview">랙 현황<small>점유 U · 설치 장비</small></button>
     <button type="button" data-tab="device-groups">장비 그룹<small>IT · Cooling · 운영 분류</small></button>
     <button type="button" data-tab="tasks">수집 작업<small>Task · 주기 그룹</small></button>
+    <button type="button" data-tab="collection-status">수집 상태<small>지연 · 데이터 없음</small></button>
     <button type="button" data-tab="widgets">화면 위젯<small>표시 · 조회</small></button>
     <div class="group">기준 정보</div>
     <button type="button" data-tab="locations">위치<small>존 · Path · 랙</small></button>
@@ -613,6 +693,141 @@
         <span class="muted" id="wzHint">로그인·데이터 로드 후 사용</span>
       </div>
       <div class="result-ok" id="wzResult"></div>
+    </section>
+
+    <!-- ASSETS -->
+    <section class="panel" id="tab-assets">
+      <h1 class="page-title">자산관리</h1>
+      <p class="page-desc">장비 자산번호·시리얼·상태·Rack U 배치·이미지를 관리합니다. 장비 기본 등록과 통신 설정은 기존 장비 목록에서 처리합니다.</p>
+      <div class="grid2">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;margin-bottom:12px">
+            <h2 style="margin:0">자산 목록</h2>
+            <button type="button" class="ghost" id="assetReload">새로고침</button>
+          </div>
+          <div class="row" style="margin-bottom:12px">
+            <input id="assetFilterName" placeholder="장비명 · 자산번호 검색" style="min-width:180px" />
+            <select id="assetFilterStatus"><option value="">모든 운영 상태</option></select>
+          </div>
+          <div style="overflow:auto;max-height:620px">
+            <table>
+              <thead><tr><th>자산</th><th>모델</th><th>위치 / Rack</th><th>U</th><th>IP</th><th>운영 상태</th></tr></thead>
+              <tbody id="assetBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h2>선택 자산</h2>
+            <div id="assetHint" class="sel-banner">왼쪽에서 자산을 선택하세요.</div>
+            <div id="assetForm" style="display:none">
+              <div class="fields">
+                <label class="field">장비명<input id="assetName" readonly class="muted" /></label>
+                <label class="field">모델<input id="assetModel" readonly class="muted" /></label>
+                <label class="field">자산번호<input id="assetCode" placeholder="예: SRV-001" /></label>
+                <label class="field">시리얼번호<input id="assetSerial" placeholder="제조사 시리얼" /></label>
+                <label class="field">현재 운영 상태<input id="assetStatus" readonly class="muted" /></label>
+                <label class="field">표시 색상<input id="assetColor" type="color" value="#2563eb" /></label>
+                <label class="field full">설명<input id="assetDescription" placeholder="선택" /></label>
+              </div>
+              <button type="button" class="primary" style="margin-top:12px" id="assetSave">자산 정보 저장</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>자산 운영 상태</h2>
+            <p class="muted" style="margin-top:-4px;font-size:13px">운영중 → 점검 중/장애/미사용 → 폐기 흐름으로 관리합니다. 미사용·폐기는 수집과 장비 기반 위젯 대상에서 자동 제외됩니다.</p>
+            <div id="assetStatusFlowHint" class="muted">자산을 선택하면 운영 상태를 전환할 수 있습니다.</div>
+            <div id="assetStatusFlow" style="display:none">
+              <div class="fields">
+                <label class="field">변경할 상태<select id="assetNextStatus"><option value="">변경할 상태 선택</option></select></label>
+                <label class="field">변경 사유<input id="assetStatusReason" placeholder="예: 정기 점검 시작" /></label>
+              </div>
+              <button type="button" class="primary" style="margin-top:12px" id="assetStatusTransition">운영 상태 변경</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>자산 변경 이력</h2>
+            <div id="assetHistory" class="muted">자산을 선택하면 자산번호·시리얼·상태 변경 이력이 표시됩니다.</div>
+          </div>
+          <div class="card" id="assetRackCard">
+            <h2>Rack 배치</h2>
+            <div id="assetRackHint" class="muted">자산을 선택하면 Rack 위치와 U 배치를 등록할 수 있습니다.</div>
+            <div id="assetRackForm" style="display:none">
+              <div class="fields">
+                <label class="field">설치 방식<select id="assetMountType"><option value="RACK_U">Rack U 장착</option><option value="RACK_SIDE">Rack 측면 장착</option><option value="RACK_REAR">Rack 후면 장착</option><option value="FLOOR">바닥형</option><option value="WALL">벽부형</option></select></label>
+                <label class="field full" id="assetRackField">Rack<select id="assetRack"></select></label>
+                <label class="field" id="assetRackSideField" style="display:none">장착 측면<select id="assetRackSide"><option value="LEFT">왼쪽</option><option value="RIGHT">오른쪽</option><option value="REAR">후면</option></select></label>
+                <div id="assetUFields" class="fields" style="display:contents"><label class="field">시작 U<input id="assetUPosition" type="number" min="1" value="1" /></label><label class="field">사용 U<input id="assetUHeight" type="number" min="1" value="1" /></label><label class="field full">Form Factor<input id="assetFormFactor" placeholder="예: 4U" /></label></div>
+              </div>
+              <div class="row" style="margin-top:12px"><button type="button" class="primary" id="assetRackSave">Rack 배치 저장</button><button type="button" class="ghost" id="assetRackDelete">배치 해제</button></div>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Rack 변경 이력</h2>
+            <div id="assetRackHistory" class="muted">자산을 선택하면 배치 변경 이력이 표시됩니다.</div>
+          </div>
+          <div class="card">
+            <h2>장비 이미지</h2>
+            <div id="assetImageHint" class="muted">자산을 선택한 뒤 JPG, PNG, WEBP 이미지(최대 10MB)를 등록하세요.</div>
+            <div id="assetImageForm" style="display:none">
+              <div class="row"><input id="assetImageFile" type="file" accept="image/jpeg,image/png,image/webp" /><label><input id="assetImagePrimary" type="checkbox" /> 대표 이미지</label><button type="button" class="primary" id="assetImageUpload">업로드</button></div>
+              <div id="assetImageList" class="row" style="margin-top:12px;flex-wrap:wrap"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row" style="justify-content:space-between"><h2 style="margin:0">Rack 보기</h2><button type="button" class="ghost" id="assetRackLayoutLoad">조회</button></div>
+            <select id="assetRackLayout" style="margin-top:10px;width:100%"></select>
+            <div id="assetRackLayoutOut" class="muted" style="margin-top:12px">Rack을 선택하세요.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RACK OVERVIEW -->
+    <section class="panel" id="tab-rack-overview">
+      <h1 class="page-title">랙 현황</h1>
+      <p class="page-desc">Rack별 U 점유와 설치 장비를 한 화면에서 확인합니다. 측면·후면 장비는 U 점유와 별도로 표시됩니다.</p>
+      <div class="stats rack-stats">
+        <div class="stat"><div class="k">전체 Rack</div><div class="v" id="rackStatTotal">–</div></div>
+        <div class="stat"><div class="k">빈 Rack</div><div class="v" id="rackStatEmpty">–</div></div>
+        <div class="stat"><div class="k">전체 Rack U</div><div class="v" id="rackStatCapacity">–</div></div>
+        <div class="stat"><div class="k">사용 가능 U</div><div class="v" id="rackStatAvailable">–</div></div>
+        <div class="stat"><div class="k">설치 장비</div><div class="v" id="rackStatDevices">–</div></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <label class="field">위치 범위<select id="rackOverviewScope" style="min-width:220px"></select></label>
+          <button type="button" class="ghost" id="rackOverviewReload">새로고침</button>
+        </div>
+      </div>
+      <div id="rackOverviewOut" class="rack-overview-grid"><div class="empty">Rack 현황을 불러오는 중입니다.</div></div>
+    </section>
+
+    <!-- COLLECTION STATUS -->
+    <section class="panel" id="tab-collection-status">
+      <h1 class="page-title">수집 상태</h1>
+      <p class="page-desc">장비 등록, 수집 작업 그룹, InfluxDB 최신 저장값을 함께 확인합니다. 수집 주기의 2배(최소 5분)를 넘기면 지연으로 표시합니다.</p>
+      <div class="stats">
+        <div class="stat"><div class="k">전체 장비</div><div class="v" id="csTotal">–</div></div>
+        <div class="stat"><div class="k">정상</div><div class="v" id="csNormal" style="color:var(--ok)">–</div></div>
+        <div class="stat"><div class="k">지연 / 데이터 없음</div><div class="v" id="csIssue" style="color:var(--bad)">–</div></div>
+        <div class="stat"><div class="k">중지 / 미등록</div><div class="v" id="csStopped" style="color:var(--warn)">–</div></div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <input id="csFilterName" placeholder="장비명 · 위치 검색" style="min-width:180px" />
+            <select id="csFilterStatus"><option value="">모든 상태</option><option value="NORMAL">정상</option><option value="STALE">지연</option><option value="MISSING">데이터 없음</option><option value="NO_POINTS">측정항목 없음</option><option value="STOPPED">수집 중지</option><option value="UNREGISTERED">미등록</option><option value="DISABLED">장비 중지</option></select>
+            <select id="csFilterModel"><option value="">모든 모델</option></select>
+          </div>
+          <button type="button" class="ghost" id="csReload">새로고침</button>
+        </div>
+        <div class="muted" id="csGeneratedAt" style="margin:12px 0 8px;font-size:12px"></div>
+        <div class="table-wrap" style="max-height:650px"><table>
+          <thead><tr><th>장비</th><th>위치 / 모델</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값</th></tr></thead>
+          <tbody id="csBody"></tbody>
+        </table></div>
+      </div>
     </section>
 
     <!-- DEVICES -->
@@ -1155,6 +1370,9 @@
                 <label class="field">유형
                   <select id="locEditType"></select>
                 </label>
+                <label class="field">Rack 최대 U
+                  <input id="locEditRackCapacity" type="number" min="1" placeholder="Rack만 입력" />
+                </label>
                 <label class="field full">코드
                   <input id="locEditCode" readonly class="mono" />
                 </label>
@@ -1181,6 +1399,9 @@
               </label>
               <label class="field">유형
                 <select id="locType"></select>
+              </label>
+              <label class="field">Rack 최대 U
+                <input id="locRackCapacity" type="number" min="1" placeholder="Rack만 입력" />
               </label>
               <label class="field full">이름
                 <input id="locName" placeholder="예: A열 랙01" />
@@ -1428,6 +1649,21 @@
     </div>
   </div>
   <div class="toast-wrap" id="toasts"></div>
+  <div class="rack-preview-modal" id="rackPreviewModal" aria-hidden="true">
+    <div class="rack-preview" role="dialog" aria-modal="true" aria-labelledby="rackPreviewTitle">
+      <div class="rack-preview-head">
+        <div><h2 id="rackPreviewTitle">Rack 상세</h2><p id="rackPreviewMeta"></p></div>
+        <button type="button" id="rackPreviewClose" aria-label="닫기">×</button>
+      </div>
+      <div class="rack-preview-body" id="rackPreviewBody"></div>
+    </div>
+  </div>
+  <div class="asset-preview-modal" id="assetPreviewModal" aria-hidden="true">
+    <div class="asset-preview" role="dialog" aria-modal="true" aria-labelledby="assetPreviewTitle">
+      <div class="asset-preview-head"><h2 id="assetPreviewTitle">자산 상세</h2><button type="button" id="assetPreviewClose" aria-label="닫기">×</button></div>
+      <div class="asset-preview-body" id="assetPreviewBody"></div>
+    </div>
+  </div>
 
   <script>
     const state = {
@@ -1437,6 +1673,9 @@
       models: [],
       modelRequiresInstance: {},
       devices: [],
+      assets: [],
+      rackLayouts: [],
+      collectionStatus: null,
       groupDevices: [],
       deviceGroups: [],
       locations: [],
@@ -1472,6 +1711,10 @@
       editingCodeGroupId: null,
       selectedCodeGroupId: null,
       editingDeviceGroupId: null,
+      selectedAssetId: null,
+      selectedAsset: null,
+      assetImageUrls: [],
+      assetPreviewImageUrl: null,
     };
 
     const $ = (id) => document.getElementById(id);
@@ -1525,6 +1768,15 @@
       return json.data;
     }
 
+    async function apiForm(path, formData) {
+      const headers = {};
+      if (state.token) headers.Authorization = "Bearer " + state.token;
+      const res = await fetch(base() + path, { method: "POST", headers, body: formData });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+      return json.data;
+    }
+
     async function doLogin(username, password, managerUrl) {
       if (managerUrl != null) $("managerUrl").value = managerUrl;
       $("username").value = username;
@@ -1556,6 +1808,9 @@
     function goTab(name) {
       document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+      if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
+      if (name === "rack-overview" && state.token) loadRackOverview().catch((e) => toast(e.message, true));
+      if (name === "collection-status" && state.token) loadCollectionStatus().catch((e) => toast(e.message, true));
     }
 
     document.querySelectorAll("#tabs button").forEach((btn) => {
@@ -1789,6 +2044,7 @@
       fillSelect($("locEditType"), state.codes.LOCATION_TYPE || [], (c) =>
         `<option value="${c.id}">${esc(c.name)} (${esc(c.code)})</option>`);
       $("locEditType").value = String(n.locationTypeId);
+      $("locEditRackCapacity").value = n.rackUCapacity || "";
       $("locParent").value = n.code;
       loadLocDevices();
     }
@@ -2316,6 +2572,686 @@
         selectModel(created.id);
       } catch (e) { toast(e.message, true); }
     };
+
+    function assetStatusCodes() {
+      const lifecycleCodes = new Set(["ACTIVE", "MAINTENANCE", "FAULT", "INACTIVE", "RETIRED"]);
+      return (state.codes.ASSET_STATUS || []).filter((code) => lifecycleCodes.has(String(code.code || "").toUpperCase()));
+    }
+
+    function assetRacks() {
+      const typeById = new Map((state.codes.LOCATION_TYPE || []).map((code) => [Number(code.id), String(code.code).toUpperCase()]));
+      return (state.flatLocations || []).filter((location) => typeById.get(Number(location.locationTypeId)) === "RACK");
+    }
+
+    function fillAssetSelects() {
+      const keepFilterStatus = $("assetFilterStatus").value;
+      const keepNextStatus = $("assetNextStatus").value;
+      const keepRack = $("assetRack").value;
+      const keepLayoutRack = $("assetRackLayout").value;
+      const statusOptions = assetStatusCodes();
+      const statusMarkup = (code) => `<option value="${code.id}">${esc(code.name)} (${esc(code.code)})</option>`;
+      fillSelect($("assetFilterStatus"), statusOptions, statusMarkup, "모든 운영 상태");
+      fillSelect($("assetNextStatus"), statusOptions, statusMarkup, "변경할 상태 선택");
+      const rackMarkup = (location) => `<option value="${esc(location.code)}">${esc(location.name)}${location.rackUCapacity ? ` · ${location.rackUCapacity}U` : ""}</option>`;
+      fillSelect($("assetRack"), assetRacks(), rackMarkup, "Rack 선택");
+      fillSelect($("assetRackLayout"), assetRacks(), rackMarkup, "Rack 선택");
+      $("assetFilterStatus").value = keepFilterStatus;
+      $("assetNextStatus").value = keepNextStatus;
+      $("assetRack").value = keepRack;
+      $("assetRackLayout").value = keepLayoutRack;
+    }
+
+    function updateAssetMountFields() {
+      const mountType = $("assetMountType").value;
+      const usesRack = mountType === "RACK_U" || mountType === "RACK_SIDE" || mountType === "RACK_REAR";
+      const usesU = mountType === "RACK_U";
+      const usesSide = mountType === "RACK_SIDE" || mountType === "RACK_REAR";
+      $("assetRackField").style.display = usesRack ? "" : "none";
+      $("assetUFields").style.display = usesU ? "contents" : "none";
+      $("assetRackSideField").style.display = usesSide ? "" : "none";
+      $("assetRackSide").disabled = mountType === "RACK_REAR";
+      const rearOption = $("assetRackSide").querySelector('option[value="REAR"]');
+      rearOption.hidden = mountType !== "RACK_REAR";
+      rearOption.disabled = mountType !== "RACK_REAR";
+      if (mountType === "RACK_SIDE" && $("assetRackSide").value === "REAR") $("assetRackSide").value = "LEFT";
+      if (mountType === "RACK_REAR") $("assetRackSide").value = "REAR";
+    }
+
+    async function loadAssets() {
+      fillAssetSelects();
+      const page = await api("/api/manager/assets?page=1&size=100");
+      const query = $("assetFilterName").value.trim().toLowerCase();
+      const statusId = $("assetFilterStatus").value;
+      state.assets = (page.content || []).filter((asset) => {
+        const device = asset.device || {};
+        const text = [device.name, device.assetCode, device.serialNumber, device.modelName, device.locationNodeName]
+          .filter(Boolean).join(" ").toLowerCase();
+        return (!query || text.includes(query)) && (!statusId || Number(device.assetStatusId) === Number(statusId));
+      });
+      $("assetBody").innerHTML = state.assets.map((asset) => {
+        const d = asset.device;
+        const p = asset.rackPlacement;
+        const statusCode = String(d.assetStatusCode || "").toUpperCase();
+        const statusClass = statusCode === "FAULT" ? "bad" : statusCode === "MAINTENANCE" ? "warn" : statusCode === "INACTIVE" || statusCode === "RETIRED" ? "muted" : "ok";
+        const status = d.assetStatusName
+          ? `<span class="chip ${statusClass}">${esc(d.assetStatusName)}</span><div class="muted mono" style="font-size:11px;margin-top:4px">${esc(d.assetStatusCode || "")}</div>`
+          : '<span class="muted">미지정</span>';
+        return `<tr class="clickable" data-asset-id="${d.id}">
+          <td><b>${esc(d.name)}</b><div class="muted mono">${esc(d.assetCode || "자산번호 없음")}</div></td>
+          <td>${esc(d.manufacturer || "—")}<div class="muted">${esc(d.modelName || "—")}</div></td>
+          <td>${esc(p?.rackLocationName || d.locationNodeName || d.locationNodeCode || "—")}</td>
+          <td>${!p ? '<span class="muted">—</span>' : p.mountType === "RACK_U" ? `${p.uPosition}–${p.lastU} (${p.uHeight}U)` : p.mountType === "RACK_SIDE" ? `측면 · ${p.rackSide === "LEFT" ? "좌" : "우"}` : p.mountType === "RACK_REAR" ? "후면" : p.mountType === "FLOOR" ? "바닥형" : "벽부형"}</td>
+          <td>${esc(asset.ipAddress || "—")}</td><td>${status}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="6"><div class="empty">조건에 맞는 자산이 없습니다.</div></td></tr>';
+      $("assetBody").querySelectorAll("[data-asset-id]").forEach((row) => {
+        row.onclick = () => selectAsset(Number(row.dataset.assetId));
+      });
+      if (state.selectedAssetId && state.assets.some((asset) => asset.device.id === state.selectedAssetId)) {
+        await selectAsset(state.selectedAssetId);
+      }
+    }
+
+    async function selectAsset(deviceId) {
+      const detail = await api(`/api/manager/assets/${deviceId}`);
+      state.selectedAssetId = deviceId;
+      state.selectedAsset = detail;
+      const d = detail.device;
+      $("assetHint").style.display = "none";
+      $("assetForm").style.display = "block";
+      $("assetRackHint").style.display = "none";
+      $("assetRackForm").style.display = "block";
+      $("assetImageHint").style.display = "none";
+      $("assetImageForm").style.display = "block";
+      $("assetStatusFlowHint").style.display = "none";
+      $("assetStatusFlow").style.display = "block";
+      $("assetName").value = d.name || "";
+      $("assetModel").value = `${d.manufacturer || ""} ${d.modelName || ""}`.trim();
+      $("assetCode").value = d.assetCode || "";
+      $("assetSerial").value = d.serialNumber || "";
+      fillAssetSelects();
+      $("assetStatus").value = d.assetStatusName ? `${d.assetStatusName} (${d.assetStatusCode || ""})` : "미지정";
+      $("assetNextStatus").value = "";
+      $("assetNextStatus").querySelectorAll("option").forEach((option) => {
+        option.disabled = d.assetStatusId && Number(option.value) === Number(d.assetStatusId);
+      });
+      $("assetStatusReason").value = "";
+      $("assetColor").value = /^#[0-9a-f]{6}$/i.test(d.assetColor || "") ? d.assetColor : "#2563eb";
+      $("assetDescription").value = d.description || "";
+      const p = detail.rackPlacement;
+      $("assetMountType").value = p?.mountType || "RACK_U";
+      $("assetRack").value = p?.rackLocationCode || "";
+      $("assetRackSide").value = p?.rackSide || "LEFT";
+      $("assetUPosition").value = p?.uPosition || 1;
+      $("assetUHeight").value = p?.uHeight || 1;
+      $("assetFormFactor").value = p?.formFactor || "";
+      updateAssetMountFields();
+      await renderAssetImages(detail.images || []);
+      await loadAssetHistory(deviceId);
+      await loadAssetRackHistory(deviceId);
+    }
+
+    function assetHistoryValue(code, name) {
+      return name ? `${name}${code ? ` (${code})` : ""}` : "미지정";
+    }
+
+    function assetHistoryDescription(row) {
+      const changed = [];
+      if ((row.previousAssetCode || null) !== (row.currentAssetCode || null)) changed.push(`자산번호: ${row.previousAssetCode || "—"} → ${row.currentAssetCode || "—"}`);
+      if ((row.previousSerialNumber || null) !== (row.currentSerialNumber || null)) changed.push(`시리얼: ${row.previousSerialNumber || "—"} → ${row.currentSerialNumber || "—"}`);
+      if ((row.previousStatusCode || null) !== (row.currentStatusCode || null)) changed.push(`상태: ${assetHistoryValue(row.previousStatusCode, row.previousStatusName)} → ${assetHistoryValue(row.currentStatusCode, row.currentStatusName)}`);
+      if (row.previousEnabled !== row.currentEnabled) changed.push(`수집 대상: ${row.previousEnabled ? "포함" : "제외"} → ${row.currentEnabled ? "포함" : "제외"}`);
+      return changed.join(" · ") || "변경된 자산 정보가 없습니다.";
+    }
+
+    async function loadAssetHistory(deviceId) {
+      const out = $("assetHistory");
+      out.textContent = "변경 이력을 불러오는 중입니다.";
+      try {
+        const rows = await api(`/api/manager/assets/${deviceId}/history`);
+        const actionName = { ASSET_UPDATED: "자산 정보 수정", STATUS_CHANGED: "운영 상태 변경" };
+        out.innerHTML = rows.length ? `<div class="pick-list">${rows.map((row) => {
+          const time = row.changedAt ? new Date(row.changedAt).toLocaleString("ko-KR") : "—";
+          const reason = row.reason ? `<div class="muted" style="font-size:12px">사유: ${esc(row.reason)}</div>` : "";
+          const actor = row.actorName ? ` · ${esc(row.actorName)}` : "";
+          return `<div class="pick-item"><span><b>${actionName[row.action] || row.action}</b><div class="muted" style="font-size:12px">${esc(assetHistoryDescription(row))}</div>${reason}</span><span class="muted" style="font-size:11px">${esc(time)}${actor}</span></div>`;
+        }).join("")}</div>` : '<div class="muted">아직 자산 변경 이력이 없습니다.</div>';
+      } catch (error) { out.textContent = error.message; }
+    }
+
+    function rackHistoryPosition(action, rackCode, side, uPosition, uHeight) {
+      if (!action) return "—";
+      if (action === "RACK_U") return `${rackCode || "Rack"} · U${uPosition}–${Number(uPosition) + Number(uHeight) - 1}`;
+      if (action === "RACK_SIDE") return `${rackCode || "Rack"} · ${side === "LEFT" ? "좌측" : "우측"} 측면`;
+      if (action === "RACK_REAR") return `${rackCode || "Rack"} · 후면`;
+      return action === "FLOOR" ? "바닥형" : "벽부형";
+    }
+
+    async function loadAssetRackHistory(deviceId) {
+      const out = $("assetRackHistory");
+      out.textContent = "변경 이력을 불러오는 중입니다.";
+      try {
+        const rows = await api(`/api/manager/assets/${deviceId}/rack-history`);
+        const actionName = { PLACED: "배치", MOVED: "이동", REMOVED: "배치 해제" };
+        out.innerHTML = rows.length ? `<div class="pick-list">${rows.map((row) => {
+          const previous = rackHistoryPosition(row.previousMountType, row.previousRackLocationCode, row.previousRackSide, row.previousUPosition, row.previousUHeight);
+          const current = rackHistoryPosition(row.currentMountType, row.currentRackLocationCode, row.currentRackSide, row.currentUPosition, row.currentUHeight);
+          const time = row.changedAt ? new Date(row.changedAt).toLocaleString("ko-KR") : "—";
+          return `<div class="pick-item"><span><b>${actionName[row.action] || row.action}</b><div class="muted" style="font-size:12px">${esc(previous)} → ${esc(current)}</div></span><span class="muted" style="font-size:11px">${esc(time)}</span></div>`;
+        }).join("")}</div>` : '<div class="muted">아직 Rack 배치 변경 이력이 없습니다.</div>';
+      } catch (error) { out.textContent = error.message; }
+    }
+
+    async function renderAssetImages(images) {
+      state.assetImageUrls.forEach((url) => URL.revokeObjectURL(url));
+      state.assetImageUrls = [];
+      const box = $("assetImageList");
+      box.innerHTML = images.length ? "" : '<span class="muted">등록된 이미지가 없습니다.</span>';
+      for (const image of images) {
+        try {
+          const res = await fetch(base() + image.contentUrl, { headers: state.token ? { Authorization: "Bearer " + state.token } : {} });
+          if (!res.ok) throw new Error("image");
+          const url = URL.createObjectURL(await res.blob());
+          state.assetImageUrls.push(url);
+          const item = document.createElement("div");
+          item.style.cssText = "position:relative;width:110px";
+          item.innerHTML = `<img src="${url}" alt="${esc(image.originalName)}" style="width:110px;height:82px;object-fit:cover;border:1px solid var(--line);border-radius:7px;cursor:pointer" title="클릭하여 크게 보기" /><div class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(image.originalName)} ${image.primary ? "· 대표" : ""}</div><button type="button" class="danger" data-asset-image-delete="${image.id}" style="margin-top:4px">삭제</button>`;
+          item.querySelector("img").onclick = () => window.open(url, "_blank");
+          item.querySelector("button").onclick = () => deleteAssetImage(image.id);
+          box.appendChild(item);
+        } catch (_) { box.insertAdjacentHTML("beforeend", `<span class="muted">${esc(image.originalName)}를 불러오지 못했습니다.</span>`); }
+      }
+    }
+
+    async function deleteAssetImage(imageId) {
+      if (!state.selectedAssetId || !confirm("이미지를 삭제할까요?")) return;
+      try {
+        await api(`/api/manager/assets/${state.selectedAssetId}/images/${imageId}`, { method: "DELETE" });
+        toast("이미지를 삭제했습니다");
+        await selectAsset(state.selectedAssetId);
+        await loadAssets();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function loadAssetRackLayout() {
+      const code = $("assetRackLayout").value;
+      if (!code) return $("assetRackLayoutOut").textContent = "Rack을 선택하세요.";
+      try {
+        const layout = await api(`/api/manager/assets/racks/${encodeURIComponent(code)}/layout`);
+        const unitRows = (layout.placements || []).filter((item) => item.mountType === "RACK_U").map((item) =>
+          `<div class="pick-item"><b>U${item.uPosition}–${item.lastU}</b><span>${esc(item.deviceName)} · ${esc(item.modelName)} <span class="muted">${esc(item.assetCode || "자산번호 없음")} · ${item.uHeight}U</span></span></div>`).join("");
+        const sideRows = (side) => (layout.placements || []).filter((item) => item.mountType === "RACK_SIDE" && item.rackSide === side).map((item) =>
+          `<div class="pick-item"><b>${side === "LEFT" ? "좌측" : "우측"}</b><span>${esc(item.deviceName)} · ${esc(item.modelName)} <span class="muted">${esc(item.assetCode || "자산번호 없음")}</span></span></div>`).join("");
+        const rearRows = (layout.placements || []).filter((item) => item.mountType === "RACK_REAR").map((item) =>
+          `<div class="pick-item"><b>후면</b><span>${esc(item.deviceName)} · ${esc(item.modelName)}</span></div>`).join("");
+        $("assetRackLayoutOut").innerHTML = `<b>${esc(layout.rackLocationName)}</b> · ${layout.rackUCapacity ? layout.rackUCapacity + "U" : "용량 미지정"}<div class="grid2" style="margin-top:8px"><div><b>좌측 PDU</b>${sideRows("LEFT") || '<div class="muted">없음</div>'}</div><div><b>Rack U 장착</b>${unitRows || '<div class="muted">없음</div>'}</div><div><b>우측 PDU</b>${sideRows("RIGHT") || '<div class="muted">없음</div>'}</div><div><b>후면</b>${rearRows || '<div class="muted">없음</div>'}</div></div>`;
+      } catch (e) { $("assetRackLayoutOut").textContent = e.message; toast(e.message, true); }
+    }
+
+    function fillRackOverviewScope() {
+      const select = $("rackOverviewScope");
+      const selected = select.value;
+      fillSelect(select, state.flatLocations || [], (location) =>
+        `<option value="${esc(location.code)}">${esc(locOptionLabel(location))}</option>`, "모든 위치");
+      select.value = selected;
+    }
+
+    function rackColor(item) {
+      return /^#[0-9a-f]{6}$/i.test(item.assetColor || "") ? item.assetColor : "#3b6f9f";
+    }
+
+    function rackSideDevices(items, side, rackLocationCode) {
+      return (items || []).filter(Boolean).filter((item) => item.mountType === "RACK_SIDE" && item.rackSide === side).map((item) =>
+        `<div class="rack-side-device" draggable="true" data-rack-device-id="${item.deviceId}" data-rack-side-device-id="${item.deviceId}" data-rack-origin-code="${esc(rackLocationCode)}" style="background:${rackColor(item)}" title="${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>${esc(item.assetCode || item.modelName || "측면 장착")}</span></div>`).join("");
+    }
+
+    function rackRearDevices(items) {
+      return (items || []).filter(Boolean).filter((item) => item.mountType === "RACK_REAR").map((item) =>
+        `<span data-rack-device-id="${item.deviceId}" style="background:${rackColor(item)}" title="${esc(item.deviceName)}">${esc(item.deviceName)}</span>`).join("");
+    }
+
+    function placementLabel(placement) {
+      if (!placement) return "배치 미등록";
+      if (placement.mountType === "RACK_U") return `${placement.rackLocationName || placement.rackLocationCode} · U${placement.uPosition}–${placement.lastU} (${placement.uHeight}U)`;
+      if (placement.mountType === "RACK_SIDE") return `${placement.rackLocationName || placement.rackLocationCode} · ${placement.rackSide === "LEFT" ? "좌측" : "우측"} 측면`;
+      if (placement.mountType === "RACK_REAR") return `${placement.rackLocationName || placement.rackLocationCode} · 후면`;
+      return placement.mountType === "FLOOR" ? "바닥형" : "벽부형";
+    }
+
+    async function openAssetPreview(deviceId) {
+      const modal = $("assetPreviewModal");
+      $("assetPreviewTitle").textContent = "자산 상세";
+      $("assetPreviewBody").innerHTML = '<div class="muted">자산 정보를 불러오는 중입니다.</div>';
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      try {
+        const detail = await api(`/api/manager/assets/${deviceId}`);
+        const device = detail.device;
+        const image = (detail.images || []).find((item) => item.primary) || (detail.images || [])[0];
+        if (state.assetPreviewImageUrl) URL.revokeObjectURL(state.assetPreviewImageUrl);
+        state.assetPreviewImageUrl = null;
+        if (image) {
+          const response = await fetch(base() + image.contentUrl, { headers: state.token ? { Authorization: "Bearer " + state.token } : {} });
+          if (response.ok) state.assetPreviewImageUrl = URL.createObjectURL(await response.blob());
+        }
+        const endpointText = (detail.endpoints || []).filter((item) => item.enabled)
+          .map((item) => `${item.protocolName || item.protocolCode} ${item.host}:${item.port}`).join(", ") || "—";
+        const groupText = (device.deviceGroups || []).map((item) => item.name).join(", ") || "—";
+        $("assetPreviewTitle").textContent = device.name;
+        $("assetPreviewBody").innerHTML = `<div class="asset-preview-main">
+          <div class="asset-preview-image">${state.assetPreviewImageUrl ? `<img src="${state.assetPreviewImageUrl}" alt="${esc(device.name)}" />` : "등록된 이미지 없음"}</div>
+          <dl class="asset-preview-kv">
+            <dt>제조사 / 모델</dt><dd>${esc(device.manufacturer || "—")} · ${esc(device.modelName || "—")}</dd>
+            <dt>자산번호</dt><dd>${esc(device.assetCode || "—")}</dd>
+            <dt>시리얼번호</dt><dd>${esc(device.serialNumber || "—")}</dd>
+            <dt>운영 상태</dt><dd>${esc(device.assetStatusName || "미지정")}</dd>
+            <dt>Rack 배치</dt><dd>${esc(placementLabel(detail.rackPlacement))}</dd>
+            <dt>통신</dt><dd>${esc(endpointText)}</dd>
+            <dt>장비 그룹</dt><dd>${esc(groupText)}</dd>
+            <dt>설명</dt><dd>${esc(device.description || "—")}</dd>
+          </dl>
+        </div><div class="asset-preview-actions"><button type="button" class="ghost" id="assetPreviewManage">자산관리에서 수정</button></div>`;
+        $("assetPreviewManage").onclick = async () => {
+          closeAssetPreview();
+          closeRackPreview();
+          goTab("assets");
+          await loadAssets();
+          await selectAsset(deviceId);
+        };
+      } catch (error) {
+        $("assetPreviewBody").innerHTML = `<div class="empty">${esc(error.message)}</div>`;
+      }
+    }
+
+    function closeAssetPreview() {
+      $("assetPreviewModal").classList.remove("open");
+      $("assetPreviewModal").setAttribute("aria-hidden", "true");
+      if (state.assetPreviewImageUrl) URL.revokeObjectURL(state.assetPreviewImageUrl);
+      state.assetPreviewImageUrl = null;
+    }
+
+    function rackDropStart(event, frame, capacity, item, unitItems) {
+      const rect = frame.getBoundingClientRect();
+      const offset = Math.max(0, Math.min(rect.height - 1, rect.bottom - event.clientY));
+      const maxStart = Math.max(1, capacity - Number(item.uHeight) + 1);
+      const startU = Math.max(1, Math.min(maxStart, Math.floor(offset / rect.height * capacity) + 1));
+      const endU = startU + Number(item.uHeight) - 1;
+      const overlaps = unitItems.some((other) => other.deviceId !== item.deviceId && startU <= Number(other.lastU) && endU >= Number(other.uPosition));
+      let indicator = frame.querySelector(".rack-drop-indicator");
+      if (!indicator) {
+        indicator = document.createElement("div");
+        indicator.className = "rack-drop-indicator";
+        frame.appendChild(indicator);
+      }
+      indicator.style.bottom = `${(startU - 1) / capacity * 100}%`;
+      indicator.style.height = `${Number(item.uHeight) / capacity * 100}%`;
+      indicator.classList.toggle("invalid", overlaps);
+      indicator.textContent = overlaps ? `U${startU}–${endU} 겹침` : `U${startU}–${endU}`;
+      frame.classList.add("drop-active");
+      return { startU, overlaps };
+    }
+
+    function rackSideLabel(side) {
+      return side === "LEFT" ? "좌측" : "우측";
+    }
+
+    function clearRackSideDropTargets(root) {
+      root.querySelectorAll("[data-rack-side-drop-code].drop-active").forEach((target) => target.classList.remove("drop-active"));
+    }
+
+    function bindRackSideDrag(root, onMoved) {
+      let dragged = null;
+      root.querySelectorAll("[data-rack-side-device-id]").forEach((element) => {
+        element.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openAssetPreview(Number(element.dataset.rackSideDeviceId));
+        });
+        element.addEventListener("dragstart", (event) => {
+          const origin = state.rackLayouts.find((layout) => layout.rackLocationCode === element.dataset.rackOriginCode);
+          dragged = (origin?.placements || []).filter(Boolean)
+            .find((item) => item.deviceId === Number(element.dataset.rackSideDeviceId) && item.mountType === "RACK_SIDE");
+          if (!dragged) return;
+          event.stopPropagation();
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", String(dragged.deviceId));
+        });
+        element.addEventListener("dragend", () => {
+          dragged = null;
+          clearRackSideDropTargets(root);
+        });
+      });
+      root.querySelectorAll("[data-rack-side-drop-code]").forEach((target) => {
+        target.addEventListener("dragover", (event) => {
+          if (!dragged) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          target.classList.add("drop-active");
+        });
+        target.addEventListener("dragleave", (event) => {
+          if (!target.contains(event.relatedTarget)) target.classList.remove("drop-active");
+        });
+        target.addEventListener("drop", async (event) => {
+          if (!dragged) return;
+          event.preventDefault();
+          const moving = { ...dragged };
+          const rack = state.rackLayouts.find((layout) => layout.rackLocationCode === target.dataset.rackSideDropCode);
+          const rackSide = target.dataset.rackSideDropSide;
+          clearRackSideDropTargets(root);
+          if (!rack || (rackSide !== "LEFT" && rackSide !== "RIGHT")) return;
+          try {
+            await api(`/api/manager/assets/${moving.deviceId}/rack-placement`, {
+              method: "PUT",
+              body: JSON.stringify({ mountType: "RACK_SIDE", rackLocationCode: rack.rackLocationCode, rackSide,
+                uPosition: null, uHeight: null, formFactor: null }),
+            });
+            toast(`${moving.deviceName || "장비"}: ${rack.rackLocationName} ${rackSideLabel(rackSide)} 측면으로 이동했습니다`);
+            await onMoved(rack);
+          } catch (error) { toast(error.message, true); }
+        });
+      });
+    }
+
+    function bindRackPreviewInteractions(layout, unitItems, capacity) {
+      const body = $("rackPreviewBody");
+      body.querySelectorAll("[data-rack-device-id]:not([data-rack-side-device-id])").forEach((element) => {
+        element.onclick = () => openAssetPreview(Number(element.dataset.rackDeviceId));
+      });
+      bindRackSideDrag(body, async (rack) => {
+        await loadRackOverview();
+        openRackPreview(rack.rackLocationCode);
+      });
+      const frame = body.querySelector(".rack-frame");
+      if (!frame || !capacity) return;
+      let dragged = null;
+      body.querySelectorAll("[data-rack-u-device-id]").forEach((element) => {
+        element.addEventListener("dragstart", (event) => {
+          dragged = unitItems.find((item) => item.deviceId === Number(element.dataset.rackUDeviceId));
+          if (!dragged) return;
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", String(dragged.deviceId));
+        });
+        element.addEventListener("dragend", () => {
+          dragged = null;
+          frame.classList.remove("drop-active");
+          frame.querySelector(".rack-drop-indicator")?.remove();
+        });
+      });
+      frame.addEventListener("dragover", (event) => {
+        if (!dragged) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        rackDropStart(event, frame, capacity, dragged, unitItems);
+      });
+      frame.addEventListener("dragleave", (event) => {
+        if (!frame.contains(event.relatedTarget)) {
+          frame.classList.remove("drop-active");
+          frame.querySelector(".rack-drop-indicator")?.remove();
+        }
+      });
+      frame.addEventListener("drop", async (event) => {
+        if (!dragged) return;
+        event.preventDefault();
+        const moving = { ...dragged };
+        const movingName = moving.deviceName || "장비";
+        const target = rackDropStart(event, frame, capacity, moving, unitItems);
+        if (target.overlaps) {
+          toast("다른 장비가 점유한 U입니다", true);
+          return;
+        }
+        try {
+          await api(`/api/manager/assets/${moving.deviceId}/rack-placement`, {
+            method: "PUT",
+            body: JSON.stringify({ mountType: "RACK_U", rackLocationCode: layout.rackLocationCode, rackSide: null,
+              uPosition: target.startU, uHeight: moving.uHeight, formFactor: moving.formFactor || null }),
+          });
+          toast(`${movingName}: U${target.startU}–${target.startU + moving.uHeight - 1}로 이동했습니다`);
+          await loadRackOverview();
+          openRackPreview(layout.rackLocationCode);
+        } catch (error) { toast(error.message, true); }
+      });
+    }
+
+    function openRackPreview(rackLocationCode) {
+      const layout = state.rackLayouts.find((item) => item.rackLocationCode === rackLocationCode);
+      if (!layout) return;
+      const placements = (layout.placements || []).filter(Boolean);
+      const capacity = Number(layout.rackUCapacity) || 0;
+      const unitItems = placements.filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight && capacity);
+      const used = unitItems.reduce((sum, item) => sum + Number(item.uHeight), 0);
+      const frameHeight = Math.max(720, capacity * 18);
+      const unitBlocks = unitItems.map((item) => {
+        const height = Math.min(Number(item.uHeight), capacity) / capacity * 100;
+        const bottom = Math.max(Number(item.uPosition) - 1, 0) / capacity * 100;
+        return `<div class="rack-unit-device" draggable="true" data-rack-device-id="${item.deviceId}" data-rack-u-device-id="${item.deviceId}" style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${esc(item.assetCode || item.modelName || "")}</span></div>`;
+      }).join("") || '<div class="rack-empty">U 장착 장비 없음</div>';
+      const unitNumbers = capacity ? Array.from({ length: capacity }, (_, index) => `<span>${capacity - index}</span>`).join("") : "";
+      const rearDevices = rackRearDevices(placements);
+      $("rackPreviewTitle").textContent = layout.rackLocationName;
+      $("rackPreviewMeta").textContent = `${layout.rackLocationCode} · ${capacity ? `${used}/${capacity}U 사용 · ${Math.max(capacity - used, 0)}U 여유` : "Rack U 용량 미지정"} · 설치 장비 ${placements.length}대`;
+      $("rackPreviewBody").innerHTML = `<div class="rack-preview-visual">
+        <div class="rack-preview-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="LEFT"><h3>좌측 측면</h3>${rackSideDevices(placements, "LEFT", layout.rackLocationCode) || '<div class="muted" style="text-align:center;font-size:12px">여기로 이동</div>'}</div>
+        <div class="rack-preview-center">${capacity ? `<div class="rack-preview-units" style="grid-template-rows:repeat(${capacity}, 1fr)">${unitNumbers}</div><div class="rack-frame" style="--rack-u:${capacity};height:${frameHeight}px">${unitBlocks}</div><div class="rack-preview-units" style="grid-template-rows:repeat(${capacity}, 1fr)">${unitNumbers}</div>` : '<div class="rack-frame no-capacity" style="grid-column:1/-1">Rack U 용량 미지정</div>'}</div>
+        <div class="rack-preview-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="RIGHT"><h3>우측 측면</h3>${rackSideDevices(placements, "RIGHT", layout.rackLocationCode) || '<div class="muted" style="text-align:center;font-size:12px">여기로 이동</div>'}</div>
+      </div>${rearDevices ? `<div class="rack-rear"><b>후면 장착</b>${rearDevices}</div>` : ""}`;
+      $("rackPreviewModal").classList.add("open");
+      $("rackPreviewModal").setAttribute("aria-hidden", "false");
+      bindRackPreviewInteractions(layout, unitItems, capacity);
+    }
+
+    function closeRackPreview() {
+      $("rackPreviewModal").classList.remove("open");
+      $("rackPreviewModal").setAttribute("aria-hidden", "true");
+    }
+
+    function bindRackOverviewDrag() {
+      const out = $("rackOverviewOut");
+      bindRackSideDrag(out, async () => {
+        await loadRackOverview();
+      });
+      let dragged = null;
+      out.querySelectorAll("[data-rack-overview-u-device-id]").forEach((element) => {
+        element.addEventListener("dragstart", (event) => {
+          const origin = state.rackLayouts.find((layout) => layout.rackLocationCode === element.dataset.rackOriginCode);
+          dragged = (origin?.placements || []).filter(Boolean).find((item) => item.deviceId === Number(element.dataset.rackOverviewUDeviceId));
+          if (!dragged) return;
+          event.stopPropagation();
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", String(dragged.deviceId));
+        });
+        element.addEventListener("dragend", () => {
+          dragged = null;
+          out.querySelectorAll(".rack-frame.drop-active").forEach((frame) => {
+            frame.classList.remove("drop-active");
+            frame.querySelector(".rack-drop-indicator")?.remove();
+          });
+        });
+      });
+      out.querySelectorAll("[data-rack-drop-code]").forEach((frame) => {
+        frame.addEventListener("dragover", (event) => {
+          if (!dragged) return;
+          const layout = state.rackLayouts.find((item) => item.rackLocationCode === frame.dataset.rackDropCode);
+          const capacity = Number(layout?.rackUCapacity) || 0;
+          if (!layout || !capacity) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          const targetItems = (layout.placements || []).filter(Boolean)
+            .filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight);
+          rackDropStart(event, frame, capacity, dragged, targetItems);
+        });
+        frame.addEventListener("dragleave", (event) => {
+          if (!frame.contains(event.relatedTarget)) {
+            frame.classList.remove("drop-active");
+            frame.querySelector(".rack-drop-indicator")?.remove();
+          }
+        });
+        frame.addEventListener("drop", async (event) => {
+          if (!dragged) return;
+          const layout = state.rackLayouts.find((item) => item.rackLocationCode === frame.dataset.rackDropCode);
+          const capacity = Number(layout?.rackUCapacity) || 0;
+          if (!layout || !capacity) return;
+          event.preventDefault();
+          const moving = { ...dragged };
+          const targetItems = (layout.placements || []).filter(Boolean)
+            .filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight);
+          const target = rackDropStart(event, frame, capacity, moving, targetItems);
+          if (target.overlaps) return toast("다른 장비가 점유한 U입니다", true);
+          try {
+            await api(`/api/manager/assets/${moving.deviceId}/rack-placement`, {
+              method: "PUT",
+              body: JSON.stringify({ mountType: "RACK_U", rackLocationCode: layout.rackLocationCode, rackSide: null,
+                uPosition: target.startU, uHeight: moving.uHeight, formFactor: moving.formFactor || null }),
+            });
+            toast(`${moving.deviceName || "장비"}: ${layout.rackLocationName} U${target.startU}로 이동했습니다`);
+            await loadRackOverview();
+          } catch (error) { toast(error.message, true); }
+        });
+      });
+    }
+
+    function renderRackOverview() {
+      const scope = $("rackOverviewScope").value;
+      const layouts = state.rackLayouts.filter(Boolean).filter((layout) => !scope || layout.rackLocationCode === scope || isDescendant(layout.rackLocationCode, scope));
+      const totalCapacity = layouts.reduce((sum, layout) => sum + (Number(layout.rackUCapacity) || 0), 0);
+      const usedU = layouts.reduce((sum, layout) => sum + (layout.placements || []).filter(Boolean)
+        .filter((item) => item.mountType === "RACK_U").reduce((uSum, item) => uSum + (Number(item.uHeight) || 0), 0), 0);
+      const installed = layouts.reduce((sum, layout) => sum + (layout.placements || []).filter(Boolean).length, 0);
+      $("rackStatTotal").textContent = `${layouts.length}`;
+      $("rackStatEmpty").textContent = `${layouts.filter((layout) => !(layout.placements || []).filter(Boolean).length).length}`;
+      $("rackStatCapacity").textContent = `${totalCapacity}U`;
+      $("rackStatAvailable").textContent = `${Math.max(totalCapacity - usedU, 0)}U`;
+      $("rackStatDevices").textContent = `${installed}`;
+
+      const out = $("rackOverviewOut");
+      if (!layouts.length) {
+        out.innerHTML = '<div class="empty">선택한 위치 범위에 Rack이 없습니다.</div>';
+        return;
+      }
+      out.innerHTML = layouts.map((layout) => {
+        const placements = (layout.placements || []).filter(Boolean);
+        const capacity = Number(layout.rackUCapacity) || 0;
+        const unitItems = placements.filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight && capacity);
+        const used = unitItems.reduce((sum, item) => sum + Number(item.uHeight), 0);
+        const rearCount = placements.filter((item) => item.mountType === "RACK_REAR").length;
+        const rearDevices = rackRearDevices(placements);
+        const frame = capacity ? `<div class="rack-frame" data-rack-drop-code="${esc(layout.rackLocationCode)}" style="--rack-u:${capacity}">${unitItems.length ? unitItems.map((item) => {
+          const height = Math.min(Number(item.uHeight), capacity) / capacity * 100;
+          const bottom = Math.max(Number(item.uPosition) - 1, 0) / capacity * 100;
+          return `<div class="rack-unit-device" draggable="true" data-rack-overview-u-device-id="${item.deviceId}" data-rack-origin-code="${esc(layout.rackLocationCode)}" style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${esc(item.assetCode || item.modelName || "")}</span></div>`;
+        }).join("") : '<div class="rack-empty">U 장착 장비 없음</div>'}</div>` : '<div class="rack-frame no-capacity">Rack U 용량 미지정</div>';
+        return `<article class="rack-overview-card" data-rack-preview="${esc(layout.rackLocationCode)}" title="클릭하여 크게 보기">
+          <div class="rack-overview-head"><div><b>${esc(layout.rackLocationName)}</b><small>${esc(layout.rackLocationCode)}</small></div><span class="chip">${capacity ? `${used}/${capacity}U` : "용량 미지정"}</span></div>
+          <div class="rack-visual">
+            <div class="rack-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="LEFT"><h4>좌측</h4>${rackSideDevices(placements, "LEFT", layout.rackLocationCode) || '<div class="muted" style="font-size:10px;text-align:center">여기로 이동</div>'}</div>
+            ${frame}
+            <div class="rack-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="RIGHT"><h4>우측</h4>${rackSideDevices(placements, "RIGHT", layout.rackLocationCode) || '<div class="muted" style="font-size:10px;text-align:center">여기로 이동</div>'}</div>
+          </div>
+          ${rearDevices ? `<div class="rack-rear"><b>후면</b>${rearDevices}</div>` : ""}
+          <div class="rack-overview-foot"><span class="chip">여유 ${capacity ? Math.max(capacity - used, 0) : "–"}${capacity ? "U" : ""}</span><span class="chip">후면 ${rearCount}대</span><span class="chip">총 ${placements.length}대</span><button type="button" class="ghost" data-rack-open="${esc(layout.rackLocationCode)}">자산관리에서 상세 보기</button></div>
+        </article>`;
+      }).join("");
+      out.querySelectorAll("[data-rack-preview]").forEach((card) => card.onclick = (event) => {
+        if (!event.target.closest("button")) openRackPreview(card.dataset.rackPreview);
+      });
+      out.querySelectorAll("[data-rack-open]").forEach((button) => button.onclick = async () => {
+        const code = button.dataset.rackOpen;
+        goTab("assets");
+        await loadAssets();
+        $("assetRackLayout").value = code;
+        await loadAssetRackLayout();
+      });
+      bindRackOverviewDrag();
+    }
+
+    async function loadRackOverview() {
+      fillRackOverviewScope();
+      const racks = assetRacks();
+      $("rackOverviewOut").innerHTML = '<div class="empty">Rack 현황을 불러오는 중입니다.</div>';
+      state.rackLayouts = await Promise.all(racks.map((rack) =>
+        api(`/api/manager/assets/racks/${encodeURIComponent(rack.code)}/layout`)));
+      renderRackOverview();
+    }
+
+    function collectionStatusChip(status) {
+      const labels = {
+        NORMAL: ["ok", "정상"],
+        STALE: ["warn", "지연"],
+        MISSING: ["bad", "데이터 없음"],
+        NO_POINTS: ["warn", "측정항목 없음"],
+        STOPPED: ["bad", "수집 중지"],
+        UNREGISTERED: ["warn", "미등록"],
+        DISABLED: ["", "장비 중지"],
+      };
+      const [className, label] = labels[status] || ["", status || "미확인"];
+      return `<span class="chip ${className}">${esc(label)}</span>`;
+    }
+
+    function collectionAge(seconds) {
+      const value = Number(seconds);
+      if (!Number.isFinite(value) || value < 0) return "—";
+      if (value < 60) return `${value}초`;
+      const minutes = Math.floor(value / 60);
+      if (minutes < 60) return `${minutes}분`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}시간 ${minutes % 60}분`;
+      return `${Math.floor(hours / 24)}일 ${hours % 24}시간`;
+    }
+
+    function fillCollectionStatusModels() {
+      const select = $("csFilterModel");
+      const selected = select.value;
+      fillSelect(select, state.models, (model) =>
+        `<option value="${model.id}">${esc(model.name)}${model.manufacturer ? ` · ${esc(model.manufacturer)}` : ""}</option>`, "모든 모델");
+      select.value = selected;
+    }
+
+    function renderCollectionStatus() {
+      const data = state.collectionStatus;
+      if (!data) return;
+      fillCollectionStatusModels();
+      const summary = data.summary || {};
+      $("csTotal").textContent = summary.totalCount ?? 0;
+      $("csNormal").textContent = summary.normalCount ?? 0;
+      $("csIssue").textContent = (summary.staleCount || 0) + (summary.missingCount || 0);
+      $("csStopped").textContent = (summary.stoppedCount || 0) + (summary.unregisteredCount || 0) + (summary.disabledCount || 0);
+      $("csGeneratedAt").textContent = data.generatedAt ? `조회 시각: ${new Date(data.generatedAt).toLocaleString("ko-KR")}` : "";
+
+      const query = $("csFilterName").value.trim().toLowerCase();
+      const status = $("csFilterStatus").value;
+      const modelId = $("csFilterModel").value;
+      const devices = (data.devices || []).filter((device) => {
+        const text = [device.deviceName, device.locationName, device.locationCode, device.modelName, device.manufacturer]
+          .filter(Boolean).join(" ").toLowerCase();
+        return (!query || text.includes(query))
+          && (!status || device.status === status)
+          && (!modelId || String(device.modelId) === modelId);
+      });
+      $("csBody").innerHTML = devices.map((device) => {
+        const task = device.taskName
+          ? `<b>${esc(device.taskName)}</b><div class="muted" style="font-size:11px">${esc(device.groupName || "기본 그룹")} · ${esc(device.cronExpression || "주기 미확인")}</div>`
+          : '<span class="muted">등록된 작업 없음</span>';
+        const latest = device.latestCollectedAt
+          ? `<b>${esc(new Date(device.latestCollectedAt).toLocaleString("ko-KR"))}</b><div class="muted" style="font-size:11px">${collectionAge(device.ageSeconds)} 전 · 측정항목 ${device.availablePointCount || 0}/${device.expectedPointCount || 0}</div>`
+          : `<span class="muted">저장값 없음</span><div class="muted" style="font-size:11px">측정항목 ${device.availablePointCount || 0}/${device.expectedPointCount || 0}</div>`;
+        const values = (device.latestValues || []).map((value) =>
+          `<span class="chip">${esc(value.pointName)} ${Number(value.value).toLocaleString(undefined, { maximumFractionDigits: 3 })}${value.unit ? ` ${esc(value.unit)}` : ""}</span>`).join(" ") || '<span class="muted">표시할 최신값 없음</span>';
+        return `<tr class="clickable" data-collection-device-id="${device.deviceId}" title="클릭하여 자산 상세 보기">
+          <td><b>${esc(device.deviceName)}</b><div class="muted mono">#${device.deviceId}</div></td>
+          <td>${esc(device.locationName || device.locationCode || "미배정")}<div class="muted" style="font-size:11px">${esc(device.manufacturer || "")} ${esc(device.modelName || "")}</div></td>
+          <td>${task}</td>
+          <td>${collectionStatusChip(device.status)}<div class="muted" style="font-size:11px;margin-top:4px">${esc(device.statusMessage || "")}</div></td>
+          <td>${latest}</td><td>${values}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="6"><div class="empty">조건에 맞는 장비가 없습니다.</div></td></tr>';
+      $("csBody").querySelectorAll("[data-collection-device-id]").forEach((row) => {
+        row.onclick = () => openAssetPreview(Number(row.dataset.collectionDeviceId));
+      });
+    }
+
+    async function loadCollectionStatus() {
+      $("csBody").innerHTML = '<tr><td colspan="6"><div class="empty">수집 상태를 조회하는 중입니다.</div></td></tr>';
+      state.collectionStatus = await api("/api/manager/query/collection-status?lookbackHours=168");
+      renderCollectionStatus();
+    }
 
     async function loadDevices() {
       const qs = new URLSearchParams({ page: "1", size: "100" });
@@ -3842,6 +4778,120 @@
     $("locReload").onclick = () => loadLocations().catch((e) => toast(e.message, true));
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
     $("devReload").onclick = () => loadDevices().catch((e) => toast(e.message, true));
+    $("assetReload").onclick = () => loadAssets().catch((e) => toast(e.message, true));
+    $("assetFilterName").addEventListener("input", () => loadAssets().catch((e) => toast(e.message, true)));
+    $("assetFilterStatus").addEventListener("change", () => loadAssets().catch((e) => toast(e.message, true)));
+    $("csReload").onclick = () => loadCollectionStatus().catch((e) => toast(e.message, true));
+    $("csFilterName").addEventListener("input", renderCollectionStatus);
+    $("csFilterStatus").addEventListener("change", renderCollectionStatus);
+    $("csFilterModel").addEventListener("change", renderCollectionStatus);
+    $("assetSave").onclick = async () => {
+      const detail = state.selectedAsset;
+      if (!detail) return toast("자산을 선택하세요", true);
+      const d = detail.device;
+      try {
+        await api(`/api/manager/devices/${d.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            modelId: d.modelId,
+            locationNodeCode: d.locationNodeCode,
+            name: d.name,
+            description: $("assetDescription").value.trim() || null,
+            enabled: d.enabled,
+            pathCodeId: d.pathCodeId || null,
+            assetCode: $("assetCode").value.trim() || null,
+            serialNumber: $("assetSerial").value.trim() || null,
+            assetStatusId: d.assetStatusId || null,
+            assetColor: $("assetColor").value || null,
+          }),
+        });
+        toast("자산 정보를 저장했습니다");
+        await loadAssets();
+        await selectAsset(d.id);
+      } catch (e) { toast(e.message, true); }
+    };
+    $("assetStatusTransition").onclick = async () => {
+      const deviceId = state.selectedAssetId;
+      const statusId = Number($("assetNextStatus").value);
+      const reason = $("assetStatusReason").value.trim();
+      if (!deviceId) return toast("자산을 선택하세요", true);
+      if (!statusId) return toast("변경할 상태를 선택하세요", true);
+      if (!reason) return toast("상태 변경 사유를 입력하세요", true);
+      try {
+        await api(`/api/manager/assets/${deviceId}/status`, {
+          method: "POST",
+          body: JSON.stringify({ statusId, reason }),
+        });
+        toast("운영 상태를 변경했습니다");
+        await loadDevices();
+        await loadAssets();
+        await selectAsset(deviceId);
+      } catch (e) { toast(e.message, true); }
+    };
+    $("assetRackSave").onclick = async () => {
+      if (!state.selectedAssetId) return toast("자산을 선택하세요", true);
+      const mountType = $("assetMountType").value;
+      const usesRack = mountType === "RACK_U" || mountType === "RACK_SIDE" || mountType === "RACK_REAR";
+      const rackLocationCode = $("assetRack").value;
+      if (usesRack && !rackLocationCode) return toast("Rack을 선택하세요", true);
+      try {
+        await api(`/api/manager/assets/${state.selectedAssetId}/rack-placement`, {
+          method: "PUT",
+          body: JSON.stringify({
+            mountType,
+            rackLocationCode: usesRack ? rackLocationCode : null,
+            rackSide: mountType === "RACK_SIDE" || mountType === "RACK_REAR" ? $("assetRackSide").value : null,
+            uPosition: mountType === "RACK_U" ? Number($("assetUPosition").value) : null,
+            uHeight: mountType === "RACK_U" ? Number($("assetUHeight").value) : null,
+            formFactor: mountType === "RACK_U" ? $("assetFormFactor").value.trim() || null : null,
+          }),
+        });
+        toast(usesRack ? "설치 정보를 저장했습니다. 장비 위치도 해당 Rack으로 변경되었습니다." : "설치 정보를 저장했습니다.");
+        await loadDevices();
+        await loadAssets();
+        await selectAsset(state.selectedAssetId);
+        $("assetRackLayout").value = rackLocationCode;
+        await loadAssetRackLayout();
+      } catch (e) { toast(e.message, true); }
+    };
+    $("assetRackDelete").onclick = async () => {
+      if (!state.selectedAssetId || !confirm("Rack 배치를 해제할까요? 장비 위치는 유지됩니다.")) return;
+      try {
+        await api(`/api/manager/assets/${state.selectedAssetId}/rack-placement`, { method: "DELETE" });
+        toast("Rack 배치를 해제했습니다");
+        await loadAssets();
+        await selectAsset(state.selectedAssetId);
+      } catch (e) { toast(e.message, true); }
+    };
+    $("assetImageUpload").onclick = async () => {
+      const file = $("assetImageFile").files[0];
+      if (!state.selectedAssetId || !file) return toast("자산과 이미지 파일을 선택하세요", true);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("primary", $("assetImagePrimary").checked ? "true" : "false");
+        await apiForm(`/api/manager/assets/${state.selectedAssetId}/images`, form);
+        $("assetImageFile").value = "";
+        $("assetImagePrimary").checked = false;
+        toast("이미지를 등록했습니다");
+        await selectAsset(state.selectedAssetId);
+        await loadAssets();
+      } catch (e) { toast(e.message, true); }
+    };
+    $("assetRackLayoutLoad").onclick = loadAssetRackLayout;
+    $("assetRackLayout").addEventListener("change", loadAssetRackLayout);
+    $("assetMountType").addEventListener("change", updateAssetMountFields);
+    $("rackOverviewReload").onclick = () => loadRackOverview().catch((e) => toast(e.message, true));
+    $("rackOverviewScope").addEventListener("change", renderRackOverview);
+    $("rackPreviewClose").onclick = closeRackPreview;
+    $("rackPreviewModal").onclick = (event) => { if (event.target === $("rackPreviewModal")) closeRackPreview(); };
+    $("assetPreviewClose").onclick = closeAssetPreview;
+    $("assetPreviewModal").onclick = (event) => { if (event.target === $("assetPreviewModal")) closeAssetPreview(); };
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if ($("assetPreviewModal").classList.contains("open")) closeAssetPreview();
+      else closeRackPreview();
+    });
     $("dgReload").onclick = () => loadDeviceGroups().catch((e) => toast(e.message, true));
     $("dgCancel").onclick = resetDeviceGroupForm;
     $("dgSave").onclick = async () => {
@@ -3939,6 +4989,7 @@
           body: JSON.stringify({
             locationTypeId: Number($("locEditType").value),
             name: $("locEditName").value.trim(),
+            rackUCapacity: Number($("locEditRackCapacity").value) || null,
           }),
         });
         toast("위치 정보를 저장했습니다");
@@ -3988,6 +5039,7 @@
             parentCode: $("locParent").value.trim() || null,
             locationTypeId: Number($("locType").value),
             name: $("locName").value.trim(),
+            rackUCapacity: Number($("locRackCapacity").value) || null,
           }),
         });
         $("locOut").textContent = JSON.stringify(created, null, 2);
@@ -3995,6 +5047,7 @@
         if (created.parentCode) state.locExpanded.add(created.parentCode);
         state.locExpanded.add(created.code);
         $("locName").value = "";
+        $("locRackCapacity").value = "";
         await loadLocations();
         selectLocation(created.code);
       } catch (e) {
@@ -4024,6 +5077,7 @@
     $("devSave").onclick = async () => {
       const id = state.selectedDeviceId;
       if (!id) return toast("장비를 선택하세요", true);
+      const d = state.devices.find((x) => x.id === id);
       const name = $("editDevName").value.trim();
       if (!name) return toast("이름을 입력하세요", true);
       try {
@@ -4036,6 +5090,10 @@
             description: $("editDevDesc").value.trim() || null,
             enabled: $("editDevEnabled").value === "true",
             pathCodeId: $("editDevPath").value ? Number($("editDevPath").value) : null,
+            assetCode: d?.assetCode || null,
+            serialNumber: d?.serialNumber || null,
+            assetStatusId: d?.assetStatusId || null,
+            assetColor: d?.assetColor || null,
           }),
         });
         toast("장비 정보를 저장했습니다");

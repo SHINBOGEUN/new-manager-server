@@ -24,6 +24,18 @@ public record DeviceCreateRequest(
         Boolean enabled,
 
         @Schema(description = "Path 코드 ID (LOCATION_PATH 그룹, 선택). PDU 전원 피드 / 차트 by_path", example = "10")
-        Integer pathCodeId
+        Integer pathCodeId,
+
+        @Schema(description = "자산번호", example = "PDU-001")
+        String assetCode,
+
+        @Schema(description = "시리얼번호", example = "SN-123456")
+        String serialNumber,
+
+        @Schema(description = "자산 상태 코드 ID (ASSET_STATUS 그룹, 선택)", example = "20")
+        Integer assetStatusId,
+
+        @Schema(description = "자산 표시 색상(hex, 선택)", example = "#2563eb")
+        String assetColor
 ) {
 }

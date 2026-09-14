@@ -48,7 +48,7 @@ public class LocationNodeQueryService {
         LocationNode node;
         if (request.parentCode() == null || request.parentCode().isBlank()) {
             validateSiblingName(null, request.name(), null);
-            node = LocationNode.createRoot(generateUniqueCode(), locationType, request.name());
+            node = LocationNode.createRoot(generateUniqueCode(), locationType, request.name(), request.rackUCapacity());
         } else {
             LocationNode parent = locationNodeRepository.findByCode(request.parentCode())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -56,7 +56,7 @@ public class LocationNodeQueryService {
             validateSiblingName(parent, request.name(), null);
             validateLocationTypeDepth(parent, locationType);
             node = LocationNode.createChild(
-                    generateUniqueCode(), parent, locationType, request.name());
+                    generateUniqueCode(), parent, locationType, request.name(), request.rackUCapacity());
             node = locationNodeRepository.save(node);
             reconstructTreeAfterInsert(parent, node);
             return LocationNodeResponse.from(node);
@@ -93,7 +93,7 @@ public class LocationNodeQueryService {
         validateLocationTypeDepth(node.getParent(), locationType);
         validateLocationTypeAgainstChildren(node, locationType);
 
-        node.update(locationType, request.name());
+        node.update(locationType, request.name(), request.rackUCapacity());
 
         return LocationNodeResponse.from(locationNodeRepository.save(node));
     }
