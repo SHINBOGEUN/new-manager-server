@@ -5,40 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>DCIM Manager · Tools</title>
   <style>
-    :root { --bg:#0f1419; --panel:#171d25; --line:#2a3544; --text:#e8edf4; --muted:#8b98a8; --accent:#3d9cf0; }
+    :root { --bg:#090e17; --panel:#121a29; --line:#2a3a52; --text:#e7edf8; --muted:#93a7c1; --accent:#35bdf4; --ok:#47d58c; }
     * { box-sizing: border-box; }
-    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"Segoe UI","Malgun Gothic",sans-serif;
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 78% -20%, #17365a 0, transparent 34%),var(--bg); color:var(--text); font-family:Pretendard,"Segoe UI","Malgun Gothic",sans-serif;
       display:grid; place-items:center; padding:24px; }
-    main { width:min(640px,100%); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:28px; }
-    h1 { margin:0 0 6px; font-size:22px; }
-    p { margin:0 0 20px; color:var(--muted); font-size:14px; line-height:1.5; }
-    a { display:block; padding:14px 16px; margin:0 0 10px; border:1px solid var(--line); border-radius:8px;
-      color:var(--text); text-decoration:none; background:#1d2530; }
-    a:hover { border-color:var(--accent); }
-    a strong { display:block; margin-bottom:4px; color:var(--accent); }
-    a span { font-size:13px; color:var(--muted); }
+    main { width:min(1120px,100%); }
+    .brand { display:flex; align-items:center; gap:12px; margin-bottom:64px; }
+    .mark { width:42px; height:42px; display:grid; place-items:center; border-radius:10px; color:#06111c; background:linear-gradient(135deg,#4cd4ff,#2498df); font-size:20px; font-weight:900; box-shadow:0 9px 24px rgba(53,189,244,.2); }
+    .brand strong { display:block; font-size:15px; letter-spacing:.15em; }
+    .brand span { display:block; margin-top:3px; color:#7088a3; font-size:10px; letter-spacing:.1em; }
+    .eyebrow { color:var(--accent); font-size:10px; font-weight:800; letter-spacing:.14em; }
+    h1 { max-width:780px; margin:10px 0 14px; font-size:clamp(34px,5vw,58px); line-height:1.08; letter-spacing:-.045em; }
+    .lead { max-width:660px; margin:0 0 36px; color:var(--muted); font-size:15px; line-height:1.7; }
+    .apps { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    a { position:relative; display:flex; align-items:center; gap:15px; min-height:112px; padding:19px; border:1px solid var(--line); border-radius:12px; overflow:hidden; color:var(--text); text-decoration:none; background:linear-gradient(145deg,#172338,#111a29); box-shadow:0 10px 28px rgba(0,0,0,.14); transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+    a::after { content:"→"; position:absolute; right:18px; top:18px; color:#66809d; font-size:18px; }
+    a:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:0 16px 34px rgba(0,0,0,.24); }
+    .app-icon { width:46px; height:46px; flex:0 0 46px; display:grid; place-items:center; border:1px solid rgba(53,189,244,.22); border-radius:11px; color:var(--accent); background:rgba(53,189,244,.08); font-size:20px; }
+    a strong { display:block; margin-bottom:6px; color:#f1f6fc; font-size:15px; }
+    a span { color:var(--muted); font-size:12px; line-height:1.5; }
+    .footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:30px; padding-top:18px; border-top:1px solid rgba(42,58,82,.7); color:#657c97; font-size:11px; }
+    .online { display:inline-flex; align-items:center; gap:7px; color:var(--ok); }
+    .online::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; box-shadow:0 0 0 4px rgba(71,213,140,.1); }
+    @media(max-width:700px){body{place-items:start center;padding:24px 18px}.brand{margin-bottom:44px}.apps{grid-template-columns:1fr}a{min-height:96px}.footer{align-items:flex-start;flex-direction:column}}
   </style>
 </head>
 <body>
   <main>
-    <h1>DCIM Manager</h1>
-    <p>프로토타입 도구. 디자인·본 UI는 별도. API 연동·등록 확인용입니다.</p>
-    <a href="/ops-console.html">
-      <strong>Ops Console</strong>
-      <span>등록 UI — 코드 · 위치(Path) · 모델 · 장비 · Task · 위젯 · Query</span>
-    </a>
-    <a href="/widget-dashboard.html">
-      <strong>Widget Dashboard</strong>
-      <span>페이지 위젯 ON/OFF · 배치 편집 · last/count/chart</span>
-    </a>
-    <a href="/live-test.html">
-      <strong>Live Telemetry</strong>
-      <span>실시간 SNMP MQTT 차트</span>
-    </a>
-    <a href="/swagger-ui/index.html">
-      <strong>Swagger</strong>
-      <span>API 문서</span>
-    </a>
+    <div class="brand"><span class="mark">D</span><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div>
+    <span class="eyebrow">OPERATIONS LAUNCHPAD</span>
+    <h1>데이터센터 운영에 필요한<br/>모든 화면을 한곳에서.</h1>
+    <p class="lead">운영 업무를 시작하거나 실시간 데이터를 확인할 화면을 선택하세요. 각 워크스페이스는 같은 장비·자산·수집 데이터를 사용합니다.</p>
+    <section class="apps">
+      <a href="/ops-console.html"><span class="app-icon">⌘</span><div><strong>운영 콘솔</strong><span>장비 등록 · 자산 · Rack · 수집 작업 · 기준 정보 관리</span></div></a>
+      <a href="/widget-dashboard.html"><span class="app-icon">▦</span><div><strong>위젯 대시보드</strong><span>전력 · 환경 · PUE 현황과 사용자 배치 위젯</span></div></a>
+      <a href="/live-test.html"><span class="app-icon">⌁</span><div><strong>실시간 텔레메트리</strong><span>선택한 장비 Point의 MQTT 실시간 스트림</span></div></a>
+      <a href="/swagger-ui/index.html"><span class="app-icon">{ }</span><div><strong>API 문서</strong><span>Manager API 명세와 요청·응답 확인</span></div></a>
+    </section>
+    <div class="footer"><span>DEFOG DCIM · MANAGER SERVICE</span><span class="online">Manager workspace ready</span></div>
   </main>
 </body>
 </html>

@@ -374,7 +374,7 @@
     }
 
     .tree {
-      border: 1px solid var(--line); border-radius: 10px; background: #fafbfc;
+      border: 1px solid var(--line); border-radius: 10px; background: var(--surface2);
       min-height: 360px; max-height: 560px; overflow: auto; padding: 6px 0;
       user-select: none;
     }
@@ -385,10 +385,10 @@
       padding: 3px 10px 3px 4px; min-height: 30px; cursor: default;
       border: 1px solid transparent;
     }
-    .tree .row-item:hover { background: #eef4fb; }
-    .tree .row-item.selected { background: var(--accent-soft); border-color: #9ec0e4; }
+    .tree .row-item:hover { background: var(--accent-soft); }
+    .tree .row-item.selected { background: var(--accent-soft); border-color: var(--accent); }
     .tree .row-item.drag-over {
-      background: #e5f3ea; outline: 2px dashed var(--ok); outline-offset: -2px;
+      background: var(--ok-bg); outline: 2px dashed var(--ok); outline-offset: -2px;
     }
     .tree .row-item.dragging { opacity: .45; }
     .tree .twist {
@@ -404,7 +404,7 @@
     .tree .ico svg { width: 16px; height: 16px; display: block; }
     .tree .count {
       margin-left: auto; font-size: 11px; font-weight: 700;
-      background: #e8eef6; color: #3a506b; border-radius: 999px; padding: 1px 7px;
+      background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 7px;
     }
     .tree .count.zero { opacity: .35; }
     .loc-device-list { margin-top: 12px; }
@@ -414,7 +414,7 @@
       background: var(--surface2); margin-bottom: 6px;
     }
     .loc-device-list .dev-row .dev-ico {
-      width: 28px; height: 28px; border-radius: 8px; background: #dfeaf7;
+      width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft);
       display: grid; place-items: center; flex: 0 0 auto;
     }
     .loc-device-list .dev-row .dev-ico svg { width: 16px; height: 16px; }
@@ -438,11 +438,11 @@
     .tree .label { flex: 1; min-width: 0; font-size: 13px; cursor: grab; }
     .tree .label:active { cursor: grabbing; }
     .tree .meta { font-size: 11px; color: var(--muted); margin-left: 6px; }
-    .tree .children { display: none; padding-left: 18px; border-left: 1px dotted #c9d3e0; margin-left: 14px; }
+    .tree .children { display: none; padding-left: 18px; border-left: 1px dotted var(--line); margin-left: 14px; }
     .tree li.open > .children { display: block; }
     .tree-root-drop {
       margin: 6px 10px; padding: 10px; text-align: center; font-size: 12px; color: var(--muted);
-      border: 1px dashed var(--line); border-radius: 8px; background: #fff;
+      border: 1px dashed var(--line); border-radius: 8px; background: var(--surface);
     }
     .tree-root-drop.drag-over { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); }
     .loc-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; align-items: center; }
@@ -529,13 +529,404 @@
       padding: 10px 12px; border-radius: 10px; background: var(--accent-soft);
       border: 1px solid #9ec0e4; margin-bottom: 12px; font-size: 13px;
     }
+
+    /* DCIM 운영 콘솔: 고밀도 다크 테마 */
+    :root {
+      --bg: #090e17;
+      --bg2: #0d1421;
+      --surface: #121a29;
+      --surface2: #182235;
+      --line: #26344a;
+      --text: #e7edf8;
+      --muted: #97a9c2;
+      --accent: #35bdf4;
+      --accent-soft: #123b52;
+      --ok: #47d58c;
+      --ok-bg: #123725;
+      --bad: #ff6274;
+      --bad-bg: #44202b;
+      --warn: #ffbd54;
+      --warn-bg: #3f3019;
+      --shadow: 0 12px 30px rgba(0, 0, 0, .22);
+      --radius: 10px;
+      --side: 246px;
+    }
+    body {
+      color: var(--text);
+      background: radial-gradient(circle at 72% -20%, #17365a 0, transparent 33%), var(--bg);
+      font-size: 13px;
+    }
+    a { color: #72cef8; }
+    .top {
+      min-height: 64px; align-items: center; gap: 18px; padding: 10px 20px;
+      background: rgba(13, 20, 33, .96); border-bottom-color: var(--line);
+      box-shadow: 0 5px 18px rgba(0,0,0,.16);
+    }
+    .brand { align-items: center; gap: 10px; min-width: 205px; padding: 0; }
+    .brand::before {
+      content: "D"; display: inline-grid; place-items: center; width: 32px; height: 32px;
+      color: #06111c; border-radius: 7px; font-size: 18px; font-weight: 900;
+      background: linear-gradient(135deg, #4cd4ff, #2498df); box-shadow: 0 5px 14px rgba(53,189,244,.26);
+    }
+    .brand strong { color: #f4f8ff; font-size: 16px; letter-spacing: .02em; }
+    .brand span { color: #7186a2; }
+    .top-auth { align-items: center; }
+    .top-auth .login-inline { background: #1b2637; border-color: #486078; }
+    .top-links { padding: 0; gap: 7px; }
+    .side {
+      background: linear-gradient(180deg, #101722 0%, #0a101a 100%);
+      border-right-color: #202c3e; padding: 18px 12px;
+    }
+    .side .group { margin: 18px 10px 7px; color: #59708e; font-size: 10px; letter-spacing: .13em; }
+    .side button { color: #aebfd3; padding: 10px 12px; border-radius: 7px; }
+    .side button small { color: #62758f; font-size: 10px; }
+    .side button:hover { background: #182437; color: #eff7ff; }
+    .side button.active {
+      background: linear-gradient(90deg, #164d70, #173a59); color: #effaff;
+      box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px #276383;
+    }
+    .side button.active small { color: #9ad5ef; }
+    .content { padding: 24px 28px 42px; }
+    .page-title { color: #f1f6ff; font-size: 24px; font-weight: 750; letter-spacing: -.035em; }
+    .page-desc { color: #91a4bd; margin-bottom: 20px; }
+    .card, .stat {
+      background: linear-gradient(145deg, rgba(25, 35, 53, .98), rgba(16, 24, 38, .98));
+      border-color: #273650; box-shadow: var(--shadow);
+    }
+    .card { padding: 17px 18px; }
+    .card > h2 { color: #eaf2ff; font-size: 14px; letter-spacing: -.01em; }
+    .card > h2 .step { background: #153e57; color: #67cefa; }
+    .stat { position: relative; overflow: hidden; border-radius: 9px; }
+    .stat::after { content: ""; position: absolute; left: 0; top: 0; width: 3px; height: 100%; background: var(--accent); opacity: .82; }
+    .stat .k { color: #8fa4c0; text-transform: uppercase; letter-spacing: .07em; font-size: 10px; }
+    .stat .v { color: #f3f8ff; font-size: 25px; }
+    .rack-stats .v { color: #57c7f5; }
+    input, select, textarea, button {
+      border-color: #31415a; background: #0d1522; color: #e8f0fc; border-radius: 7px;
+    }
+    input::placeholder, textarea::placeholder { color: #62758f; }
+    input:focus, select:focus, textarea:focus { outline-color: rgba(53,189,244,.22); border-color: var(--accent); background: #101c2b; }
+    select option { background: #101827; color: #e7effb; }
+    button { transition: transform .14s ease, background .14s ease, border-color .14s ease; }
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    button.primary { background: linear-gradient(135deg, #159ad0, #287ee0); border-color: #2aa6dd; box-shadow: 0 5px 14px rgba(31,157,214,.2); }
+    button.ghost { background: #172337; border-color: #33455f; color: #c9d8ea; }
+    button.ghost:hover { background: #203149; border-color: #4a6687; }
+    button.danger { background: linear-gradient(135deg, #be3b4f, #8f2639); border-color: #d6596b; }
+    .chip { background: #172338; color: #a9bed6; border-color: #354860; }
+    .chip.ok { background: #123524; color: #67e3a1; border-color: #286746; }
+    .chip.bad { background: #42202c; color: #ff94a2; border-color: #823446; }
+    .chip.warn { background: #403018; color: #ffd07a; border-color: #79591d; }
+    .sel-banner { background: #112d42; border-color: #245d7e; color: #b7e4fa; }
+    table { border: 1px solid #26364e; border-radius: 8px; overflow: hidden; }
+    th, td { border-bottom-color: #26364e; padding: 11px 10px; }
+    th { background: #182438; color: #91a8c4; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    tr.clickable:hover td { background: #182a42; }
+    tr.selected td { background: #15334b; }
+    .muted { color: #91a4bd; }
+    #codeTreeBody .code-group-row td { background: #162b42; border-color: #28506f; }
+    #codeTreeBody .code-group-row:hover td { background: #193751; }
+    #codeTreeBody .code-group-key { color: #75d2fc; }
+    .rack-overview-card, .rack-preview, .asset-preview, .asset-detail {
+      background: #101827; border-color: #2c405b; color: var(--text);
+    }
+    .rack-overview-head, .rack-preview-head, .asset-preview-head, .asset-detail-head {
+      background: linear-gradient(90deg, #132942, #16213a); border-bottom: 1px solid #2b4665;
+    }
+    .rack-frame { border-color: #2b4059; background: repeating-linear-gradient(to top, #0c1421 0, #0c1421 calc(100% / var(--rack-u) - 1px), #28394e calc(100% / var(--rack-u) - 1px), #28394e calc(100% / var(--rack-u))); }
+    .rack-frame.no-capacity, .rack-rear { background: #121e2f; border-color: #2a3e56; color: #a8bdd5; }
+    .rack-side h4, .rack-preview-side h3, .rack-preview-units { color: #7890ad; }
+    .pick-item { border-color: #2a3c55; background: #121d2d; }
+    .empty, .result-ok, pre { background: #101b2a; border-color: #2a405c; color: #a9bfd7; }
+    .asset-detail-modal, .asset-preview-modal, .rack-preview-modal { background: rgba(3, 8, 15, .8); }
+    .asset-preview-image { background: #0b1421; border-color: #2c405b; }
+    .log-bar { background: #0c1420; border-top-color: #26364e; }
+    /* Product shell */
+    body { grid-template-columns: var(--side) minmax(0, 1fr); grid-template-rows: 68px minmax(0, 1fr); }
+    .top { grid-column: 2; grid-row: 1; flex-wrap: nowrap; padding: 10px 24px; }
+    .side { grid-column: 1; grid-row: 1 / 3; position: relative; z-index: 60; padding: 0 12px 18px; }
+    .content { grid-column: 2; grid-row: 2; }
+    .side-brand { height: 68px; display:flex; align-items:center; gap:11px; padding:0 10px; margin:0 -2px 8px; border-bottom:1px solid #202c3e; }
+    .side-brand i { width:34px; height:34px; display:grid; place-items:center; font-style:normal; font-size:18px; font-weight:900; color:#06111c; border-radius:8px; background:linear-gradient(135deg,#4cd4ff,#2498df); box-shadow:0 6px 18px rgba(53,189,244,.22); }
+    .side-brand strong { display:block; color:#f7fbff; font-size:15px; letter-spacing:.12em; }
+    .side-brand span { display:block; margin-top:2px; color:#5d7390; font-size:9px; letter-spacing:.14em; }
+    .side-footer { margin-top:auto; display:flex; align-items:center; gap:9px; padding:13px 11px; border:1px solid #26364c; border-radius:9px; background:#111b2a; }
+    .side-footer strong,.side-footer small { display:block; }
+    .side-footer strong { color:#cfe0f2; font-size:11px; }
+    .side-footer small { margin-top:2px; color:#607590; font-size:9px; }
+    .status-pulse { width:8px; height:8px; border-radius:50%; background:#47d58c; box-shadow:0 0 0 5px rgba(71,213,140,.1); }
+    .side button[data-tab] { position:relative; min-height:48px; padding:8px 11px 8px 43px; }
+    .side button[data-tab]::before { position:absolute; left:13px; top:50%; width:20px; transform:translateY(-50%); color:#7290b1; font-size:16px; text-align:center; }
+    .side button.active::before { color:#6ed3ff; }
+    .side button[data-tab="home"]::before { content:"⌂"; }
+    .side button[data-tab="wizard"]::before { content:"＋"; }
+    .side button[data-tab="devices"]::before { content:"▣"; }
+    .side button[data-tab="assets"]::before { content:"◆"; }
+    .side button[data-tab="rack-overview"]::before { content:"▤"; }
+    .side button[data-tab="device-groups"]::before { content:"◫"; }
+    .side button[data-tab="tasks"]::before { content:"↻"; }
+    .side button[data-tab="collection-status"]::before { content:"◉"; }
+    .side button[data-tab="widgets"]::before { content:"▦"; }
+    .side button[data-tab="locations"]::before { content:"⌖"; }
+    .side button[data-tab="models"]::before { content:"◇"; }
+    .side button[data-tab="codes"]::before { content:"⌘"; }
+    .side button[data-tab="notes"]::before { content:"?"; }
+    .top-page-context { min-width:150px; display:flex; flex-direction:column; gap:2px; }
+    .top-page-context span { color:#5f7693; font-size:9px; font-weight:800; letter-spacing:.13em; }
+    .top-page-context strong { color:#eef5ff; font-size:15px; }
+    .top-auth { justify-content:flex-end; flex-wrap:nowrap; }
+    .top-auth > .field { display:none; }
+    .top-auth button { white-space:nowrap; padding:8px 10px; }
+    .top-time { display:flex; flex-direction:column; align-items:flex-end; min-width:82px; color:#8ca0ba; font-size:10px; line-height:1.35; }
+    .top-time strong { color:#d8e5f4; font-size:12px; font-variant-numeric:tabular-nums; }
+    .top-links a { padding:6px 9px; }
+    .shell-menu-btn,.side-backdrop { display:none; }
+
+    /* Page hierarchy */
+    .panel.active { animation:panel-in .22s ease both; }
+    @keyframes panel-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+    .page-heading { display:flex; justify-content:space-between; gap:18px; align-items:flex-end; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid #1f2d40; }
+    .page-heading .page-title { margin:0 0 5px; }
+    .page-heading .page-desc { margin:0; }
+    .page-heading::after { content:"DEFOG / DCIM"; color:#49627f; font-size:9px; font-weight:800; letter-spacing:.16em; white-space:nowrap; }
+    .card { position:relative; border-radius:12px; overflow:hidden; }
+    .card::before { content:""; position:absolute; inset:0 auto auto 0; width:100%; height:1px; background:linear-gradient(90deg,transparent,rgba(91,200,246,.4),transparent); opacity:.55; }
+    .card > h2 { min-height:28px; padding-bottom:10px; border-bottom:1px solid #26364c; }
+    .card-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:15px; padding-bottom:13px; border-bottom:1px solid #26364c; }
+    .card-heading h2 { margin:3px 0 0; font-size:15px; }
+    .eyebrow { color:#5cc9f5; font-size:9px; font-weight:850; letter-spacing:.14em; }
+    .live-badge { display:inline-flex; align-items:center; gap:6px; color:#5fe09d; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .live-badge i { width:7px; height:7px; border-radius:50%; background:#47d58c; box-shadow:0 0 0 5px rgba(71,213,140,.1); }
+    .fields { gap:14px; }
+    label.field { gap:7px; color:#91a6c0; font-size:11px; letter-spacing:.01em; }
+    label.field > :is(input,select,textarea) { min-height:40px; }
+    input[type="checkbox"],input[type="radio"] { min-height:auto; accent-color:var(--accent); }
+    input[type="color"] { padding:4px; }
+    .device-pick-box { background:#0d1522 !important; border-color:#31415a !important; }
+    .table-wrap, .mp-table-wrap, [style*="overflow:auto"] { scrollbar-color:#314965 transparent; scrollbar-width:thin; }
+    thead th { position:sticky; top:0; z-index:2; box-shadow:0 1px 0 #31415a; }
+    tbody tr:last-child td { border-bottom:0; }
+    td { color:#ced9e8; }
+    td b { color:#edf5ff; }
+    details.raw { margin-top:12px; }
+    details.raw summary,.log-bar summary { color:#8197b2; cursor:pointer; }
+
+    /* Operational home */
+    .home-hero { position:relative; display:flex; align-items:flex-end; justify-content:space-between; gap:28px; margin-bottom:18px; padding:28px 30px; border:1px solid #29425d; border-radius:15px; overflow:hidden; background:linear-gradient(120deg,#15283d,#111d2d 58%,#12263a); box-shadow:0 18px 50px rgba(0,0,0,.24); }
+    .home-hero::after { content:""; position:absolute; right:-90px; top:-130px; width:360px; height:360px; border:1px solid rgba(53,189,244,.2); border-radius:50%; box-shadow:0 0 0 54px rgba(53,189,244,.025),0 0 0 108px rgba(53,189,244,.018); }
+    .home-hero > * { position:relative; z-index:1; }
+    .home-hero .page-title { margin:7px 0 7px; font-size:30px; }
+    .home-hero .page-desc { margin:0; max-width:680px; }
+    .hero-actions { display:flex; gap:9px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .hero-actions button,.hero-link { min-height:42px; display:inline-flex; align-items:center; justify-content:center; padding:9px 14px; border-radius:8px; white-space:nowrap; text-decoration:none; font-weight:700; }
+    .hero-link { color:#b9cbe0; border:1px solid #37506c; background:#172438; }
+    .home-stats .stat { display:flex; align-items:center; gap:14px; min-height:112px; padding:18px; }
+    .home-stats .stat::after { height:3px; width:100%; }
+    .stat-icon { flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center; border-radius:10px; color:#66d2ff; background:#14384e; border:1px solid #275570; font-size:20px; }
+    .home-stats .stat:nth-child(2) .stat-icon { color:#a996ff; background:#2b274d; border-color:#4b4380; }
+    .home-stats .stat:nth-child(3) .stat-icon { color:#56dfa0; background:#173d30; border-color:#28634a; }
+    .home-stats .stat:nth-child(4) .stat-icon { color:#ffc968; background:#403219; border-color:#6b5424; }
+    .home-stats .v { margin:3px 0 0; line-height:1; }
+    .home-stats .v small { color:#6f849f; font-size:10px; font-weight:600; }
+    .home-stats p { margin:7px 0 0; color:#6e829c; font-size:10px; }
+    .home-layout { display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(280px,.8fr) minmax(300px,.85fr); gap:14px; }
+    .home-layout > * { min-width:0; }
+    .quick-actions { display:grid; grid-template-columns:1fr; gap:9px; }
+    .quick-actions button { display:grid; grid-template-columns:38px 1fr 20px; align-items:center; gap:10px; min-height:68px; padding:10px 13px; text-align:left; background:linear-gradient(145deg,#182438,#111a29); border:1px solid #2a3b53; color:#e6eef9; }
+    .quick-actions button > span { width:36px; height:36px; display:grid; place-items:center; color:#64cffb; border-radius:9px; background:#13364d; }
+    .quick-actions strong,.quick-actions small { display:block; }
+    .quick-actions small { margin-top:3px; color:#7288a3; font-size:10px; font-weight:500; }
+    .quick-actions b { color:#54708e; font-size:16px; }
+    .system-readiness { min-height:170px; padding:14px; border:1px solid #293b53; border-radius:9px; background:#0e1725; line-height:1.8 !important; }
+    .readiness-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; padding-bottom:11px; border-bottom:1px solid #24364d; }
+    .readiness-head i { width:12px; height:12px; border-radius:50%; background:#47d58c; box-shadow:0 0 0 6px rgba(71,213,140,.1); }
+    .readiness-head strong,.readiness-head small { display:block; }
+    .readiness-head strong { color:#e9f7ef; }
+    .readiness-head small { color:#7188a4; font-size:10px; }
+    .readiness-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .readiness-grid div { padding:9px 10px; border:1px solid #25384f; border-radius:7px; background:#121e2e; }
+    .readiness-grid span,.readiness-grid b { display:block; }
+    .readiness-grid span { color:#7289a5; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+    .readiness-grid b { margin-top:3px; color:#dce9f8; font-size:13px; }
+
+    /* Form workflows */
+    #tab-wizard.panel.active { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start; }
+    #tab-wizard > .page-heading,#tab-wizard > .wiz-progress,#tab-wizard > .row,#tab-wizard > .result-ok { grid-column:1 / -1; }
+    #tab-wizard > .card { min-height:100%; margin:0; }
+    #tab-wizard > .card .fields { grid-template-columns:1fr; }
+    #tab-wizard .field.full { grid-column:auto; }
+    .wiz-progress { display:grid; grid-template-columns:repeat(4,1fr); gap:0; padding:0; overflow:hidden; border:1px solid #2b3d55; border-radius:10px; background:#101a29; }
+    .wiz-progress span { position:relative; padding:12px 14px; text-align:center; color:#6f849e; border-right:1px solid #26374d; }
+    .wiz-progress span:last-child { border-right:0; }
+    .wiz-progress span.on { color:#e9f7ff; background:#123b54; }
+    .wiz-progress span.done { color:#62dfa0; background:#123226; }
+    #tab-devices .grid2 { grid-template-columns:minmax(620px,1.45fr) minmax(360px,.72fr); }
+    #tab-assets .card:first-child { padding:20px; }
+    .asset-detail { width:min(1180px,100%); }
+    .asset-detail-body { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .asset-detail-body > .card { margin:0; }
+    .asset-detail-body > .card:first-child { grid-column:1 / -1; }
+    .models-layout { grid-template-columns:minmax(310px,.68fr) minmax(620px,1.5fr); }
+
+    @media (max-width: 1450px) { .home-layout { grid-template-columns:1fr 1fr; } .quick-actions { grid-column:1 / -1; grid-template-columns:repeat(4,1fr); } }
+    @media (max-width: 1180px) { #tab-wizard.panel.active { grid-template-columns:1fr; } #tab-devices .grid2,.models-layout { grid-template-columns:1fr; } .home-stats { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width: 980px) {
+      body { grid-template-columns:1fr; grid-template-rows:62px minmax(0,1fr); }
+      .top { grid-column:1; grid-row:1; padding:9px 14px; }
+      .content { grid-column:1; grid-row:2; padding:18px 14px 32px; }
+      .side { display:flex; position:fixed; inset:0 auto 0 0; width:min(292px,86vw); transform:translateX(-105%); transition:transform .2s ease; box-shadow:20px 0 50px rgba(0,0,0,.45); }
+      body.side-open .side { transform:translateX(0); }
+      .side-backdrop { display:none; position:fixed; inset:0; z-index:55; width:100%; border:0; border-radius:0; background:rgba(2,7,13,.7); }
+      body.side-open .side-backdrop { display:block; }
+      .shell-menu-btn { display:inline-grid; place-items:center; width:38px; height:38px; padding:0; background:#172337; color:#d9e7f7; }
+      .top-auth { margin-left:auto; }
+      .top-time,.top-links { display:none; }
+      .home-hero { align-items:flex-start; flex-direction:column; }
+      .home-layout { grid-template-columns:1fr; }
+      .quick-actions { grid-column:auto; grid-template-columns:repeat(2,1fr); }
+      .asset-detail-body { grid-template-columns:1fr; }
+      .asset-detail-body > .card:first-child { grid-column:auto; }
+      .page-heading::after { display:none; }
+    }
+    @media (max-width: 640px) { .home-stats,.quick-actions { grid-template-columns:1fr; } .home-hero { padding:22px 20px; } .home-hero .page-title { font-size:25px; } .top-page-context span { display:none; } .top-links { display:none; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
+
+    /* Full-screen sign-in experience */
+    body:not(.is-authed) { display:block; min-height:100%; background:#09111d; }
+    body:not(.is-authed) .top { display:none !important; }
+    body:not(.is-authed) .content { min-height:100vh; padding:32px; background:radial-gradient(circle at 18% 12%,rgba(53,189,244,.14),transparent 30%),radial-gradient(circle at 72% 85%,rgba(98,103,242,.10),transparent 28%),#09111d; }
+    .login-experience { display:none; width:min(1180px,100%); min-height:min(720px,calc(100vh - 64px)); grid-template-columns:minmax(0,1fr) 420px; overflow:hidden; border:1px solid #263951; border-radius:20px; background:#0d1725; box-shadow:0 30px 90px rgba(0,0,0,.42); }
+    body:not(.is-authed) .login-experience { display:grid; }
+    .login-promo { position:relative; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; padding:48px; background:linear-gradient(145deg,#10243a,#0c1827 72%); }
+    .login-promo::before { content:""; position:absolute; width:520px; height:520px; right:-230px; top:-210px; border:1px solid rgba(53,189,244,.22); border-radius:50%; box-shadow:0 0 0 62px rgba(53,189,244,.035),0 0 0 124px rgba(53,189,244,.02); }
+    .login-promo > * { position:relative; z-index:1; }
+    .login-logo { display:flex; align-items:center; gap:12px; }
+    .login-logo i { width:42px; height:42px; display:grid; place-items:center; border-radius:10px; color:#07111d; background:linear-gradient(135deg,#50d6ff,#2c8ee8); font-style:normal; font-size:20px; font-weight:900; }
+    .login-logo strong { display:block; letter-spacing:.16em; }
+    .login-logo span { display:block; margin-top:3px; color:#7f96b0; font-size:10px; letter-spacing:.1em; }
+    .login-copy { max-width:570px; }
+    .login-copy .eyebrow { color:#35bdf4; }
+    .login-copy h1 { margin:10px 0 16px; font-size:clamp(34px,4vw,56px); line-height:1.08; letter-spacing:-.04em; }
+    .login-copy p { max-width:510px; margin:0; color:#9db0c7; font-size:15px; line-height:1.75; }
+    .login-features { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:28px; }
+    .login-feature { padding:13px; border:1px solid rgba(88,116,148,.28); border-radius:10px; background:rgba(16,31,49,.7); }
+    .login-feature b { display:block; color:#dce9f7; font-size:12px; }
+    .login-feature span { display:block; margin-top:4px; color:#6f87a4; font-size:10px; line-height:1.45; }
+    .login-foot { color:#647b95; font-size:11px; letter-spacing:.06em; }
+    .login-card { align-self:center; width:auto; margin:36px; padding:30px; border:1px solid #2b4059; border-radius:14px; background:#111d2d; box-shadow:0 18px 48px rgba(0,0,0,.26); }
+    .login-card .login-card-kicker { color:#35bdf4; font-size:10px; font-weight:800; letter-spacing:.12em; }
+    .login-card h2 { margin:7px 0 7px; color:#f1f6fc; font-size:23px; }
+    .login-card p { color:#8298b2; }
+    .login-card .field { color:#9bb0c7; }
+    .login-card input { min-height:43px; border-color:#30465f; background:#0c1624; color:#eef5fc; }
+    .login-card input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
+    .login-card #loginCardBtn { min-height:44px; }
+    .login-card #registerCardBtn { min-height:44px; color:#d6e3f2; border-color:#334a64; background:#18263a; }
+    @media (max-width:900px) { .login-experience { grid-template-columns:1fr; min-height:auto; } .login-promo { padding:32px; min-height:280px; } .login-copy h1 { font-size:34px; } .login-features,.login-foot { display:none; } .login-card { width:min(430px,calc(100% - 32px)); margin:24px auto 32px; } }
+    @media (max-width:540px) { body:not(.is-authed) .content { padding:0; } .login-experience { min-height:100vh; border:0; border-radius:0; } .login-promo { min-height:220px; padding:26px 22px; } .login-copy h1 { font-size:28px; margin-bottom:10px; } .login-copy p { font-size:13px; } .login-card { margin:18px auto 26px; padding:24px 20px; } }
+
+    .theme-toggle { white-space:nowrap; }
+    .login-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .login-foot .theme-toggle { padding:7px 10px; color:#a8bdd4; border:1px solid #30445e; background:#132237; font-size:11px; }
+    .task-group-card,.task-group-create { transition:border-color .16s ease,background .16s ease; }
+    .task-group-card:hover { border-color:#3b5978 !important; }
+
+    /* Light theme — structure is shared, only visual tokens change */
+    html[data-theme="light"] {
+      --bg:#edf2f7; --bg2:#f7f9fc; --surface:#ffffff; --surface2:#f5f8fc;
+      --line:#d7e0eb; --text:#172235; --muted:#65758a; --accent:#176da5;
+      --accent-soft:#e4f1f8; --ok:#137647; --ok-bg:#e7f6ee; --bad:#b42318;
+      --bad-bg:#fdecea; --warn:#946200; --warn-bg:#fff5da;
+      --shadow:0 1px 2px rgba(16,24,40,.04),0 10px 28px rgba(16,24,40,.07);
+    }
+    html[data-theme="light"] body { color:var(--text); background:linear-gradient(160deg,#f8fafc,#e8eef5); }
+    html[data-theme="light"] .top { background:rgba(255,255,255,.96); border-bottom-color:#dce4ed; box-shadow:0 4px 18px rgba(31,48,70,.06); }
+    html[data-theme="light"] .top-page-context { border-left-color:#d7e0eb; }
+    html[data-theme="light"] .top-page-context span { color:#7a8ca1; }
+    html[data-theme="light"] .top-page-context strong { color:#172235; }
+    html[data-theme="light"] .top-time { color:#788ba1; }
+    html[data-theme="light"] .top-time strong { color:#24344a; }
+    html[data-theme="light"] .card,
+    html[data-theme="light"] .stat { background:#fff; border-color:#dbe3ed; box-shadow:var(--shadow); }
+    html[data-theme="light"] .card > h2,
+    html[data-theme="light"] .page-title { color:#18253a; }
+    html[data-theme="light"] .page-desc,
+    html[data-theme="light"] .muted { color:#68798d; }
+    html[data-theme="light"] input,
+    html[data-theme="light"] select,
+    html[data-theme="light"] textarea { color:#172235; border-color:#ccd7e4; background:#fff; }
+    html[data-theme="light"] input::placeholder,
+    html[data-theme="light"] textarea::placeholder { color:#91a0b2; }
+    html[data-theme="light"] input:focus,
+    html[data-theme="light"] select:focus,
+    html[data-theme="light"] textarea:focus { border-color:#2787bd; background:#fff; }
+    html[data-theme="light"] select option { color:#172235; background:#fff; }
+    html[data-theme="light"] button.ghost { color:#33465d; border-color:#c9d5e2; background:#fff; }
+    html[data-theme="light"] button.ghost:hover { color:#153a59; border-color:#8fb7d1; background:#eff7fb; }
+    html[data-theme="light"] .chip { color:#4f637a; border-color:#cbd7e4; background:#f4f7fa; }
+    html[data-theme="light"] .chip.ok { color:#137647; border-color:#a9d9c0; background:#e8f7ef; }
+    html[data-theme="light"] .chip.warn { color:#8a5b00; border-color:#ead19a; background:#fff6df; }
+    html[data-theme="light"] .chip.bad { color:#b42318; border-color:#efb8b3; background:#fdecea; }
+    html[data-theme="light"] table { border-color:#d9e2ec; }
+    html[data-theme="light"] th { color:#66778c; border-bottom-color:#d9e2ec; background:#f2f6fa; }
+    html[data-theme="light"] td { color:#2c3c51; border-bottom-color:#e1e7ef; }
+    html[data-theme="light"] td b { color:#172235; }
+    html[data-theme="light"] tr.clickable:hover td { background:#eef6fb; }
+    html[data-theme="light"] tr.selected td { background:#e4f3fb; }
+    html[data-theme="light"] .device-pick-box,
+    html[data-theme="light"] .pick-item,
+    html[data-theme="light"] .task-group-card,
+    html[data-theme="light"] .task-group-create { color:#25364a; border-color:#d5dfea !important; background:#f7f9fc !important; }
+    html[data-theme="light"] .empty,
+    html[data-theme="light"] .result-ok,
+    html[data-theme="light"] pre { color:#52667d; border-color:#d5e0eb; background:#f5f8fb; }
+    html[data-theme="light"] .sel-banner { color:#18587d; border-color:#a9cee2; background:#eaf6fb; }
+    html[data-theme="light"] .rack-overview-card,
+    html[data-theme="light"] .rack-preview,
+    html[data-theme="light"] .asset-preview,
+    html[data-theme="light"] .asset-detail { color:var(--text); border-color:#cbd8e5; background:#fff; }
+    html[data-theme="light"] .rack-overview-head,
+    html[data-theme="light"] .rack-preview-head,
+    html[data-theme="light"] .asset-preview-head,
+    html[data-theme="light"] .asset-detail-head { color:#eef7ff; background:linear-gradient(90deg,#143b5d,#1e577f); }
+    html[data-theme="light"] .home-hero { border-color:#c7dae7; background:linear-gradient(120deg,#f2f9fc,#e7f2f8 58%,#eef6fa); box-shadow:var(--shadow); }
+    html[data-theme="light"] .home-hero .page-title { color:#15314a; }
+    html[data-theme="light"] .home-hero .page-desc { color:#577087; }
+    html[data-theme="light"] .hero-link { color:#315069; border-color:#bfd0dc; background:#fff; }
+    html[data-theme="light"] .quick-actions button { color:#24364b; border-color:#d3dee9; background:#fff; }
+    html[data-theme="light"] .quick-actions b { color:#7b8ea3; }
+    html[data-theme="light"] .checklist li { border-color:#d8e2ec; background:#f8fafc; }
+    html[data-theme="light"] .checklist .n { color:#5d7188; border-color:#c9d5e2; background:#fff; }
+    html[data-theme="light"] .wiz-progress { border-color:#cfdae6; background:#f4f7fa; }
+    html[data-theme="light"] .wiz-progress span { color:#6c7e92; border-right-color:#d5dfea; }
+    html[data-theme="light"] .wiz-progress span.on { color:#14577c; background:#e3f3fa; }
+    html[data-theme="light"] .page-heading { border-bottom-color:#dce4ed; }
+    html[data-theme="light"] .page-heading::after { color:#a1adba; }
+    html[data-theme="light"] .log-bar { color:#596d84; border-top-color:#d4dee9; background:#f7f9fb; }
+    html[data-theme="light"] body:not(.is-authed) { background:#edf2f7; }
+    html[data-theme="light"] body:not(.is-authed) .content { background:radial-gradient(circle at 18% 12%,rgba(37,141,193,.13),transparent 31%),#eef3f8; }
+    html[data-theme="light"] .login-experience { border-color:#cad7e3; background:#fff; box-shadow:0 30px 80px rgba(31,53,76,.18); }
+    html[data-theme="light"] .login-promo { background:linear-gradient(145deg,#e9f6fb,#dcecf5 72%); }
+    html[data-theme="light"] .login-logo strong,
+    html[data-theme="light"] .login-copy h1 { color:#142a40; }
+    html[data-theme="light"] .login-copy p { color:#526c83; }
+    html[data-theme="light"] .login-feature { border-color:#c5dbe7; background:rgba(255,255,255,.62); }
+    html[data-theme="light"] .login-feature b { color:#254057; }
+    html[data-theme="light"] .login-card { border-color:#d0dce7; background:#fff; box-shadow:0 18px 44px rgba(31,53,76,.13); }
+    html[data-theme="light"] .login-card h2 { color:#18283b; }
+    html[data-theme="light"] .login-card p,
+    html[data-theme="light"] .login-card .field { color:#657a91; }
+    html[data-theme="light"] .login-card input { color:#172235; border-color:#cbd7e3; background:#f9fbfd; }
+    html[data-theme="light"] .login-card #registerCardBtn { color:#334b63; border-color:#cbd7e3; background:#f3f6f9; }
+    html[data-theme="light"] .login-foot .theme-toggle { color:#345168; border-color:#b9cedc; background:rgba(255,255,255,.65); }
   </style>
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <strong>DCIM 운영</strong>
-      <span>등록 · 수집 · 기준정보</span>
+    <button type="button" class="shell-menu-btn" id="sideToggle" aria-label="메뉴 열기">☰</button>
+    <div class="top-page-context">
+      <span>DCIM MANAGEMENT</span>
+      <strong id="topPageTitle">한눈에 보기</strong>
     </div>
     <div class="top-auth">
       <label class="field" style="min-width:160px">서버
@@ -555,7 +946,9 @@
       <button type="button" class="ghost" id="bootBtn" title="데이터 다시 불러오기">새로고침</button>
       <button type="button" class="ghost" id="reloadAllBtn" style="display:none">다시 로드</button>
     </div>
+    <div class="top-time"><span id="topDate"></span><strong id="topClock"></strong></div>
     <div class="top-links">
+      <button type="button" class="ghost theme-toggle" id="themeToggle" title="화면 테마 변경">☀ 라이트</button>
       <a class="chip" href="/">도구 목록</a>
       <a class="chip" href="/widget-dashboard.html">위젯 보드</a>
       <a class="chip" href="/live-test.html">실시간</a>
@@ -563,6 +956,7 @@
   </header>
 
   <aside class="side" id="tabs">
+    <div class="side-brand"><i>D</i><div><strong>DEFOG</strong><span>DCIM PLATFORM</span></div></div>
     <div class="group">시작</div>
     <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 현황 · 다음 할 일</small></button>
     <div class="group">운영</div>
@@ -579,12 +973,21 @@
     <button type="button" data-tab="models">장비 모델<small>OID · 측정 항목</small></button>
     <button type="button" data-tab="codes">공통코드<small>그룹 · 코드 값</small></button>
     <button type="button" data-tab="notes">API 안내<small>콘솔 커버리지</small></button>
+    <div class="side-footer"><span class="status-pulse"></span><div><strong>Manager Online</strong><small>Operations workspace</small></div></div>
   </aside>
+  <button type="button" class="side-backdrop" id="sideBackdrop" aria-label="메뉴 닫기"></button>
 
   <main class="content">
-    <div class="login-card" id="loginCard">
+    <div class="login-experience">
+      <section class="login-promo">
+        <div class="login-logo"><i>D</i><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div>
+        <div class="login-copy"><span class="eyebrow">UNIFIED OPERATIONS</span><h1>복잡한 데이터센터를<br/>하나의 흐름으로.</h1><p>장비와 수집, 자산과 Rack, 에너지와 환경 데이터를 연결해 운영 상태를 빠르게 이해하고 대응하세요.</p><div class="login-features"><div class="login-feature"><b>Live Monitoring</b><span>실시간 수집 상태와 주요 지표</span></div><div class="login-feature"><b>Asset & Space</b><span>자산 이력과 Rack 공간 관리</span></div><div class="login-feature"><b>Flexible Widgets</b><span>업무에 맞춘 대시보드 구성</span></div></div></div>
+        <div class="login-foot"><span>DEFOG DCIM · OPERATIONS WORKSPACE</span><button type="button" class="theme-toggle" id="loginThemeToggle">☀ 라이트 모드</button></div>
+      </section>
+      <div class="login-card" id="loginCard">
+      <span class="login-card-kicker">WELCOME BACK</span>
       <h2>DCIM 운영 콘솔 로그인</h2>
-      <p>계정이 없으면 「회원가입」을 먼저 하세요.</p>
+      <p>운영 환경에 안전하게 접속합니다.</p>
       <div class="fields">
         <label class="field full">서버 URL <span class="muted">(비우면 이 서버)</span>
           <input id="loginManagerUrl" placeholder="http://localhost:8080" />
@@ -601,21 +1004,24 @@
         <button type="button" class="ghost" id="registerCardBtn" style="flex:1;padding:12px">회원가입</button>
       </div>
       <p id="loginError" class="bad" style="margin:12px 0 0;font-size:13px;display:none"></p>
+      </div>
     </div>
 
     <!-- HOME -->
     <section class="panel active" id="tab-home">
-      <h1 class="page-title">한눈에 보기</h1>
-      <p class="page-desc">등록된 기준 정보와 수집 준비 상태입니다. 신규 장비는 <b>장비 추가</b>로 등록하세요.</p>
-      <div class="stats">
-        <div class="stat"><div class="k">위치</div><div class="v" id="statLoc">–</div></div>
-        <div class="stat"><div class="k">모델</div><div class="v" id="statModel">–</div></div>
-        <div class="stat"><div class="k">장비</div><div class="v" id="statDev">–</div></div>
-        <div class="stat"><div class="k">수집 작업</div><div class="v" id="statTask">–</div></div>
+      <div class="home-hero">
+        <div><span class="eyebrow">OPERATIONS CENTER</span><h1 class="page-title">데이터센터 운영을 한눈에</h1><p class="page-desc">장비 등록부터 수집 상태, 자산과 Rack, 위젯 구성까지 하나의 흐름으로 관리하세요.</p></div>
+        <div class="hero-actions"><button type="button" class="primary" id="goWizard">＋ 새 장비 등록</button><a class="hero-link" href="/widget-dashboard.html">위젯 대시보드 열기 ↗</a></div>
       </div>
-      <div class="grid2">
-        <div class="card">
-          <h2>추천 순서</h2>
+      <div class="stats home-stats">
+        <div class="stat stat-location"><div class="stat-icon">⌖</div><div><div class="k">등록 위치</div><div class="v"><span id="statLoc">–</span><small> locations</small></div><p>Zone · Row · Rack</p></div></div>
+        <div class="stat stat-model"><div class="stat-icon">◇</div><div><div class="k">장비 모델</div><div class="v"><span id="statModel">–</span><small> models</small></div><p>수집 Point 카탈로그</p></div></div>
+        <div class="stat stat-device"><div class="stat-icon">▣</div><div><div class="k">등록 장비</div><div class="v"><span id="statDev">–</span><small> devices</small></div><p>운영 자산 인스턴스</p></div></div>
+        <div class="stat stat-task"><div class="stat-icon">↻</div><div><div class="k">수집 작업</div><div class="v"><span id="statTask">–</span><small> tasks</small></div><p>Collector 스케줄</p></div></div>
+      </div>
+      <div class="home-layout">
+        <div class="card home-onboarding">
+          <div class="card-heading"><div><span class="eyebrow">GETTING STARTED</span><h2>운영 준비 순서</h2></div><span class="chip">4 STEPS</span></div>
           <ul class="checklist">
             <li><div class="n">1</div><div><strong>위치 확인</strong><span>없으면 위치 메뉴에서 존/랙 추가</span></div></li>
             <li><div class="n">2</div><div><strong>모델 확인</strong><span>측정할 OID가 모델에 있어야 합니다</span></div></li>
@@ -623,16 +1029,18 @@
             <li><div class="n">4</div><div><strong>위젯으로 확인</strong><span>최신값(last) 조회 · 배치 보드는 별도 화면</span></div></li>
           </ul>
           <div class="row" style="margin-top:14px">
-            <button type="button" class="primary" id="goWizard">장비 추가 시작</button>
-            <button type="button" class="ghost" id="goDevices">장비 목록</button>
+            <button type="button" class="ghost" id="goDevices">장비 목록 보기</button>
           </div>
         </div>
-        <div class="card">
-          <h2>상태</h2>
-          <div id="bootStatus" class="muted">로그인 후 자동으로 불러옵니다.</div>
-          <p class="muted" style="margin:12px 0 0;font-size:12px;line-height:1.5">
-            전용 계산은 이 화면이 아니라 별도 서버 API에서 처리합니다. 지금은 수집 장비·값을 준비하는 단계입니다.
-          </p>
+        <div class="card home-ready">
+          <div class="card-heading"><div><span class="eyebrow">SYSTEM READINESS</span><h2>시스템 준비 상태</h2></div><span class="live-badge"><i></i> LIVE</span></div>
+          <div id="bootStatus" class="system-readiness muted">로그인 후 자동으로 불러옵니다.</div>
+        </div>
+        <div class="quick-actions">
+          <button type="button" data-quick-tab="collection-status"><span>◉</span><div><strong>수집 상태</strong><small>지연·누락 장비 확인</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="rack-overview"><span>▤</span><div><strong>Rack 현황</strong><small>U 점유와 배치 관리</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="assets"><span>◆</span><div><strong>자산 관리</strong><small>상태·문서·이력 관리</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="widgets"><span>▦</span><div><strong>화면 위젯</strong><small>운영 화면 구성</small></div><b>→</b></button>
         </div>
       </div>
     </section>
@@ -850,7 +1258,7 @@
         </div>
         <div class="muted" id="csGeneratedAt" style="margin:12px 0 8px;font-size:12px"></div>
         <div class="table-wrap" style="max-height:650px"><table>
-          <thead><tr><th>장비</th><th>위치 / 모델</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값</th></tr></thead>
+          <thead><tr><th>장비</th><th>위치 / 모델</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 3개</span></th></tr></thead>
           <tbody id="csBody"></tbody>
         </table></div>
       </div>
@@ -1000,7 +1408,7 @@
           </div>
           <div style="margin-top:14px">
             <div class="muted" style="font-size:12px;font-weight:700;margin-bottom:6px">포함할 장비 <span id="dgDeviceCount"></span></div>
-            <div id="dgDevicePick" class="device-pick-box" style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff"></div>
+            <div id="dgDevicePick" class="device-pick-box" style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface2)"></div>
           </div>
           <div class="row" style="margin-top:12px">
             <button type="button" class="primary" id="dgSave">그룹 저장</button>
@@ -1049,7 +1457,7 @@
               <input id="taskCron" value="0 */1 * * * *" class="mono" />
             </label>
             <label class="field full">넣을 장비
-              <div id="taskDevicePick" class="device-pick-box" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+              <div id="taskDevicePick" class="device-pick-box" style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:var(--surface2)">
                 <div class="muted" style="font-size:12px">모델을 선택하면 장비 목록이 나타납니다. 이미 등록된 장비와 미등록 장비를 구분해 보여줍니다.</div>
               </div>
             </label>
@@ -1745,6 +2153,21 @@
 
     const $ = (id) => document.getElementById(id);
 
+    function applyTheme(theme) {
+      const next = theme === "light" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem("opsTheme", next);
+      const darkNext = next === "light";
+      if ($("themeToggle")) $("themeToggle").textContent = darkNext ? "☾ 다크" : "☀ 라이트";
+      if ($("loginThemeToggle")) $("loginThemeToggle").textContent = darkNext ? "☾ 다크 모드" : "☀ 라이트 모드";
+    }
+
+    function toggleTheme() {
+      applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+    }
+
+    applyTheme(localStorage.getItem("opsTheme") || "dark");
+
     function defaultManagerUrl() {
       if (location.protocol.startsWith("http") && (location.port === "8080" || !location.port)) return "";
       return "http://localhost:8080";
@@ -1834,10 +2257,45 @@
     function goTab(name) {
       document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
+      const activeMenu = document.querySelector(`#tabs button[data-tab="${name}"]`);
+      if (activeMenu) $("topPageTitle").textContent = activeMenu.childNodes[0]?.textContent.trim() || activeMenu.textContent.trim();
+      document.body.classList.remove("side-open");
       if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
       if (name === "rack-overview" && state.token) loadRackOverview().catch((e) => toast(e.message, true));
       if (name === "collection-status" && state.token) loadCollectionStatus().catch((e) => toast(e.message, true));
     }
+
+    function enhancePageHeadings() {
+      document.querySelectorAll(".panel").forEach((panel) => {
+        const title = panel.querySelector(":scope > .page-title");
+        if (!title) return;
+        const desc = title.nextElementSibling?.classList.contains("page-desc") ? title.nextElementSibling : null;
+        const heading = document.createElement("div");
+        heading.className = "page-heading";
+        const copy = document.createElement("div");
+        copy.appendChild(title);
+        if (desc) copy.appendChild(desc);
+        heading.appendChild(copy);
+        panel.insertBefore(heading, panel.firstChild);
+      });
+    }
+
+    function updateShellClock() {
+      const now = new Date();
+      $("topDate").textContent = now.toLocaleDateString("ko-KR", { year:"numeric", month:"2-digit", day:"2-digit" });
+      $("topClock").textContent = now.toLocaleTimeString("ko-KR", { hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit" });
+    }
+
+    enhancePageHeadings();
+    updateShellClock();
+    setInterval(updateShellClock, 1000);
+    $("sideToggle").onclick = () => document.body.classList.toggle("side-open");
+    $("sideBackdrop").onclick = () => document.body.classList.remove("side-open");
+    $("themeToggle").onclick = toggleTheme;
+    $("loginThemeToggle").onclick = toggleTheme;
+    document.querySelectorAll("[data-quick-tab]").forEach((button) => {
+      button.onclick = () => goTab(button.dataset.quickTab);
+    });
 
     document.querySelectorAll("#tabs button").forEach((btn) => {
       btn.addEventListener("click", () => goTab(btn.dataset.tab));
@@ -2748,6 +3206,10 @@
       if ((row.previousSerialNumber || null) !== (row.currentSerialNumber || null)) changed.push(`시리얼: ${row.previousSerialNumber || "—"} → ${row.currentSerialNumber || "—"}`);
       if ((row.previousStatusCode || null) !== (row.currentStatusCode || null)) changed.push(`상태: ${assetHistoryValue(row.previousStatusCode, row.previousStatusName)} → ${assetHistoryValue(row.currentStatusCode, row.currentStatusName)}`);
       if (row.previousEnabled !== row.currentEnabled) changed.push(`수집 대상: ${row.previousEnabled ? "포함" : "제외"} → ${row.currentEnabled ? "포함" : "제외"}`);
+      if ((row.previousInstalledDate || null) !== (row.currentInstalledDate || null)) changed.push(`설치일: ${row.previousInstalledDate || "—"} → ${row.currentInstalledDate || "—"}`);
+      if ((row.previousAssetManagerName || null) !== (row.currentAssetManagerName || null)) changed.push(`담당자: ${row.previousAssetManagerName || "—"} → ${row.currentAssetManagerName || "—"}`);
+      if ((row.previousSupplierName || null) !== (row.currentSupplierName || null)) changed.push(`공급사: ${row.previousSupplierName || "—"} → ${row.currentSupplierName || "—"}`);
+      if ((row.previousWarrantyExpiresOn || null) !== (row.currentWarrantyExpiresOn || null)) changed.push(`보증 만료일: ${row.previousWarrantyExpiresOn || "—"} → ${row.currentWarrantyExpiresOn || "—"}`);
       return changed.join(" · ") || "변경된 자산 정보가 없습니다.";
     }
 
@@ -2756,7 +3218,7 @@
       out.textContent = "변경 이력을 불러오는 중입니다.";
       try {
         const rows = await api(`/api/manager/assets/${deviceId}/history`);
-        const actionName = { ASSET_UPDATED: "자산 정보 수정", STATUS_CHANGED: "운영 상태 변경" };
+        const actionName = { ASSET_UPDATED: "자산 정보 수정", STATUS_CHANGED: "운영 상태 변경", DOCUMENT_UPLOADED: "문서 등록", DOCUMENT_DELETED: "문서 삭제" };
         out.innerHTML = rows.length ? `<div class="pick-list">${rows.map((row) => {
           const time = row.changedAt ? new Date(row.changedAt).toLocaleString("ko-KR") : "—";
           const reason = row.reason ? `<div class="muted" style="font-size:12px">사유: ${esc(row.reason)}</div>` : "";
@@ -4465,7 +4927,7 @@
             const key = `${t.id}-${g.id}`;
             const presetOpts = cronPresetOptions(g.cronExpression);
             const isCustomCron = !CRON_PRESETS.some((p) => p.value === g.cronExpression);
-            return `<div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1px solid var(--line)">
+            return `<div class="task-group-card" style="margin-top:10px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--line)">
               <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:8px">
                 <div>
                   <b>그룹 #${g.id}</b>
@@ -4487,7 +4949,7 @@
                   <input data-edit-gcron="${key}" value="${esc(g.cronExpression)}" class="mono" />
                 </label>
                 <label class="field full">장비
-                  <div data-edit-gdevs-box="${key}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+                  <div data-edit-gdevs-box="${key}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:var(--surface2)">
                     <div class="muted" style="font-size:12px">불러오는 중…</div>
                   </div>
                 </label>
@@ -4495,7 +4957,7 @@
               <button type="button" class="primary" data-save-group="${g.id}" data-task-id="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 저장 (주기·장비)</button>
             </div>`;
           }).join("")}
-          <div style="margin-top:12px;padding:10px;background:#fff;border-radius:8px;border:1px dashed var(--line)">
+          <div class="task-group-create" style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px dashed var(--line)">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">그룹 추가</div>
             <div class="fields">
               <label class="field">이름
@@ -4509,7 +4971,7 @@
               </label>
               <label class="field full">장비 (같은 모델)
                 <div class="muted" style="font-size:12px;margin-top:4px">다른 그룹의 장비는 기존 그룹에서 먼저 제거한 뒤 선택할 수 있습니다.</div>
-                <div data-add-gdevs-box="${t.id}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:#fff">
+                <div data-add-gdevs-box="${t.id}" class="device-pick-box" style="max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px;background:var(--surface2)">
                   <div class="muted" style="font-size:12px">불러오는 중…</div>
                 </div>
               </label>
@@ -4850,10 +5312,11 @@
         if ($("taskModel").value) await refreshTaskDevicePick();
         if ($("wzModel").value) await updateInstanceUiForModel(Number($("wzModel").value));
         $("bootStatus").innerHTML =
-          `<span class="chip ok">준비됨</span><div style="margin-top:10px;line-height:1.6">` +
-          `위치 ${state.flatLocations.length} · 모델 ${state.models.length}<br>` +
-          `장비 ${state.devices.length} · 수집 작업 ${state.tasks.length}<br>` +
-          `코드 그룹 ${state.codeGroups.length}</div>`;
+          `<div class="readiness-head"><i></i><div><strong>운영 준비 완료</strong><small>기준 정보와 수집 구성을 정상적으로 불러왔습니다.</small></div></div>` +
+          `<div class="readiness-grid"><div><span>Locations</span><b>${state.flatLocations.length}개</b></div>` +
+          `<div><span>Models</span><b>${state.models.length}개</b></div>` +
+          `<div><span>Devices</span><b>${state.devices.length}대</b></div>` +
+          `<div><span>Code Groups</span><b>${state.codeGroups.length}개</b></div></div>`;
         $("wzHint").textContent = "입력 후 「등록 실행」";
         toast("데이터를 불러왔습니다");
         log("부트 완료");
