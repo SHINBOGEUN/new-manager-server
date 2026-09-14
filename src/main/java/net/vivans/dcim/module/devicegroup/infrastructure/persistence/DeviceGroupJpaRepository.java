@@ -5,6 +5,7 @@ import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
 import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,14 @@ public class DeviceGroupJpaRepository implements DeviceGroupRepository {
         return enabled == null
                 ? springDataRepository.findAllByOrderByNameAsc()
                 : springDataRepository.findByEnabledOrderByNameAsc(enabled);
+    }
+
+    @Override
+    public List<DeviceGroup> findAllByDeviceIds(Collection<Integer> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataRepository.findAllByDeviceIds(deviceIds);
     }
 
     @Override

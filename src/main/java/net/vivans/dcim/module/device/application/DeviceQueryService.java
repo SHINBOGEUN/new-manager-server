@@ -8,10 +8,14 @@ import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceAssetHistory;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceProtocolEndpointRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceSnmpInstanceRepository;
+import net.vivans.dcim.module.devicegroup.api.dto.DeviceGroupSummaryResponse;
+import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
+import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
@@ -50,6 +54,8 @@ public class DeviceQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
+    private final DeviceGroupRepository deviceGroupRepository;
+    private final DeviceAssetService deviceAssetService;
     private final CollectionScriptSyncService collectionScriptSyncService;
 
     public PageResponse<DeviceResponse> getDevices(
@@ -69,13 +75,30 @@ public class DeviceQueryService {
 
         Collection<String> locationNodeCodes = resolveLocationNodeCodes(locationNodeCode, includeSubtree);
         if (locationNodeCodes != null && locationNodeCodes.isEmpty()) {
-            return PageResponse.from(new PageImpl<>(List.of(), pageable, 0), DeviceResponse::from);
+            return PageResponse.from(new PageImpl<Device>(List.of(), pageable, 0), DeviceResponse::from);
         }
 
-        return PageResponse.from(
-                deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, deviceGroupId, pageable),
-                DeviceResponse::from
-        );
+        Page<Device> devices = deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, deviceGroupId, pageable);
+        Map<Integer, List<DeviceGroupSummaryResponse>> groupsByDeviceId = deviceGroupsByDeviceId(devices.getContent());
+        return PageResponse.from(devices, device -> DeviceResponse.from(device,
+                groupsByDeviceId.getOrDefault(device.getId(), List.of())));
+    }
+
+    private Map<Integer, List<DeviceGroupSummaryResponse>> deviceGroupsByDeviceId(List<Device> devices) {
+        if (devices.isEmpty()) return Map.of();
+        Set<Integer> deviceIds = new HashSet<>();
+        for (Device device : devices) deviceIds.add(device.getId());
+        Map<Integer, List<DeviceGroupSummaryResponse>> result = new HashMap<>();
+        for (Integer deviceId : deviceIds) result.put(deviceId, new ArrayList<>());
+        for (DeviceGroup group : deviceGroupRepository.findAllByDeviceIds(deviceIds)) {
+            DeviceGroupSummaryResponse response = DeviceGroupSummaryResponse.from(group);
+            for (Device groupedDevice : group.getDevices()) {
+                List<DeviceGroupSummaryResponse> groups = result.get(groupedDevice.getId());
+                if (groups != null) groups.add(response);
+            }
+        }
+        result.values().forEach(groups -> groups.sort(java.util.Comparator.comparing(DeviceGroupSummaryResponse::name)));
+        return result;
     }
 
     private Collection<String> resolveLocationNodeCodes(String locationNodeCode, Boolean includeSubtree) {
@@ -149,6 +172,7 @@ public class DeviceQueryService {
                 pathCode
         );
         Device saved = deviceRepository.save(device);
+        deviceAssetService.updateAsset(saved, request.assetCode(), request.serialNumber(), request.assetStatusId(), request.assetColor());
         collectionScriptSyncService.assignDeviceAndRegenerate(saved);
         return DeviceResponse.from(saved);
     }
@@ -156,6 +180,7 @@ public class DeviceQueryService {
     @Transactional
     public DeviceResponse updateDevice(Integer id, DeviceCreateRequest request) {
         Device device = findDevice(id);
+        DeviceAssetHistory.AssetSnapshot previousAsset = deviceAssetService.snapshotAsset(device);
         DeviceModel deviceModel = findDeviceModel(request.modelId());
         LocationNode locationNode = findLocationNode(request.locationNodeCode());
         CommonCode pathCode = findPathCode(request.pathCodeId());
@@ -176,7 +201,11 @@ public class DeviceQueryService {
                 enabled,
                 pathCode
         );
-        DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
+        Device saved = deviceRepository.save(device);
+        deviceAssetService.updateAsset(saved, request.assetCode(), request.serialNumber(), request.assetStatusId(), request.assetColor());
+        DeviceResponse response = DeviceResponse.from(saved);
+        deviceAssetService.recordAssetChange(device, previousAsset);
+        deviceAssetService.removeRackPlacementIfLocationChanged(id, locationNode.getCode());
         if (modelChanged) {
             collectionScriptSyncService.removeDeviceAndRegenerate(id, oldModelId);
             collectionScriptSyncService.assignDeviceAndRegenerate(device);
@@ -192,8 +221,12 @@ public class DeviceQueryService {
         Integer modelId = device.getDeviceModel().getId();
         collectionScriptSyncService.removeDeviceAndRegenerate(id, modelId);
         deleteEndpoints(id);
+        deviceAssetService.deleteAssetData(id);
         deviceRepository.flush();
-        deviceRepository.delete(device);
+        int deleted = deviceRepository.deleteDirectlyById(id);
+        if (deleted != 1) {
+            throw new IllegalStateException("device was not deleted: " + id);
+        }
     }
 
     private void deleteEndpoints(Integer deviceId) {

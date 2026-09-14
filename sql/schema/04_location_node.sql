@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS `location_node` (
   `parent_code` char(10) DEFAULT NULL COMMENT '부모 노드 code (루트는 NULL)',
   `location_type_id` int(11) NOT NULL COMMENT '위치 유형 ID (FK → common_code, LOCATION_TYPE만)',
   `name` varchar(255) NOT NULL COMMENT '노드 표시명',
+  `rack_u_capacity` int(11) DEFAULT NULL COMMENT 'Rack 최대 U 용량 (Rack 외 위치는 NULL)',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '생성 시각',
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '수정 시각',
   PRIMARY KEY (`code`),
