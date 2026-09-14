@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.query.api.dto.AggregateWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.ChartWidgetResponse;
+import net.vivans.dcim.module.query.api.dto.CollectionStatusResponse;
 import net.vivans.dcim.module.query.api.dto.CountWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.LastWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
@@ -14,6 +15,7 @@ import net.vivans.dcim.module.query.api.dto.PsychrometricWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.PowerDistributionWidgetResponse;
 import net.vivans.dcim.module.query.application.AggregateQueryService;
 import net.vivans.dcim.module.query.application.ChartQueryService;
+import net.vivans.dcim.module.query.application.CollectionStatusQueryService;
 import net.vivans.dcim.module.query.application.CountQueryService;
 import net.vivans.dcim.module.query.application.LastQueryService;
 import net.vivans.dcim.module.query.application.PueQueryService;
@@ -39,6 +41,7 @@ public class QueryController {
     private final LastQueryService lastQueryService;
     private final CountQueryService countQueryService;
     private final ChartQueryService chartQueryService;
+    private final CollectionStatusQueryService collectionStatusQueryService;
     private final AggregateQueryService aggregateQueryService;
     private final PueQueryService pueQueryService;
     private final PsychrometricQueryService psychrometricQueryService;
@@ -59,6 +62,14 @@ public class QueryController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 lastQueryService.getLast(widgetId, lookbackHours)));
+    }
+
+    @GetMapping("/collection-status")
+    @Operation(summary = "장비 수집 상태 조회", description = "장비 등록·수집 그룹·InfluxDB 최신값을 결합해 정상/지연/데이터없음/중지 상태를 반환합니다.")
+    public ResponseEntity<ApiResponse<CollectionStatusResponse>> getCollectionStatus(
+            @RequestParam(required = false, defaultValue = "168") Integer lookbackHours
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(collectionStatusQueryService.getStatus(lookbackHours)));
     }
 
     @GetMapping("/count")
