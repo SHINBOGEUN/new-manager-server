@@ -224,6 +224,14 @@
     .asset-preview-kv dt { color: var(--muted); }
     .asset-preview-kv dd { margin: 0; word-break: break-word; }
     .asset-preview-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .asset-detail-modal { display: none; position: fixed; inset: 0; z-index: 150; padding: 24px; background: rgba(15, 28, 46, .72); overflow: auto; }
+    .asset-detail-modal.open { display: grid; place-items: start center; }
+    .asset-detail { width: min(1080px, 100%); margin: auto; background: #f4f7fb; border: 1px solid #93a9c2; border-radius: 14px; box-shadow: 0 24px 70px rgba(4,16,31,.4); overflow: hidden; }
+    .asset-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; background: #142d4b; color: #fff; }
+    .asset-detail-head h2 { margin: 0; font-size: 18px; }
+    .asset-detail-head p { margin: 3px 0 0; color: #c8d9eb; font-size: 12px; }
+    .asset-detail-head button { color: #fff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); font-size: 18px; line-height: 1; padding: 6px 10px; }
+    .asset-detail-body { padding: 18px; max-height: calc(100vh - 96px); overflow: auto; }
 
     /* 좌우 컬럼이 콘텐츠 영역 전체를 나눠 씀 (오른쪽 여백 낭비 방지) */
     .grid2 {
@@ -277,7 +285,7 @@
       .stats, .grid2, .models-layout { grid-template-columns: 1fr; }
     }
     @media (max-width: 1250px) { .rack-stats { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 700px) { .rack-stats { grid-template-columns: 1fr; } .rack-overview-grid { grid-template-columns: 1fr; } .rack-visual { grid-template-columns: 54px minmax(170px, 1fr) 54px; min-height: 420px; padding: 10px; } .rack-frame { min-height: 390px; } .rack-preview-modal, .asset-preview-modal { padding: 10px; } .rack-preview-body { padding: 10px; } .rack-preview-visual { grid-template-columns: 62px minmax(150px, 1fr) 62px; gap: 6px; } .rack-preview-side .rack-side-device { padding: 5px 4px; font-size: 10px; } .rack-preview .rack-frame { min-height: 520px; } .asset-preview-main { grid-template-columns: 1fr; } .asset-preview-image { width: 100%; height: 180px; } }
+    @media (max-width: 700px) { .rack-stats { grid-template-columns: 1fr; } .rack-overview-grid { grid-template-columns: 1fr; } .rack-visual { grid-template-columns: 54px minmax(170px, 1fr) 54px; min-height: 420px; padding: 10px; } .rack-frame { min-height: 390px; } .rack-preview-modal, .asset-preview-modal, .asset-detail-modal { padding: 10px; } .rack-preview-body, .asset-detail-body { padding: 10px; } .rack-preview-visual { grid-template-columns: 62px minmax(150px, 1fr) 62px; gap: 6px; } .rack-preview-side .rack-side-device { padding: 5px 4px; font-size: 10px; } .rack-preview .rack-frame { min-height: 520px; } .asset-preview-main { grid-template-columns: 1fr; } .asset-preview-image { width: 100%; height: 180px; } }
 
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     label.field {
@@ -557,8 +565,8 @@
   <aside class="side" id="tabs">
     <div class="group">시작</div>
     <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 현황 · 다음 할 일</small></button>
-    <button type="button" data-tab="wizard">장비 추가<small>등록부터 수집까지</small></button>
     <div class="group">운영</div>
+    <button type="button" data-tab="wizard">장비 추가<small>등록부터 수집까지</small></button>
     <button type="button" data-tab="devices">장비 목록<small>통신 · 수집 연결</small></button>
     <button type="button" data-tab="assets">자산관리<small>Rack · U · 이미지</small></button>
     <button type="button" data-tab="rack-overview">랙 현황<small>점유 U · 설치 장비</small></button>
@@ -699,7 +707,7 @@
     <section class="panel" id="tab-assets">
       <h1 class="page-title">자산관리</h1>
       <p class="page-desc">장비 자산번호·시리얼·상태·Rack U 배치·이미지를 관리합니다. 장비 기본 등록과 통신 설정은 기존 장비 목록에서 처리합니다.</p>
-      <div class="grid2">
+      <div>
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:12px">
             <h2 style="margin:0">자산 목록</h2>
@@ -711,12 +719,18 @@
           </div>
           <div style="overflow:auto;max-height:620px">
             <table>
-              <thead><tr><th>자산</th><th>모델</th><th>위치 / Rack</th><th>U</th><th>IP</th><th>운영 상태</th></tr></thead>
+              <thead><tr><th>자산</th><th>모델</th><th>위치 / Rack</th><th>U</th><th>IP</th><th>문서</th><th>운영 상태</th></tr></thead>
               <tbody id="assetBody"></tbody>
             </table>
           </div>
         </div>
-        <div>
+      </div>
+    </section>
+
+    <div class="asset-detail-modal" id="assetDetailModal" aria-hidden="true">
+      <div class="asset-detail" role="dialog" aria-modal="true" aria-labelledby="assetDetailTitle">
+        <div class="asset-detail-head"><div><h2 id="assetDetailTitle">자산 상세</h2><p id="assetDetailSubtitle">자산 정보·운영 상태·Rack 배치·이미지를 관리합니다.</p></div><button type="button" id="assetDetailClose" aria-label="닫기">×</button></div>
+        <div class="asset-detail-body">
           <div class="card">
             <h2>선택 자산</h2>
             <div id="assetHint" class="sel-banner">왼쪽에서 자산을 선택하세요.</div>
@@ -728,6 +742,10 @@
                 <label class="field">시리얼번호<input id="assetSerial" placeholder="제조사 시리얼" /></label>
                 <label class="field">현재 운영 상태<input id="assetStatus" readonly class="muted" /></label>
                 <label class="field">표시 색상<input id="assetColor" type="color" value="#2563eb" /></label>
+                <label class="field">설치일<input id="assetInstalledDate" type="date" /></label>
+                <label class="field">자산 담당자<input id="assetManagerName" placeholder="예: 홍길동" /></label>
+                <label class="field">공급사<input id="assetSupplierName" placeholder="예: Vivans" /></label>
+                <label class="field">보증 만료일<input id="assetWarrantyExpiresOn" type="date" /></label>
                 <label class="field full">설명<input id="assetDescription" placeholder="선택" /></label>
               </div>
               <button type="button" class="primary" style="margin-top:12px" id="assetSave">자산 정보 저장</button>
@@ -775,13 +793,21 @@
             </div>
           </div>
           <div class="card">
+            <h2>관련 문서</h2>
+            <div id="assetDocumentHint" class="muted">자산을 선택한 뒤 문서 파일을 등록하세요. 파일 형식 제한 없이 최대 20MB까지 가능합니다.</div>
+            <div id="assetDocumentForm" style="display:none">
+              <div class="row"><input id="assetDocumentFile" type="file" /><button type="button" class="primary" id="assetDocumentUpload">파일 추가</button></div>
+              <div id="assetDocumentList" class="pick-list" style="margin-top:12px"></div>
+            </div>
+          </div>
+          <div class="card">
             <div class="row" style="justify-content:space-between"><h2 style="margin:0">Rack 보기</h2><button type="button" class="ghost" id="assetRackLayoutLoad">조회</button></div>
             <select id="assetRackLayout" style="margin-top:10px;width:100%"></select>
             <div id="assetRackLayoutOut" class="muted" style="margin-top:12px">Rack을 선택하세요.</div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- RACK OVERVIEW -->
     <section class="panel" id="tab-rack-overview">
@@ -2641,9 +2667,9 @@
           <td>${esc(d.manufacturer || "—")}<div class="muted">${esc(d.modelName || "—")}</div></td>
           <td>${esc(p?.rackLocationName || d.locationNodeName || d.locationNodeCode || "—")}</td>
           <td>${!p ? '<span class="muted">—</span>' : p.mountType === "RACK_U" ? `${p.uPosition}–${p.lastU} (${p.uHeight}U)` : p.mountType === "RACK_SIDE" ? `측면 · ${p.rackSide === "LEFT" ? "좌" : "우"}` : p.mountType === "RACK_REAR" ? "후면" : p.mountType === "FLOOR" ? "바닥형" : "벽부형"}</td>
-          <td>${esc(asset.ipAddress || "—")}</td><td>${status}</td>
+          <td>${esc(asset.ipAddress || "—")}</td><td>${asset.documentCount > 0 ? `<span class="chip ok">문서 ${asset.documentCount}개</span>` : '<span class="muted">—</span>'}</td><td>${status}</td>
         </tr>`;
-      }).join("") || '<tr><td colspan="6"><div class="empty">조건에 맞는 자산이 없습니다.</div></td></tr>';
+      }).join("") || '<tr><td colspan="7"><div class="empty">조건에 맞는 자산이 없습니다.</div></td></tr>';
       $("assetBody").querySelectorAll("[data-asset-id]").forEach((row) => {
         row.onclick = () => selectAsset(Number(row.dataset.assetId));
       });
@@ -2657,12 +2683,15 @@
       state.selectedAssetId = deviceId;
       state.selectedAsset = detail;
       const d = detail.device;
+      openAssetDetailModal(d);
       $("assetHint").style.display = "none";
       $("assetForm").style.display = "block";
       $("assetRackHint").style.display = "none";
       $("assetRackForm").style.display = "block";
       $("assetImageHint").style.display = "none";
       $("assetImageForm").style.display = "block";
+      $("assetDocumentHint").style.display = "none";
+      $("assetDocumentForm").style.display = "block";
       $("assetStatusFlowHint").style.display = "none";
       $("assetStatusFlow").style.display = "block";
       $("assetName").value = d.name || "";
@@ -2678,6 +2707,10 @@
       $("assetStatusReason").value = "";
       $("assetColor").value = /^#[0-9a-f]{6}$/i.test(d.assetColor || "") ? d.assetColor : "#2563eb";
       $("assetDescription").value = d.description || "";
+      $("assetInstalledDate").value = d.installedDate || "";
+      $("assetManagerName").value = d.assetManagerName || "";
+      $("assetSupplierName").value = d.supplierName || "";
+      $("assetWarrantyExpiresOn").value = d.warrantyExpiresOn || "";
       const p = detail.rackPlacement;
       $("assetMountType").value = p?.mountType || "RACK_U";
       $("assetRack").value = p?.rackLocationCode || "";
@@ -2687,8 +2720,22 @@
       $("assetFormFactor").value = p?.formFactor || "";
       updateAssetMountFields();
       await renderAssetImages(detail.images || []);
+      renderAssetDocuments(detail.documents || []);
       await loadAssetHistory(deviceId);
       await loadAssetRackHistory(deviceId);
+    }
+
+    function openAssetDetailModal(device) {
+      $("assetDetailTitle").textContent = device?.name || "자산 상세";
+      $("assetDetailSubtitle").textContent = [device?.assetCode, device?.manufacturer, device?.modelName]
+        .filter(Boolean).join(" · ") || "자산 정보·운영 상태·Rack 배치·이미지를 관리합니다.";
+      $("assetDetailModal").classList.add("open");
+      $("assetDetailModal").setAttribute("aria-hidden", "false");
+    }
+
+    function closeAssetDetailModal() {
+      $("assetDetailModal").classList.remove("open");
+      $("assetDetailModal").setAttribute("aria-hidden", "true");
     }
 
     function assetHistoryValue(code, name) {
@@ -2771,6 +2818,50 @@
         await selectAsset(state.selectedAssetId);
         await loadAssets();
       } catch (e) { toast(e.message, true); }
+    }
+
+    function formatAssetDocumentSize(size) {
+      if (!Number.isFinite(Number(size))) return "—";
+      if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function renderAssetDocuments(documents) {
+      const box = $("assetDocumentList");
+      box.innerHTML = documents.length ? documents.map((document) => {
+        const uploaded = document.uploadedAt ? new Date(document.uploadedAt).toLocaleString("ko-KR") : "";
+        return `<div class="pick-item"><span><b>${esc(document.originalName)}</b><div class="muted" style="font-size:12px">${esc(formatAssetDocumentSize(document.fileSize))}${uploaded ? ` · ${esc(uploaded)}` : ""}</div></span><span class="row"><button type="button" class="ghost" data-asset-document-download="${document.id}">다운로드</button><button type="button" class="danger" data-asset-document-delete="${document.id}">삭제</button></span></div>`;
+      }).join("") : '<span class="muted">등록된 문서가 없습니다.</span>';
+      box.querySelectorAll("[data-asset-document-download]").forEach((button) => {
+        button.onclick = () => downloadAssetDocument(Number(button.dataset.assetDocumentDownload));
+      });
+      box.querySelectorAll("[data-asset-document-delete]").forEach((button) => {
+        button.onclick = () => deleteAssetDocument(Number(button.dataset.assetDocumentDelete));
+      });
+    }
+
+    async function downloadAssetDocument(documentId) {
+      const assetDocument = (state.selectedAsset?.documents || []).find((row) => Number(row.id) === documentId);
+      if (!assetDocument) return;
+      try {
+        const res = await fetch(base() + assetDocument.contentUrl, { headers: state.token ? { Authorization: "Bearer " + state.token } : {} });
+        if (!res.ok) throw new Error("문서 파일을 불러오지 못했습니다");
+        const url = URL.createObjectURL(await res.blob());
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = assetDocument.originalName;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function deleteAssetDocument(documentId) {
+      if (!state.selectedAssetId || !confirm("문서 파일을 삭제할까요?")) return;
+      try {
+        await api(`/api/manager/assets/${state.selectedAssetId}/documents/${documentId}`, { method: "DELETE" });
+        toast("문서 파일을 삭제했습니다");
+        await selectAsset(state.selectedAssetId);
+      } catch (error) { toast(error.message, true); }
     }
 
     async function loadAssetRackLayout() {
@@ -4790,19 +4881,17 @@
       if (!detail) return toast("자산을 선택하세요", true);
       const d = detail.device;
       try {
-        await api(`/api/manager/devices/${d.id}`, {
+        await api(`/api/manager/assets/${d.id}`, {
           method: "PUT",
           body: JSON.stringify({
-            modelId: d.modelId,
-            locationNodeCode: d.locationNodeCode,
-            name: d.name,
             description: $("assetDescription").value.trim() || null,
-            enabled: d.enabled,
-            pathCodeId: d.pathCodeId || null,
             assetCode: $("assetCode").value.trim() || null,
             serialNumber: $("assetSerial").value.trim() || null,
-            assetStatusId: d.assetStatusId || null,
             assetColor: $("assetColor").value || null,
+            installedDate: $("assetInstalledDate").value || null,
+            assetManagerName: $("assetManagerName").value.trim() || null,
+            supplierName: $("assetSupplierName").value.trim() || null,
+            warrantyExpiresOn: $("assetWarrantyExpiresOn").value || null,
           }),
         });
         toast("자산 정보를 저장했습니다");
@@ -4878,6 +4967,18 @@
         await loadAssets();
       } catch (e) { toast(e.message, true); }
     };
+    $("assetDocumentUpload").onclick = async () => {
+      const file = $("assetDocumentFile").files[0];
+      if (!state.selectedAssetId || !file) return toast("자산과 문서 파일을 선택하세요", true);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        await apiForm(`/api/manager/assets/${state.selectedAssetId}/documents`, form);
+        $("assetDocumentFile").value = "";
+        toast("문서 파일을 등록했습니다");
+        await selectAsset(state.selectedAssetId);
+      } catch (error) { toast(error.message, true); }
+    };
     $("assetRackLayoutLoad").onclick = loadAssetRackLayout;
     $("assetRackLayout").addEventListener("change", loadAssetRackLayout);
     $("assetMountType").addEventListener("change", updateAssetMountFields);
@@ -4887,9 +4988,12 @@
     $("rackPreviewModal").onclick = (event) => { if (event.target === $("rackPreviewModal")) closeRackPreview(); };
     $("assetPreviewClose").onclick = closeAssetPreview;
     $("assetPreviewModal").onclick = (event) => { if (event.target === $("assetPreviewModal")) closeAssetPreview(); };
+    $("assetDetailClose").onclick = closeAssetDetailModal;
+    $("assetDetailModal").onclick = (event) => { if (event.target === $("assetDetailModal")) closeAssetDetailModal(); };
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Escape") return;
-      if ($("assetPreviewModal").classList.contains("open")) closeAssetPreview();
+      if ($("assetDetailModal").classList.contains("open")) closeAssetDetailModal();
+      else if ($("assetPreviewModal").classList.contains("open")) closeAssetPreview();
       else closeRackPreview();
     });
     $("dgReload").onclick = () => loadDeviceGroups().catch((e) => toast(e.message, true));
@@ -5113,7 +5217,13 @@
         await api(`/api/manager/devices/${id}`, { method: "DELETE" });
         toast("장비를 삭제했습니다");
         clearDeviceSelection();
+        if (state.selectedAssetId === id) {
+          state.selectedAssetId = null;
+          state.selectedAsset = null;
+          closeAssetDetailModal();
+        }
         await loadDevices();
+        await loadAssets();
         await refreshDeviceCounts();
         paintLocationTree();
         await loadTasks();

@@ -32,4 +32,5 @@ build/
 .vscode/
 logs/
 upload/
+uploads/
 .tmp_last_extract/
