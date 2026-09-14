@@ -109,9 +109,9 @@ public class DeviceAssetHistory extends BaseEntity {
 
     public record AssetSnapshot(String assetCode, String serialNumber, String statusCode,
                                 String statusName, boolean enabled) {
-        public static AssetSnapshot from(Device device) {
-            CommonCode status = device.getAssetStatus();
-            return new AssetSnapshot(device.getAssetCode(), device.getSerialNumber(),
+        public static AssetSnapshot from(Device device, DeviceAsset asset) {
+            CommonCode status = asset == null ? null : asset.getAssetStatus();
+            return new AssetSnapshot(asset == null ? null : asset.getAssetCode(), asset == null ? null : asset.getSerialNumber(),
                     status == null ? null : status.getCode(), status == null ? null : status.getName(),
                     device.isEnabled());
         }

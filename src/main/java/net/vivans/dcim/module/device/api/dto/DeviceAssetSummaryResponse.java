@@ -7,5 +7,6 @@ public record DeviceAssetSummaryResponse(
         String ipAddress,
         List<String> protocolCodes,
         DeviceRackPlacementResponse rackPlacement,
-        DeviceImageResponse primaryImage
+        DeviceImageResponse primaryImage,
+        long documentCount
 ) {}

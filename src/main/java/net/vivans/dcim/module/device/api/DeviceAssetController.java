@@ -7,9 +7,11 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetDetailResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetHistoryResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetStatusTransitionRequest;
+import net.vivans.dcim.module.device.api.dto.DeviceAssetUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetSummaryResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceImageResponse;
+import net.vivans.dcim.module.device.api.dto.DeviceAssetDocumentResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementHistoryResponse;
@@ -52,6 +54,13 @@ public class DeviceAssetController {
     @GetMapping("/{deviceId}")
     public ResponseEntity<ApiResponse<DeviceAssetDetailResponse>> getAsset(@PathVariable Integer deviceId) {
         return ResponseEntity.ok(ApiResponse.ok(assetService.getAsset(deviceId)));
+    }
+
+    @PutMapping("/{deviceId}")
+    @Operation(summary = "자산 상세 수정")
+    public ResponseEntity<ApiResponse<DeviceResponse>> updateAsset(
+            @PathVariable Integer deviceId, @RequestBody DeviceAssetUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(assetService.updateAssetDetail(deviceId, request)));
     }
 
     @GetMapping("/{deviceId}/history")
@@ -112,5 +121,27 @@ public class DeviceAssetController {
     public ResponseEntity<ApiResponse<Integer>> deleteImage(@PathVariable Integer deviceId, @PathVariable Integer imageId) {
         assetService.deleteImage(deviceId, imageId);
         return ResponseEntity.ok(ApiResponse.ok(imageId));
+    }
+
+    @PostMapping(path = "/{deviceId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "자산 문서 파일 업로드")
+    public ResponseEntity<ApiResponse<DeviceAssetDocumentResponse>> uploadDocument(
+            @PathVariable Integer deviceId, @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.ok(assetService.uploadDocument(deviceId, file)));
+    }
+
+    @GetMapping("/{deviceId}/documents/{documentId}/content")
+    public ResponseEntity<Resource> getDocument(@PathVariable Integer deviceId, @PathVariable Integer documentId) {
+        DeviceAssetDocumentResponse document = assetService.getDocument(deviceId, documentId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(document.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.originalName().replace("\"", "") + "\"")
+                .body(assetService.loadDocument(deviceId, documentId));
+    }
+
+    @DeleteMapping("/{deviceId}/documents/{documentId}")
+    public ResponseEntity<ApiResponse<Integer>> deleteDocument(@PathVariable Integer deviceId, @PathVariable Integer documentId) {
+        assetService.deleteDocument(deviceId, documentId);
+        return ResponseEntity.ok(ApiResponse.ok(documentId));
     }
 }

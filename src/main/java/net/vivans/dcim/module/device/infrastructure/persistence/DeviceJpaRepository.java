@@ -78,16 +78,6 @@ public class DeviceJpaRepository implements DeviceRepository {
     }
 
     @Override
-    public boolean existsByAssetCode(String assetCode) {
-        return springDataRepository.existsByAssetCode(assetCode);
-    }
-
-    @Override
-    public boolean existsByAssetCodeAndIdNot(String assetCode, Integer id) {
-        return springDataRepository.existsByAssetCodeAndIdNot(assetCode, id);
-    }
-
-    @Override
     public boolean existsByDeviceModelId(Integer deviceModelId) {
         return springDataRepository.existsByDeviceModel_Id(deviceModelId);
     }
@@ -113,6 +103,11 @@ public class DeviceJpaRepository implements DeviceRepository {
     @Override
     public void flush() {
         springDataRepository.flush();
+    }
+
+    @Override
+    public int deleteDirectlyById(Integer id) {
+        return springDataRepository.deleteDirectlyById(id);
     }
 
     @Override

@@ -37,10 +37,6 @@ public interface DeviceRepository {
 
     boolean existsByLocationNodeAndNameAndIdNot(LocationNode locationNode, String name, Integer id);
 
-    boolean existsByAssetCode(String assetCode);
-
-    boolean existsByAssetCodeAndIdNot(String assetCode, Integer id);
-
     boolean existsByDeviceModelId(Integer deviceModelId);
 
     List<Device> findAllByDeviceModelId(Integer deviceModelId);
@@ -52,6 +48,8 @@ public interface DeviceRepository {
     List<Device> findAllEnabledByDeviceModelIds(Collection<Integer> modelIds);
 
     void flush();
+
+    int deleteDirectlyById(Integer id);
 
     void delete(Device device);
 }

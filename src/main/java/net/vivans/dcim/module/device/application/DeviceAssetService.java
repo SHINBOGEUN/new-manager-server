@@ -8,7 +8,9 @@ import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetDetailResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetHistoryResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetStatusTransitionRequest;
+import net.vivans.dcim.module.device.api.dto.DeviceAssetUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetSummaryResponse;
+import net.vivans.dcim.module.device.api.dto.DeviceAssetDocumentResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceImageResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceProtocolEndpointResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementRequest;
@@ -17,8 +19,10 @@ import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementHistoryResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.api.dto.RackLayoutResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceAsset;
 import net.vivans.dcim.module.device.domain.model.DeviceAssetHistory;
 import net.vivans.dcim.module.device.domain.model.DeviceAssetHistoryAction;
+import net.vivans.dcim.module.device.domain.model.DeviceAssetDocument;
 import net.vivans.dcim.module.device.domain.model.DeviceImage;
 import net.vivans.dcim.module.device.domain.model.DeviceMountType;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
@@ -27,11 +31,13 @@ import net.vivans.dcim.module.device.domain.model.DeviceRackPlacementHistory;
 import net.vivans.dcim.module.device.domain.model.DeviceRackPlacementHistoryAction;
 import net.vivans.dcim.module.device.domain.model.DeviceRackSide;
 import net.vivans.dcim.module.device.domain.repository.DeviceImageRepository;
+import net.vivans.dcim.module.device.domain.repository.DeviceAssetDocumentRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceAssetHistoryRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceProtocolEndpointRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRackPlacementRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRackPlacementHistoryRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
+import net.vivans.dcim.module.device.infrastructure.persistence.DeviceAssetSpringDataRepository;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.location.domain.repository.LocationNodeRepository;
 import net.vivans.dcim.module.pue.application.PueCollectorSyncService;
@@ -64,6 +70,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class DeviceAssetService {
     private static final long MAX_IMAGE_SIZE = 10L * 1024 * 1024;
+    private static final long MAX_DOCUMENT_SIZE = 20L * 1024 * 1024;
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final String RACK_LOCATION_TYPE = "RACK";
     private static final Set<String> LIFECYCLE_STATUS_CODES = Set.of(
@@ -79,11 +86,13 @@ public class DeviceAssetService {
     );
 
     private final DeviceRepository deviceRepository;
+    private final DeviceAssetSpringDataRepository deviceAssetRepository;
     private final DeviceProtocolEndpointRepository endpointRepository;
     private final DeviceRackPlacementRepository placementRepository;
     private final DeviceRackPlacementHistoryRepository placementHistoryRepository;
     private final DeviceAssetHistoryRepository assetHistoryRepository;
     private final DeviceImageRepository imageRepository;
+    private final DeviceAssetDocumentRepository documentRepository;
     private final LocationNodeRepository locationNodeRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final CollectionScriptSyncService collectionScriptSyncService;
@@ -91,6 +100,9 @@ public class DeviceAssetService {
 
     @Value("${asset.image.storage-path:./uploads/device-images}")
     private String imageStoragePath;
+
+    @Value("${asset.document.storage-path:./uploads/device-documents}")
+    private String documentStoragePath;
 
     public PageResponse<DeviceAssetSummaryResponse> getAssets(String name, int page, int size) {
         int safePage = Math.max(page, 1) - 1;
@@ -104,12 +116,15 @@ public class DeviceAssetService {
         Device device = findDevice(deviceId);
         List<DeviceImageResponse> images = imageRepository.findAllByDeviceId(deviceId).stream()
                 .map(DeviceImageResponse::from).toList();
+        List<DeviceAssetDocumentResponse> documents = documentRepository.findAllByDeviceId(deviceId).stream()
+                .map(DeviceAssetDocumentResponse::from).toList();
         return new DeviceAssetDetailResponse(
                 DeviceResponse.from(device),
                 endpointRepository.findAllByDeviceIdOrderByIdAsc(deviceId).stream()
                         .map(DeviceProtocolEndpointResponse::from).toList(),
                 placementRepository.findByDeviceId(deviceId).map(DeviceRackPlacementResponse::from).orElse(null),
-                images);
+                images,
+                documents);
     }
 
     public List<DeviceAssetHistoryResponse> getAssetHistory(Integer deviceId) {
@@ -119,7 +134,39 @@ public class DeviceAssetService {
     }
 
     public DeviceAssetHistory.AssetSnapshot snapshotAsset(Device device) {
-        return DeviceAssetHistory.AssetSnapshot.from(device);
+        return DeviceAssetHistory.AssetSnapshot.from(device, assetOf(device));
+    }
+
+    /** 장비 생성·일반 장비 수정에서도 자산 속성은 이 1:1 테이블만 수정한다. */
+    @Transactional
+    public void updateAsset(Device device, String assetCode, String serialNumber, Integer assetStatusId, String assetColor) {
+        CommonCode assetStatus = assetStatusId == null ? null : commonCodeRepository.findById(assetStatusId)
+                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + assetStatusId));
+        validateUniqueAssetCode(assetCode, device.getId());
+        DeviceAsset asset = ensureAsset(device);
+        asset.update(assetCode, serialNumber, assetStatus, assetColor);
+        applyCollectionEligibility(device, assetStatus);
+        deviceAssetRepository.save(asset);
+    }
+
+    @Transactional
+    public DeviceResponse updateAssetDetail(Integer deviceId, DeviceAssetUpdateRequest request) {
+        Device device = findDevice(deviceId);
+        DeviceAssetHistory.AssetSnapshot previous = snapshotAsset(device);
+        DeviceAsset asset = ensureAsset(device);
+        validateUniqueAssetCode(request.assetCode(), deviceId);
+        asset.update(request.assetCode(), request.serialNumber(), asset.getAssetStatus(), request.assetColor());
+        asset.updateDetails(
+                request.installedDate(),
+                request.assetManagerName(),
+                request.supplierName(),
+                request.warrantyExpiresOn()
+        );
+        device.updateDescription(request.description());
+        deviceAssetRepository.save(asset);
+        DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
+        recordAssetChange(device, previous);
+        return response;
     }
 
     @Transactional
@@ -132,10 +179,13 @@ public class DeviceAssetService {
         Device device = findDevice(deviceId);
         CommonCode nextStatus = commonCodeRepository.findById(request.statusId())
                 .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + request.statusId()));
-        validateStatusTransition(device.getAssetStatus(), nextStatus);
+        DeviceAsset asset = ensureAsset(device);
+        validateStatusTransition(asset.getAssetStatus(), nextStatus);
         DeviceAssetHistory.AssetSnapshot previous = snapshotAsset(device);
         Integer modelId = device.getDeviceModel().getId();
-        device.transitionAssetStatus(nextStatus);
+        asset.transitionStatus(nextStatus);
+        applyCollectionEligibility(device, nextStatus);
+        deviceAssetRepository.save(asset);
         DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
         recordAssetChange(device, previous, DeviceAssetHistoryAction.STATUS_CHANGED, request.reason());
         collectionScriptSyncService.regenerateByModelId(modelId);
@@ -208,9 +258,9 @@ public class DeviceAssetService {
         }
         List<RackLayoutResponse.RackLayoutItem> items = placementRepository.findAllByRackLocationCode(rackLocationCode).stream()
                 .map(placement -> new RackLayoutResponse.RackLayoutItem(
-                        placement.getDevice().getId(), placement.getDevice().getName(), placement.getDevice().getAssetCode(),
+                        placement.getDevice().getId(), placement.getDevice().getName(), assetCodeOf(placement.getDevice()),
                         placement.getDevice().getDeviceModel().getName(), placement.getMountType(), placement.getRackSide(),
-                        placement.getUPosition(), placement.getUHeight(), placement.lastU(), placement.getFormFactor(), placement.getDevice().getAssetColor(),
+                        placement.getUPosition(), placement.getUHeight(), placement.lastU(), placement.getFormFactor(), assetColorOf(placement.getDevice()),
                         primaryImage(placement.getDevice().getId())))
                 .toList();
         return new RackLayoutResponse(rack.getCode(), rack.getName(), rack.getRackUCapacity(), items);
@@ -269,6 +319,45 @@ public class DeviceAssetService {
     }
 
     @Transactional
+    public DeviceAssetDocumentResponse uploadDocument(Integer deviceId, MultipartFile file) {
+        Device device = findDevice(deviceId);
+        validateDocument(file);
+        String originalName = safeOriginalName(file.getOriginalFilename());
+        String storageKey = deviceId + "/" + UUID.randomUUID() + extensionFromName(originalName);
+        Path target = documentStorageRoot().resolve(storageKey).normalize();
+        try {
+            Files.createDirectories(target.getParent());
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            DeviceAssetDocument document = DeviceAssetDocument.create(device, storageKey, originalName,
+                    contentType(file), file.getSize());
+            return DeviceAssetDocumentResponse.from(documentRepository.save(document));
+        } catch (IOException e) {
+            throw new IllegalStateException("failed to store asset document", e);
+        }
+    }
+
+    public Resource loadDocument(Integer deviceId, Integer documentId) {
+        DeviceAssetDocument document = findDocument(deviceId, documentId);
+        Path path = documentStorageRoot().resolve(document.getStorageKey()).normalize();
+        if (!path.startsWith(documentStorageRoot()) || !Files.isRegularFile(path)) {
+            throw new EntityNotFoundException("Asset document file not found: " + documentId);
+        }
+        return new FileSystemResource(path);
+    }
+
+    public DeviceAssetDocumentResponse getDocument(Integer deviceId, Integer documentId) {
+        return DeviceAssetDocumentResponse.from(findDocument(deviceId, documentId));
+    }
+
+    @Transactional
+    public void deleteDocument(Integer deviceId, Integer documentId) {
+        DeviceAssetDocument document = findDocument(deviceId, documentId);
+        Path path = documentStorageRoot().resolve(document.getStorageKey()).normalize();
+        documentRepository.delete(document);
+        try { Files.deleteIfExists(path); } catch (IOException ignored) { }
+    }
+
+    @Transactional
     public void deleteAssetData(Integer deviceId) {
         placementRepository.findByDeviceId(deviceId).ifPresent(placementRepository::delete);
         for (DeviceImage image : imageRepository.findAllByDeviceId(deviceId)) {
@@ -276,6 +365,12 @@ public class DeviceAssetService {
             imageRepository.delete(image);
             try { Files.deleteIfExists(path); } catch (IOException ignored) { }
         }
+        for (DeviceAssetDocument document : documentRepository.findAllByDeviceId(deviceId)) {
+            Path path = documentStorageRoot().resolve(document.getStorageKey()).normalize();
+            documentRepository.delete(document);
+            try { Files.deleteIfExists(path); } catch (IOException ignored) { }
+        }
+        // device_asset 및 자산 이력은 devices FK의 ON DELETE CASCADE로 함께 삭제한다.
     }
 
     private void removePlacementWithHistory(DeviceRackPlacement placement) {
@@ -342,9 +437,9 @@ public class DeviceAssetService {
                 .map(DeviceProtocolEndpoint::getHost).findFirst().orElse(null);
         List<String> protocolCodes = endpoints.stream().filter(DeviceProtocolEndpoint::isEnabled)
                 .map(endpoint -> endpoint.getProtocolType().getCode()).distinct().toList();
-        return new DeviceAssetSummaryResponse(DeviceResponse.from(device), ipAddress, protocolCodes,
+        return new DeviceAssetSummaryResponse(DeviceResponse.from(device, List.of()), ipAddress, protocolCodes,
                 placementRepository.findByDeviceId(device.getId()).map(DeviceRackPlacementResponse::from).orElse(null),
-                primaryImage(device.getId()));
+                primaryImage(device.getId()), documentRepository.countByDeviceId(device.getId()));
     }
 
     private DeviceImageResponse primaryImage(Integer deviceId) {
@@ -364,6 +459,47 @@ public class DeviceAssetService {
         return rack;
     }
 
+    private DeviceAsset assetOf(Device device) {
+        if (device.getAsset() != null) {
+            return device.getAsset();
+        }
+        return deviceAssetRepository.findById(device.getId()).orElse(null);
+    }
+
+    private DeviceAsset ensureAsset(Device device) {
+        DeviceAsset asset = assetOf(device);
+        return asset == null ? deviceAssetRepository.save(DeviceAsset.create(device)) : asset;
+    }
+
+    private void validateUniqueAssetCode(String assetCode, Integer deviceId) {
+        if (assetCode == null || assetCode.isBlank()) return;
+        String normalized = assetCode.trim();
+        boolean duplicated = deviceId == null
+                ? deviceAssetRepository.existsByAssetCode(normalized)
+                : deviceAssetRepository.existsByAssetCodeAndDeviceIdNot(normalized, deviceId);
+        if (duplicated) throw new IllegalArgumentException("asset code already exists");
+    }
+
+    private static void applyCollectionEligibility(Device device, CommonCode status) {
+        if (status == null) return;
+        String code = normalizeStatusCode(status);
+        if (Device.ASSET_STATUS_INACTIVE.equals(code) || Device.ASSET_STATUS_RETIRED.equals(code)) {
+            device.setEnabled(false);
+        } else if (Device.ASSET_STATUS_ACTIVE.equals(code)) {
+            device.setEnabled(true);
+        }
+    }
+
+    private String assetCodeOf(Device device) {
+        DeviceAsset asset = assetOf(device);
+        return asset == null ? null : asset.getAssetCode();
+    }
+
+    private String assetColorOf(Device device) {
+        DeviceAsset asset = assetOf(device);
+        return asset == null ? null : asset.getAssetColor();
+    }
+
     private Device findDevice(Integer id) {
         return deviceRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Device not found: " + id));
     }
@@ -373,6 +509,11 @@ public class DeviceAssetService {
                 .orElseThrow(() -> new EntityNotFoundException("DeviceImage not found: " + imageId));
     }
 
+    private DeviceAssetDocument findDocument(Integer deviceId, Integer documentId) {
+        return documentRepository.findByIdAndDeviceId(documentId, deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("DeviceAssetDocument not found: " + documentId));
+    }
+
     private void validateImage(MultipartFile file) {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("image file is required");
         String type = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
@@ -380,8 +521,17 @@ public class DeviceAssetService {
         if (file.getSize() > MAX_IMAGE_SIZE) throw new IllegalArgumentException("image file must not exceed 10MB");
     }
 
+    private void validateDocument(MultipartFile file) {
+        if (file == null || file.isEmpty()) throw new IllegalArgumentException("document file is required");
+        if (file.getSize() > MAX_DOCUMENT_SIZE) throw new IllegalArgumentException("document file must not exceed 20MB");
+    }
+
     private Path storageRoot() {
         return Path.of(imageStoragePath).toAbsolutePath().normalize();
+    }
+
+    private Path documentStorageRoot() {
+        return Path.of(documentStoragePath).toAbsolutePath().normalize();
     }
 
     private static String extensionFor(String contentType) {
@@ -391,5 +541,15 @@ public class DeviceAssetService {
     private static String safeOriginalName(String name) {
         if (name == null || name.isBlank()) return "image";
         return Path.of(name).getFileName().toString();
+    }
+
+    private static String extensionFromName(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot < 1 || dot == name.length() - 1 ? "" : name.substring(dot).toLowerCase(Locale.ROOT);
+    }
+
+    private static String contentType(MultipartFile file) {
+        return file.getContentType() == null || file.getContentType().isBlank()
+                ? "application/octet-stream" : file.getContentType();
     }
 }
