@@ -194,6 +194,34 @@ public class CollectorSyncService {
         }
     }
 
+    /**
+     * Collector 인스턴스는 그대로 두고, DB에 저장된 활성 Job 정의를 안전하게 다시 반영한다.
+     * 기존 collectorJobId가 있으면 UPDATE, 없으면 REGISTER를 사용하므로 중복 Job을 만들지 않는다.
+     */
+    @Transactional
+    public int reconcileActiveGroups() {
+        if (!collectorJobClient.isEnabled()) {
+            log.info("collector sync disabled; skip manual reconciliation");
+            return 0;
+        }
+        int synchronizedCount = 0;
+        List<CollectionTask> tasks = collectionTaskRepository.findAll(null, null, null);
+        for (CollectionTask task : tasks) {
+            if (!task.isActive() || !isSnmpTask(task)) {
+                continue;
+            }
+            for (CollectionTaskGroup group : new ArrayList<>(task.getGroups())) {
+                if (!group.isActive() || !hasGeneratedSpec(group)) {
+                    continue;
+                }
+                syncGroupSpec(group, false);
+                synchronizedCount++;
+            }
+        }
+        log.info("collector manual reconciliation completed: synchronizedGroups={}", synchronizedCount);
+        return synchronizedCount;
+    }
+
     @Transactional
     public void repushGroup(CollectionTaskGroup group) {
         repushGroupInternal(group);

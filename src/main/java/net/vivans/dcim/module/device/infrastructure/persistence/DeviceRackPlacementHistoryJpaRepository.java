@@ -20,4 +20,9 @@ public class DeviceRackPlacementHistoryJpaRepository implements DeviceRackPlacem
     public List<DeviceRackPlacementHistory> findAllByDeviceId(Integer deviceId) {
         return springDataRepository.findAllByDevice_IdOrderByCreatedDtDesc(deviceId);
     }
+
+    @Override
+    public void deleteByDeviceId(Integer deviceId) {
+        springDataRepository.deleteByDeviceId(deviceId);
+    }
 }

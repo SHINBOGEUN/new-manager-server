@@ -20,4 +20,9 @@ public class DeviceAssetHistoryJpaRepository implements DeviceAssetHistoryReposi
     public List<DeviceAssetHistory> findAllByDeviceId(Integer deviceId) {
         return springDataRepository.findAllByDevice_IdOrderByCreatedDtDesc(deviceId);
     }
+
+    @Override
+    public void deleteByDeviceId(Integer deviceId) {
+        springDataRepository.deleteByDeviceId(deviceId);
+    }
 }

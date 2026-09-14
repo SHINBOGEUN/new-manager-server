@@ -6,4 +6,5 @@ import net.vivans.dcim.module.device.domain.model.DeviceAssetHistory;
 public interface DeviceAssetHistoryRepository {
     DeviceAssetHistory save(DeviceAssetHistory history);
     List<DeviceAssetHistory> findAllByDeviceId(Integer deviceId);
+    void deleteByDeviceId(Integer deviceId);
 }

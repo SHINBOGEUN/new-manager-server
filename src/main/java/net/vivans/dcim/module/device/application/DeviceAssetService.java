@@ -375,7 +375,9 @@ public class DeviceAssetService {
             documentRepository.delete(document);
             try { Files.deleteIfExists(path); } catch (IOException ignored) { }
         }
-        // device_asset 및 자산 이력은 devices FK의 ON DELETE CASCADE로 함께 삭제한다.
+        placementHistoryRepository.deleteByDeviceId(deviceId);
+        assetHistoryRepository.deleteByDeviceId(deviceId);
+        deviceAssetRepository.deleteDirectlyByDeviceId(deviceId);
     }
 
     private void removePlacementWithHistory(DeviceRackPlacement placement) {

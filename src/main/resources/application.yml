@@ -65,6 +65,15 @@ collector:
   reconciliation:
     fixed-delay-ms: ${COLLECTOR_RECONCILIATION_FIXED_DELAY_MS:60000}
 
+operations:
+  health:
+    sensor-data-url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
+    sensor-data-enabled: ${SENSOR_DATA_HEALTH_ENABLED:true}
+    mqtt-enabled: ${MQTT_HEALTH_ENABLED:true}
+    mqtt-host: ${MQTT_HOST:localhost}
+    mqtt-port: ${MQTT_PORT:1883}
+    timeout-millis: ${OPERATIONS_HEALTH_TIMEOUT_MILLIS:2000}
+
 live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}

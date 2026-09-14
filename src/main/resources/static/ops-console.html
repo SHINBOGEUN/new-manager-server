@@ -830,6 +830,20 @@
     .login-foot .theme-toggle { padding:7px 10px; color:#a8bdd4; border:1px solid #30445e; background:#132237; font-size:11px; }
     .task-group-card,.task-group-create { transition:border-color .16s ease,background .16s ease; }
     .task-group-card:hover { border-color:#3b5978 !important; }
+    .operations-health-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .operations-health-item { min-width:0; padding:13px; border:1px solid #2a3c55; border-radius:10px; background:#101a29; }
+    .operations-health-item-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .operations-health-item strong { color:#e9f3ff; font-size:13px; }
+    .operations-health-item p { min-height:32px; margin:8px 0 0; color:#8297b1; font-size:11px; line-height:1.45; }
+    .operations-health-item small { display:block; overflow:hidden; margin-top:7px; color:#607895; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .collector-sync-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:12px; }
+    .collector-sync-cell { padding:10px; border:1px solid #293d56; border-radius:8px; background:#0d1625; }
+    .collector-sync-cell span { display:block; color:#7189a4; font-size:10px; }
+    .collector-sync-cell b { display:block; margin-top:4px; color:#e3eefb; font-size:17px; font-variant-numeric:tabular-nums; }
+    .collector-sync-cell b.warn { color:#ffbd54; }
+    .collector-sync-cell b.ok { color:#55d993; }
+    @media (max-width:1050px) { .operations-health-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:620px) { .operations-health-grid,.collector-sync-grid { grid-template-columns:1fr 1fr; } }
 
     /* Light theme — structure is shared, only visual tokens change */
     html[data-theme="light"] {
@@ -919,6 +933,13 @@
     html[data-theme="light"] .login-card input { color:#172235; border-color:#cbd7e3; background:#f9fbfd; }
     html[data-theme="light"] .login-card #registerCardBtn { color:#334b63; border-color:#cbd7e3; background:#f3f6f9; }
     html[data-theme="light"] .login-foot .theme-toggle { color:#345168; border-color:#b9cedc; background:rgba(255,255,255,.65); }
+    html[data-theme="light"] .operations-health-item { border-color:#d6e1ec; background:#f8fafc; }
+    html[data-theme="light"] .operations-health-item strong { color:#1d3047; }
+    html[data-theme="light"] .operations-health-item p { color:#657a91; }
+    html[data-theme="light"] .operations-health-item small { color:#8495a8; }
+    html[data-theme="light"] .collector-sync-cell { border-color:#d5e0eb; background:#f6f9fc; }
+    html[data-theme="light"] .collector-sync-cell span { color:#71859a; }
+    html[data-theme="light"] .collector-sync-cell b { color:#1d3047; }
   </style>
 </head>
 <body>
@@ -1241,6 +1262,25 @@
     <section class="panel" id="tab-collection-status">
       <h1 class="page-title">수집 상태</h1>
       <p class="page-desc">장비 등록, 수집 작업 그룹, InfluxDB 최신 저장값을 함께 확인합니다. 수집 주기의 2배(최소 5분)를 넘기면 지연으로 표시합니다.</p>
+      <div class="card" id="collectionOperationsCard">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div>
+            <span class="eyebrow">COLLECTION OPERATIONS</span>
+            <h2 style="margin:4px 0 0">수집 운영 상태</h2>
+            <p class="muted" style="margin:6px 0 0;font-size:12px">Manager · MariaDB · InfluxDB · Collector · Sensor Data · MQTT 연결과 Collector Job 동기화 상태입니다.</p>
+          </div>
+          <div class="row">
+            <button type="button" class="ghost" id="opsHealthReload">상태 새로고침</button>
+            <button type="button" class="primary" id="opsReconcile">Collector 재동기화</button>
+          </div>
+        </div>
+        <div class="operations-health-grid" id="opsHealthComponents"><div class="empty">운영 상태를 조회하는 중입니다.</div></div>
+        <div class="row" style="justify-content:space-between;margin-top:18px">
+          <h3 style="margin:0;font-size:14px">Collector 작업 동기화</h3>
+          <span class="muted" id="opsHealthCheckedAt" style="font-size:11px"></span>
+        </div>
+        <div class="collector-sync-grid" id="collectorSyncSummary"><div class="empty">동기화 상태를 조회하는 중입니다.</div></div>
+      </div>
       <div class="stats">
         <div class="stat"><div class="k">전체 장비</div><div class="v" id="csTotal">–</div></div>
         <div class="stat"><div class="k">정상</div><div class="v" id="csNormal" style="color:var(--ok)">–</div></div>
@@ -2110,6 +2150,7 @@
       assets: [],
       rackLayouts: [],
       collectionStatus: null,
+      operationsHealth: null,
       groupDevices: [],
       deviceGroups: [],
       locations: [],
@@ -2262,7 +2303,10 @@
       document.body.classList.remove("side-open");
       if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
       if (name === "rack-overview" && state.token) loadRackOverview().catch((e) => toast(e.message, true));
-      if (name === "collection-status" && state.token) loadCollectionStatus().catch((e) => toast(e.message, true));
+      if (name === "collection-status" && state.token) {
+        loadCollectionStatus().catch((e) => toast(e.message, true));
+        loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
+      }
     }
 
     function enhancePageHeadings() {
@@ -3806,6 +3850,47 @@
       renderCollectionStatus();
     }
 
+    function operationsStatusChip(status) {
+      const value = String(status || "DOWN").toUpperCase();
+      const label = { UP: "정상", DOWN: "연결 실패", DISABLED: "확인 제외" }[value] || value;
+      const tone = value === "UP" ? "ok" : value === "DISABLED" ? "warn" : "bad";
+      return `<span class="chip ${tone}">${label}</span>`;
+    }
+
+    function renderCollectionOperationsHealth() {
+      const data = state.operationsHealth;
+      if (!data) return;
+      const components = data.components || [];
+      $("opsHealthComponents").innerHTML = components.map((component) => {
+        const details = component.details || {};
+        const detailText = Object.entries(details)
+          .filter(([, value]) => value !== null && value !== undefined && value !== "")
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(" · ");
+        return `<article class="operations-health-item">
+          <div class="operations-health-item-head"><strong>${esc(component.name)}</strong>${operationsStatusChip(component.status)}</div>
+          <p>${esc(component.message || "상태 정보가 없습니다.")}</p>
+          <small title="${esc(component.target || detailText || "")}">${esc(component.target || detailText || "연결 대상 정보 없음")}</small>
+        </article>`;
+      }).join("") || '<div class="empty">표시할 운영 구성요소가 없습니다.</div>';
+
+      const sync = data.collectorSync || {};
+      const active = Number(sync.activeTaskGroups || 0);
+      const linked = Number(sync.groupsWithCollectorJob || 0);
+      const missing = Number(sync.groupsMissingCollectorJob || 0) + Number(sync.groupsMissingSpec || 0);
+      $("collectorSyncSummary").innerHTML = `
+        <div class="collector-sync-cell"><span>Collector 동기화</span><b class="${sync.syncEnabled ? "ok" : "warn"}">${sync.syncEnabled ? "사용" : "중지"}</b></div>
+        <div class="collector-sync-cell"><span>활성 수집 그룹</span><b>${active}</b></div>
+        <div class="collector-sync-cell"><span>Collector Job 연결</span><b class="${linked === active ? "ok" : "warn"}">${linked} / ${active}</b></div>
+        <div class="collector-sync-cell"><span>확인 필요</span><b class="${missing ? "warn" : "ok"}">${missing}</b></div>`;
+      $("opsHealthCheckedAt").textContent = data.checkedAt ? `확인 시각: ${new Date(data.checkedAt).toLocaleString("ko-KR")}` : "";
+    }
+
+    async function loadCollectionOperationsHealth() {
+      state.operationsHealth = await api("/api/manager/operations/collection/health");
+      renderCollectionOperationsHealth();
+    }
+
     async function loadDevices() {
       const qs = new URLSearchParams({ page: "1", size: "100" });
       const name = $("devFilterName").value.trim();
@@ -5336,6 +5421,21 @@
     $("assetFilterName").addEventListener("input", () => loadAssets().catch((e) => toast(e.message, true)));
     $("assetFilterStatus").addEventListener("change", () => loadAssets().catch((e) => toast(e.message, true)));
     $("csReload").onclick = () => loadCollectionStatus().catch((e) => toast(e.message, true));
+    $("opsHealthReload").onclick = () => loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
+    $("opsReconcile").onclick = async () => {
+      if (!confirm("활성 수집 그룹과 PUE 정의를 Collector에 다시 반영할까요? 기존 Job은 업데이트합니다.")) return;
+      const button = $("opsReconcile");
+      button.disabled = true;
+      try {
+        const result = await api("/api/manager/operations/collection/reconcile", { method: "POST" });
+        toast(result.message || "Collector 재동기화를 요청했습니다.");
+        await Promise.all([loadCollectionOperationsHealth(), loadCollectionStatus()]);
+      } catch (e) {
+        toast(e.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    };
     $("csFilterName").addEventListener("input", renderCollectionStatus);
     $("csFilterStatus").addEventListener("change", renderCollectionStatus);
     $("csFilterModel").addEventListener("change", renderCollectionStatus);
