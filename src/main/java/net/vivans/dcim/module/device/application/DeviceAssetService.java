@@ -330,7 +330,9 @@ public class DeviceAssetService {
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
             DeviceAssetDocument document = DeviceAssetDocument.create(device, storageKey, originalName,
                     contentType(file), file.getSize());
-            return DeviceAssetDocumentResponse.from(documentRepository.save(document));
+            DeviceAssetDocumentResponse response = DeviceAssetDocumentResponse.from(documentRepository.save(document));
+            recordDocumentChange(device, DeviceAssetHistoryAction.DOCUMENT_UPLOADED, originalName);
+            return response;
         } catch (IOException e) {
             throw new IllegalStateException("failed to store asset document", e);
         }
@@ -352,9 +354,12 @@ public class DeviceAssetService {
     @Transactional
     public void deleteDocument(Integer deviceId, Integer documentId) {
         DeviceAssetDocument document = findDocument(deviceId, documentId);
+        Device device = document.getDevice();
+        String originalName = document.getOriginalName();
         Path path = documentStorageRoot().resolve(document.getStorageKey()).normalize();
         documentRepository.delete(document);
         try { Files.deleteIfExists(path); } catch (IOException ignored) { }
+        recordDocumentChange(device, DeviceAssetHistoryAction.DOCUMENT_DELETED, originalName);
     }
 
     @Transactional
@@ -395,6 +400,12 @@ public class DeviceAssetService {
                 ? (statusChanged ? DeviceAssetHistoryAction.STATUS_CHANGED : DeviceAssetHistoryAction.ASSET_UPDATED)
                 : requestedAction;
         assetHistoryRepository.save(DeviceAssetHistory.create(device, action, currentActor(), reason, previous, current));
+    }
+
+    private void recordDocumentChange(Device device, DeviceAssetHistoryAction action, String originalName) {
+        assetHistoryRepository.save(DeviceAssetHistory.create(device, action, currentActor(),
+                "문서 " + (action == DeviceAssetHistoryAction.DOCUMENT_UPLOADED ? "등록: " : "삭제: ") + originalName,
+                null, snapshotAsset(device)));
     }
 
     private void validateStatusTransition(CommonCode current, CommonCode next) {

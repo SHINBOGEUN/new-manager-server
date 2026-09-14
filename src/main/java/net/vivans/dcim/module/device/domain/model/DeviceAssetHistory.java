@@ -17,6 +17,8 @@ import lombok.NoArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
+import java.time.LocalDate;
+
 @Entity
 @Table(name = "device_asset_history")
 @Getter
@@ -70,6 +72,30 @@ public class DeviceAssetHistory extends BaseEntity {
     @Column(name = "current_enabled")
     private Boolean currentEnabled;
 
+    @Column(name = "previous_installed_date")
+    private LocalDate previousInstalledDate;
+
+    @Column(name = "current_installed_date")
+    private LocalDate currentInstalledDate;
+
+    @Column(name = "previous_asset_manager_name", length = 100)
+    private String previousAssetManagerName;
+
+    @Column(name = "current_asset_manager_name", length = 100)
+    private String currentAssetManagerName;
+
+    @Column(name = "previous_supplier_name", length = 255)
+    private String previousSupplierName;
+
+    @Column(name = "current_supplier_name", length = 255)
+    private String currentSupplierName;
+
+    @Column(name = "previous_warranty_expires_on")
+    private LocalDate previousWarrantyExpiresOn;
+
+    @Column(name = "current_warranty_expires_on")
+    private LocalDate currentWarrantyExpiresOn;
+
     private DeviceAssetHistory(Device device, DeviceAssetHistoryAction action, String actorName,
                                String reason, AssetSnapshot previous, AssetSnapshot current) {
         this.device = device;
@@ -92,6 +118,10 @@ public class DeviceAssetHistory extends BaseEntity {
         previousStatusCode = snapshot.statusCode();
         previousStatusName = snapshot.statusName();
         previousEnabled = snapshot.enabled();
+        previousInstalledDate = snapshot.installedDate();
+        previousAssetManagerName = snapshot.assetManagerName();
+        previousSupplierName = snapshot.supplierName();
+        previousWarrantyExpiresOn = snapshot.warrantyExpiresOn();
     }
 
     private void applyCurrent(AssetSnapshot snapshot) {
@@ -101,19 +131,29 @@ public class DeviceAssetHistory extends BaseEntity {
         currentStatusCode = snapshot.statusCode();
         currentStatusName = snapshot.statusName();
         currentEnabled = snapshot.enabled();
+        currentInstalledDate = snapshot.installedDate();
+        currentAssetManagerName = snapshot.assetManagerName();
+        currentSupplierName = snapshot.supplierName();
+        currentWarrantyExpiresOn = snapshot.warrantyExpiresOn();
     }
 
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
-    public record AssetSnapshot(String assetCode, String serialNumber, String statusCode,
-                                String statusName, boolean enabled) {
+    public record AssetSnapshot(
+            String assetCode, String serialNumber, String statusCode, String statusName, boolean enabled,
+            LocalDate installedDate, String assetManagerName, String supplierName, LocalDate warrantyExpiresOn
+    ) {
         public static AssetSnapshot from(Device device, DeviceAsset asset) {
             CommonCode status = asset == null ? null : asset.getAssetStatus();
             return new AssetSnapshot(asset == null ? null : asset.getAssetCode(), asset == null ? null : asset.getSerialNumber(),
                     status == null ? null : status.getCode(), status == null ? null : status.getName(),
-                    device.isEnabled());
+                    device.isEnabled(),
+                    asset == null ? null : asset.getInstalledDate(),
+                    asset == null ? null : asset.getAssetManagerName(),
+                    asset == null ? null : asset.getSupplierName(),
+                    asset == null ? null : asset.getWarrantyExpiresOn());
         }
     }
 }

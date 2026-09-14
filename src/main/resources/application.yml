@@ -8,8 +8,8 @@ spring:
       write-bigdecimal-as-plain: true
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:20MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:20MB}
 server:
   port: 8080
   servlet:
@@ -72,3 +72,5 @@ live:
 asset:
   image:
     storage-path: ${ASSET_IMAGE_STORAGE_PATH:./uploads/device-images}
+  document:
+    storage-path: ${ASSET_DOCUMENT_STORAGE_PATH:./uploads/device-documents}
