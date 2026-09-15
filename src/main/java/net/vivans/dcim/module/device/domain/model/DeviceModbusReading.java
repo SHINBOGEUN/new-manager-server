@@ -104,19 +104,24 @@ public class DeviceModbusReading extends BaseEntity {
     }
 
     public void update(
+            DeviceModelModbusPoint point,
             int unitId,
             int address,
+            Device targetDevice,
             String pointName,
             boolean enabled
     ) {
         validateEndpoint(this.endpoint);
-        validatePoint(this.point);
+        validatePoint(point);
         validateUnitId(unitId);
-        validateAddress(address, this.point);
+        validateAddress(address, point);
+        validateTargetDevice(targetDevice);
         validatePointName(pointName);
 
+        this.point = point;
         this.unitId = unitId;
         this.address = address;
+        this.targetDevice = targetDevice;
         this.pointName = pointName;
         this.enabled = enabled;
     }

@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingResponse;
+import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceModbusReading;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
@@ -72,6 +73,62 @@ public class DeviceModbusReadingQueryService {
 
         DeviceModbusReading saved = readingRepository.save(reading);
         return DeviceModbusReadingResponse.from(saved);
+    }
+
+
+    @Transactional
+    public DeviceModbusReadingResponse updateReading(
+            Integer deviceId,
+            Integer endpointId,
+            Integer readingId,
+            DeviceModbusReadingUpdateRequest request
+    ) {
+        findDevice(deviceId);
+
+        DeviceProtocolEndpoint endpoint = findEndpoint(deviceId, endpointId);
+        validateModbusEndpoint(endpoint);
+        requireModbusConfig(endpointId);
+
+        DeviceModbusReading reading = findReading(readingId, endpointId);
+
+        // 새 point가 원본 장비 모델의 Modbus point인지 확인
+        DeviceModelModbusPoint point = findSourceModelPoint(
+                endpoint,
+                request.pointId()
+        );
+
+        Device targetDevice = findDevice(request.targetDeviceId());
+
+        // 변경할 대상 장비와 필드명을 기준으로, 자기 자신을 제외하고 검사
+        if (readingRepository.existsByTargetDeviceIdAndPointNameAndIdNot(
+                targetDevice.getId(),
+                request.pointName(),
+                readingId
+        )) {
+            throw new ConflictException(
+                    "Modbus reading already exists for target device and point name"
+            );
+        }
+
+        reading.update(
+                point,
+                request.unitId(),
+                request.address(),
+                targetDevice,
+                request.pointName(),
+                request.enabled()
+        );
+
+        DeviceModbusReading saved = readingRepository.save(reading);
+        return DeviceModbusReadingResponse.from(saved);
+    }
+
+
+    private DeviceModbusReading findReading(Integer readingId, Integer endpointId) {
+        return readingRepository.findByIdAndEndpointId(readingId, endpointId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "DeviceModbusReading not found: " + readingId
+                ));
     }
 
     private Device findDevice(Integer deviceId) {
