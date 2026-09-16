@@ -12,6 +12,7 @@
 | MariaDB | 현장 설정 | 기준 정보·장비·위젯·자산 메타데이터 |
 | InfluxDB | 8086 | 장비 측정값·PUE 시계열 |
 | MQTT Broker | 1883 | 센서/수집 메시지 |
+| MQTT WebSocket | 9001 | 브라우저 실시간 텔레메트리 구독 |
 
 - Java 17 또는 Docker 런타임을 준비한다.
 - Manager에서 Collector·Sensor Data·InfluxDB·MQTT에 접근 가능한지 방화벽과 DNS/IP를 확인한다.
@@ -101,7 +102,7 @@ Compose는 MariaDB, InfluxDB, MQTT, Collector, Sensor Data, Manager를 함께 �
 | Sensor Data | `http://sensor-data:8082` |
 | Manager | `http://manager:8080` |
 
-호스트에는 Manager `8080`과 외부 센서용 MQTT `1883`만 공개한다. MariaDB와 InfluxDB는 Compose 네트워크 안에서만 사용한다. Dockerfile과 Compose는 로그·자산 파일을 `runtime/` 하위 또는 `.env`에서 지정한 호스트 경로에 보관한다.
+호스트에는 Manager `8080`, 외부 센서용 MQTT `1883`, 브라우저 실시간 텔레메트리용 MQTT WebSocket `9001`을 공개한다. MariaDB와 InfluxDB는 Compose 네트워크 안에서만 사용한다. Dockerfile과 Compose는 로그·자산 파일을 `runtime/` 하위 또는 `.env`에서 지정한 호스트 경로에 보관한다. 운영 환경에서는 방화벽으로 `1883`과 `9001` 접근 대상을 제한한다.
 
 MariaDB 초기화 SQL과 모델 카탈로그 seed는 `mariadb-data` 볼륨이 **비어 있을 때만** 자동 실행된다. 이미 데이터가 있는 현장에서 `down -v`로 볼륨을 삭제하면 DB·Influx 데이터가 지워지므로 실행하지 않는다.
 
