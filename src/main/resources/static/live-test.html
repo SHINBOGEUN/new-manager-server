@@ -447,10 +447,10 @@
     });
 
     setAuthStatus();
-    connectMqtt();
     if (state.token) {
       loadDevices().catch((err) => log("목록 실패: " + err.message));
     }
+    connectMqtt();
   </script>
 </body>
 </html>
