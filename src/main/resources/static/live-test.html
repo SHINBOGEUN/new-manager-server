@@ -8,26 +8,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #0f1419;
-      --panel: #171d25;
-      --panel-2: #1d2530;
-      --line: #2a3544;
-      --text: #e8edf4;
-      --muted: #8b98a8;
-      --accent: #3d9cf0;
-      --ok: #3ecf8e;
-      --warn: #f0b429;
-      --bad: #f07178;
-      --chip: #243044;
+      --bg: #090e17;
+      --panel: #121a29;
+      --panel-2: #182235;
+      --line: #2a3a52;
+      --text: #e7edf8;
+      --muted: #93a7c1;
+      --accent: #35bdf4;
+      --ok: #47d58c;
+      --warn: #ffbd54;
+      --bad: #ff6274;
+      --chip: #1c2a40;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI", "Malgun Gothic", sans-serif; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 78% -20%, #17365a 0, transparent 34%), var(--bg); color: var(--text); font-family: Pretendard, "Segoe UI", "Malgun Gothic", sans-serif; }
     body { display: grid; grid-template-rows: auto 1fr; }
     header {
       display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-      padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel);
+      min-height:64px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: rgba(13,20,33,.96); box-shadow:0 5px 18px rgba(0,0,0,.16);
     }
-    h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .02em; }
+    h1 { font-size: 16px; margin: 0; font-weight: 750; letter-spacing: .02em; }
+    h1::before { content:"D"; display:inline-grid; place-items:center; width:28px; height:28px; margin-right:9px; border-radius:6px; color:#06111c; background:linear-gradient(135deg,#4cd4ff,#2498df); font-weight:900; }
     .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     label { font-size: 12px; color: var(--muted); }
     input, button, select {
@@ -35,8 +36,8 @@
       border-radius: 6px; padding: 7px 10px; font-size: 13px;
     }
     input { min-width: 140px; }
-    button { cursor: pointer; background: var(--accent); border-color: transparent; color: #061018; font-weight: 650; }
-    button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+    button { cursor: pointer; background: linear-gradient(135deg,#159ad0,#287ee0); border-color:#2aa6dd; color:#fff; font-weight:700; }
+    button.ghost { background:#172337; color:var(--text); border-color:#334861; }
     button.danger { background: #c94c53; color: #fff; }
     button:disabled { opacity: .5; cursor: not-allowed; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
@@ -44,12 +45,12 @@
     .dot.warn { background: var(--warn); }
     main { display: grid; grid-template-columns: 340px 1fr; min-height: 0; }
     aside {
-      border-right: 1px solid var(--line); background: var(--panel);
+      border-right: 1px solid var(--line); background: rgba(12,18,29,.9);
       overflow: auto; padding: 12px;
     }
     .panel-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
     .device {
-      background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+      background: linear-gradient(145deg,#182338,#111a29); border: 1px solid var(--line); border-radius: 8px;
       padding: 10px; margin-bottom: 8px;
     }
     .device h3 { margin: 0 0 4px; font-size: 14px; }
@@ -62,7 +63,7 @@
       align-content: start;
     }
     .chart-card {
-      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+      background: linear-gradient(145deg,#182338,#111a29); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
       min-height: 260px;
     }
     .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
@@ -77,40 +78,64 @@
     }
     .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
     .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+
+    /* Live telemetry workspace */
+    header.live-header { display:block; min-height:0; padding:0; border:0; }
+    .live-topbar { min-height:68px; display:flex; align-items:center; gap:14px; padding:10px 22px; border-bottom:1px solid var(--line); background:#0d1522; }
+    .live-brand { display:flex; align-items:center; gap:11px; min-width:230px; }
+    .live-mark { width:36px; height:36px; display:grid; place-items:center; border-radius:9px; color:#06111c; background:linear-gradient(135deg,#4cd4ff,#2498df); font-weight:900; }
+    .live-brand strong { display:block; font-size:14px; letter-spacing:.12em; }
+    .live-brand span { display:block; margin-top:2px; color:var(--muted); font-size:10px; letter-spacing:.08em; }
+    .live-context { flex:1; padding-left:18px; border-left:1px solid var(--line); }
+    .live-context small { display:block; color:#6f87a4; font-size:10px; letter-spacing:.12em; }
+    .live-context h1 { margin:2px 0 0; font-size:17px; }
+    .live-context h1::before { display:none; }
+    .live-nav { display:flex; align-items:center; gap:8px; }
+    .live-nav a { padding:8px 11px; border:1px solid var(--line); border-radius:8px; color:var(--text); background:#162235; text-decoration:none; font-size:12px; font-weight:700; }
+    .live-config { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:12px; padding:14px 22px; border-bottom:1px solid var(--line); background:#101a29; }
+    .live-config-group { min-width:0; padding:12px; border:1px solid #263951; border-radius:10px; background:#131f30; }
+    .live-config-title { margin:0 0 9px; color:#7f96b0; font-size:10px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }
+    .live-field { flex:1; min-width:110px; }
+    .live-field label { display:block; margin-bottom:5px; }
+    .live-field input { width:100%; min-width:0; }
+    .session-status { min-height:36px; display:flex; align-items:center; gap:8px; flex:1; padding:7px 10px; border:1px solid #2a3a52; border-radius:8px; background:#0e1928; color:#b9c9da; font-size:12px; }
+    main { grid-template-columns:360px minmax(0,1fr); background:#090f19; }
+    aside { padding:18px; background:#0d1624; }
+    .target-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .target-head .panel-title { margin:0 0 4px; color:var(--text); font-size:16px; letter-spacing:0; text-transform:none; }
+    .target-head p { margin:0; color:var(--muted); font-size:11px; }
+    .target-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:14px; }
+    .target-actions #reloadBtn { grid-column:1/-1; }
+    .target-actions button { min-height:35px; }
+    .device { padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.12); }
+    .point { min-height:31px; padding:5px 7px; border-radius:6px; }
+    .point:hover { background:#1b2a3f; }
+    .point input { accent-color:var(--accent); }
+    .charts { padding:0 20px 22px; gap:14px; }
+    .charts-head { grid-column:1/-1; min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:14px; position:sticky; top:0; z-index:8; margin:0 -20px 2px; padding:12px 20px; border-bottom:1px solid rgba(42,58,82,.75); background:rgba(9,15,25,.91); backdrop-filter:blur(12px); }
+    .charts-head strong { display:block; font-size:18px; }
+    .charts-head span { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
+    .stream-chip { display:inline-flex !important; align-items:center; gap:7px; margin:0 !important; padding:7px 11px; border:1px solid rgba(71,213,140,.25); border-radius:999px; color:var(--ok) !important; background:rgba(71,213,140,.08); font-size:11px !important; font-weight:800; }
+    .stream-chip::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .chart-card { min-height:290px; padding:14px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.15); }
+    .chart-head { padding-bottom:10px; border-bottom:1px solid rgba(42,58,82,.75); }
+    .log { margin-top:4px; }
+    @media (max-width:1100px) { .live-config { grid-template-columns:1fr 1fr; } .live-config-group:first-child { grid-column:1/-1; } .live-brand { min-width:auto; } .live-brand div { display:none; } }
+    @media (max-width:760px) { .live-topbar { padding:10px 12px; } .live-brand { display:none; } .live-context { padding-left:0; border-left:0; } .live-context h1 { font-size:16px; white-space:nowrap; } .live-context small,.live-nav a:first-of-type { display:none; } .live-config { grid-template-columns:1fr; padding:12px; } .live-config-group:first-child { grid-column:auto; } main { grid-template-columns:1fr; overflow:auto; } aside { max-height:48vh; border-right:0; border-bottom:1px solid var(--line); } .charts { overflow:visible; grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
-  <header>
-    <h1>DCIM Live</h1>
-    <span class="chip">SNMP realtime</span>
-    <div class="row">
-      <label>Manager</label>
-      <input id="managerUrl" placeholder="http://localhost:8080" />
-      <label>MQTT WS</label>
-      <input id="mqttUrl" value="ws://localhost:9001/mqtt" />
-      <label>Topic</label>
-      <input id="topic" value="dcim/sensor/realtime" />
-    </div>
-    <div class="row">
-      <label>ID</label>
-      <input id="username" placeholder="username" />
-      <label>PW</label>
-      <input id="password" type="password" placeholder="password" />
-      <button id="loginBtn" type="button">로그인</button>
-      <span id="authStatus" class="chip">미로그인</span>
-    </div>
-    <div class="row">
-      <span class="dot" id="mqttDot"></span>
-      <span id="mqttStatus">MQTT 미연결</span>
-      <button id="mqttBtn" class="ghost" type="button">MQTT 연결</button>
-      <button id="applyBtn" type="button">선택 적용 (수집 시작)</button>
-      <button id="stopBtn" class="danger" type="button">수집 중지</button>
-    </div>
+  <header class="live-header">
+    <div class="live-topbar"><div class="live-brand"><span class="live-mark">D</span><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div><div class="live-context"><small>REALTIME WORKSPACE</small><h1>실시간 텔레메트리</h1></div><div class="live-nav"><span id="authStatus" class="chip">미로그인</span><a href="/widget-dashboard.html">대시보드</a><a href="/ops-console.html">운영 콘솔 ↗</a></div></div>
+    <section class="live-config">
+      <div class="live-config-group"><p class="live-config-title">Connection</p><div class="row"><span class="live-field"><label>Manager 서버</label><input id="managerUrl" placeholder="http://localhost:8080" /></span><span class="live-field"><label>MQTT WebSocket</label><input id="mqttUrl" value="ws://localhost:9001/mqtt" /></span><span class="live-field"><label>구독 Topic</label><input id="topic" value="dcim/sensor/realtime" /></span></div></div>
+      <div class="live-config-group"><p class="live-config-title">Authentication</p><div class="row"><span class="live-field"><label>아이디</label><input id="username" placeholder="username" /></span><span class="live-field"><label>비밀번호</label><input id="password" type="password" placeholder="password" /></span><button id="loginBtn" type="button">로그인</button></div></div>
+      <div class="live-config-group"><p class="live-config-title">Realtime session</p><div class="row"><div class="session-status"><span class="dot" id="mqttDot"></span><span id="mqttStatus">MQTT 미연결</span></div><button id="mqttBtn" class="ghost" type="button">연결</button><button id="applyBtn" type="button">수집 시작</button><button id="stopBtn" class="danger" type="button">중지</button></div></div>
   </header>
   <main>
     <aside>
-      <p class="panel-title">장비 / Point</p>
-      <div class="row" style="margin-bottom:8px">
+      <div class="target-head"><div><p class="panel-title">측정 대상 선택</p><p>실시간으로 확인할 장비와 Point를 고르세요.</p></div><span id="selectedCount" class="chip">0 선택</span></div>
+      <div class="target-actions">
         <button id="reloadBtn" class="ghost" type="button">목록 새로고침</button>
         <button id="allBtn" class="ghost" type="button">전체 선택</button>
         <button id="noneBtn" class="ghost" type="button">선택 해제</button>
@@ -118,6 +143,7 @@
       <div id="devices"><p class="empty">로그인 후 목록을 불러오세요.</p></div>
     </aside>
     <section class="charts" id="charts">
+      <div class="charts-head"><div><strong>Live signal</strong><span>수집 중인 Point의 최근 90개 값을 확인합니다.</span></div><span class="stream-chip">STREAM READY</span></div>
       <p class="empty" id="chartEmpty">point를 고른 뒤 수집을 시작하면 그래프가 생깁니다.</p>
       <div class="log" id="log"></div>
     </section>
@@ -214,6 +240,7 @@
           `).join("")}
         </article>
       `).join("");
+      updateSelectedCount();
     }
 
     function escapeHtml(value) {
@@ -243,6 +270,7 @@
           if (box) box.checked = true;
         }
       }
+      updateSelectedCount();
       ensureCharts(selectedKeys());
     }
 
@@ -252,6 +280,11 @@
 
     function setAll(checked) {
       document.querySelectorAll("input[data-key]").forEach((el) => { el.checked = checked; });
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      $("selectedCount").textContent = `${selectedKeys().length} 선택`;
     }
 
     async function applySelection() {
@@ -268,6 +301,7 @@
     async function stopSelection() {
       await api("/api/manager/live/selection", { method: "DELETE" });
       document.querySelectorAll("input[data-key]").forEach((el) => { el.checked = false; });
+      updateSelectedCount();
       log("수집 중지");
     }
 
@@ -408,12 +442,15 @@
     $("applyBtn").addEventListener("click", () => applySelection().catch((err) => log("적용 실패: " + err.message)));
     $("stopBtn").addEventListener("click", () => stopSelection().catch((err) => log("중지 실패: " + err.message)));
     $("mqttBtn").addEventListener("click", connectMqtt);
+    $("devices").addEventListener("change", (event) => {
+      if (event.target.matches("input[data-key]")) updateSelectedCount();
+    });
 
     setAuthStatus();
-    connectMqtt();
     if (state.token) {
       loadDevices().catch((err) => log("목록 실패: " + err.message));
     }
+    connectMqtt();
   </script>
 </body>
 </html>

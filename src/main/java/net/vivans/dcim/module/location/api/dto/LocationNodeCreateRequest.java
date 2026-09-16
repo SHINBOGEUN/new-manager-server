@@ -14,6 +14,12 @@ public record LocationNodeCreateRequest(
 
         @Schema(description = "노드 이름", example = "컨테이너 A")
         @NotBlank(message = "name must not be empty")
-        String name
+        String name,
+
+        @Schema(description = "Rack 최대 U 용량 (Rack이 아닌 위치는 비워둠)", example = "42")
+        Integer rackUCapacity
 ) {
+    public LocationNodeCreateRequest(String parentCode, Integer locationTypeId, String name) {
+        this(parentCode, locationTypeId, name, null);
+    }
 }

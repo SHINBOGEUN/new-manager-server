@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,6 +34,12 @@ public class Device extends BaseEntity {
 
     /** PDU Path 피드 (A/B/C…). 차트 by_path 그룹 키 */
     public static final String LOCATION_PATH_GROUP_KEY = "LOCATION_PATH";
+    public static final String ASSET_STATUS_GROUP_KEY = "ASSET_STATUS";
+    public static final String ASSET_STATUS_ACTIVE = "ACTIVE";
+    public static final String ASSET_STATUS_INACTIVE = "INACTIVE";
+    public static final String ASSET_STATUS_MAINTENANCE = "MAINTENANCE";
+    public static final String ASSET_STATUS_FAULT = "FAULT";
+    public static final String ASSET_STATUS_RETIRED = "RETIRED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,6 +66,10 @@ public class Device extends BaseEntity {
 
     @Column(nullable = false)
     private boolean enabled;
+
+    /** 자산 관리 속성은 device_asset 1:1 테이블에서 관리한다. */
+    @OneToOne(mappedBy = "device", fetch = FetchType.LAZY)
+    private DeviceAsset asset;
 
     @ManyToMany(mappedBy = "devices", fetch = FetchType.LAZY)
     private Set<DeviceGroup> deviceGroups = new LinkedHashSet<>();
@@ -143,6 +154,18 @@ public class Device extends BaseEntity {
         this.enabled = enabled;
     }
 
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description;
+    }
+
+    void attachAsset(DeviceAsset asset) {
+        this.asset = asset;
+    }
+
     public void reassignLocation(LocationNode locationNode) {
         validateLocationNode(locationNode);
         this.locationNode = locationNode;
@@ -179,4 +202,5 @@ public class Device extends BaseEntity {
             throw new IllegalArgumentException("name is required");
         }
     }
+
 }

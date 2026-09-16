@@ -30,23 +30,33 @@ public class LocationNode extends BaseEntity {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "rack_u_capacity")
+    private Integer rackUCapacity;
+
     private LocationNode(
             String code,
             LocationNode parent,
             CommonCode locationType,
-            String name
+            String name,
+            Integer rackUCapacity
     ) {
         this.code = code;
         this.parent = parent;
         this.locationType = locationType;
         this.name = name;
+        this.rackUCapacity = validateRackUCapacity(rackUCapacity);
     }
 
     public static LocationNode createRoot(String code, CommonCode locationType, String name) {
         validateCode(code);
         validateLocationType(locationType);
         validateName(name);
-        return new LocationNode(code, null, locationType, name);
+        return new LocationNode(code, null, locationType, name, null);
+    }
+
+    public static LocationNode createRoot(String code, CommonCode locationType, String name, Integer rackUCapacity) {
+        validateCode(code); validateLocationType(locationType); validateName(name);
+        return new LocationNode(code, null, locationType, name, rackUCapacity);
     }
 
     public static LocationNode createChild(
@@ -61,7 +71,13 @@ public class LocationNode extends BaseEntity {
         validateCode(code);
         validateLocationType(locationType);
         validateName(name);
-        return new LocationNode(code, parent, locationType, name);
+        return new LocationNode(code, parent, locationType, name, null);
+    }
+
+    public static LocationNode createChild(String code, LocationNode parent, CommonCode locationType, String name, Integer rackUCapacity) {
+        if (parent == null) throw new IllegalArgumentException("parent is required");
+        validateCode(code); validateLocationType(locationType); validateName(name);
+        return new LocationNode(code, parent, locationType, name, rackUCapacity);
     }
 
     public void update(CommonCode locationType, String name) {
@@ -69,6 +85,11 @@ public class LocationNode extends BaseEntity {
         validateName(name);
         this.locationType = locationType;
         this.name = name;
+    }
+
+    public void update(CommonCode locationType, String name, Integer rackUCapacity) {
+        update(locationType, name);
+        this.rackUCapacity = validateRackUCapacity(rackUCapacity);
     }
 
     public void updateParent(LocationNode newParent) {
@@ -120,5 +141,12 @@ public class LocationNode extends BaseEntity {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("name is required");
         }
+    }
+
+    private static Integer validateRackUCapacity(Integer rackUCapacity) {
+        if (rackUCapacity != null && rackUCapacity < 1) {
+            throw new IllegalArgumentException("rackUCapacity must be at least 1");
+        }
+        return rackUCapacity;
     }
 }

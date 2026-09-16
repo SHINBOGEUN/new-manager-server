@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,16 +16,16 @@ import java.util.Optional;
 
 public interface DeviceSpringDataRepository extends JpaRepository<Device, Integer> {
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "asset", "asset.assetStatus", "deviceGroups"})
     Optional<Device> findById(Integer id);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "asset", "asset.assetStatus"})
     List<Device> findByLocationNode_Code(String locationNodeCode);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "asset", "asset.assetStatus"})
     List<Device> findByLocationNode_CodeIn(Collection<String> locationNodeCodes);
 
-    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "deviceGroups"})
+    @EntityGraph(attributePaths = {"deviceModel", "deviceModel.deviceType", "locationNode", "pathCode", "asset", "asset.assetStatus"})
     @Query("SELECT d FROM Device d " +
             "WHERE (:modelId IS NULL OR d.deviceModel.id = :modelId) " +
             "AND (:locationNodeCodes IS NULL OR d.locationNode.code IN :locationNodeCodes) " +
@@ -80,4 +81,8 @@ public interface DeviceSpringDataRepository extends JpaRepository<Device, Intege
             @Param("locationNodeCodes") Collection<String> locationNodeCodes,
             @Param("pageCode") String pageCode
     );
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Device d WHERE d.id = :id")
+    int deleteDirectlyById(@Param("id") Integer id);
 }

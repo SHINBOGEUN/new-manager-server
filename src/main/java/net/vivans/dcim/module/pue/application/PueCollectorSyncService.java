@@ -20,14 +20,16 @@ import java.util.*;
 public class PueCollectorSyncService {
  private final CollectorJobClient client; private final ObjectMapper mapper; private final DeviceModelSnmpPointRepository points; private final DeviceProtocolEndpointRepository endpoints; private final DeviceSnmpInstanceRepository instances; private final PueDefinitionRepository definitions;
  public void sync(PueDefinition d){
-  if(!client.isEnabled()){log.info("[COLLECTOR_SYNC_SKIP] type=PUE action=UPSERT definitionId={} reason=CLIENT_DISABLED",d.getId());return;}
-  log.info("[COLLECTOR_SYNC_START] type=PUE action={} definitionId={} version={}",d.isCollectionEnabled()?"UPSERT":"DELETE",d.getId(),d.getConfigVersion());
+  boolean hasDisabledSource=hasDisabledSource(d);
+  String action=d.isCollectionEnabled()&&!hasDisabledSource?"UPSERT":"DELETE";
+  if(!client.isEnabled()){log.info("[COLLECTOR_SYNC_SKIP] type=PUE action={} definitionId={} reason=CLIENT_DISABLED",action,d.getId());return;}
+  log.info("[COLLECTOR_SYNC_START] type=PUE action={} definitionId={} version={}",action,d.getId(),d.getConfigVersion());
   try{
-   if(!d.isCollectionEnabled()){client.deletePue(d.getId());log.info("[COLLECTOR_SYNC_END] type=PUE action=DELETE definitionId={}",d.getId());return;}
+   if(!d.isCollectionEnabled()||hasDisabledSource){client.deletePue(d.getId());log.info("[COLLECTOR_SYNC_END] type=PUE action=DELETE definitionId={} reason={}",d.getId(),hasDisabledSource?"DISABLED_SOURCE":"COLLECTION_DISABLED");return;}
    client.upsertPue(d.getId(),mapper.writeValueAsString(spec(d)));
    log.info("[COLLECTOR_SYNC_END] type=PUE action=UPSERT definitionId={} sourceCount={}",d.getId(),d.resolvedSources().size());
   } catch(Exception e){
-   log.warn("[COLLECTOR_SYNC_ERROR] type=PUE action={} definitionId={} exception={} message={}",d.isCollectionEnabled()?"UPSERT":"DELETE",d.getId(),e.getClass().getSimpleName(),e.getMessage());
+   log.warn("[COLLECTOR_SYNC_ERROR] type=PUE action={} definitionId={} exception={} message={}",action,d.getId(),e.getClass().getSimpleName(),e.getMessage());
    throw new IllegalStateException("PUE collector sync failed: "+e.getMessage(),e);
   }
  }
@@ -38,6 +40,7 @@ public class PueCollectorSyncService {
   catch(Exception e){log.warn("[COLLECTOR_SYNC_ERROR] type=PUE action=DELETE definitionId={} exception={} message={}",id,e.getClass().getSimpleName(),e.getMessage());throw new IllegalStateException("PUE collector delete failed: "+e.getMessage(),e);}
  }
  public void repushActiveDefinitions(){if(!client.isEnabled())return;for(PueDefinition definition:definitions.findAllByCollectionEnabled(true)){try{sync(definition);log.info("PUE collector job repushed: definitionId={}",definition.getId());}catch(Exception e){log.warn("PUE collector job repush failed: definitionId={}, reason={}",definition.getId(),e.getMessage());}}}
+ private boolean hasDisabledSource(PueDefinition definition){return definition.resolvedSources().stream().anyMatch(source->!source.device().isEnabled());}
  private Spec spec(PueDefinition d){List<Source> result=new ArrayList<>();for(PueDefinition.SourceDefinition s:d.resolvedSources()){DeviceModelSnmpPoint p=points.findAllEnabledByDeviceModelIds(Set.of(s.device().getDeviceModel().getId())).stream().filter(x->x.getName().equalsIgnoreCase(s.pointName())).findFirst().orElseThrow(()->new IllegalArgumentException("PUE source must be enabled SNMP point: "+s.pointName()));DeviceProtocolEndpoint e=endpoints.findAllByDeviceIdOrderByIdAsc(s.device().getId()).stream().filter(x->x.isEnabled()&&"snmp".equalsIgnoreCase(x.getProtocolType().getCode())).findFirst().orElseThrow(()->new IllegalArgumentException("PUE source has no enabled SNMP endpoint: "+s.device().getId()));Integer instance=instances.findByEndpointId(e.getId()).map(DeviceSnmpInstance::getInstanceId).orElse(null);String oid=p.resolveOid(instance);if(oid==null)throw new IllegalArgumentException("PUE source missing SNMP instance: "+s.device().getId());result.add(new Source(s.device().getId(),e.getHost(),e.getPort(),s.pointName(),oid,p.getScale(),s.role().name()));}return new Spec(d.getId(),d.getConfigVersion(),d.getCalculationCron(),"public",2000,1,result);}
  record Spec(Integer pueDefinitionId,Integer configVersion,String cronExpression,String community,int timeoutMs,int retries,List<Source> sources){} record Source(Integer deviceId,String host,int port,String pointName,String oid,Double scale,String role){}
 }

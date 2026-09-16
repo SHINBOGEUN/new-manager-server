@@ -49,5 +49,7 @@ public interface DeviceRepository {
 
     void flush();
 
+    int deleteDirectlyById(Integer id);
+
     void delete(Device device);
 }

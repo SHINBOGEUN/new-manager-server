@@ -15,6 +15,7 @@ public record LocationNodeResponse(
         String parentCode,
         Integer locationTypeId,
         String name,
+        Integer rackUCapacity,
         List<LocationNodeResponse> children
 ) {
 
@@ -28,6 +29,7 @@ public record LocationNodeResponse(
                 node.getParent() != null ? node.getParent().getCode() : null,
                 node.getLocationType().getId(),
                 node.getName(),
+                node.getRackUCapacity(),
                 children
         );
     }
