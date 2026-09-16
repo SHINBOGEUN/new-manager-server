@@ -65,7 +65,7 @@ public class DeviceEndpointModbusController {
 
     @DeleteMapping
     @Operation(summary = "Modbus 엔드포인트 설정 삭제 API",
-            description = "endpoint의 modbus 설정 행 삭제. 미등록이면 404.")
+            description = "Modbus 설정과 소속 reading을 모두 삭제합니다. 공통 endpoint는 유지하며, 미등록이면 404.")
     public ResponseEntity<ApiResponse<Integer>> deleteEndpointModbus(
             @Parameter(description = "장비 ID") @PathVariable Integer deviceId,
             @Parameter(description = "엔드포인트 ID") @PathVariable Integer endpointId

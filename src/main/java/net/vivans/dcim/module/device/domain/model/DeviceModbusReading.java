@@ -35,7 +35,7 @@ public class DeviceModbusReading extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "endpoint_id", nullable = false)
-    private DeviceProtocolEndpoint endpoint;
+    private DeviceEndpointModbus endpointModbus;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "point_id", nullable = false)
@@ -59,7 +59,7 @@ public class DeviceModbusReading extends BaseEntity {
     private boolean enabled;
 
     private DeviceModbusReading(
-            DeviceProtocolEndpoint endpoint,
+            DeviceEndpointModbus endpointModbus,
             DeviceModelModbusPoint point,
             int unitId,
             int address,
@@ -67,14 +67,14 @@ public class DeviceModbusReading extends BaseEntity {
             String pointName,
             boolean enabled
     ) {
-        validateEndpoint(endpoint);
+        validateEndpointModbus(endpointModbus);
         validatePoint(point);
         validateUnitId(unitId);
         validateAddress(address, point);
         validateTargetDevice(targetDevice);
         validatePointName(pointName);
 
-        this.endpoint = endpoint;
+        this.endpointModbus = endpointModbus;
         this.point = point;
         this.unitId = unitId;
         this.address = address;
@@ -84,7 +84,7 @@ public class DeviceModbusReading extends BaseEntity {
     }
 
     public static DeviceModbusReading create(
-            DeviceProtocolEndpoint endpoint,
+            DeviceEndpointModbus endpointModbus,
             DeviceModelModbusPoint point,
             int unitId,
             int address,
@@ -93,7 +93,7 @@ public class DeviceModbusReading extends BaseEntity {
             boolean enabled
     ) {
         return new DeviceModbusReading(
-                endpoint,
+                endpointModbus,
                 point,
                 unitId,
                 address,
@@ -111,7 +111,7 @@ public class DeviceModbusReading extends BaseEntity {
             String pointName,
             boolean enabled
     ) {
-        validateEndpoint(this.endpoint);
+        validateEndpointModbus(this.endpointModbus);
         validatePoint(point);
         validateUnitId(unitId);
         validateAddress(address, point);
@@ -126,13 +126,13 @@ public class DeviceModbusReading extends BaseEntity {
         this.enabled = enabled;
     }
 
-    private static void validateEndpoint(DeviceProtocolEndpoint endpoint) {
-        if (endpoint == null) {
+    private static void validateEndpointModbus(DeviceEndpointModbus endpointModbus) {
+        if (endpointModbus == null) {
             throw new IllegalArgumentException("endpoint is required");
         }
 
         if (!MODBUS_PROTOCOL_CODE.equals(
-                endpoint.getProtocolType().getCode()
+                endpointModbus.getEndpoint().getProtocolType().getCode()
         )) {
             throw new IllegalArgumentException(
                     "endpoint protocol must be modbus"

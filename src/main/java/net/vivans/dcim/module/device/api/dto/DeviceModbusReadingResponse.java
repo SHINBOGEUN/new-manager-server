@@ -18,8 +18,8 @@ public record DeviceModbusReadingResponse(
             DeviceModbusReading reading) {
         return new DeviceModbusReadingResponse(
                 reading.getId(),
-                reading.getEndpoint().getId(),
-                reading.getEndpoint().getDevice().getId(),
+                reading.getEndpointModbus().getEndpointId(),
+                reading.getEndpointModbus().getEndpoint().getDevice().getId(),
                 reading.getPoint().getId(),
                 reading.getUnitId(),
                 reading.getAddress(),

@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `device_modbus_reading` (
     `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '매핑 ID',
-    `endpoint_id` int(11) NOT NULL COMMENT 'device_protocol_endpoint.id — 수집 원본 장비의 접속점',
+    `endpoint_id` int(11) NOT NULL COMMENT 'device_endpoint_modbus.endpoint_id — 수집 원본 Modbus 설정',
     `point_id` int(11) NOT NULL COMMENT 'device_model_modbus_point.id — 자료형·레지스터 유형·배율 등 모델 공통 수집 설정',
     `unit_id` int(11) NOT NULL COMMENT '이 회선의 Modbus unit/slave ID (0~247)',
     `address` int(11) NOT NULL COMMENT '보정이 끝난 실제 Modbus 요청 시작 주소 (0~65535)',
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `device_modbus_reading` (
     KEY `idx_device_modbus_reading_endpoint_id` (`endpoint_id`),
     KEY `idx_device_modbus_reading_point_id` (`point_id`),
     KEY `idx_device_modbus_reading_target_device_id` (`target_device_id`),
-    CONSTRAINT `fk_device_modbus_reading_endpoint_id` FOREIGN KEY (`endpoint_id`) REFERENCES `device_protocol_endpoint` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_device_modbus_reading_modbus_endpoint_id` FOREIGN KEY (`endpoint_id`) REFERENCES `device_endpoint_modbus` (`endpoint_id`) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk_device_modbus_reading_point_id` FOREIGN KEY (`point_id`) REFERENCES `device_model_modbus_point` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT `fk_device_modbus_reading_target_device_id` FOREIGN KEY (`target_device_id`) REFERENCES `devices` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT `chk_device_modbus_reading_unit_id` CHECK (`unit_id` BETWEEN 0 AND 247),

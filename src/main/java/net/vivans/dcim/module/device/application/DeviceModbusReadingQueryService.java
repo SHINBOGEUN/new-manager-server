@@ -6,6 +6,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceEndpointModbus;
 import net.vivans.dcim.module.device.domain.model.DeviceModbusReading;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceEndpointModbusRepository;
@@ -41,7 +42,7 @@ public class DeviceModbusReadingQueryService {
 
         DeviceProtocolEndpoint endpoint = findEndpoint(deviceId, endpointId);
         validateModbusEndpoint(endpoint);
-        requireModbusConfig(endpointId);
+        DeviceEndpointModbus endpointModbus = requireModbusConfig(endpointId);
 
         DeviceModelModbusPoint point = findSourceModelPoint(
                 endpoint,
@@ -62,7 +63,7 @@ public class DeviceModbusReadingQueryService {
         boolean enabled = request.enabled() == null || request.enabled();
 
         DeviceModbusReading reading = DeviceModbusReading.create(
-                endpoint,
+                endpointModbus,
                 point,
                 request.unitId(),
                 request.address(),
@@ -166,12 +167,11 @@ public class DeviceModbusReadingQueryService {
         }
     }
 
-    private void requireModbusConfig(Integer endpointId) {
-        if (!endpointModbusRepository.existsByEndpointId(endpointId)) {
-            throw new EntityNotFoundException(
+    private DeviceEndpointModbus requireModbusConfig(Integer endpointId) {
+        return endpointModbusRepository.findByEndpointId(endpointId)
+                .orElseThrow(() -> new EntityNotFoundException(
                     "DeviceEndpointModbus not found for endpoint: " + endpointId
-            );
-        }
+                ));
     }
 
     private DeviceModelModbusPoint findSourceModelPoint(

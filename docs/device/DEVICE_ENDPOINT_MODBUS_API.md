@@ -36,7 +36,7 @@ Modbus 장비 식별은 **`host` + `port` + `unit_id`** 3요소로 이뤄집니�
 | 접속 (공통) | `device_protocol_endpoint` | `device_protocol_endpoint` |
 | 프로토콜 확장 | `device_snmp_instance` | **`device_endpoint_modbus`** |
 | 가변 주소 표현 | OID의 `{instanceId}` 치환 | `requires_instance` 플래그 |
-| 결과 라우팅 | 불필요 | `device_modbus_reading` (⬜ 미구현) |
+| 결과 라우팅 | 불필요 | `device_modbus_reading` (등록·수정·단건 삭제 구현) |
 
 ### 1.2 이번 범위
 
@@ -71,7 +71,8 @@ SNMP의 `instanceId`는 필수(≥1)지만, Modbus의 `unitId`는 **NULL을 허�
 | 프로토콜 | endpoint의 `protocolCode` = **`modbus`** |
 | UK | `endpoint_id` PK — Modbus endpoint당 **최대 1행** |
 | `unitId` | 선택. NULL이거나 **0~247** |
-| endpoint 삭제 | modbus 행 **CASCADE** |
+| endpoint 삭제 | modbus 행과 소속 reading **CASCADE** |
+| modbus 설정 삭제 | 소속 reading **CASCADE**, 공통 endpoint 유지 |
 
 ---
 
@@ -194,6 +195,12 @@ erDiagram
 
 ### 6.1 삭제 — `DELETE /api/manager/devices/{deviceId}/endpoints/{endpointId}/modbus`
 
+설정과 소속 `device_modbus_reading`을 DB FK의 `ON DELETE CASCADE`로 함께 삭제합니다.
+reading의 `endpoint_id`는 `device_endpoint_modbus.endpoint_id`를 참조합니다.
+공통 endpoint, 모델 point, 대상 장비와 기존 Influx 데이터는 삭제하지 않습니다.
+reading 단건 삭제는 `DELETE .../modbus/readings/{readingId}`이며 부모 설정은 유지됩니다.
+두 DELETE 모두 body는 없습니다. 운영 데이터 대신 테스트 장비로 검증합니다.
+
 **구현 상태:** ✅
 
 | 조건 | HTTP | 동작 |
@@ -264,7 +271,7 @@ erDiagram
 | `device_modbus_reading` (⬜) | `unit 1 → device 101 POWER`, `unit 3 → device 102 POWER` |
 
 회선마다 unit·주소·대상 장비가 달라서 이 테이블 한 행으로 표현할 수 없습니다.
-`device_modbus_reading` 매핑 테이블이 필요하며 **아직 미구현**입니다. → [BACKLOG](../BACKLOG.md) 1.7
+`device_modbus_reading`의 등록·수정·단건 삭제가 구현되어 있습니다. 수집 스크립트 생성은 별도 작업입니다.
 
 ---
 
@@ -298,3 +305,4 @@ erDiagram
 | 날짜 | 변경 |
 |------|------|
 | 2026-09-03 | 최초 작성 — `23_device_endpoint_modbus.sql`, endpoint 1:1 CRUD |
+| 2026-09-16 | Modbus 설정 → reading FK 및 연쇄 삭제 정책 반영 |

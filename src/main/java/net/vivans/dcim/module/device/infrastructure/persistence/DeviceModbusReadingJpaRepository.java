@@ -24,7 +24,7 @@ public class DeviceModbusReadingJpaRepository
     public List<DeviceModbusReading> findAllByEndpointIdOrderByIdAsc(
             Integer endpointId
     ) {
-        return springDataRepository.findAllByEndpoint_IdOrderByIdAsc(endpointId);
+        return springDataRepository.findAllByEndpointModbus_EndpointIdOrderByIdAsc(endpointId);
     }
 
     @Override
@@ -32,7 +32,7 @@ public class DeviceModbusReadingJpaRepository
             Integer id,
             Integer endpointId
     ) {
-        return springDataRepository.findByIdAndEndpoint_Id(id, endpointId);
+        return springDataRepository.findByIdAndEndpointModbus_EndpointId(id, endpointId);
     }
 
     @Override
@@ -41,7 +41,7 @@ public class DeviceModbusReadingJpaRepository
             int unitId,
             int address
     ) {
-        return springDataRepository.existsByEndpoint_IdAndUnitIdAndAddress(
+        return springDataRepository.existsByEndpointModbus_EndpointIdAndUnitIdAndAddress(
                 endpointId, unitId, address
         );
     }
@@ -53,7 +53,7 @@ public class DeviceModbusReadingJpaRepository
             int address,
             Integer id
     ) {
-        return springDataRepository.existsByEndpoint_IdAndUnitIdAndAddressAndIdNot(
+        return springDataRepository.existsByEndpointModbus_EndpointIdAndUnitIdAndAddressAndIdNot(
                 endpointId, unitId, address, id
         );
     }

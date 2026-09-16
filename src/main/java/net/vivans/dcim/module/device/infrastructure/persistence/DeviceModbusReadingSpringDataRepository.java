@@ -9,15 +9,15 @@ import java.util.Optional;
 
 public interface DeviceModbusReadingSpringDataRepository extends JpaRepository<DeviceModbusReading, Integer> {
 
-    @EntityGraph(attributePaths = {"endpoint", "point", "targetDevice"})
-    List<DeviceModbusReading> findAllByEndpoint_IdOrderByIdAsc(Integer endpointId);
+    @EntityGraph(attributePaths = {"endpointModbus", "endpointModbus.endpoint", "endpointModbus.endpoint.device", "point", "targetDevice"})
+    List<DeviceModbusReading> findAllByEndpointModbus_EndpointIdOrderByIdAsc(Integer endpointId);
 
-    @EntityGraph(attributePaths = {"endpoint", "point", "targetDevice"})
-    Optional<DeviceModbusReading> findByIdAndEndpoint_Id(Integer id, Integer endpointId);
+    @EntityGraph(attributePaths = {"endpointModbus", "endpointModbus.endpoint", "endpointModbus.endpoint.device", "point", "targetDevice"})
+    Optional<DeviceModbusReading> findByIdAndEndpointModbus_EndpointId(Integer id, Integer endpointId);
 
-    boolean existsByEndpoint_IdAndUnitIdAndAddress(Integer endpointId, int unitId, int address);
+    boolean existsByEndpointModbus_EndpointIdAndUnitIdAndAddress(Integer endpointId, int unitId, int address);
 
-    boolean existsByEndpoint_IdAndUnitIdAndAddressAndIdNot(Integer endpointId, int unitId, int address, Integer id);
+    boolean existsByEndpointModbus_EndpointIdAndUnitIdAndAddressAndIdNot(Integer endpointId, int unitId, int address, Integer id);
 
     boolean existsByTargetDevice_IdAndPointName(Integer targetDeviceId, String pointName);
 
