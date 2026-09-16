@@ -33,4 +33,5 @@ build/
 logs/
 upload/
 uploads/
+.env
 .tmp_last_extract/

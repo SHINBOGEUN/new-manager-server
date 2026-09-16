@@ -1,0 +1,112 @@
+  name: defog-dcim
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASS}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./sql/schema:/docker-entrypoint-initdb.d:ro
+      - ./sql/seed/model_catalog.sql:/docker-entrypoint-initdb.d/99_model_catalog.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u$$MARIADB_USER -p$$MARIADB_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  influxdb:
+    image: influxdb:2.7
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_ADMIN_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_ADMIN_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${MQTT_HOST_PORT:-1883}:1883"
+    volumes:
+      - ./docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+      - mqtt-log:/mosquitto/log
+
+  collector:
+    build:
+      context: ../new-collector-server
+      dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
+      args:
+        JAR_FILE: new-collector-server-1.0.0.jar
+    image: defog-collector:${APP_TAG:-1.0.0}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MQTT_CLIENT_ID: ${COLLECTOR_MQTT_CLIENT_ID}
+    depends_on:
+      mqtt:
+        condition: service_started
+    volumes:
+      - ${COLLECTOR_RUNTIME_PATH:-./runtime/collector}/log:/app/log
+
+  manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: new-manager-server-1.0.0.jar
+    image: defog-manager:${APP_TAG:-1.0.0}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${MANAGER_HOST_PORT:-8080}:8080"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+      collector:
+        condition: service_started
+    volumes:
+      - ${MANAGER_RUNTIME_PATH:-./runtime/manager}/log:/app/log
+      - ${MANAGER_RUNTIME_PATH:-./runtime/manager}/assets:/app/assets
+
+  sensor-data:
+    build:
+      context: ../new-sensor-data-server
+      dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
+      args:
+        JAR_FILE: new-sensor-data-server-1.0.0.jar
+    image: defog-sensor-data:${APP_TAG:-1.0.0}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MQTT_CLIENT_ID: ${SENSOR_DATA_MQTT_CLIENT_ID}
+    depends_on:
+      mqtt:
+        condition: service_started
+      influxdb:
+        condition: service_started
+      manager:
+        condition: service_started
+    volumes:
+      - ${SENSOR_DATA_RUNTIME_PATH:-./runtime/sensor-data}/log:/app/log
+
+volumes:
+  mariadb-data:
+  influxdb-data:
+  influxdb-config:
+  mqtt-data:
+  mqtt-log:
