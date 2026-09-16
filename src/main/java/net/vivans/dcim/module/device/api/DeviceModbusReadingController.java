@@ -11,6 +11,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingUpdateRequest;
 import net.vivans.dcim.module.device.application.DeviceModbusReadingQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -80,6 +81,26 @@ public class DeviceModbusReadingController {
                         readingId,
                         request
                 )
+        ));
+    }
+
+    @DeleteMapping("/{readingId}")
+    @Operation(
+            summary = "Modbus reading 삭제 API",
+            description = "회선 매핑 한 건을 삭제합니다. 없으면 404."
+    )
+    public ResponseEntity<ApiResponse<Integer>> deleteReading(
+            @Parameter(description = "수집 원본 장비 ID")
+            @PathVariable Integer deviceId,
+
+            @Parameter(description = "수집 원본 엔드포인트 ID")
+            @PathVariable Integer endpointId,
+
+            @Parameter(description = "device_modbus_reading.id")
+            @PathVariable Integer readingId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                readingQueryService.deleteReading(deviceId, endpointId, readingId)
         ));
     }
 }

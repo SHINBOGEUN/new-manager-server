@@ -123,6 +123,14 @@ public class DeviceModbusReadingQueryService {
         return DeviceModbusReadingResponse.from(saved);
     }
 
+    @Transactional
+    public Integer deleteReading(Integer deviceId, Integer endpointId, Integer readingId) {
+        findDevice(deviceId);
+        findEndpoint(deviceId, endpointId);
+        DeviceModbusReading reading = findReading(readingId, endpointId);
+        readingRepository.delete(reading);
+        return readingId;
+    }
 
     private DeviceModbusReading findReading(Integer readingId, Integer endpointId) {
         return readingRepository.findByIdAndEndpointId(readingId, endpointId)
