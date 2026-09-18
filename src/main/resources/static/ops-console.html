@@ -670,6 +670,7 @@
     .side button[data-tab="locations"]::before { content:"⌖"; }
     .side button[data-tab="models"]::before { content:"◇"; }
     .side button[data-tab="codes"]::before { content:"⌘"; }
+    .side button[data-tab="users"]::before { content:"♙"; }
     .side button[data-tab="notes"]::before { content:"?"; }
     .top-page-context { min-width:150px; display:flex; flex-direction:column; gap:2px; }
     .top-page-context span { color:#5f7693; font-size:9px; font-weight:800; letter-spacing:.13em; }
@@ -1019,6 +1020,8 @@
     <button type="button" data-tab="locations">위치<small>존 · Path · 랙</small></button>
     <button type="button" data-tab="models">장비 모델<small>OID · 측정 항목</small></button>
     <button type="button" data-tab="codes">공통코드<small>그룹 · 코드 값</small></button>
+    <div class="group">시스템</div>
+    <button type="button" data-tab="users">사용자 관리<small>계정 · 역할 분류</small></button>
     <button type="button" data-tab="notes">API 안내<small>콘솔 커버리지</small></button>
     <div class="side-footer"><span class="status-pulse"></span><div><strong>Manager Online</strong><small>Operations workspace</small></div></div>
   </aside>
@@ -2119,6 +2122,33 @@
       </div>
     </section>
 
+    <!-- USERS -->
+    <section class="panel" id="tab-users">
+      <h1 class="page-title">사용자 관리</h1>
+      <p class="page-desc">운영 계정을 생성하고 역할을 분류합니다. 현재 역할은 계정 분류용이며, 메뉴·API별 접근 제한은 권한 관리 단계에서 적용합니다.</p>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:12px">
+          <div><h2 style="margin:0">사용자 목록</h2><div class="muted" style="font-size:12px;margin-top:4px" id="userSummary">사용자를 불러오는 중입니다.</div></div>
+          <button type="button" class="ghost" id="userReload">새로고침</button>
+        </div>
+        <div style="overflow:auto;max-height:520px">
+          <table>
+            <thead><tr><th>사용자</th><th>역할</th><th>비밀번호 재설정</th><th>등록일</th><th>수정일</th><th>작업</th></tr></thead>
+            <tbody id="userBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>사용자 추가</h2>
+        <div class="fields">
+          <label class="field">아이디<input id="userCreateUsername" autocomplete="off" placeholder="예: operator01" /></label>
+          <label class="field">초기 비밀번호<input id="userCreatePassword" type="password" autocomplete="new-password" placeholder="8자 이상" /></label>
+          <label class="field">역할<select id="userCreateRole"><option value="ADMIN">ADMIN</option><option value="USER" selected>USER</option><option value="GUEST">GUEST</option></select></label>
+        </div>
+        <button type="button" class="primary" style="margin-top:12px" id="userCreate">사용자 등록</button>
+      </div>
+    </section>
+
     <!-- NOTES -->
     <section class="panel" id="tab-notes">
       <h1 class="page-title">API 안내</h1>
@@ -2129,6 +2159,7 @@
           <thead><tr><th>영역</th><th>콘솔</th><th>비고</th></tr></thead>
           <tbody>
             <tr><td>Auth</td><td><span class="chip ok">login · register</span></td><td>refresh/validate 미연결</td></tr>
+            <tr><td>사용자</td><td><span class="chip ok">계정 CRUD · 역할 분류</span></td><td>역할별 권한 제한은 후속 적용</td></tr>
             <tr><td>공통코드</td><td><span class="chip ok">그룹·코드 CRUD</span></td><td>공통코드 탭</td></tr>
             <tr><td>위치</td><td><span class="chip ok">트리 CRUD · DnD</span></td><td>bulk 미연결</td></tr>
             <tr><td>장비 모델</td><td><span class="chip ok">모델 CRUD · SNMP point CRUD</span></td><td>Modbus create는 API 예정으로 생략</td></tr>
@@ -2188,6 +2219,7 @@
       modelRequiresInstance: {},
       devices: [],
       assets: [],
+      users: [],
       rackLayouts: [],
       collectionStatus: null,
       operationsHealth: null,
@@ -2380,6 +2412,7 @@
       if (activeMenu) $("topPageTitle").textContent = activeMenu.childNodes[0]?.textContent.trim() || activeMenu.textContent.trim();
       document.body.classList.remove("side-open");
       if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
+      if (name === "users" && state.token) loadUsers().catch((e) => toast(e.message, true));
       if (name === "rack-overview" && state.token) loadRackOverview().catch((e) => toast(e.message, true));
       if (name === "collection-status" && state.token) {
         loadCollectionStatus().catch((e) => toast(e.message, true));
@@ -5554,6 +5587,89 @@
       $("cgName").value = "";
     }
 
+    const USER_ROLES = ["ADMIN", "USER", "GUEST"];
+
+    function formatUserDate(value) {
+      if (!value) return "–";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "–" : date.toLocaleString("ko-KR", {
+        year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    function userRoleClass(role) {
+      return role === "ADMIN" ? "warn" : role === "GUEST" ? "muted" : "ok";
+    }
+
+    function userRoleOptions(selected) {
+      return USER_ROLES.map((role) => `<option value="${role}"${role === selected ? " selected" : ""}>${role}</option>`).join("");
+    }
+
+    function renderUsers() {
+      const users = state.users || [];
+      $("userSummary").textContent = `${users.length}명 · ADMIN ${users.filter((user) => user.role === "ADMIN").length}명 · USER ${users.filter((user) => user.role === "USER").length}명 · GUEST ${users.filter((user) => user.role === "GUEST").length}명`;
+      $("userBody").innerHTML = users.length ? users.map((user) => `
+        <tr>
+          <td><b>${esc(user.username)}</b><div class="muted mono" style="font-size:11px">#${user.id}</div></td>
+          <td><select data-user-role="${user.id}" style="min-width:96px">${userRoleOptions(user.role || "USER")}</select><div style="margin-top:5px"><span class="chip ${userRoleClass(user.role)}">${esc(user.role || "USER")}</span></div></td>
+          <td><input type="password" data-user-password="${user.id}" autocomplete="new-password" placeholder="변경 시 8자 이상" style="min-width:150px" /></td>
+          <td class="muted">${esc(formatUserDate(user.createdDt))}</td>
+          <td class="muted">${esc(formatUserDate(user.updatedDt))}</td>
+          <td class="actions"><div class="row"><button type="button" class="primary" data-user-save="${user.id}" style="padding:5px 10px;font-size:12px">저장</button><button type="button" class="danger" data-user-delete="${user.id}" style="padding:5px 10px;font-size:12px">삭제</button></div></td>
+        </tr>`).join("") : '<tr><td colspan="6"><div class="empty">등록된 사용자가 없습니다.</div></td></tr>';
+      $("userBody").querySelectorAll("[data-user-save]").forEach((button) => {
+        button.onclick = () => saveUser(Number(button.dataset.userSave));
+      });
+      $("userBody").querySelectorAll("[data-user-delete]").forEach((button) => {
+        button.onclick = () => deleteUser(Number(button.dataset.userDelete));
+      });
+    }
+
+    async function loadUsers() {
+      state.users = await api("/api/manager/users");
+      renderUsers();
+    }
+
+    async function createUser() {
+      const username = $("userCreateUsername").value.trim();
+      const password = $("userCreatePassword").value;
+      if (!username || !password) return toast("아이디와 초기 비밀번호를 입력하세요", true);
+      try {
+        await api("/api/manager/users", {
+          method: "POST",
+          body: JSON.stringify({ username, password, role: $("userCreateRole").value }),
+        });
+        $("userCreateUsername").value = "";
+        $("userCreatePassword").value = "";
+        $("userCreateRole").value = "USER";
+        toast("사용자를 등록했습니다");
+        await loadUsers();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function saveUser(userId) {
+      const role = document.querySelector(`[data-user-role="${userId}"]`)?.value;
+      const password = document.querySelector(`[data-user-password="${userId}"]`)?.value || null;
+      try {
+        await api(`/api/manager/users/${userId}`, {
+          method: "PUT",
+          body: JSON.stringify({ role, password }),
+        });
+        toast("사용자 정보를 저장했습니다");
+        await loadUsers();
+      } catch (e) { toast(e.message, true); }
+    }
+
+    async function deleteUser(userId) {
+      const user = state.users.find((item) => Number(item.id) === userId);
+      if (!user || !confirm(`「${user.username}」 사용자를 삭제할까요?`)) return;
+      try {
+        await api(`/api/manager/users/${userId}`, { method: "DELETE" });
+        toast("사용자를 삭제했습니다");
+        await loadUsers();
+      } catch (e) { toast(e.message, true); }
+    }
+
     function updateStats() {
       $("statLoc").textContent = state.flatLocations.length;
       $("statModel").textContent = state.models.length;
@@ -5609,6 +5725,8 @@
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
     $("devReload").onclick = () => loadDevices().catch((e) => toast(e.message, true));
     $("assetReload").onclick = () => loadAssets().catch((e) => toast(e.message, true));
+    $("userReload").onclick = () => loadUsers().catch((e) => toast(e.message, true));
+    $("userCreate").onclick = createUser;
     $("assetFilterName").addEventListener("input", () => loadAssets().catch((e) => toast(e.message, true)));
     $("assetFilterStatus").addEventListener("change", () => loadAssets().catch((e) => toast(e.message, true)));
     $("csReload").onclick = () => loadCollectionStatus().catch((e) => toast(e.message, true));

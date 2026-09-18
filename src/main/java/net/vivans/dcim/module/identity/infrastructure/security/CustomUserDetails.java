@@ -2,6 +2,7 @@ package net.vivans.dcim.module.identity.infrastructure.security;
 
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.identity.domain.model.User;
+import net.vivans.dcim.module.identity.domain.model.UserRole;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,11 +17,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        String role = user.getRole();
-        if (role == null || role.isBlank()) {
-            return List.of();
-        }
-        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        String authority = "ROLE_" + UserRole.from(user.getRole()).name();
         return List.of(new SimpleGrantedAuthority(authority));
     }
 
