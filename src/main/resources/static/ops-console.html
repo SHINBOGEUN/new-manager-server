@@ -822,6 +822,16 @@
     .login-card input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
     .login-card #loginCardBtn { min-height:44px; }
     .login-card #registerCardBtn { min-height:44px; color:#d6e3f2; border-color:#334a64; background:#18263a; }
+    .register-modal { display:none; position:fixed; inset:0; z-index:250; place-items:center; padding:20px; background:rgba(3,10,20,.72); }
+    .register-modal.open { display:grid; }
+    .register-dialog { width:min(440px,100%); padding:26px; border:1px solid #304762; border-radius:16px; background:#101c2c; box-shadow:0 26px 80px rgba(0,0,0,.45); }
+    .register-dialog-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+    .register-dialog-head h2 { margin:0; color:#edf6ff; font-size:21px; }
+    .register-dialog-head p { margin:5px 0 0; color:#8da4be; font-size:12px; line-height:1.5; }
+    .register-dialog-head button { padding:4px 9px; color:#dbeafb; border-color:#3b536e; background:#17263a; font-size:20px; line-height:1; }
+    .register-dialog .field { color:#9fb4ca; }
+    .register-dialog input { min-height:43px; color:#edf6ff; border-color:#304761; background:#0a1421; }
+    .register-dialog input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
     @media (max-width:900px) { .login-experience { grid-template-columns:1fr; min-height:auto; } .login-promo { padding:32px; min-height:280px; } .login-copy h1 { font-size:34px; } .login-features,.login-foot { display:none; } .login-card { width:min(430px,calc(100% - 32px)); margin:24px auto 32px; } }
     @media (max-width:540px) { body:not(.is-authed) .content { padding:0; } .login-experience { min-height:100vh; border:0; border-radius:0; } .login-promo { min-height:220px; padding:26px 22px; } .login-copy h1 { font-size:28px; margin-bottom:10px; } .login-copy p { font-size:13px; } .login-card { margin:18px auto 26px; padding:24px 20px; } }
 
@@ -932,6 +942,13 @@
     html[data-theme="light"] .login-card .field { color:#657a91; }
     html[data-theme="light"] .login-card input { color:#172235; border-color:#cbd7e3; background:#f9fbfd; }
     html[data-theme="light"] .login-card #registerCardBtn { color:#334b63; border-color:#cbd7e3; background:#f3f6f9; }
+    html[data-theme="light"] .register-modal { background:rgba(27,48,69,.38); }
+    html[data-theme="light"] .register-dialog { border-color:#c9d8e5; background:#fff; box-shadow:0 26px 70px rgba(31,53,76,.22); }
+    html[data-theme="light"] .register-dialog-head h2 { color:#172c42; }
+    html[data-theme="light"] .register-dialog-head p,
+    html[data-theme="light"] .register-dialog .field { color:#60778e; }
+    html[data-theme="light"] .register-dialog-head button { color:#34516a; border-color:#c6d5e2; background:#f4f7fa; }
+    html[data-theme="light"] .register-dialog input { color:#17283a; border-color:#c9d7e4; background:#f9fbfd; }
     html[data-theme="light"] .login-foot .theme-toggle { color:#345168; border-color:#b9cedc; background:rgba(255,255,255,.65); }
     html[data-theme="light"] .operations-health-item { border-color:#d6e1ec; background:#f8fafc; }
     html[data-theme="light"] .operations-health-item strong { color:#1d3047; }
@@ -961,9 +978,6 @@
       <strong id="topPageTitle">한눈에 보기</strong>
     </div>
     <div class="top-auth">
-      <label class="field" style="min-width:160px">서버
-        <input id="managerUrl" placeholder="비우면 현재 서버" />
-      </label>
       <div class="login-inline" id="loginInline">
         <label class="field">아이디
           <input id="username" autocomplete="username" value="admin" />
@@ -1022,9 +1036,6 @@
       <h2>DCIM 운영 콘솔 로그인</h2>
       <p>운영 환경에 안전하게 접속합니다.</p>
       <div class="fields">
-        <label class="field full">서버 URL <span class="muted">(비우면 이 서버)</span>
-          <input id="loginManagerUrl" placeholder="http://localhost:8080" />
-        </label>
         <label class="field full">아이디
           <input id="loginUsername" autocomplete="username" value="admin" />
         </label>
@@ -1038,6 +1049,20 @@
       </div>
       <p id="loginError" class="bad" style="margin:12px 0 0;font-size:13px;display:none"></p>
       </div>
+    </div>
+
+    <div class="register-modal" id="registerModal" aria-hidden="true">
+      <section class="register-dialog" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+        <div class="register-dialog-head"><div><h2 id="registerTitle">회원가입</h2><p>운영 콘솔 접속에 사용할 계정을 만듭니다.</p></div><button type="button" id="registerClose" aria-label="닫기">×</button></div>
+        <div class="fields">
+          <label class="field full">아이디<input id="registerUsername" autocomplete="username" placeholder="아이디" /></label>
+          <label class="field full">비밀번호<input id="registerPassword" type="password" autocomplete="new-password" placeholder="비밀번호" /></label>
+          <label class="field full">비밀번호 확인<input id="registerPasswordConfirm" type="password" autocomplete="new-password" placeholder="비밀번호를 다시 입력" /></label>
+        </div>
+        <p class="muted" style="margin:12px 0 0;font-size:12px">가입 후 자동으로 로그인합니다.</p>
+        <div class="row" style="justify-content:flex-end;margin-top:18px"><button type="button" class="ghost" id="registerCancel">취소</button><button type="button" class="primary" id="registerSubmit">가입 후 로그인</button></div>
+        <p id="registerError" class="bad" style="display:none;margin:12px 0 0;font-size:13px"></p>
+      </section>
     </div>
 
     <!-- HOME -->
@@ -2153,7 +2178,9 @@
 
   <script>
     const state = {
-      token: sessionStorage.getItem("opsToken") || "",
+      // Access Token은 메모리에만 둔다. 페이지 재진입 시 HttpOnly Refresh Token 쿠키로 복구한다.
+      token: "",
+      refreshPromise: null,
       codes: {},
       codeGroups: [],
       models: [],
@@ -2221,17 +2248,11 @@
 
     applyTheme(localStorage.getItem("opsTheme") || "dark");
 
-    function defaultManagerUrl() {
-      if (location.protocol.startsWith("http") && (location.port === "8080" || !location.port)) return "";
-      return "http://localhost:8080";
-    }
-    $("managerUrl").value = localStorage.getItem("opsManagerUrl") ?? defaultManagerUrl();
     $("username").value = localStorage.getItem("opsUser") || "admin";
-    $("loginManagerUrl").value = $("managerUrl").value;
     $("loginUsername").value = $("username").value;
 
     function base() {
-      return ($("managerUrl").value || $("loginManagerUrl").value || "").replace(/\/$/, "");
+      return "";
     }
 
     function toast(msg, isErr) {
@@ -2256,15 +2277,57 @@
       if ($("loginError")) $("loginError").style.display = "none";
     }
 
+    function clearAuth() {
+      state.token = "";
+      setAuth();
+    }
+
+    async function refreshAccessToken() {
+      if (state.refreshPromise) return state.refreshPromise;
+      state.refreshPromise = (async () => {
+        try {
+          const res = await fetch(base() + "/api/manager/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.data?.accessToken) {
+            // 만료·폐기된 Refresh Token 쿠키도 정리해 다음 접속에서 반복 요청하지 않는다.
+            await fetch(base() + "/api/manager/auth/logout", {
+              method: "POST",
+              credentials: "same-origin",
+            }).catch(() => {});
+            return false;
+          }
+          state.token = json.data.accessToken;
+          setAuth();
+          return true;
+        } catch (_) {
+          return false;
+        } finally {
+          state.refreshPromise = null;
+        }
+      })();
+      return state.refreshPromise;
+    }
+
     async function api(path, options = {}) {
-      const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+      const { retryOnUnauthorized = true, ...requestOptions } = options;
+      const headers = { "Content-Type": "application/json", ...(requestOptions.headers || {}) };
       if (state.token) headers.Authorization = "Bearer " + state.token;
-      const res = await fetch(base() + path, { ...options, headers });
+      const res = await fetch(base() + path, {
+        ...requestOptions,
+        headers,
+        credentials: requestOptions.credentials || "same-origin",
+      });
       const json = await res.json().catch(() => ({}));
-      if (res.status === 401) {
-        state.token = "";
-        sessionStorage.removeItem("opsToken");
-        setAuth();
+      const isAuthRequest = path.startsWith("/api/manager/auth/");
+      if (res.status === 401 && retryOnUnauthorized && !isAuthRequest) {
+        if (await refreshAccessToken()) {
+          return api(path, { ...requestOptions, retryOnUnauthorized: false });
+        }
+        clearAuth();
       }
       if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
       return json.data;
@@ -2273,17 +2336,20 @@
     async function apiForm(path, formData) {
       const headers = {};
       if (state.token) headers.Authorization = "Bearer " + state.token;
-      const res = await fetch(base() + path, { method: "POST", headers, body: formData });
+      let res = await fetch(base() + path, { method: "POST", headers, body: formData, credentials: "same-origin" });
+      if (res.status === 401 && await refreshAccessToken()) {
+        const retryHeaders = { Authorization: "Bearer " + state.token };
+        res = await fetch(base() + path, { method: "POST", headers: retryHeaders, body: formData, credentials: "same-origin" });
+      }
       const json = await res.json().catch(() => ({}));
+      if (res.status === 401) clearAuth();
       if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
       return json.data;
     }
 
-    async function doLogin(username, password, managerUrl) {
-      if (managerUrl != null) $("managerUrl").value = managerUrl;
+    async function doLogin(username, password) {
       $("username").value = username;
       $("password").value = password;
-      localStorage.setItem("opsManagerUrl", $("managerUrl").value);
       localStorage.setItem("opsUser", username);
       const data = await api("/api/manager/auth/login", {
         method: "POST",
@@ -2291,7 +2357,6 @@
       });
       if (!data?.accessToken) throw new Error("토큰이 없습니다. 응답을 확인하세요.");
       state.token = data.accessToken;
-      sessionStorage.setItem("opsToken", state.token);
       setAuth();
       toast((data.username || username) + "님, 로그인했습니다");
       log("로그인 OK: " + (data.username || username));
@@ -2362,7 +2427,7 @@
 
     $("loginBtn").onclick = async () => {
       try {
-        await doLogin($("username").value, $("password").value, $("managerUrl").value);
+        await doLogin($("username").value, $("password").value);
       } catch (e) {
         toast("로그인 실패: " + e.message, true);
         log("로그인 실패: " + e.message);
@@ -2372,7 +2437,7 @@
       const err = $("loginError");
       try {
         err.style.display = "none";
-        await doLogin($("loginUsername").value, $("loginPassword").value, $("loginManagerUrl").value);
+        await doLogin($("loginUsername").value, $("loginPassword").value);
       } catch (e) {
         err.style.display = "block";
         err.textContent = "실패: " + e.message + " (계정이 없으면 회원가입을 먼저 하세요)";
@@ -2380,20 +2445,54 @@
         log("로그인 실패: " + e.message);
       }
     };
-    $("registerCardBtn").onclick = async () => {
-      const err = $("loginError");
-      const username = $("loginUsername").value.trim();
-      const password = $("loginPassword").value;
+
+    function closeRegisterModal() {
+      $("registerModal").classList.remove("open");
+      $("registerModal").setAttribute("aria-hidden", "true");
+      $("registerError").style.display = "none";
+    }
+
+    function openRegisterModal() {
+      $("registerUsername").value = "";
+      $("registerPassword").value = "";
+      $("registerPasswordConfirm").value = "";
+      $("registerError").style.display = "none";
+      $("registerModal").classList.add("open");
+      $("registerModal").setAttribute("aria-hidden", "false");
+      $("registerUsername").focus();
+    }
+
+    $("registerCardBtn").onclick = openRegisterModal;
+    $("registerClose").onclick = closeRegisterModal;
+    $("registerCancel").onclick = closeRegisterModal;
+    $("registerModal").onclick = (event) => { if (event.target === $("registerModal")) closeRegisterModal(); };
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && $("registerModal").classList.contains("open")) closeRegisterModal();
+    });
+    $("registerSubmit").onclick = async () => {
+      const err = $("registerError");
+      const username = $("registerUsername").value.trim();
+      const password = $("registerPassword").value;
+      const passwordConfirm = $("registerPasswordConfirm").value;
+      if (!username || !password) {
+        err.textContent = "아이디와 비밀번호를 입력하세요.";
+        err.style.display = "block";
+        return;
+      }
+      if (password !== passwordConfirm) {
+        err.textContent = "비밀번호 확인이 일치하지 않습니다.";
+        err.style.display = "block";
+        return;
+      }
       try {
         err.style.display = "none";
-        $("managerUrl").value = $("loginManagerUrl").value;
-        localStorage.setItem("opsManagerUrl", $("managerUrl").value);
         await api("/api/manager/auth/register", {
           method: "POST",
           body: JSON.stringify({ username, password }),
         });
         toast("회원가입 완료 — 로그인합니다");
-        await doLogin(username, password, $("loginManagerUrl").value);
+        closeRegisterModal();
+        await doLogin(username, password);
       } catch (e) {
         err.style.display = "block";
         err.textContent = "회원가입 실패: " + e.message;
@@ -2415,11 +2514,15 @@
         $("loginPassword").focus();
       }
     };
-    $("logoutBtn").onclick = () => {
-      state.token = "";
-      sessionStorage.removeItem("opsToken");
-      setAuth();
-      toast("로그아웃했습니다");
+    $("logoutBtn").onclick = async () => {
+      try {
+        await api("/api/manager/auth/logout", { method: "POST" });
+      } catch (_) {
+        // 서버 연결이 끊겨도 이 브라우저의 Access Token은 즉시 폐기한다.
+      } finally {
+        clearAuth();
+        toast("로그아웃했습니다");
+      }
     };
 
     async function loadCodes() {
@@ -7226,17 +7329,15 @@
 
     setAuth();
     (async () => {
-      if (!state.token) {
+      if (!await refreshAccessToken()) {
+        clearAuth();
         $("loginPassword")?.focus();
         return;
       }
       try {
-        await api(`/api/manager/auth/validate?accessToken=${encodeURIComponent(state.token)}`);
         await boot();
       } catch (e) {
-        state.token = "";
-        sessionStorage.removeItem("opsToken");
-        setAuth();
+        clearAuth();
         log("세션 만료: 다시 로그인하세요");
         toast("세션이 만료되었습니다. 다시 로그인하세요", true);
       }

@@ -38,10 +38,10 @@ class AuthQueryServiceTest {
 
         TokenResponse response = authQueryService.validate("access-token");
 
+        // TokenResponse에는 refreshToken 필드가 없다 (Refresh Token은 HttpOnly 쿠키로만 내려간다).
         assertThat(response.username()).isEqualTo("testuser");
         assertThat(response.role()).isEqualTo("USER");
         assertThat(response.accessToken()).isEqualTo("access-token");
-        assertThat(response.refreshToken()).isEqualTo("stored-refresh-token");
     }
 
     @Test

@@ -19,6 +19,6 @@ public class AuthQueryService {
         String username = jwtProvider.extractUsername(accessToken);
         var user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        return TokenResponse.of(user, accessToken, user.getRefreshToken());
+        return TokenResponse.of(user, accessToken);
     }
 }

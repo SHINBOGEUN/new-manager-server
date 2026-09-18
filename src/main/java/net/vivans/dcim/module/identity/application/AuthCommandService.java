@@ -27,7 +27,7 @@ public class AuthCommandService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public TokenResponse login(String username, String password) {
+    public AuthTokenIssue login(String username, String password) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
@@ -41,7 +41,7 @@ public class AuthCommandService {
         user.updateRefreshToken(refreshToken);
         userRepository.save(user);
 
-        return TokenResponse.of(user, accessToken, refreshToken);
+        return new AuthTokenIssue(TokenResponse.of(user, accessToken), refreshToken);
     }
 
     @Transactional
@@ -54,7 +54,7 @@ public class AuthCommandService {
     }
 
     @Transactional
-    public TokenResponse refresh(String refreshToken) {
+    public AuthTokenIssue refresh(String refreshToken) {
         User user = userRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
         CustomUserDetails userDetails = new CustomUserDetails(user);
@@ -68,6 +68,18 @@ public class AuthCommandService {
         user.updateRefreshToken(newRefreshToken);
         userRepository.save(user);
 
-        return TokenResponse.of(user, newAccessToken, newRefreshToken);
+        return new AuthTokenIssue(TokenResponse.of(user, newAccessToken), newRefreshToken);
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+        userRepository.findByRefreshToken(refreshToken)
+                .ifPresent(user -> {
+                    user.updateRefreshToken(null);
+                    userRepository.save(user);
+                });
     }
 }
