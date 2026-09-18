@@ -82,6 +82,15 @@ live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
 
+collection:
+  status:
+    # 수집 주기(cron) 대비 허용 지연·실패 기준. 프로토콜과 무관하게 동일하게 적용한다.
+    default-interval-seconds: ${COLLECTION_STATUS_DEFAULT_INTERVAL_SECONDS:900}
+    stale-multiplier: ${COLLECTION_STATUS_STALE_MULTIPLIER:2}
+    min-stale-seconds: ${COLLECTION_STATUS_MIN_STALE_SECONDS:300}
+    failure-multiplier: ${COLLECTION_STATUS_FAILURE_MULTIPLIER:6}
+    min-failure-seconds: ${COLLECTION_STATUS_MIN_FAILURE_SECONDS:1800}
+
 asset:
   image:
     storage-path: ${ASSET_IMAGE_STORAGE_PATH:./uploads/device-images}

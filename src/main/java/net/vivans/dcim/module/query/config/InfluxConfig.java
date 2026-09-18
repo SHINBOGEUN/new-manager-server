@@ -18,7 +18,7 @@ import java.time.Duration;
 
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(InfluxProperties.class)
+@EnableConfigurationProperties({InfluxProperties.class, CollectionStatusProperties.class})
 public class InfluxConfig {
 
     @Bean(destroyMethod = "close")

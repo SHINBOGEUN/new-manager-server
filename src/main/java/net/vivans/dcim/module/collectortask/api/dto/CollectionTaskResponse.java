@@ -1,5 +1,6 @@
 package net.vivans.dcim.module.collectortask.api.dto;
 
+import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecService;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTask;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 
@@ -21,10 +22,10 @@ public record CollectionTaskResponse(
         Instant updatedDt
 ) {
 
-    public static CollectionTaskResponse from(CollectionTask task) {
+    public static CollectionTaskResponse from(CollectionTask task, CollectionGroupSpecService specService) {
         List<CollectionTaskGroupResponse> groups = new ArrayList<>();
         for (CollectionTaskGroup group : task.getGroups()) {
-            groups.add(CollectionTaskGroupResponse.from(group));
+            groups.add(CollectionTaskGroupResponse.from(group, specService));
         }
         return new CollectionTaskResponse(
                 task.getId(),

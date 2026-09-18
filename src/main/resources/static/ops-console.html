@@ -1298,7 +1298,7 @@
     <!-- COLLECTION STATUS -->
     <section class="panel" id="tab-collection-status">
       <h1 class="page-title">수집 상태</h1>
-      <p class="page-desc">장비 등록, 수집 작업 그룹, InfluxDB 최신 저장값을 함께 확인합니다. 수집 주기의 2배(최소 5분)를 넘기면 지연으로 표시합니다.</p>
+      <p class="page-desc">장비 등록, 수집 작업 그룹, InfluxDB 최신 저장값을 함께 확인합니다. 수집 주기의 2배(최소 5분)를 넘기면 지연으로 표시합니다. SNMP·Modbus 등 프로토콜에 관계없이 같은 화면에서 확인합니다.</p>
       <div class="card" id="collectionOperationsCard">
         <div class="row" style="justify-content:space-between;align-items:flex-start">
           <div>
@@ -1328,14 +1328,15 @@
         <div class="row" style="justify-content:space-between">
           <div class="row">
             <input id="csFilterName" placeholder="장비명 · 위치 검색" style="min-width:180px" />
-            <select id="csFilterStatus"><option value="">모든 상태</option><option value="NORMAL">정상</option><option value="STALE">지연</option><option value="MISSING">데이터 없음</option><option value="NO_POINTS">측정항목 없음</option><option value="STOPPED">수집 중지</option><option value="UNREGISTERED">미등록</option><option value="DISABLED">장비 중지</option></select>
+            <select id="csFilterStatus"><option value="">모든 상태</option><option value="NORMAL">정상</option><option value="STALE">지연</option><option value="MISSING">데이터 없음</option><option value="NO_POINTS">설정 누락 · 미지원</option><option value="MODEL_MISMATCH">모델 불일치</option><option value="STOPPED">수집 중지</option><option value="UNREGISTERED">미등록</option><option value="DISABLED">장비 중지</option></select>
+            <select id="csFilterProtocol"><option value="">모든 프로토콜</option></select>
             <select id="csFilterModel"><option value="">모든 모델</option></select>
           </div>
           <button type="button" class="ghost" id="csReload">새로고침</button>
         </div>
         <div class="muted" id="csGeneratedAt" style="margin:12px 0 8px;font-size:12px"></div>
         <div class="table-wrap" style="max-height:650px"><table>
-          <thead><tr><th>장비</th><th>위치 / 모델</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 3개</span></th></tr></thead>
+          <thead><tr><th>장비</th><th>위치 / 모델</th><th>프로토콜</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 3개</span></th></tr></thead>
           <tbody id="csBody"></tbody>
         </table></div>
       </div>
@@ -3888,7 +3889,8 @@
         NORMAL: ["ok", "정상"],
         STALE: ["warn", "지연"],
         MISSING: ["bad", "데이터 없음"],
-        NO_POINTS: ["warn", "측정항목 없음"],
+        NO_POINTS: ["warn", "설정 누락 · 미지원"],
+        MODEL_MISMATCH: ["warn", "모델 불일치"],
         STOPPED: ["bad", "수집 중지"],
         UNREGISTERED: ["warn", "미등록"],
         DISABLED: ["", "장비 중지"],
@@ -3916,10 +3918,21 @@
       select.value = selected;
     }
 
+    function fillCollectionStatusProtocols() {
+      const select = $("csFilterProtocol");
+      const selected = select.value;
+      const devices = (state.collectionStatus && state.collectionStatus.devices) || [];
+      const protocols = [...new Set(devices.map((device) => device.protocol).filter(Boolean))].sort();
+      fillSelect(select, protocols.map((code) => ({ id: code, name: code.toUpperCase() })),
+        (protocol) => `<option value="${esc(protocol.id)}">${esc(protocol.name)}</option>`, "모든 프로토콜");
+      select.value = selected;
+    }
+
     function renderCollectionStatus() {
       const data = state.collectionStatus;
       if (!data) return;
       fillCollectionStatusModels();
+      fillCollectionStatusProtocols();
       const summary = data.summary || {};
       $("csTotal").textContent = summary.totalCount ?? 0;
       $("csNormal").textContent = summary.normalCount ?? 0;
@@ -3929,14 +3942,20 @@
 
       const query = $("csFilterName").value.trim().toLowerCase();
       const status = $("csFilterStatus").value;
+      const protocol = $("csFilterProtocol").value;
       const modelId = $("csFilterModel").value;
-      const devices = (data.devices || []).filter((device) => {
-        const text = [device.deviceName, device.locationName, device.locationCode, device.modelName, device.manufacturer]
-          .filter(Boolean).join(" ").toLowerCase();
-        return (!query || text.includes(query))
-          && (!status || device.status === status)
-          && (!modelId || String(device.modelId) === modelId);
-      });
+      // 문제 있는 상태를 우선 노출: 정상/장비 중지가 아닌 항목을 위로 정렬한다.
+      const issuePriority = (s) => (s === "NORMAL" || s === "DISABLED" ? 1 : 0);
+      const devices = (data.devices || [])
+        .filter((device) => {
+          const text = [device.deviceName, device.locationName, device.locationCode, device.modelName, device.manufacturer]
+            .filter(Boolean).join(" ").toLowerCase();
+          return (!query || text.includes(query))
+            && (!status || device.status === status)
+            && (!protocol || device.protocol === protocol)
+            && (!modelId || String(device.modelId) === modelId);
+        })
+        .sort((a, b) => issuePriority(b.status) - issuePriority(a.status));
       $("csBody").innerHTML = devices.map((device) => {
         const task = device.taskName
           ? `<b>${esc(device.taskName)}</b><div class="muted" style="font-size:11px">${esc(device.groupName || "기본 그룹")} · ${esc(device.cronExpression || "주기 미확인")}</div>`
@@ -3946,21 +3965,36 @@
           : `<span class="muted">저장값 없음</span><div class="muted" style="font-size:11px">측정항목 ${device.availablePointCount || 0}/${device.expectedPointCount || 0}</div>`;
         const values = (device.latestValues || []).map((value) =>
           `<span class="chip">${esc(value.pointName)} ${Number(value.value).toLocaleString(undefined, { maximumFractionDigits: 3 })}${value.unit ? ` ${esc(value.unit)}` : ""}</span>`).join(" ") || '<span class="muted">표시할 최신값 없음</span>';
+        const detail = device.technicalDetail
+          ? `<button type="button" class="ghost" data-detail-toggle style="font-size:10px;padding:1px 6px;margin-top:3px">상세</button><div class="muted mono" style="font-size:10px;margin-top:3px;display:none;white-space:pre-wrap" data-detail>${esc(device.technicalDetail)}</div>`
+          : "";
+        // 모델 불일치 상태는 상세를 펼치지 않아도 기대/실제 모델을 바로 보여준다.
+        const modelMismatchNote = device.status === "MODEL_MISMATCH"
+          ? `<div class="muted" style="font-size:11px;margin-top:2px">기대 모델: ${esc(device.expectedModelName || "–")}${device.expectedModelId != null ? ` (#${device.expectedModelId})` : ""} · 실제 모델: ${esc(device.modelName || "–")}${device.modelId != null ? ` (#${device.modelId})` : ""}</div>`
+          : "";
         return `<tr class="clickable" data-collection-device-id="${device.deviceId}" title="클릭하여 자산 상세 보기">
           <td><b>${esc(device.deviceName)}</b><div class="muted mono">#${device.deviceId}</div></td>
           <td>${esc(device.locationName || device.locationCode || "미배정")}<div class="muted" style="font-size:11px">${esc(device.manufacturer || "")} ${esc(device.modelName || "")}</div></td>
+          <td>${device.protocol ? `<span class="chip">${esc(device.protocol.toUpperCase())}</span>` : '<span class="muted">–</span>'}</td>
           <td>${task}</td>
-          <td>${collectionStatusChip(device.status)}<div class="muted" style="font-size:11px;margin-top:4px">${esc(device.statusMessage || "")}</div></td>
+          <td>${collectionStatusChip(device.status)}<div class="muted" style="font-size:11px;margin-top:4px">${esc(device.statusMessage || "")}</div>${modelMismatchNote}${detail}</td>
           <td>${latest}</td><td>${values}</td>
         </tr>`;
-      }).join("") || '<tr><td colspan="6"><div class="empty">조건에 맞는 장비가 없습니다.</div></td></tr>';
+      }).join("") || '<tr><td colspan="7"><div class="empty">조건에 맞는 장비가 없습니다.</div></td></tr>';
       $("csBody").querySelectorAll("[data-collection-device-id]").forEach((row) => {
         row.onclick = () => openAssetPreview(Number(row.dataset.collectionDeviceId));
+      });
+      $("csBody").querySelectorAll("[data-detail-toggle]").forEach((button) => {
+        button.onclick = (event) => {
+          event.stopPropagation();
+          const detailEl = button.nextElementSibling;
+          if (detailEl) detailEl.style.display = detailEl.style.display === "none" ? "block" : "none";
+        };
       });
     }
 
     async function loadCollectionStatus() {
-      $("csBody").innerHTML = '<tr><td colspan="6"><div class="empty">수집 상태를 조회하는 중입니다.</div></td></tr>';
+      $("csBody").innerHTML = '<tr><td colspan="7"><div class="empty">수집 상태를 조회하는 중입니다.</div></td></tr>';
       state.collectionStatus = await api("/api/manager/query/collection-status?lookbackHours=168");
       renderCollectionStatus();
     }
@@ -5111,6 +5145,29 @@
       });
     }
 
+    function excludedDevicesHtml(t, g) {
+      // DB에는 이 그룹에 연결돼 있지만(collection_task_device), 지금 이 그룹의 실제 수집
+      // 대상(spec)에는 없는 장비. 모델 불일치가 대표 사례지만 사유는 서버가 그대로 내려준다.
+      const excluded = (g.devices || []).filter((d) => d.excluded);
+      if (!excluded.length) return "";
+      const rows = excluded.map((d) => `
+        <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)">
+          <div style="font-size:12px;line-height:1.6">
+            <b>${esc(d.deviceName)}</b> <span class="muted mono">#${d.deviceId}</span><br>
+            <span class="muted">현재 모델: ${esc(d.modelName || "확인 필요")} · 기대 모델: ${esc(t.modelName || "확인 필요")}</span><br>
+            <span class="muted">제외 사유: ${esc(d.exclusionReason || "확인 필요")}</span>
+          </div>
+          <button type="button" class="danger" data-remove-excluded-device="${d.deviceId}" data-task-id="${t.id}" data-group-id="${g.id}" data-device-name="${esc(d.deviceName)}" style="padding:4px 8px;font-size:12px;white-space:nowrap">그룹에서 제거</button>
+        </div>`).join("");
+      return `<div class="field full" style="margin-top:8px">
+        <div class="row" style="align-items:center;gap:6px;margin-bottom:4px">
+          <span class="chip warn" style="font-size:11px">연결 정리 필요 · 수집 제외 장비</span>
+          <span class="muted" style="font-size:11px">DB에는 연결돼 있지만 현재 수집 대상에서는 제외된 장비입니다</span>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:8px;padding:0 8px;background:var(--surface2)">${rows}</div>
+      </div>`;
+    }
+
     async function loadTasks() {
       state.tasks = await api("/api/manager/collector/tasks") || [];
       if (state.tasks.content) state.tasks = state.tasks.content;
@@ -5154,6 +5211,7 @@
                   </div>
                 </label>
               </div>
+              ${excludedDevicesHtml(t, g)}
               <button type="button" class="primary" data-save-group="${g.id}" data-task-id="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 저장 (주기·장비)</button>
             </div>`;
           }).join("")}
@@ -5267,6 +5325,21 @@
           } catch (e) { toast(e.message, true); }
         };
       });
+      $("taskList").querySelectorAll("[data-remove-excluded-device]").forEach((btn) => {
+        btn.onclick = async () => {
+          const taskId = Number(btn.dataset.taskId);
+          const groupId = Number(btn.dataset.groupId);
+          const deviceId = Number(btn.dataset.removeExcludedDevice);
+          const deviceName = btn.dataset.deviceName || `#${deviceId}`;
+          if (!confirm(`"${deviceName}"(#${deviceId})을(를) 이 수집 그룹 연결에서 제거할까요?\n장비 자체·자산 정보·기존 InfluxDB 수집 데이터는 삭제되지 않습니다.`)) return;
+          try {
+            await removeExcludedDeviceFromGroup(taskId, groupId, deviceId);
+            toast("그룹 연결을 정리했습니다");
+            await loadTasks();
+            if (state.collectionStatus) await loadCollectionStatus();
+          } catch (e) { toast(e.message, true); }
+        };
+      });
       fillAttachTaskSelect();
       fillWizardTasks();
       fillSelect($("taskScript"), state.codes.PROTOCOL_TYPE || [], (c) =>
@@ -5275,9 +5348,13 @@
       await populateTaskGroupDevicePickers();
     }
 
-    function fillAttachTaskSelect() {
-      fillSelect($("attachTask"), state.tasks, (t) =>
-        `<option value="${t.id}">${esc(t.name)} · ${esc(t.modelName)}</option>`);
+    function fillAttachTaskSelect(modelId) {
+      // 장비가 선택된 상태라면 그 장비의 모델과 같은 수집 작업만 고를 수 있게 한다.
+      // (다른 모델의 작업에 잘못 연결하는 것을 화면에서부터 막는다 — 백엔드도 동일하게 거부함)
+      const tasks = modelId ? state.tasks.filter((t) => t.modelId === modelId) : state.tasks;
+      fillSelect($("attachTask"), tasks, (t) =>
+        `<option value="${t.id}">${esc(t.name)} · ${esc(t.modelName)}</option>`,
+        modelId ? "이 모델의 수집 작업 없음" : "장비를 먼저 선택하세요");
       $("attachTask").onchange = () => fillAttachGroups();
       fillAttachGroups();
     }
@@ -5288,9 +5365,12 @@
         `<option value="${g.id}">${esc(g.name)} (${esc(cronLabel(g.cronExpression))})</option>`);
     }
 
-    function fillWizardTasks() {
-      fillSelect($("wzTask"), state.tasks, (t) =>
-        `<option value="${t.id}">${esc(t.name)} · ${esc(t.modelName)}</option>`, "나중에 연결");
+    function fillWizardTasks(modelId) {
+      // 마법사에서 고른 모델과 같은 수집 작업만 노출한다.
+      const tasks = modelId ? state.tasks.filter((t) => t.modelId === modelId) : state.tasks;
+      fillSelect($("wzTask"), tasks, (t) =>
+        `<option value="${t.id}">${esc(t.name)} · ${esc(t.modelName)}</option>`,
+        modelId ? "이 모델의 수집 작업 없음 · 나중에 연결" : "모델을 먼저 선택하세요");
       $("wzTask").onchange = () => {
         const t = state.tasks.find((x) => x.id === Number($("wzTask").value));
         fillSelect($("wzGroup"), t?.groups || [], (g) =>
@@ -5301,11 +5381,7 @@
 
     function syncAttachFilters(modelId) {
       if (!modelId) return;
-      const match = state.tasks.find((t) => t.modelId === modelId);
-      if (match) {
-        $("attachTask").value = String(match.id);
-        fillAttachGroups();
-      }
+      fillAttachTaskSelect(modelId);
     }
 
     function fillPages() {
@@ -5553,6 +5629,7 @@
     };
     $("csFilterName").addEventListener("input", renderCollectionStatus);
     $("csFilterStatus").addEventListener("change", renderCollectionStatus);
+    $("csFilterProtocol").addEventListener("change", renderCollectionStatus);
     $("csFilterModel").addEventListener("change", renderCollectionStatus);
     $("assetSave").onclick = async () => {
       const detail = state.selectedAsset;
@@ -5940,7 +6017,9 @@
       const task = await api(`/api/manager/collector/tasks/${taskId}`);
       const group = (task.groups || []).find((g) => g.id === groupId);
       if (!group) throw new Error("주기 그룹을 찾을 수 없습니다");
-      const existing = (group.devices || []).map((d) => d.deviceId ?? d.id);
+      // 모델 불일치 등으로 이미 제외된 장비 id는 다시 보내지 않는다. 백엔드가 deviceIds 안의
+      // 모든 항목(기존 포함)을 모델 기준으로 검증하므로, 여기 남아 있으면 정상 장비 추가마저 실패한다.
+      const existing = (group.devices || []).filter((d) => !d.excluded).map((d) => d.deviceId ?? d.id);
       const deviceIds = Array.from(new Set([...existing, deviceId]));
       return api(`/api/manager/collector/tasks/${taskId}/groups/${groupId}`, {
         method: "PUT",
@@ -5950,6 +6029,14 @@
           deviceIds,
           active: group.active,
         }),
+      });
+    }
+
+    async function removeExcludedDeviceFromGroup(taskId, groupId, deviceId) {
+      // 그룹 전체를 다시 저장(PUT, 장비 목록 재검증)하지 않는다. 연결 1건만 지우는 전용
+      // API를 호출하므로 같은 그룹의 다른 장비 연결은 서버에서 아예 건드리지 않는다.
+      return api(`/api/manager/collector/tasks/${taskId}/groups/${groupId}/devices/${deviceId}`, {
+        method: "DELETE",
       });
     }
 
@@ -6102,11 +6189,7 @@
     $("wzModel").addEventListener("change", async () => {
       const modelId = Number($("wzModel").value);
       await updateInstanceUiForModel(modelId);
-      const match = state.tasks.find((t) => t.modelId === modelId);
-      if (match) {
-        $("wzTask").value = String(match.id);
-        $("wzTask").dispatchEvent(new Event("change"));
-      }
+      fillWizardTasks(modelId);
     });
 
     $("editDevModel").addEventListener("change", async () => {

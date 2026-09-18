@@ -53,13 +53,13 @@ public class CollectionTaskService {
     public List<CollectionTaskResponse> getTasks(Integer modelId, Integer scriptTypeId, Boolean active) {
         List<CollectionTaskResponse> responses = new ArrayList<>();
         for (CollectionTask task : collectionTaskRepository.findAll(modelId, scriptTypeId, active)) {
-            responses.add(CollectionTaskResponse.from(task));
+            responses.add(CollectionTaskResponse.from(task, collectionGroupSpecService));
         }
         return responses;
     }
 
     public CollectionTaskResponse getTask(Integer taskId) {
-        return CollectionTaskResponse.from(findTask(taskId));
+        return CollectionTaskResponse.from(findTask(taskId), collectionGroupSpecService);
     }
 
     @Transactional
@@ -79,7 +79,7 @@ public class CollectionTaskService {
         } else {
             collectionScriptSyncService.regenerateTask(task);
         }
-        return CollectionTaskResponse.from(task);
+        return CollectionTaskResponse.from(task, collectionGroupSpecService);
     }
 
     @Transactional
@@ -88,7 +88,7 @@ public class CollectionTaskService {
         task.update(request.name(), request.active());
         collectionTaskRepository.save(task);
         collectorSyncService.syncTaskToggle(task);
-        return CollectionTaskResponse.from(task);
+        return CollectionTaskResponse.from(task, collectionGroupSpecService);
     }
 
     @Transactional
@@ -105,7 +105,7 @@ public class CollectionTaskService {
         task.toggleActive();
         collectionTaskRepository.save(task);
         collectorSyncService.syncTaskToggle(task);
-        return CollectionTaskResponse.from(task);
+        return CollectionTaskResponse.from(task, collectionGroupSpecService);
     }
 
     @Transactional
@@ -127,7 +127,7 @@ public class CollectionTaskService {
         group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
         collectionTaskRepository.saveAndFlush(task);
         collectorSyncService.syncGroupSpec(group);
-        return CollectionTaskGroupResponse.from(group);
+        return CollectionTaskGroupResponse.from(group, collectionGroupSpecService);
     }
 
     @Transactional
@@ -143,7 +143,7 @@ public class CollectionTaskService {
         group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
         collectionTaskRepository.saveAndFlush(task);
         collectorSyncService.syncGroupSpec(group);
-        return CollectionTaskGroupResponse.from(group);
+        return CollectionTaskGroupResponse.from(group, collectionGroupSpecService);
     }
 
     @Transactional
@@ -156,6 +156,28 @@ public class CollectionTaskService {
         return groupId;
     }
 
+    /**
+     * 그룹-장비 연결 "한 건"만 제거한다. {@link #applyGroupUpdate}처럼 전체 deviceIds를
+     * 다시 검증(resolveDevices)하지 않으므로, 같은 그룹의 다른 장비 연결에는 전혀 영향을 주지
+     * 않는다. 모델이 다른(수집 대상에서 제외된) 연결을 정리할 때 이 메서드를 쓴다 — 정상
+     * 장비의 전체 그룹 편집(updateGroup)과는 별개의, 단건 삭제 전용 경로다.
+     */
+    @Transactional
+    public CollectionTaskGroupResponse removeGroupDevice(Integer taskId, Integer groupId, Integer deviceId) {
+        CollectionTask task = findTask(taskId);
+        CollectionTaskGroup group = findGroup(task, groupId);
+        if (!group.containsDevice(deviceId)) {
+            throw new EntityNotFoundException(
+                    "device " + deviceId + " is not connected to group " + groupId);
+        }
+        group.removeDevice(deviceId);
+        collectionTaskRepository.saveAndFlush(task);
+        group.updateGeneratedSpec(collectionGroupSpecService.generateJson(group));
+        collectionTaskRepository.saveAndFlush(task);
+        collectorSyncService.syncGroupSpec(group);
+        return CollectionTaskGroupResponse.from(group, collectionGroupSpecService);
+    }
+
     @Transactional
     public CollectionTaskGroupResponse toggleGroup(Integer taskId, Integer groupId) {
         CollectionTask task = findTask(taskId);
@@ -163,7 +185,7 @@ public class CollectionTaskService {
         group.toggleActive();
         collectionTaskRepository.save(task);
         collectorSyncService.syncGroupToggle(group);
-        return CollectionTaskGroupResponse.from(group);
+        return CollectionTaskGroupResponse.from(group, collectionGroupSpecService);
     }
 
     private void addGroups(CollectionTask task, List<CollectionTaskGroupRequest> groupRequests) {
