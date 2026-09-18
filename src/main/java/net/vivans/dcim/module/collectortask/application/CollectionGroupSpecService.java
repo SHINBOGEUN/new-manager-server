@@ -27,6 +27,8 @@ import java.util.List;
 public class CollectionGroupSpecService {
 
     public static final String SNMP_PROTOCOL_CODE = "snmp";
+    /** 장비 모델이 수집 작업(Task) 모델과 다를 때 남기는 skip 사유 마커. 프로토콜에 관계없이 공통으로 사용한다. */
+    public static final String MODEL_MISMATCH_MARKER = "model mismatch";
     private static final String DEFAULT_COMMUNITY = "public";
     private static final int DEFAULT_TIMEOUT_MS = 2000;
     private static final int DEFAULT_RETRIES = 1;
@@ -84,8 +86,16 @@ public class CollectionGroupSpecService {
 
         List<CollectionGroupTargetSpec> targets = new ArrayList<>();
         if (!oids.isEmpty()) {
+            DeviceModel taskModel = task.getDeviceModel();
             for (CollectionTaskDevice mapping : group.getDevices()) {
-                CollectionGroupTargetSpec target = toTarget(mapping.getDevice(), requiresAnyInstance, skipped);
+                Device device = mapping.getDevice();
+                // 프로토콜(SNMP/Modbus 등)과 무관하게, 장비 모델이 이 수집 작업의 모델과 다르면
+                // endpoint 유무를 따지기 전에 먼저 걸러내고 원인을 명확히 남긴다.
+                if (!taskModel.getId().equals(device.getDeviceModel().getId())) {
+                    skipped.add(modelMismatchReason(device, taskModel));
+                    continue;
+                }
+                CollectionGroupTargetSpec target = toTarget(device, requiresAnyInstance, skipped);
                 if (target != null) {
                     targets.add(target);
                 }
@@ -109,6 +119,13 @@ public class CollectionGroupSpecService {
                 targets,
                 skipped
         );
+    }
+
+    private static String modelMismatchReason(Device device, DeviceModel expectedModel) {
+        DeviceModel actualModel = device.getDeviceModel();
+        return "device:" + device.getId() + " " + device.getName() + " - " + MODEL_MISMATCH_MARKER
+                + " (expected modelId=" + expectedModel.getId() + " '" + expectedModel.getName() + "'"
+                + ", actual modelId=" + actualModel.getId() + " '" + actualModel.getName() + "')";
     }
 
     private CollectionGroupTargetSpec toTarget(Device device, boolean requiresAnyInstance, List<String> skipped) {

@@ -5,6 +5,7 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelModbusPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,6 +28,14 @@ public class DeviceModelModbusPointJpaRepository implements DeviceModelModbusPoi
     @Override
     public List<DeviceModelModbusPoint> findAllByModelProtocolIdOrderByIdAsc(Integer modelProtocolId) {
         return springDataRepository.findAllByModelProtocolIdOrderByIdAsc(modelProtocolId);
+    }
+
+    @Override
+    public List<DeviceModelModbusPoint> findAllEnabledByDeviceModelIds(Collection<Integer> deviceModelIds) {
+        if (deviceModelIds == null || deviceModelIds.isEmpty()) {
+            return List.of();
+        }
+        return springDataRepository.findAllEnabledByDeviceModelIds(deviceModelIds);
     }
 
     @Override

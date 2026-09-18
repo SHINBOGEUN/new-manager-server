@@ -121,4 +121,14 @@ public class CollectionTaskController {
     ) {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.toggleGroup(taskId, groupId)));
     }
+
+    @DeleteMapping("/{taskId}/groups/{groupId}/devices/{deviceId}")
+    @Operation(summary = "그룹-장비 연결 1건 제거 (다른 장비 연결에는 영향 없음)")
+    public ResponseEntity<ApiResponse<CollectionTaskGroupResponse>> removeGroupDevice(
+            @Parameter(description = "Task ID") @PathVariable Integer taskId,
+            @Parameter(description = "그룹 ID") @PathVariable Integer groupId,
+            @Parameter(description = "제거할 장비 ID") @PathVariable Integer deviceId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.removeGroupDevice(taskId, groupId, deviceId)));
+    }
 }

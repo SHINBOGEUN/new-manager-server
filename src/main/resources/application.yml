@@ -48,11 +48,15 @@ app:
 
 jwt:
   secret: ${JWT_SECRET:lusR6p5tGwGKEWC2rWRYyCVbOzsVOMxMCtxOtHT+V4SiKE8ODJbomdCOl7cy5qbv7JQVHNRPKnwvxhmo9NYmlg==}
-  access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:63072000}
-  refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:78840000}
+  access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:1800}
+  refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:1209600}
 
 security:
   auth-enabled: true
+  refresh-cookie:
+    # HTTPS 배포에서는 AUTH_REFRESH_COOKIE_SECURE=true로 설정한다.
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+    same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
 
 collector:
   service:
@@ -77,6 +81,15 @@ operations:
 live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
+
+collection:
+  status:
+    # 수집 주기(cron) 대비 허용 지연·실패 기준. 프로토콜과 무관하게 동일하게 적용한다.
+    default-interval-seconds: ${COLLECTION_STATUS_DEFAULT_INTERVAL_SECONDS:900}
+    stale-multiplier: ${COLLECTION_STATUS_STALE_MULTIPLIER:2}
+    min-stale-seconds: ${COLLECTION_STATUS_MIN_STALE_SECONDS:300}
+    failure-multiplier: ${COLLECTION_STATUS_FAILURE_MULTIPLIER:6}
+    min-failure-seconds: ${COLLECTION_STATUS_MIN_FAILURE_SECONDS:1800}
 
 asset:
   image:

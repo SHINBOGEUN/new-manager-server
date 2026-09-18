@@ -1,5 +1,7 @@
 package net.vivans.dcim.module.collectortask.api.dto;
 
+import net.vivans.dcim.module.collectortask.application.CollectionGroupSpec;
+import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecService;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskDevice;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 
@@ -19,10 +21,16 @@ public record CollectionTaskGroupResponse(
         Instant updatedDt
 ) {
 
-    public static CollectionTaskGroupResponse from(CollectionTaskGroup group) {
+    /**
+     * 저장된(캐시) generatedSpec이 아니라, 조회 시점에 spec을 새로 계산해서 넘겨준다.
+     * {@link CollectionTaskDeviceResponse#excluded}가 항상 "지금 이 순간" 기준으로
+     * 맞아야 하기 때문 (수집 상태 화면과 동일한 방식).
+     */
+    public static CollectionTaskGroupResponse from(CollectionTaskGroup group, CollectionGroupSpecService specService) {
+        CollectionGroupSpec spec = specService.generate(group);
         List<CollectionTaskDeviceResponse> devices = new ArrayList<>();
         for (CollectionTaskDevice mapping : group.getDevices()) {
-            devices.add(CollectionTaskDeviceResponse.from(mapping));
+            devices.add(CollectionTaskDeviceResponse.from(mapping, spec));
         }
         return new CollectionTaskGroupResponse(
                 group.getId(),

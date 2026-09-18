@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.identity.application;
 
-import net.vivans.dcim.module.identity.api.dto.TokenResponse;
 import net.vivans.dcim.module.identity.api.dto.UserResponse;
 import net.vivans.dcim.module.identity.domain.model.User;
 import net.vivans.dcim.module.identity.domain.repository.UserRepository;
@@ -81,11 +80,11 @@ class AuthCommandServiceTest {
         given(userRepository.findByUsername("testuser")).willReturn(Optional.of(user));
         given(userRepository.save(user)).willReturn(user);
 
-        TokenResponse response = authCommandService.login("testuser", "password123");
+        AuthTokenIssue issue = authCommandService.login("testuser", "password123");
 
-        assertThat(response.username()).isEqualTo("testuser");
-        assertThat(response.accessToken()).isEqualTo("access-token");
-        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+        assertThat(issue.tokenResponse().username()).isEqualTo("testuser");
+        assertThat(issue.tokenResponse().accessToken()).isEqualTo("access-token");
+        assertThat(issue.refreshToken()).isEqualTo("refresh-token");
         assertThat(user.getRefreshToken()).isEqualTo("refresh-token");
     }
 
@@ -100,10 +99,10 @@ class AuthCommandServiceTest {
         given(jwtProvider.generateRefreshToken(any(CustomUserDetails.class))).willReturn("new-refresh-token");
         given(userRepository.save(user)).willReturn(user);
 
-        TokenResponse response = authCommandService.refresh("old-refresh-token");
+        AuthTokenIssue issue = authCommandService.refresh("old-refresh-token");
 
-        assertThat(response.accessToken()).isEqualTo("new-access-token");
-        assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+        assertThat(issue.tokenResponse().accessToken()).isEqualTo("new-access-token");
+        assertThat(issue.refreshToken()).isEqualTo("new-refresh-token");
         assertThat(user.getRefreshToken()).isEqualTo("new-refresh-token");
     }
 

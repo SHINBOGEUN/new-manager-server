@@ -29,16 +29,37 @@ public class User extends BaseEntity {
     }
 
     public static User createNew(String username, String encodedPassword) {
+        return createNew(username, encodedPassword, UserRole.USER);
+    }
+
+    public static User createNew(String username, String encodedPassword, UserRole role) {
         if (username == null || username.isBlank()) {
             throw new IllegalArgumentException("username is required");
         }
         if (encodedPassword == null || encodedPassword.isBlank()) {
             throw new IllegalArgumentException("password is required");
         }
-        return new User(username, encodedPassword, "USER", null);
+        if (role == null) {
+            throw new IllegalArgumentException("role is required");
+        }
+        return new User(username.trim(), encodedPassword, role.name(), null);
     }
 
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
+    }
+
+    public void changeRole(UserRole role) {
+        if (role == null) {
+            throw new IllegalArgumentException("role is required");
+        }
+        this.role = role.name();
+    }
+
+    public void changePassword(String encodedPassword) {
+        if (encodedPassword == null || encodedPassword.isBlank()) {
+            throw new IllegalArgumentException("password is required");
+        }
+        this.password = encodedPassword;
     }
 }

@@ -5,6 +5,7 @@ import net.vivans.dcim.module.identity.domain.model.User;
 import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,7 +25,22 @@ public class UserJpaRepository implements UserRepository {
     }
 
     @Override
+    public Optional<User> findById(Integer userId) {
+        return springDataRepository.findById(userId);
+    }
+
+    @Override
+    public List<User> findAllByOrderByUsernameAsc() {
+        return springDataRepository.findAllByOrderByUsernameAsc();
+    }
+
+    @Override
     public User save(User user) {
         return springDataRepository.save(user);
+    }
+
+    @Override
+    public void delete(User user) {
+        springDataRepository.delete(user);
     }
 }
