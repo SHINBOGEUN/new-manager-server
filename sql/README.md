@@ -120,6 +120,7 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/42_device_asset_document.sql
 | 40~42 | 자산 이력·상세·문서 | device_asset 계열 |
 | 43 | `43_device_modbus_reading.sql` | device_modbus_reading (Modbus 회선 매핑) |
 | 44 | `44_alter_modbus_reading_endpoint.sql` | (기존 DB용 ALTER) reading FK → device_endpoint_modbus |
+| 43~46 | LoRa/Dragino 매핑 | device_lora_endpoint / device_model_lora_point / device_lora_point_override / lora_ingest_error_log |
 
 ---
 
