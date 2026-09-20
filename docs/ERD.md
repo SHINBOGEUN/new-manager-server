@@ -622,7 +622,7 @@ erDiagram
 | 장비 유형 | `unit_id` | 비고 |
 |-----------|-----------|------|
 | RDC 등 단순 장비 (`requires_instance=0`) | 값 지정 | 이 한 값으로 수집 가능 |
-| 분전반 등 (`requires_instance=1`) | `NULL` | 회선마다 달라서 `device_modbus_reading`(⬜)이 담당 |
+| 분전반 등 (`requires_instance=1`) | `NULL` | 회선마다 달라서 `device_modbus_reading`이 담당 |
 
 **엔티티:** `module/device/domain/model/DeviceEndpointModbus.java` ✅
 **상속:** `BaseEntity`
@@ -667,6 +667,92 @@ erDiagram
 
 ---
 
+### `device_modbus_reading` — Modbus 회선 매핑
+
+**구현 상태:** ✅ 구현됨
+
+> 4층 아키텍처 **④ 프로토콜 확장층** — `device_endpoint_modbus`의 자식. 분전반처럼 한 endpoint에서 여러 unit·주소를 읽어 서로 다른 장비의 필드로 기록할 때 회선마다 1행.
+> API: [DEVICE_MODBUS_READING_API.md](device/DEVICE_MODBUS_READING_API.md)
+> DDL: [`43_device_modbus_reading.sql`](../sql/schema/43_device_modbus_reading.sql) · 기존 DB용 [`44_alter_modbus_reading_endpoint.sql`](../sql/schema/44_alter_modbus_reading_endpoint.sql)
+
+| 컬럼 | 타입 | NULL | 키 | 기본값 | 설명 |
+|------|------|------|-----|--------|------|
+| `id` | INT | N | PK | AUTO_INCREMENT | |
+| `endpoint_id` | INT | N | FK | | `device_endpoint_modbus.endpoint_id` — 소유자 |
+| `point_id` | INT | N | FK | | `device_model_modbus_point.id` — 해석 레시피 (`requires_instance=1`) |
+| `unit_id` | INT | N | | | 회선 slave ID (CHECK 0~247) |
+| `address` | INT | N | | | 실제 요청 시작 주소 (CHECK 0~65535) |
+| `target_device_id` | INT | N | FK | | `devices.id` — 결과 기록 장비 (Influx `device_id` 태그) |
+| `point_name` | VARCHAR(255) | N | | | 회선별 식별자·표시명 (Influx `point_name` 태그) |
+| `enabled` | TINYINT(1) | N | | `1` | |
+| `created_dt` / `updated_dt` | TIMESTAMP(6) | Y | | | |
+
+**UK:** `(target_device_id, point_name)` — 한 장비의 같은 필드에 두 회선이 덮어쓰기 방지
+
+**계층**
+
+```
+device_protocol_endpoint        host:port
+  └─ device_endpoint_modbus     unit_id (1:1)
+       └─ device_modbus_reading  회선 × N
+```
+
+**엔티티:** `module/device/domain/model/DeviceModbusReading.java` ✅
+**상속:** `BaseEntity`
+**연관:**
+- `@ManyToOne` → `DeviceEndpointModbus` (`endpoint_id`)
+- `@ManyToOne` → `DeviceModelModbusPoint` (`point_id`)
+- `@ManyToOne` → `Device` (`target_device_id`)
+
+**검증 (엔티티)** — `unit_id` 0~247, `address` 0~65535, `address + registerCount − 1 ≤ 65535`, `point.requiresInstance = true`, `point_name` 공백 불가
+**검증 (서비스)** — endpoint 프로토콜 modbus, `device_endpoint_modbus` 존재, point가 원본 장비 모델 소속, `(target, point_name)` 중복
+
+**FK 제약**
+
+| FK | 참조 | ON DELETE | ON UPDATE | 성격 |
+|----|------|-----------|-----------|------|
+| `fk_device_modbus_reading_modbus_endpoint_id` | `device_endpoint_modbus(endpoint_id)` | CASCADE | CASCADE | 소유자 |
+| `fk_device_modbus_reading_point_id` | `device_model_modbus_point(id)` | RESTRICT | CASCADE | 참조 |
+| `fk_device_modbus_reading_target_device_id` | `devices(id)` | RESTRICT | CASCADE | 참조 |
+
+**관계도**
+
+```mermaid
+erDiagram
+    device_endpoint_modbus {
+        int endpoint_id PK "FK 겸 PK"
+        int unit_id "nullable"
+    }
+
+    device_model_modbus_point {
+        int id PK
+        varchar name
+        tinyint requires_instance
+    }
+
+    devices {
+        int id PK
+        varchar name
+    }
+
+    device_modbus_reading {
+        int id PK
+        int endpoint_id FK
+        int point_id FK
+        int unit_id
+        int address
+        int target_device_id FK
+        varchar point_name
+        tinyint enabled
+    }
+
+    device_endpoint_modbus ||--o{ device_modbus_reading : "endpoint_id (CASCADE)"
+    device_model_modbus_point ||--o{ device_modbus_reading : "point_id (RESTRICT)"
+    devices ||--o{ device_modbus_reading : "target_device_id (RESTRICT)"
+```
+
+---
+
 **이후 (본 테이블에 넣지 않음)**
 
 | 테이블 | 역할 | 상태 |
@@ -676,7 +762,7 @@ erDiagram
 | ~~`device_page`~~ | (삭제, V018) | ❌ |
 | `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
 | `device_endpoint_modbus` | Modbus unit_id (endpoint 1:1 확장) | ✅ `23_device_endpoint_modbus.sql` — [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
-| `device_modbus_reading` | 분전반 회선 → 대상 장비 매핑 (unit_id/address/target_device_id) | ⬜ — [BACKLOG](./BACKLOG.md) |
+| `device_modbus_reading` | 분전반 회선 → 대상 장비 매핑 (unit_id/address/target_device_id/point_name) | ✅ `43_device_modbus_reading.sql` — [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
 | community / version | 앱 기본값. DB 의도적 제외 | 보류 |
 | `devices.parent_device_id` | 장비 계층 | ⬜ (V011 아님) |
 

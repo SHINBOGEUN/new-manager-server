@@ -24,6 +24,7 @@
 | device_protocol_endpoint | V009 | CRUD | [DEVICE_ENDPOINT_API.md](./device/DEVICE_ENDPOINT_API.md) |
 | device_snmp_instance | **V011** | **CRUD 완료** | [DEVICE_SNMP_INSTANCE_API.md](./device/DEVICE_SNMP_INSTANCE_API.md) |
 | device_endpoint_modbus | `23_device_endpoint_modbus.sql` | **CRUD 완료** | [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
+| device_modbus_reading | `43_device_modbus_reading.sql` (+44 ALTER) | **CRUD 완료** | [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
 
 **의도적 보류:** SNMP community/version은 DB에 두지 않음 (앱 기본값). SRC `device_snmp_point`는 나중에.
 
@@ -76,9 +77,11 @@ device C → POWER
 | 1.4 | Device 모델 변경 vs endpoint 정합성 | 중 | ✅ 409 거부 |
 | 1.5 | host 형식 검증 | 낮 | |
 | 1.6 | Device nested `endpoints[]` | 낮 | |
-| 1.7 | `device_modbus_reading` 매핑 | 중 | 분전반(ACCURA) 회선별 `unit_id`/`address` → `target_device_id`+`field_name`. `requires_instance=1` 전용 |
-| 1.8 | Modbus 수집 스크립트 생성 | 중 | `CollectionGroupSpecService`가 `scriptType=modbus`를 아직 미지원 ("not supported yet") |
-| 1.9 | Ops Console Modbus endpoint UI | 낮 | `snmp-instance`는 있으나 `modbus` 화면 없음 — API만 존재 |
+| 1.7 | `device_modbus_reading` 매핑 | 중 | ✅ 분전반(ACCURA) 회선별 `unit_id`/`address` → `target_device_id`+`point_name`. `device_endpoint_modbus` 자식(CASCADE). CRUD 5개 |
+| 1.8 | Modbus 수집 스크립트 생성 | 중 | `CollectionGroupSpecService`가 `scriptType=modbus`를 아직 미지원 ("not supported yet"). reading 기반으로 unit·주소를 회선별로 풀어 JS 생성 |
+| 1.9 | Ops Console Modbus UI | 낮 | 모델 point 화면(현재 SNMP 전용) · endpoint `unit_id` 칸 · **회선 매핑 표** — API만 존재 |
+| 1.10 | 장비 삭제 시 reading 참조 검사 | 낮 | `deleteDevice()`에서 `target_device_id`로 참조 중이면 409. 지금은 DB RESTRICT가 500으로 막음 |
+| 1.11 | Modbus point 일괄 등록 | 낮 | SNMP point의 `/bulk`와 동일. LIQLOADBANK처럼 point 15개 모델 등록 시 필요 |
 
 ### SRC 합의 (보류)
 
