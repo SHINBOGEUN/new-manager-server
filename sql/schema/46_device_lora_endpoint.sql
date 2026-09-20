@@ -1,4 +1,4 @@
--- 43_device_lora_endpoint.sql — LoRa/Dragino 외부 식별자(devEUI 또는 deviceName) ↔ 내부 device 매칭
+-- 46_device_lora_endpoint.sql — LoRa/Dragino 외부 식별자(devEUI 또는 deviceName) ↔ 내부 device 매칭
 -- id_type 값은 애플리케이션 상수(DevLoraIdType)와 1:1로 맞춘다. 값이 늘어나면 이 CHECK도 같이 갱신한다.
 
 CREATE TABLE IF NOT EXISTS `device_lora_endpoint` (

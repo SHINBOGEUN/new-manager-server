@@ -1,4 +1,4 @@
--- 44_device_model_lora_point.sql — 모델 단위 LoRa payload 필드 → pointName/타입/단위 매핑 (기본값)
+-- 47_device_model_lora_point.sql — 모델 단위 LoRa payload 필드 → pointName/타입/단위 매핑 (기본값)
 -- payload_field는 JSON 경로 문자열이다. 예: "object.TempC_SHT", "rxInfo[0].rssi"
 -- value_map은 문자열/불리언 상태값을 숫자로 바꾸는 JSON 객체다. 예: {"leak":1,"no leak":0}. 없으면 숫자 파싱만 시도한다.
 

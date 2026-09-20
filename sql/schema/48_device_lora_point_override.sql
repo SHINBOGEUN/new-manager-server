@@ -1,4 +1,4 @@
--- 45_device_lora_point_override.sql — 장비 단위 LoRa payload 필드 매핑 예외(override)
+-- 48_device_lora_point_override.sql — 장비 단위 LoRa payload 필드 매핑 예외(override)
 -- 매핑 우선순위: device_lora_point_override → device_model_lora_point → 없으면 미매핑 오류(lora_ingest_error_log)
 
 CREATE TABLE IF NOT EXISTS `device_lora_point_override` (

@@ -14,11 +14,7 @@ sql/
     ├── 01_users.sql
     ├── …
     ├── 22_page_widget_layout.sql
-    ├── 23_device_endpoint_modbus.sql
-    ├── …
-    ├── 42_device_asset_document.sql
-    ├── 43_device_modbus_reading.sql
-    └── 44_alter_modbus_reading_endpoint.sql   ← 기존 DB용 ALTER (신규 설치 시 제외)
+    └── 23_device_endpoint_modbus.sql
 ```
 
 운영 DB(`dcim_new`) **현재 구조**를 FK 생성 순서대로 나눈 baseline입니다 (스냅샷: `192.168.10.14:20181`, 2026-09-02).
@@ -27,7 +23,7 @@ sql/
 
 ## 신규 배포 (빈 DB)
 
-1. **스키마** — `schema/01` ~ `schema/43` 번호 순 실행 (`*_alter_*` 파일은 제외)
+1. **스키마** — `schema/01` ~ `schema/42` 번호 순 실행
 2. **기준 카탈로그** — 빈 DB에서만 `seed/model_catalog.sql` 실행
 3. **공통코드·위치** — Ops Console(`/ops-console.html`)에서 현장별 위치·`UNASSIGNED` 노드 등록
 4. **로그인 계정** — Ops Console 또는 API로 `users` 생성
@@ -35,7 +31,6 @@ sql/
 
 ```bash
 for f in sql/schema/[0-9][0-9]_*.sql; do
-  case "$f" in *_alter_*) continue ;; esac
   mysql -h HOST -P PORT -u dcim -p dcim < "$f"
 done
 ```
@@ -43,7 +38,7 @@ done
 Windows PowerShell:
 
 ```powershell
-Get-ChildItem sql/schema/*_*.sql | Where-Object { $_.Name -notlike '*_alter_*' } | Sort-Object Name | ForEach-Object {
+Get-ChildItem sql/schema/*_*.sql | Sort-Object Name | ForEach-Object {
   Get-Content $_.FullName -Raw -Encoding UTF8 | mysql -h HOST -P PORT -u dcim -p dcim
 }
 ```
@@ -53,20 +48,12 @@ Get-ChildItem sql/schema/*_*.sql | Where-Object { $_.Name -notlike '*_alter_*' }
 ## 스키마 변경 (기존 DB)
 
 1. 운영 DB와 자산 파일 저장 경로를 먼저 백업
-2. `schema/`에 변경 반영
-   - **신규 설치용:** 해당 테이블 DDL 파일 수정
-   - **기존 DB용:** `45_alter_설명.sql`처럼 **다음 번호**로 ALTER 스크립트 추가
-3. 운영 DB에 아직 적용하지 않은 새 DDL 파일만 실행
-4. 애플리케이션 재기동 후 수집 상태·Collector Job 동기화를 확인
-5. 아래 **적용 이력**에 기록
+2. 운영 DB에 아직 적용하지 않은 새 DDL 파일만 실행
+3. 애플리케이션 재기동 후 수집 상태·Collector Job 동기화를 확인
 
 ```bash
 mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/42_device_asset_document.sql
 ```
-
-`44_alter_modbus_reading_endpoint.sql`은 기존 FK를 Modbus 설정으로 옮기는 수동 마이그레이션입니다.
-신규 설치 또는 FK 변경을 이미 완료한 DB에서는 실행하지 않습니다.
-대상 DB 이름은 환경에 따라 다르므로 실행 전 `SELECT DATABASE()`로 확인합니다.
 
 ---
 
@@ -120,7 +107,7 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/42_device_asset_document.sql
 | 40~42 | 자산 이력·상세·문서 | device_asset 계열 |
 | 43 | `43_device_modbus_reading.sql` | device_modbus_reading (Modbus 회선 매핑) |
 | 44 | `44_alter_modbus_reading_endpoint.sql` | (기존 DB용 ALTER) reading FK → device_endpoint_modbus |
-| 43~46 | LoRa/Dragino 매핑 | device_lora_endpoint / device_model_lora_point / device_lora_point_override / lora_ingest_error_log |
+| 46~49 | LoRa/Dragino 매핑 | device_lora_endpoint / device_model_lora_point / device_lora_point_override / lora_ingest_error_log |
 
 ---
 
@@ -130,5 +117,3 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/42_device_asset_document.sql
 |------|---------|-----------|
 | 2026-09-02 | — | `schema/01~22` baseline 확정. 구 `history/`, `seed/`, `dumps/` 제거 |
 | 2026-09-03 | — | `schema/23_device_endpoint_modbus.sql` 추가 (Modbus endpoint 확장, unit_id) |
-| 2026-09-03 | — | `schema/43_device_modbus_reading.sql` 추가 (Modbus 회선 매핑, 당초 27번) |
-| 2026-09-16 | dcim (사용자 SHOW CREATE TABLE 확인) | reading FK를 `device_endpoint_modbus.endpoint_id`로 변경, ON DELETE CASCADE. 신규 DDL 43 및 기존 DB용 44 반영 |

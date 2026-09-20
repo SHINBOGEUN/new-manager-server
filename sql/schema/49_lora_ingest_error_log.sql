@@ -1,4 +1,4 @@
--- 46_lora_ingest_error_log.sql — LoRa 수집 중 발생한 미등록 식별자·미매핑 필드·변환 실패 이력
+-- 49_lora_ingest_error_log.sql — LoRa 수집 중 발생한 미등록 식별자·미매핑 필드·변환 실패 이력
 -- Sensor Data 서버는 자체 RDB가 없어 Manager API를 통해 이 표에 적재한다.
 -- raw_payload는 애플리케이션에서 길이 제한(설정값) 후 저장하며, 보관 기간 정책에 따라 주기적으로 정리한다.
 
