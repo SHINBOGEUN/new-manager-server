@@ -208,13 +208,15 @@ public class CollectionStatusQueryService {
                 // 과거 저장값이 남아 있어도 실패 기준을 넘기면 현재는 수집되지 않는 것으로 본다.
                 status = "MISSING";
                 message = "응답 없음";
-                technicalDetail = "마지막 저장값이 " + ageSeconds + "초 전입니다."
-                        + " 실패 기준 " + failureAfterSeconds + "초(수집 주기 " + interval + "초)를 넘겼습니다.";
+                technicalDetail = "마지막 저장값이 " + formatElapsed(ageSeconds) + " 전입니다."
+                        + " 실패 기준 " + formatElapsed(failureAfterSeconds)
+                        + "(수집 주기 " + formatElapsed(interval) + ")을 넘겼습니다.";
             } else if (ageSeconds > staleAfterSeconds) {
                 status = "STALE";
                 message = "응답 지연";
-                technicalDetail = "마지막 저장값이 " + ageSeconds + "초 전입니다."
-                        + " 허용 지연 " + staleAfterSeconds + "초(수집 주기 " + interval + "초)를 넘겼습니다.";
+                technicalDetail = "마지막 저장값이 " + formatElapsed(ageSeconds) + " 전입니다."
+                        + " 허용 지연 " + formatElapsed(staleAfterSeconds)
+                        + "(수집 주기 " + formatElapsed(interval) + ")을 넘겼습니다.";
             } else {
                 status = "NORMAL";
                 message = "정상";
@@ -262,6 +264,24 @@ public class CollectionStatusQueryService {
                 statusProperties.getMinFailureSeconds()
         );
         return Math.max(byInterval, staleAfterSeconds);
+    }
+
+    private static String formatElapsed(long seconds) {
+        long safeSeconds = Math.max(0, seconds);
+        long days = safeSeconds / 86_400;
+        long hours = (safeSeconds % 86_400) / 3_600;
+        long minutes = (safeSeconds % 3_600) / 60;
+
+        if (days > 0) {
+            return hours > 0 ? days + "일 " + hours + "시간" : days + "일";
+        }
+        if (hours > 0) {
+            return minutes > 0 ? hours + "시간 " + minutes + "분" : hours + "시간";
+        }
+        if (minutes > 0) {
+            return minutes + "분";
+        }
+        return safeSeconds + "초";
     }
 
     private static Long cronIntervalSeconds(String expression) {

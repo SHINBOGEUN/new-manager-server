@@ -9,6 +9,8 @@ import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorHealthResponse;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorJobClient;
+import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorJobResponse;
+import net.vivans.dcim.module.operations.api.dto.CollectionJobHealthResponse;
 import net.vivans.dcim.module.operations.api.dto.CollectionOperationsHealthResponse;
 import net.vivans.dcim.module.operations.api.dto.CollectionReconciliationResponse;
 import net.vivans.dcim.module.operations.config.OperationsHealthProperties;
@@ -33,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -91,6 +94,73 @@ public class CollectionOperationsHealthService {
                 activePueDefinitions,
                 "활성 수집 그룹과 PUE 정의를 Collector에 다시 동기화했습니다."
         );
+    }
+
+    /**
+     * SNMP 수집 그룹(Collector job)별 최근 실패/복구 상태를 조회한다.
+     * Collector에서 job 목록을 한 번만 받아 온 뒤 DB에 저장된 활성 그룹과 collectorJobId로 매칭한다.
+     * Collector가 응답하지 않아도(재시작 직후 등) 예외를 던지지 않고 UNKNOWN 상태로 표시한다.
+     */
+    @Transactional(readOnly = true)
+    public List<CollectionJobHealthResponse> getJobHealth() {
+        if (!collectorJobClient.isEnabled()) {
+            return List.of();
+        }
+        Map<String, CollectorJobResponse> byCollectorJobId;
+        try {
+            byCollectorJobId = collectorJobClient.list().stream()
+                    .collect(Collectors.toMap(CollectorJobResponse::collectorJobId, job -> job, (a, b) -> a));
+        } catch (Exception exception) {
+            byCollectorJobId = Map.of();
+        }
+
+        List<CollectionJobHealthResponse> result = new ArrayList<>();
+        for (CollectionTask task : collectionTaskRepository.findAll(null, null, null)) {
+            if (!task.isActive() || task.getScriptType() == null
+                    || !CollectionGroupSpecService.SNMP_PROTOCOL_CODE.equalsIgnoreCase(task.getScriptType().getCode())) {
+                continue;
+            }
+            for (CollectionTaskGroup group : task.getGroups()) {
+                if (!group.isActive()) {
+                    continue;
+                }
+                result.add(toJobHealth(task, group, byCollectorJobId));
+            }
+        }
+        return result;
+    }
+
+    private CollectionJobHealthResponse toJobHealth(
+            CollectionTask task, CollectionTaskGroup group, Map<String, CollectorJobResponse> byCollectorJobId
+    ) {
+        Integer modelId = task.getDeviceModel() == null ? null : task.getDeviceModel().getId();
+        String modelName = task.getDeviceModel() == null ? null : task.getDeviceModel().getName();
+        String protocol = task.getScriptType() == null ? null : task.getScriptType().getCode();
+
+        String collectorJobId = group.getCollectorJobId();
+        if (collectorJobId == null || collectorJobId.isBlank()) {
+            return new CollectionJobHealthResponse(
+                    task.getId(), task.getName(), group.getId(), group.getName(), modelId, modelName, protocol,
+                    null, false, 0, "NOT_SYNCED", null, null, 0, null);
+        }
+        CollectorJobResponse job = byCollectorJobId.get(collectorJobId);
+        if (job == null) {
+            return new CollectionJobHealthResponse(
+                    task.getId(), task.getName(), group.getId(), group.getName(), modelId, modelName, protocol,
+                    collectorJobId, false, 0, "UNKNOWN", null, null, 0, null);
+        }
+        String status;
+        if (job.consecutiveFailureCount() > 0) {
+            status = "FAILING";
+        } else if (job.lastFailureAt() != null) {
+            status = "RECOVERED";
+        } else {
+            status = "NORMAL";
+        }
+        return new CollectionJobHealthResponse(
+                task.getId(), task.getName(), group.getId(), group.getName(), modelId, modelName, protocol,
+                collectorJobId, job.enabled(), job.targetCount(), status,
+                job.lastSuccessAt(), job.lastFailureAt(), job.consecutiveFailureCount(), job.lastFailureReason());
     }
 
     private CollectionOperationsHealthResponse.Component managerComponent() {

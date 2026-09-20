@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.List;
+
 @Slf4j
 @Component
 public class CollectorJobClient {
@@ -16,6 +18,9 @@ public class CollectorJobClient {
             new ParameterizedTypeReference<>() {
             };
     private static final ParameterizedTypeReference<CollectorApiResponse<CollectorHealthResponse>> HEALTH_RESPONSE_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+    private static final ParameterizedTypeReference<CollectorApiResponse<List<CollectorJobResponse>>> JOB_LIST_RESPONSE_TYPE =
             new ParameterizedTypeReference<>() {
             };
 
@@ -118,6 +123,19 @@ public class CollectorJobClient {
                 .uri("/api/health")
                 .retrieve()
                 .body(HEALTH_RESPONSE_TYPE));
+    }
+
+    /**
+     * 현재 Collector 메모리에 올라간 job 목록(실패/복구 상태 포함)을 조회한다.
+     * 운영 콘솔의 수집 실패 가시성 API가 사용하며, health()와 마찬가지로 재시도 없이 즉시
+     * 결과를 반환한다(실패하면 호출부가 빈 목록 등으로 처리한다).
+     */
+    public List<CollectorJobResponse> list() {
+        CollectorApiResponse<List<CollectorJobResponse>> response = restClient.get()
+                .uri("/api/jobs")
+                .retrieve()
+                .body(JOB_LIST_RESPONSE_TYPE);
+        return response == null || response.data() == null ? List.of() : response.data();
     }
 
     private CollectorJobResponse requireData(CollectorApiResponse<CollectorJobResponse> response, String operation) {
