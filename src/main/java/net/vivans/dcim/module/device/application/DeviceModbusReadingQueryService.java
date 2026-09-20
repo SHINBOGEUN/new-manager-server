@@ -20,6 +20,8 @@ import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,6 +33,25 @@ public class DeviceModbusReadingQueryService {
     private final DeviceEndpointModbusRepository endpointModbusRepository;
     private final DeviceModelModbusPointRepository pointRepository;
     private final DeviceModbusReadingRepository readingRepository;
+
+    public List<DeviceModbusReadingResponse> getReadings(Integer deviceId, Integer endpointId) {
+        validateReadingSource(deviceId, endpointId);
+        return readingRepository.findAllByEndpointIdOrderByIdAsc(endpointId).stream()
+                .map(DeviceModbusReadingResponse::from)
+                .toList();
+    }
+
+    public DeviceModbusReadingResponse getReading(Integer deviceId, Integer endpointId, Integer readingId) {
+        validateReadingSource(deviceId, endpointId);
+        return DeviceModbusReadingResponse.from(findReading(readingId, endpointId));
+    }
+
+    private void validateReadingSource(Integer deviceId, Integer endpointId) {
+        findDevice(deviceId);
+        DeviceProtocolEndpoint endpoint = findEndpoint(deviceId, endpointId);
+        validateModbusEndpoint(endpoint);
+        requireModbusConfig(endpointId);
+    }
 
     @Transactional
     public DeviceModbusReadingResponse createReading(
@@ -126,8 +147,7 @@ public class DeviceModbusReadingQueryService {
 
     @Transactional
     public Integer deleteReading(Integer deviceId, Integer endpointId, Integer readingId) {
-        findDevice(deviceId);
-        findEndpoint(deviceId, endpointId);
+        validateReadingSource(deviceId, endpointId);
         DeviceModbusReading reading = findReading(readingId, endpointId);
         readingRepository.delete(reading);
         return readingId;

@@ -12,12 +12,15 @@ import net.vivans.dcim.module.device.application.DeviceModbusReadingQueryService
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 
 @RestController
@@ -32,6 +35,27 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceModbusReadingController {
 
     private final DeviceModbusReadingQueryService readingQueryService;
+
+    @GetMapping
+    @Operation(summary = "Modbus reading 목록 조회 API",
+            description = "소속 reading을 ID 오름차순으로 조회합니다. 비활성 항목도 포함하며, 없으면 빈 배열을 반환합니다.")
+    public ResponseEntity<ApiResponse<List<DeviceModbusReadingResponse>>> getReadings(
+            @Parameter(description = "수집 원본 장비 ID") @PathVariable Integer deviceId,
+            @Parameter(description = "수집 원본 엔드포인트 ID") @PathVariable Integer endpointId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(readingQueryService.getReadings(deviceId, endpointId)));
+    }
+
+    @GetMapping("/{readingId}")
+    @Operation(summary = "Modbus reading 단건 조회 API",
+            description = "해당 endpoint 소속 reading을 조회합니다. 없거나 다른 endpoint 소속이면 404.")
+    public ResponseEntity<ApiResponse<DeviceModbusReadingResponse>> getReading(
+            @Parameter(description = "수집 원본 장비 ID") @PathVariable Integer deviceId,
+            @Parameter(description = "수집 원본 엔드포인트 ID") @PathVariable Integer endpointId,
+            @Parameter(description = "device_modbus_reading.id") @PathVariable Integer readingId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(readingQueryService.getReading(deviceId, endpointId, readingId)));
+    }
 
     @PostMapping
     @Operation(
@@ -87,7 +111,7 @@ public class DeviceModbusReadingController {
     @DeleteMapping("/{readingId}")
     @Operation(
             summary = "Modbus reading 삭제 API",
-            description = "회선 매핑 한 건을 삭제합니다. 없으면 404."
+            description = "회선 매핑 한 건을 삭제합니다. 없으면 404. endpoint가 Modbus가 아니면 400."
     )
     public ResponseEntity<ApiResponse<Integer>> deleteReading(
             @Parameter(description = "수집 원본 장비 ID")
