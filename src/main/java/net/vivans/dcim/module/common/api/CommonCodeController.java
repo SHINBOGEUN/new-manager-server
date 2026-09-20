@@ -10,6 +10,7 @@ import net.vivans.dcim.module.common.api.dto.CommonCodeResponse;
 import net.vivans.dcim.module.common.application.CommonCodeQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class CommonCodeController {
 
     private final CommonCodeQueryService commonCodeQueryService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "공통 코드 등록 API")
     public ResponseEntity<ApiResponse<CommonCodeResponse>> createCommonCode(
@@ -29,6 +31,7 @@ public class CommonCodeController {
         return ResponseEntity.ok(ApiResponse.ok(commonCodeQueryService.createCommonCode(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "공통 코드 수정 API")
     public ResponseEntity<ApiResponse<CommonCodeResponse>> updateCommonCode (
@@ -36,6 +39,7 @@ public class CommonCodeController {
         return ResponseEntity.ok(ApiResponse.ok(commonCodeQueryService.updateCommonCode(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "공통 코드 삭제 API")
     public ResponseEntity<ApiResponse<Integer>> deleteCommonCode(
@@ -44,6 +48,7 @@ public class CommonCodeController {
         return ResponseEntity.ok(ApiResponse.ok(commonCodeQueryService.deleteCommonCode(id)));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @GetMapping
     @Operation(summary = "공통 코드 조회 API")
     public ResponseEntity<ApiResponse<List<CommonCodeResponse>>> getCommonCodeList(

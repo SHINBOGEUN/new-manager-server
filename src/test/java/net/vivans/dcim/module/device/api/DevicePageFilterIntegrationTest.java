@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,9 +33,12 @@ class DevicePageFilterIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void getDevices_filterByPageCode_returnsWidgetLinkedDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-page-filter", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-page-filter", "password123");
         int envDeviceId = createDevice(accessToken, "Sensor-env");
         int otherDeviceId = createDevice(accessToken, "PDU-other");
         ensureDevicePageCode(accessToken, "ENVIRONMENT", "Environment", 1);

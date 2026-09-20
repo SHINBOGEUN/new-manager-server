@@ -1,6 +1,7 @@
 package net.vivans.dcim.module.common.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class CodeGroupControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void create_returnCodeGroup() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-user", "password123");
 
         mockMvc.perform(post("/api/manager/code-groups")
                         .header("Authorization", bearerToken(accessToken))
@@ -51,7 +55,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void getCodeGroupList_returnCodeGroupList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-list-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-list-user", "password123");
 
         createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         createCodeGroup(accessToken, "SENSOR_TYPE", "센서 유형");
@@ -96,7 +100,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void createCodeGroup_returnEmptyCodeGroupRequest() throws Exception{
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "TEST", "TEST");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "TEST", "TEST");
         mockMvc.perform(post("/api/manager/code-groups")
                 .header("Authorization", bearerToken(accessToken))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -109,7 +113,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void updateCodeGroup_returnUpdatedCodeGroup() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-update-user", "password123");
 
         Integer id = createCodeGroup(accessToken, "OLD_TYPE", "이전 유형");
 
@@ -128,7 +132,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void updateCodeGroup_returnNotFoundWhenIdDoesNotExist() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-update-notfound-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-update-notfound-user", "password123");
 
         mockMvc.perform(put("/api/manager/code-groups/{id}", 99999)
                         .header("Authorization", bearerToken(accessToken))
@@ -142,7 +146,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void updateCodeGroup_returnBadRequestForEmptyRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-update-empty-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-update-empty-user", "password123");
 
         Integer id = createCodeGroup(accessToken, "OLD_TYPE", "이전 유형");
 
@@ -158,7 +162,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void updateCodeGroup_returnDuplicationCodeGroup() throws Exception{
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "Duplication-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "Duplication-user", "password123");
 
         createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         Integer id = createCodeGroup(accessToken,"SENSOR_TYPE", "센서 유형");
@@ -175,7 +179,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void deleteCodeGroup_removesEmptyGroup() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "codegroup-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "codegroup-delete-user", "password123");
         Integer id = createCodeGroup(accessToken, "DELETE_TYPE", "삭제 유형");
 
         mockMvc.perform(delete("/api/manager/code-groups/{id}", id)
@@ -187,7 +191,7 @@ class CodeGroupControllerIntegrationTest {
 
     @Test
     void createCodeGroup_returnWrongUrl() throws Exception{
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "TEST", "TEST");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "TEST", "TEST");
         mockMvc.perform(post("/unKnown/url")
                 .header("Authorization", bearerToken(accessToken))
                 .contentType(MediaType.APPLICATION_JSON)

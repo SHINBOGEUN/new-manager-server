@@ -1,6 +1,7 @@
 package net.vivans.dcim.module.common.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +31,12 @@ class CommonCodeControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void create_returnCommonCodeResponse() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "common-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "common-code-user", "password123");
 
         Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
 
@@ -52,7 +56,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void update_returnCommonCodeResponse() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "update-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "update-code-user", "password123");
 
         Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         Integer codeId = createCommonCode(accessToken, groupId, "pdu", "pdu", 1);
@@ -74,7 +78,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void get_returnCommonCodeListResponse() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "get-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "get-code-user", "password123");
 
         Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         createCommonCode(accessToken, groupId, "pdu", "pdu", 1);
@@ -93,7 +97,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void get_withCodeGroupId_returnFilteredList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "filter-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "filter-code-user", "password123");
 
         Integer deviceGroupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         Integer locationGroupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
@@ -114,7 +118,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void get_withUnknownCodeGroupId_returnNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "notfound-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "notfound-code-user", "password123");
 
         mockMvc.perform(get("/api/manager/common-codes")
                         .param("codeGroupId", "99999")
@@ -125,7 +129,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void get_withCodeGroupId_whenNoCodes_returnEmptyList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "empty-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "empty-code-user", "password123");
 
         Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
 
@@ -140,7 +144,7 @@ class CommonCodeControllerIntegrationTest {
 
     @Test
     void delete_removesCommonCode() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "delete-code-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "delete-code-user", "password123");
 
         Integer groupId = createCodeGroup(accessToken, "DEVICE_TYPE", "장비 유형");
         Integer codeId = createCommonCode(accessToken, groupId, "pdu", "pdu", 1);

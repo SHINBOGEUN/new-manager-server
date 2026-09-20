@@ -1,6 +1,7 @@
 package net.vivans.dcim.module.devicemodel.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class DeviceModelControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createAndGetDeviceModel_returnsProtocols() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -69,7 +73,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDuplicateModel_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-dup-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-dup-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -101,7 +105,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDeviceModel_withEmptyProtocols_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-empty-protocol-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-empty-protocol-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
 
         mockMvc.perform(post("/api/manager/device-models")
@@ -121,7 +125,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDeviceModel_withDuplicateProtocolType_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-duplicate-protocol-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-duplicate-protocol-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -146,7 +150,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDeviceModel_withNonProtocolTypeCommonCode_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-wrong-group-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-wrong-group-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
         Integer rackId = createCommonCode(accessToken, groupId, "rack", "Rack", 1);
@@ -170,7 +174,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDeviceModel_withNonModelTypeCommonCode_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-wrong-type-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-wrong-type-user", "password123");
         Integer protocolGroupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, protocolGroupId, "mqtt", "MQTT", 1);
         Integer locationGroupId = createCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
@@ -195,7 +199,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void createDeviceModel_withNullProtocolTypeId_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-null-protocol-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-null-protocol-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
 
         mockMvc.perform(post("/api/manager/device-models")
@@ -217,7 +221,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void updateDeviceModel_keepsExistingProtocolAndAddsNewOne() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-keep-protocol-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-keep-protocol-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -264,7 +268,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void updateDeviceModel_replacesProtocols() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-update-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -312,7 +316,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void getDeviceModel_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-not-found-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-not-found-user", "password123");
 
         mockMvc.perform(get("/api/manager/device-models/{id}", 999999)
                         .header("Authorization", bearerToken(accessToken)))
@@ -322,7 +326,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void updateDeviceModel_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-update-not-found-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-update-not-found-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -346,7 +350,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void deleteDeviceModel_removesModel() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-delete-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -383,7 +387,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void deleteDeviceModel_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-delete-not-found-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-delete-not-found-user", "password123");
 
         mockMvc.perform(delete("/api/manager/device-models/{id}", 999999)
                         .header("Authorization", bearerToken(accessToken)))
@@ -393,7 +397,7 @@ class DeviceModelControllerIntegrationTest {
 
     @Test
     void deleteDeviceModel_whenReferencedByDevices_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-model-delete-conflict-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-model-delete-conflict-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);

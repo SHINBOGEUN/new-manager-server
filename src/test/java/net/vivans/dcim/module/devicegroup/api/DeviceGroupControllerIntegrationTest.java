@@ -1,6 +1,7 @@
 package net.vivans.dcim.module.devicegroup.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class DeviceGroupControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createUpdateListAndDeleteDeviceGroup() throws Exception {
-        String token = loginAndGetAccessToken(mockMvc, objectMapper, "device-group-user", "password123");
+        String token = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-group-user", "password123");
 
         String created = mockMvc.perform(post("/api/manager/device-groups")
                         .header("Authorization", bearerToken(token))

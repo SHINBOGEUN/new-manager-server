@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class DeviceCapabilityControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void getCapabilities_filtersByPageCodeAndLocation() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-filter-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "cap-filter-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
         devicePageCodeId(accessToken, "POWER", "Power", 4);
@@ -102,7 +106,7 @@ class DeviceCapabilityControllerIntegrationTest {
 
     @Test
     void getCapabilities_whenInstanceMissing_returnsNullResolvedOid() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-no-instance", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "cap-no-instance", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         devicePageCodeId(accessToken, "ENVIRONMENT", "Environment", 1);
 
@@ -133,7 +137,7 @@ class DeviceCapabilityControllerIntegrationTest {
 
     @Test
     void getCapabilities_whenLocationNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-loc-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "cap-loc-nf", "password123");
 
         mockMvc.perform(get("/api/manager/devices/capabilities")
                         .param("locationNodeCode", "UNKNOWN01")
@@ -144,7 +148,7 @@ class DeviceCapabilityControllerIntegrationTest {
 
     @Test
     void getCapabilities_whenNoMatch_returnsEmptyList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "cap-empty", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "cap-empty", "password123");
         String locationCode = createRootLocation(accessToken, "Cap-Empty");
 
         mockMvc.perform(get("/api/manager/devices/capabilities")

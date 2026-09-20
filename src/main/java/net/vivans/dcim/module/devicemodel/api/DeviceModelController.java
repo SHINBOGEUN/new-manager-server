@@ -11,6 +11,7 @@ import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelResponse;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,6 +49,7 @@ public class DeviceModelController {
         return ResponseEntity.ok(ApiResponse.ok(deviceModelQueryService.getDeviceModel(id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "장비 모델 등록 API")
     public ResponseEntity<ApiResponse<DeviceModelResponse>> createDeviceModel(
@@ -55,6 +57,7 @@ public class DeviceModelController {
         return ResponseEntity.ok(ApiResponse.ok(deviceModelQueryService.createDeviceModel(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "장비 모델 수정 API", description = "protocols는 전체 교체됩니다.")
     public ResponseEntity<ApiResponse<DeviceModelResponse>> updateDeviceModel(
@@ -63,6 +66,7 @@ public class DeviceModelController {
         return ResponseEntity.ok(ApiResponse.ok(deviceModelQueryService.updateDeviceModel(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "장비 모델 삭제 API")
     public ResponseEntity<ApiResponse<Integer>> deleteDeviceModel(

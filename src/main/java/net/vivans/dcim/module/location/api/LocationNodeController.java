@@ -13,6 +13,7 @@ import net.vivans.dcim.module.location.api.dto.LocationNodeResponse;
 import net.vivans.dcim.module.location.api.dto.LocationNodeUpdateRequest;
 import net.vivans.dcim.module.location.application.LocationNodeQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +36,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.getLocationNodes(name, parentCode, locationTypeId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "위치 노드 등록 API", description = "code는 서버에서 10자 Base62 문자열로 자동 생성됩니다.")
     public ResponseEntity<ApiResponse<LocationNodeResponse>> createLocationNode(
@@ -42,6 +44,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.createLocationNode(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/bulk")
     @Operation(summary = "위치 노드 일괄 등록 API", description = "트리 구조 요청을 받아 부모부터 자식까지 순서대로 등록합니다.")
     public ResponseEntity<ApiResponse<List<LocationNodeResponse>>> createBatchLocationNodes(
@@ -49,6 +52,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.createBatchLocationNodes(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{code}")
     @Operation(summary = "위치 노드 수정 API", description = "locationType, name만 수정 가능합니다. code와 parent는 변경할 수 없습니다.")
     public ResponseEntity<ApiResponse<LocationNodeResponse>> updateLocationNode(
@@ -57,6 +61,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.updateLocationNode(code, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{code}/parent")
     @Operation(summary = "상위 노드 변경 API", description = "parentCode가 null이거나 비어 있으면 루트로 승격합니다.")
     public ResponseEntity<ApiResponse<LocationNodeResponse>> updateParentLocationNode(
@@ -65,6 +70,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.updateParentLocationNode(code, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{code}")
     @Operation(summary = "위치 노드 삭제 API", description = "리프 노드만 삭제합니다. 참조 중인 장비는 UNASSIGNED로 이동합니다.")
     public ResponseEntity<ApiResponse<LocationNodeDeleteResponse>> deleteLocationNode(
@@ -72,6 +78,7 @@ public class LocationNodeController {
         return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.deleteLocationNode(code)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{code}/subtree")
     @Operation(summary = "위치 노드 서브트리 삭제 API", description = "해당 노드와 모든 자손을 삭제합니다. 참조 중인 장비는 UNASSIGNED로 이동합니다.")
     public ResponseEntity<ApiResponse<LocationNodeDeleteResponse>> deleteLocationNodeSubtree(
