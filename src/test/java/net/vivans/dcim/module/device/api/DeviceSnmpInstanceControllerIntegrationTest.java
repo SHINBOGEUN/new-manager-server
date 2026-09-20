@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class DeviceSnmpInstanceControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createSnmpInstance_returnsCreated() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-create", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-create", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-INST", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -61,7 +65,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void createSnmpInstance_whenAlreadyExists_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-dup", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DUP-INST", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -96,7 +100,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void createSnmpInstance_whenEndpointNotSnmp_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-modbus", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-modbus", "password123");
         Integer protocolGroupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpTypeId = findOrCreateCommonCode(accessToken, protocolGroupId, "snmp", "SNMP", 1);
         Integer modbusTypeId = findOrCreateCommonCode(accessToken, protocolGroupId, "modbus", "Modbus", 2);
@@ -123,7 +127,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void createSnmpInstance_whenNoRequiresInstancePoint_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-no-req", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-no-req", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-FIXED", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -148,7 +152,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void createSnmpInstance_whenEndpointNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-ep-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-ep-nf", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-EP-NF", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -171,7 +175,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void createSnmpInstance_withInvalidInstanceId_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-bad-id", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-bad-id", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-BAD-ID", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -195,7 +199,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void getSnmpInstance_returnsInstance() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-get", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-get", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-GET-INST", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -229,7 +233,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void getSnmpInstance_whenNotRegistered_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-get-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-get-nf", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-GET-NF", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -250,7 +254,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void getSnmpInstance_whenEndpointNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-get-ep-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-get-ep-nf", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-GET-EP-NF", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -269,7 +273,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void updateSnmpInstance_returnsUpdated() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-put", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-put", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-PUT-INST", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -307,7 +311,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void updateSnmpInstance_whenNotRegistered_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-put-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-put-nf", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-PUT-NF", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -332,7 +336,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void deleteSnmpInstance_removesInstance() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-del", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-del", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DEL-INST", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);
@@ -372,7 +376,7 @@ class DeviceSnmpInstanceControllerIntegrationTest {
 
     @Test
     void deleteSnmpInstance_whenNotRegistered_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-instance-del-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-instance-del-nf", "password123");
         Integer snmpTypeId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DEL-NF", "APC", snmpTypeId);
         int protocolId = firstProtocolId(accessToken, modelId);

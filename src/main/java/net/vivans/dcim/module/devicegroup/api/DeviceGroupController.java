@@ -9,6 +9,7 @@ import net.vivans.dcim.module.devicegroup.api.dto.DeviceGroupRequest;
 import net.vivans.dcim.module.devicegroup.api.dto.DeviceGroupResponse;
 import net.vivans.dcim.module.devicegroup.application.DeviceGroupQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -43,6 +44,7 @@ public class DeviceGroupController {
         return ResponseEntity.ok(ApiResponse.ok(deviceGroupQueryService.getDeviceGroup(id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "장비 그룹 생성 API")
     public ResponseEntity<ApiResponse<DeviceGroupResponse>> createDeviceGroup(
@@ -50,6 +52,7 @@ public class DeviceGroupController {
         return ResponseEntity.ok(ApiResponse.ok(deviceGroupQueryService.createDeviceGroup(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "장비 그룹 수정 API", description = "deviceIds는 전체 교체입니다.")
     public ResponseEntity<ApiResponse<DeviceGroupResponse>> updateDeviceGroup(
@@ -58,6 +61,7 @@ public class DeviceGroupController {
         return ResponseEntity.ok(ApiResponse.ok(deviceGroupQueryService.updateDeviceGroup(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "장비 그룹 삭제 API", description = "그룹 연결만 함께 제거하며 장비는 삭제하지 않습니다.")
     public ResponseEntity<ApiResponse<Integer>> deleteDeviceGroup(@PathVariable Integer id) {

@@ -2,6 +2,7 @@ package net.vivans.dcim.module.query.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
@@ -44,12 +45,15 @@ class QueryLastControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @MockitoBean
     private PointQuery pointQuery;
 
     @Test
     void getLast_returnsLatestValuesForWidgetDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-last-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-last-user", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         CreatedDevice deviceA = createDeviceWithPoints(accessToken, "Q-Last-A", Map.of("V", "V", "temp", "C"));
         CreatedDevice deviceB = createDeviceWithPoints(accessToken, "Q-Last-B", Map.of("V", "V", "temp", "C"));
@@ -82,7 +86,7 @@ class QueryLastControllerIntegrationTest {
 
     @Test
     void getLast_whenWidgetIdMissing_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-last-bad", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-last-bad", "password123");
 
         mockMvc.perform(get("/api/manager/query/last")
                         .header("Authorization", bearerToken(accessToken)))
@@ -91,7 +95,7 @@ class QueryLastControllerIntegrationTest {
 
     @Test
     void getLast_whenWidgetUnknown_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-last-404", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-last-404", "password123");
 
         mockMvc.perform(get("/api/manager/query/last")
                         .param("widgetId", "999999")
@@ -102,7 +106,7 @@ class QueryLastControllerIntegrationTest {
 
     @Test
     void getLast_whenWidgetNotLast_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-last-kind", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-last-kind", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int deviceId = createDevice(accessToken, "Q-Agg");
         int widgetId = createAggregateWidget(accessToken, "dashboard", "일일전력", deviceId);

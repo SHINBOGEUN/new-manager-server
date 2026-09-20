@@ -9,6 +9,7 @@ import net.vivans.dcim.module.common.api.dto.CodeGroupResponse;
 import net.vivans.dcim.module.common.application.CodeGroupQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +23,14 @@ public class CodeGroupController {
 
     private final CodeGroupQueryService codeGroupQueryService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "코드 그룹 생성 API")
     @PostMapping
     public ResponseEntity<ApiResponse<CodeGroupResponse>> createCodeGroup(@Valid @RequestBody CodeGroupRequest codeGroupRequest) {
         return ResponseEntity.ok(ApiResponse.ok(codeGroupQueryService.createCodeGroup(codeGroupRequest)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "코드 그룹 수정 API")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CodeGroupResponse>> updateCodeGroup(
@@ -36,6 +39,7 @@ public class CodeGroupController {
         return ResponseEntity.ok(ApiResponse.ok(codeGroupQueryService.updateCodeGroup(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "코드 그룹 삭제 API")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Integer>> deleteCodeGroup(
@@ -44,6 +48,7 @@ public class CodeGroupController {
         return ResponseEntity.ok(ApiResponse.ok(codeGroupQueryService.deleteCodeGroup(id)));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @Operation(summary = "코드 그룹 전체 목록 조회 API")
     @GetMapping
     public ResponseEntity<ApiResponse<List<CodeGroupResponse>>> getCodeGroups() {

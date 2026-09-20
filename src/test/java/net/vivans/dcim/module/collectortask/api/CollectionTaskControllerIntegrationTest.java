@@ -2,6 +2,7 @@ package net.vivans.dcim.module.collectortask.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,9 +38,12 @@ class CollectionTaskControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createTask_withPeriodGroups_generatesSpecPerGroup() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-create", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-create", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-AP8959", "APC", snmpId, false,
@@ -94,7 +98,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_withNonProtocolTypeGroup_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-bad-group", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-bad-group", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-BAD-GROUP", "APC", snmpId, false,
@@ -119,7 +123,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_duplicateModelAndScriptType_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-dup", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-DUP", "APC", snmpId, false,
@@ -143,7 +147,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_deviceFromOtherModel_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-other-model", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-other-model", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelA = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-MODEL-A", "APC", snmpId, false,
@@ -177,7 +181,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_sameDeviceInTwoGroups_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-dup-device", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-dup-device", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-DUP-DEV", "APC", snmpId, false,
@@ -213,7 +217,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void getTasks_filterByModelId_returnsMatchingTasks() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-filter", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-filter", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelA = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-FILTER-A", "APC", snmpId, false,
@@ -235,7 +239,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void updateTask_updatesNameAndActiveOnly() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-update", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-update", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-UPDATE", "APC", snmpId, false,
@@ -261,7 +265,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void toggleTask_flipsActiveFlag() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-toggle", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-toggle", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-TOGGLE", "APC", snmpId, false,
@@ -277,7 +281,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createDevice_whenModelTaskExists_assignsToDefaultGroupAndUpdatesSpec() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-auto-assign-device", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-auto-assign-device", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-AUTO-DEV", "APC", snmpId, false,
@@ -305,7 +309,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_assignsExistingModelDevicesToDefaultGroup() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-auto-assign-task", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-auto-assign-task", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-AUTO-TASK", "APC", snmpId, false,
@@ -334,7 +338,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void deleteDevice_removesDeviceFromGeneratedSpec() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-auto-delete-device", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-auto-delete-device", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-AUTO-DEL", "APC", snmpId, false,
@@ -366,7 +370,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void updateGroup_withoutDeviceIds_keepsExistingDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-omit-devices", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-group-omit-devices", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-OMIT-DEV", "APC", snmpId, false,
@@ -404,7 +408,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void updateGroup_withEmptyDeviceIds_clearsAllDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-clear-devices", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-group-clear-devices", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-CLEAR-DEV", "APC", snmpId, false,
@@ -440,7 +444,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void updateGroup_keepsOverlappingDeviceWithoutDuplicateMappingError() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-keep-device", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-group-keep-device", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-KEEP-MAP", "APC", snmpId, false,
@@ -478,7 +482,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void disableEndpoint_dropsDeviceFromGeneratedSpec() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-endpoint-off", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-endpoint-off", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-SCRIPT-OFF", "Dragino", snmpId, false,
@@ -520,7 +524,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void createTask_withExplicitDeviceIds_doesNotAutoAssignOtherModelDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-task-explicit-only", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-task-explicit-only", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-EXPLICIT", "APC", snmpId, false,
@@ -559,7 +563,7 @@ class CollectionTaskControllerIntegrationTest {
 
     @Test
     void updateGroup_changesCronExpression() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "v4-group-cron", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "v4-group-cron", "password123");
         Integer snmpId = scriptTypeId(accessToken, "snmp", "SNMP", 1);
         Integer modelId = createDeviceModelWithSnmpPoint(
                 accessToken, "V4-CRON", "APC", snmpId, false,

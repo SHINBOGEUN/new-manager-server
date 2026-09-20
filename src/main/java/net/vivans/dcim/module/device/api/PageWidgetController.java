@@ -18,6 +18,7 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.application.PageWidgetQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,6 +60,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getWidget(id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "페이지 위젯 등록")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> createWidget(
@@ -67,6 +69,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createWidget(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/pue")
     @Operation(summary = "PUE 위젯 등록")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> createPueWidget(
@@ -75,6 +78,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPueWidget(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/pue")
     @Operation(summary = "PUE 위젯 수정")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePueWidget(
@@ -84,6 +88,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePueWidget(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/psychrometric")
     @Operation(summary = "사이코메트릭 위젯 등록")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> createPsychrometricWidget(
@@ -92,6 +97,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPsychrometricWidget(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/psychrometric")
     @Operation(summary = "사이코메트릭 위젯 수정")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePsychrometricWidget(
@@ -101,6 +107,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePsychrometricWidget(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/power-distribution")
     @Operation(summary = "전력 분배 위젯 등록", description = "모든 소스는 W 단위의 POWER 포인트여야 합니다.")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> createPowerDistributionWidget(
@@ -109,6 +116,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createPowerDistributionWidget(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/power-distribution")
     @Operation(summary = "전력 분배 위젯 수정")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> updatePowerDistributionWidget(
@@ -118,6 +126,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updatePowerDistributionWidget(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "페이지 위젯 수정")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> updateWidget(
@@ -127,6 +136,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updateWidget(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/enabled")
     @Operation(summary = "위젯 UI 표시 on/off", description = "페이지에 위젯을 보여줄지 여부만 변경합니다.")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> setEnabled(
@@ -136,6 +146,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.setEnabled(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/layout")
     @Operation(summary = "위젯 2D 배치 저장", description = "드래그 후 grid 좌표·크기만 저장합니다.")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> replaceLayout(
@@ -145,6 +156,7 @@ public class PageWidgetController {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.replaceLayout(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "페이지 위젯 삭제")
     public ResponseEntity<ApiResponse<Integer>> deleteWidget(

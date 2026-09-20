@@ -2,6 +2,7 @@ package net.vivans.dcim.module.query.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +35,12 @@ class QueryCountControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void getCount_returnsTotalAndByModel() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-user", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int modelA = createModel(accessToken, "Count-Model-A", "APC");
         int modelB = createModel(accessToken, "Count-Model-B", "Carrier");
@@ -63,7 +67,7 @@ class QueryCountControllerIntegrationTest {
 
     @Test
     void getCount_excludesDisabledDevices() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-off", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-off", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int modelId = createModel(accessToken, "Count-Model-Off", "APC");
         int on = createDevice(accessToken, "Count-On", modelId, true);
@@ -81,7 +85,7 @@ class QueryCountControllerIntegrationTest {
 
     @Test
     void getCount_whenWidgetNotCount_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-kind", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-kind", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int modelId = createModel(accessToken, "Count-Model-Kind", "APC");
         int deviceId = createDevice(accessToken, "Count-Kind", modelId, true);
@@ -96,7 +100,7 @@ class QueryCountControllerIntegrationTest {
 
     @Test
     void getCount_whenWidgetIdMissing_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-bad", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-bad", "password123");
 
         mockMvc.perform(get("/api/manager/query/count")
                         .header("Authorization", bearerToken(accessToken)))
@@ -105,7 +109,7 @@ class QueryCountControllerIntegrationTest {
 
     @Test
     void getCount_totalMode_returnsCountOnly() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-total", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-total", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int modelA = createModel(accessToken, "Count-Total-A", "APC");
         int modelB = createModel(accessToken, "Count-Total-B", "Carrier");
@@ -124,7 +128,7 @@ class QueryCountControllerIntegrationTest {
 
     @Test
     void getCount_modelMode_filtersByModelId() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "query-count-model", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "query-count-model", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int modelA = createModel(accessToken, "Count-Filter-A", "APC");
         int modelB = createModel(accessToken, "Count-Filter-B", "Carrier");

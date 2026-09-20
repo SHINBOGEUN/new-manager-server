@@ -1,6 +1,7 @@
 package net.vivans.dcim.module.devicemodel.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ class DeviceModelSnmpPointControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createSnmpPoint_returnsCreated() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-create-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-create-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -84,7 +88,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void getSnmpPoints_returnsListOrderedById() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-list-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-list-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -143,7 +147,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void getSnmpPoint_returnsOne() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-get-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-get-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -201,7 +205,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void getSnmpPoint_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-get-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-get-nf-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -236,7 +240,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void updateSnmpPoint_returnsUpdated() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-update-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -306,7 +310,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void updateSnmpPoint_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-update-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-update-nf-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -348,7 +352,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void deleteSnmpPoint_removesPoint() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-delete-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -407,7 +411,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void deleteSnmpPoint_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-delete-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-delete-nf-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);
@@ -442,7 +446,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void createSnmpPoint_whenProtocolIsNotSnmp_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-mqtt-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-mqtt-user", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer mqttId = createCommonCode(accessToken, groupId, "mqtt", "MQTT", 1);
@@ -483,7 +487,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void createSnmpPoint_whenOidAlreadyExists_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-dup-oid", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-dup-oid", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
@@ -539,7 +543,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void updateSnmpPoint_whenOidAlreadyExists_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-upd-dup-oid", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-upd-dup-oid", "password123");
         Integer deviceTypeId = createModelType(accessToken);
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
@@ -619,7 +623,7 @@ class DeviceModelSnmpPointControllerIntegrationTest {
 
     @Test
     void createSnmpPointsBulk_returnsCreatedList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "snmp-point-bulk-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "snmp-point-bulk-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = createCommonCode(accessToken, groupId, "snmp", "SNMP", 1);
         Integer deviceTypeId = createModelType(accessToken);

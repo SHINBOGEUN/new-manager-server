@@ -9,6 +9,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceSnmpInstanceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceSnmpInstanceResponse;
 import net.vivans.dcim.module.device.application.DeviceSnmpInstanceQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,6 +39,7 @@ public class DeviceSnmpInstanceController {
                 deviceSnmpInstanceQueryService.getSnmpInstance(deviceId, endpointId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "SNMP instance 등록 API",
             description = "SNMP endpoint당 1건. OID {instanceId} 치환용. 모델에 requiresInstance point가 있을 때만.")
@@ -50,6 +52,7 @@ public class DeviceSnmpInstanceController {
                 deviceSnmpInstanceQueryService.createSnmpInstance(deviceId, endpointId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping
     @Operation(summary = "SNMP instance 수정 API",
             description = "instanceId 전체 교체. 미등록이면 404.")
@@ -62,6 +65,7 @@ public class DeviceSnmpInstanceController {
                 deviceSnmpInstanceQueryService.updateSnmpInstance(deviceId, endpointId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping
     @Operation(summary = "SNMP instance 삭제 API",
             description = "endpoint의 instance 행 삭제. 미등록이면 404.")

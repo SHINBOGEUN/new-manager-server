@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +35,12 @@ class DeviceProtocolEndpointControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createEndpoint_returnsCreatedEndpoint() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-좌");
@@ -65,7 +69,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_withoutEnabled_defaultsToTrue() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-default", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-default", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "LHT65N", "Dragino", snmpId);
         int deviceId = createDevice(accessToken, modelId, "센서-01");
@@ -86,7 +90,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_whenDeviceNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-device-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-device-nf", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
 
         mockMvc.perform(post("/api/manager/devices/{deviceId}/endpoints", 999999)
@@ -105,7 +109,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_whenProtocolNotSupportedByModel_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-unsupported", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-unsupported", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modbusId = findOrCreateCommonCode(
                 accessToken,
@@ -133,7 +137,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_withDuplicateProtocol_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-dup", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DUP", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-dup");
@@ -162,7 +166,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_whenHostPortAlreadyUsedByAnotherDevice_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-host-port-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-host-port-dup", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-HOST-DUP", "APC", snmpId);
         int deviceA = createDevice(accessToken, modelId, "PDU-host-a");
@@ -185,7 +189,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_withNonProtocolType_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-bad-type", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-bad-type", "password123");
         Integer modelTypeGroupId = findOrCreateCodeGroup(accessToken, "MODEL_TYPE", "Model Type");
         Integer pduTypeId = findOrCreateCommonCode(accessToken, modelTypeGroupId, "PDU", "PDU", 1);
         Integer snmpId = snmpProtocolTypeId(accessToken);
@@ -208,7 +212,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_withBlankHost_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-blank-host", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-blank-host", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-BLANK", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-blank");
@@ -229,7 +233,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void createEndpoint_withInvalidPort_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-create-bad-port", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-create-bad-port", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-PORT", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-port");
@@ -250,7 +254,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_returnsUpdatedEndpoint() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-UPD", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-upd");
@@ -278,7 +282,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_whenEndpointNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-nf", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-UPD-NF", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-upd-nf");
@@ -299,7 +303,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_whenDeviceNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-device-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-device-nf", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
 
         mockMvc.perform(put("/api/manager/devices/{deviceId}/endpoints/{endpointId}", 999999, 1)
@@ -318,7 +322,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_whenProtocolNotSupportedByModel_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-unsupported", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-unsupported", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modbusId = findOrCreateCommonCode(
                 accessToken,
@@ -347,7 +351,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_withDuplicateProtocol_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-dup", "password123");
         Integer protocolGroupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = findOrCreateCommonCode(accessToken, protocolGroupId, "snmp", "SNMP", 1);
         Integer modbusId = findOrCreateCommonCode(accessToken, protocolGroupId, "modbus", "Modbus", 2);
@@ -373,7 +377,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void updateEndpoint_whenHostPortAlreadyUsedByAnotherDevice_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-update-host-port-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-update-host-port-dup", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-UPD-HOST-DUP", "APC", snmpId);
         int deviceA = createDevice(accessToken, modelId, "PDU-upd-host-a");
@@ -397,7 +401,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void getEndpoints_returnsEndpointsOrderedById() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-list-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-list-user", "password123");
         Integer protocolGroupId = findOrCreateCodeGroup(accessToken, "PROTOCOL_TYPE", "Protocol Type");
         Integer snmpId = findOrCreateCommonCode(accessToken, protocolGroupId, "snmp", "SNMP", 1);
         Integer modbusId = findOrCreateCommonCode(accessToken, protocolGroupId, "modbus", "Modbus", 2);
@@ -422,7 +426,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void getEndpoints_whenEmpty_returnsEmptyList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-list-empty", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-list-empty", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-LIST-EMPTY", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-list-empty");
@@ -435,7 +439,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void getEndpoints_whenDeviceNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-list-device-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-list-device-nf", "password123");
 
         mockMvc.perform(get("/api/manager/devices/{deviceId}/endpoints", 999999)
                         .header("Authorization", bearerToken(accessToken)))
@@ -445,7 +449,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void getEndpoint_returnsEndpoint() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-get-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-get-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-GET", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-get");
@@ -465,7 +469,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void getEndpoint_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-get-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-get-nf", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-GET-NF", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-get-nf");
@@ -478,7 +482,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void deleteEndpoint_deletesAndReturnsId() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-delete-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DEL", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-del");
@@ -497,7 +501,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void deleteEndpoint_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-delete-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-delete-nf", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModel(accessToken, "AP8959-DEL-NF", "APC", snmpId);
         int deviceId = createDevice(accessToken, modelId, "PDU-del-nf");
@@ -510,7 +514,7 @@ class DeviceProtocolEndpointControllerIntegrationTest {
 
     @Test
     void deleteEndpoint_whenDeviceNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "endpoint-delete-device-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "endpoint-delete-device-nf", "password123");
 
         mockMvc.perform(delete("/api/manager/devices/{deviceId}/endpoints/{endpointId}", 999999, 1)
                         .header("Authorization", bearerToken(accessToken)))

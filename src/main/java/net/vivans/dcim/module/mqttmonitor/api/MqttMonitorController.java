@@ -9,6 +9,7 @@ import net.vivans.dcim.module.mqttmonitor.api.dto.MqttMonitorMessagesResponse;
 import net.vivans.dcim.module.mqttmonitor.api.dto.MqttMonitorSessionResponse;
 import net.vivans.dcim.module.mqttmonitor.application.MqttMonitorService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/manager/mqtt-monitor/sessions")
 @Tag(name = "mqtt-monitor", description = "Manager TCP MQTT 구독 모니터 API")
+@PreAuthorize("hasRole('ADMIN')")
 public class MqttMonitorController {
 
     private final MqttMonitorService mqttMonitorService;

@@ -12,6 +12,7 @@ import net.vivans.dcim.module.collectortask.api.dto.CollectionTaskResponse;
 import net.vivans.dcim.module.collectortask.api.dto.CollectionTaskUpdateRequest;
 import net.vivans.dcim.module.collectortask.application.CollectionTaskService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,6 +53,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.getTask(taskId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "수집 task 생성 (모델 1개 + 주기 그룹)")
     public ResponseEntity<ApiResponse<CollectionTaskResponse>> createTask(
@@ -60,6 +62,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.createTask(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{taskId}")
     @Operation(summary = "수집 task 메타 수정")
     public ResponseEntity<ApiResponse<CollectionTaskResponse>> updateTask(
@@ -69,6 +72,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.updateTask(taskId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{taskId}")
     @Operation(summary = "수집 task 삭제")
     public ResponseEntity<ApiResponse<Integer>> deleteTask(
@@ -77,6 +81,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.deleteTask(taskId)));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @PatchMapping("/{taskId}/toggle")
     @Operation(summary = "수집 task 활성/비활성 전환")
     public ResponseEntity<ApiResponse<CollectionTaskResponse>> toggleTask(
@@ -85,6 +90,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.toggleTask(taskId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{taskId}/groups")
     @Operation(summary = "주기 그룹 추가")
     public ResponseEntity<ApiResponse<CollectionTaskGroupResponse>> createGroup(
@@ -94,6 +100,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.createGroup(taskId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{taskId}/groups/{groupId}")
     @Operation(summary = "주기 그룹 수정 (cron, 장비 목록)")
     public ResponseEntity<ApiResponse<CollectionTaskGroupResponse>> updateGroup(
@@ -104,6 +111,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.updateGroup(taskId, groupId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{taskId}/groups/{groupId}")
     @Operation(summary = "주기 그룹 삭제")
     public ResponseEntity<ApiResponse<Integer>> deleteGroup(
@@ -113,6 +121,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.deleteGroup(taskId, groupId)));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
     @PatchMapping("/{taskId}/groups/{groupId}/toggle")
     @Operation(summary = "주기 그룹 활성/비활성 전환")
     public ResponseEntity<ApiResponse<CollectionTaskGroupResponse>> toggleGroup(
@@ -122,6 +131,7 @@ public class CollectionTaskController {
         return ResponseEntity.ok(ApiResponse.ok(collectionTaskService.toggleGroup(taskId, groupId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{taskId}/groups/{groupId}/devices/{deviceId}")
     @Operation(summary = "그룹-장비 연결 1건 제거 (다른 장비 연결에는 영향 없음)")
     public ResponseEntity<ApiResponse<CollectionTaskGroupResponse>> removeGroupDevice(

@@ -2,6 +2,7 @@ package net.vivans.dcim.module.live.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import net.vivans.dcim.module.live.application.LiveTelemetrySelectionService;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +39,9 @@ class LiveTelemetryControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private LiveTelemetrySelectionService liveTelemetrySelectionService;
 
     @AfterEach
@@ -47,7 +51,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void getDevices_returnsSnmpCollectablePointsOnly() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-dev-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-dev-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Fixture fixture = createPduWithPoints(accessToken, snmpId, "LIVE-DEV", "V", "W");
 
@@ -64,7 +68,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void getDevices_excludesDeviceWithoutEndpoint() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-no-ep", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-no-ep", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modelId = createDeviceModelWithSnmpPoints(
                 accessToken, "LIVE-NOEP", snmpId, "W", "W", "1.3.6.1.4.1.6375.1.8.0", false);
@@ -79,7 +83,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void putAndGetSelection_storesDevicePointsAndExpiresAt() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-sel-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-sel-user", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Fixture fixture = createPduWithPoints(accessToken, snmpId, "LIVE-SEL", "V", "W");
 
@@ -110,7 +114,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void putSelection_emptyItems_stopsSession() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-empty", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-empty", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Fixture fixture = createPduWithPoints(accessToken, snmpId, "LIVE-EMPTY", "W", "AMP");
 
@@ -134,7 +138,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void deleteSelection_clearsCurrentSelection() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-del", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-del", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Fixture fixture = createPduWithPoints(accessToken, snmpId, "LIVE-DEL", "W", "V");
 
@@ -155,7 +159,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void putSelection_unknownPoint_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-bad-pt", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-bad-pt", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Fixture fixture = createPduWithPoints(accessToken, snmpId, "LIVE-BADPT", "W", "V");
 
@@ -172,7 +176,7 @@ class LiveTelemetryControllerIntegrationTest {
 
     @Test
     void putSelection_unknownDevice_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "live-bad-dev", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "live-bad-dev", "password123");
 
         mockMvc.perform(put("/api/manager/live/selection")
                         .header("Authorization", bearerToken(accessToken))

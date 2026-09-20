@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +36,12 @@ class PageWidgetControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createAndListWidgets_filtersByPageCode() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-create", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-create", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         devicePageCodeId(accessToken, "POWER", "Power", 2);
         int coolingDevice = createDevice(accessToken, "Widget-Cool-A");
@@ -94,7 +98,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void createWidget_whenNameDuplicatedOnSamePage_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-dup", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         int deviceId = createDevice(accessToken, "Widget-Dup");
 
@@ -123,7 +127,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void createWidget_sameNameOnDifferentPages_succeeds() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-same-name", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-same-name", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         devicePageCodeId(accessToken, "POWER", "Power", 2);
         int deviceA = createDevice(accessToken, "Widget-Same-A");
@@ -161,7 +165,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void createLastWidget_savesPointsPerDevice() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-last-sources", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-last-sources", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         int deviceA = createDevice(accessToken, "Widget-Last-A");
         int deviceB = createDevice(accessToken, "Widget-Last-B");
@@ -191,7 +195,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void createWidget_whenPageCodeMissing_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-missing-page", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-missing-page", "password123");
         int deviceId = createDevice(accessToken, "Widget-Missing-Page");
 
         mockMvc.perform(post("/api/manager/widgets")
@@ -212,7 +216,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void updateAndDeleteWidget() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-upd", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-upd", "password123");
         devicePageCodeId(accessToken, "COOLING", "Cooling", 1);
         int deviceA = createDevice(accessToken, "Widget-Upd-A");
         int deviceB = createDevice(accessToken, "Widget-Upd-B");
@@ -272,7 +276,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void replaceLayout_savesGridPosition() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-layout", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-layout", "password123");
         devicePageCodeId(accessToken, "dashboard", "dashboard", 1);
         int deviceId = createDevice(accessToken, "Widget-Layout");
 
@@ -314,7 +318,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void pueWidget_createUpdateToggleAndDelete() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-pue", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-pue", "password123");
         devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
         int totalDevice = createDevice(accessToken, "Pue-Total");
         int coolerDevice = createDevice(accessToken, "Pue-Cooler");
@@ -362,7 +366,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void psychrometricWidget_createAndUpdate_keepsExistingSources() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-psychrometric", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-psychrometric", "password123");
         devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
         int temperatureDevice = createDevice(accessToken, "Psych-Temperature");
         int humidityDevice = createDevice(accessToken, "Psych-Humidity");
@@ -461,7 +465,7 @@ class PageWidgetControllerIntegrationTest {
 
     @Test
     void toggleEnabled_andFilterByEnabled() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "widget-toggle", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-toggle", "password123");
         devicePageCodeId(accessToken, "dashboard", "Dashboard", 1);
         int deviceId = createDevice(accessToken, "Toggle-PDU");
 

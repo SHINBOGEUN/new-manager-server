@@ -10,6 +10,7 @@ import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointCreateRequ
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointResponse;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelSnmpPointQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,6 +52,7 @@ public class DeviceModelSnmpPointController {
                 deviceModelSnmpPointQueryService.getDeviceModelSnmpPoint(modelId, protocolId, pointId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "SNMP 수집 POINT 등록 API")
     public ResponseEntity<ApiResponse<DeviceModelSnmpPointResponse>> createDeviceModelSnmpPoint(
@@ -62,6 +64,7 @@ public class DeviceModelSnmpPointController {
                 deviceModelSnmpPointQueryService.createDeviceModelSnmpPoint(modelId, protocolId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/bulk")
     @Operation(
             summary = "SNMP 수집 POINT 일괄 등록 API",
@@ -76,6 +79,7 @@ public class DeviceModelSnmpPointController {
                 deviceModelSnmpPointQueryService.createDeviceModelSnmpPoints(modelId, protocolId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{pointId}")
     @Operation(summary = "SNMP 수집 POINT 수정 API", description = "요청 body로 전체 교체합니다.")
     public ResponseEntity<ApiResponse<DeviceModelSnmpPointResponse>> updateDeviceModelSnmpPoint(
@@ -88,6 +92,7 @@ public class DeviceModelSnmpPointController {
                 deviceModelSnmpPointQueryService.updateDeviceModelSnmpPoint(modelId, protocolId, pointId, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{pointId}")
     @Operation(summary = "SNMP 수집 POINT 삭제 API")
     public ResponseEntity<ApiResponse<Integer>> deleteDeviceModelSnmpPoint(

@@ -9,6 +9,7 @@ import net.vivans.dcim.module.identity.api.dto.UserManagementResponse;
 import net.vivans.dcim.module.identity.api.dto.UserManagementUpdateRequest;
 import net.vivans.dcim.module.identity.application.UserManagementService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/manager/users")
 @Tag(name = "user-management", description = "운영 사용자 계정 관리 API")
+@PreAuthorize("hasRole('ADMIN')")
 public class UserManagementController {
 
     private final UserManagementService userManagementService;

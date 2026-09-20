@@ -11,6 +11,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.application.DeviceCapabilityQueryService;
 import net.vivans.dcim.module.device.application.DeviceQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import net.vivans.dcim.shared.api.PageResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -71,6 +72,7 @@ public class DeviceController {
         return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.getDevice(id)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "장비 등록 API", description = "위치를 아직 모를 경우 locationNodeCode에 UNASSIGNED를 지정합니다.")
     public ResponseEntity<ApiResponse<DeviceResponse>> createDevice(
@@ -78,6 +80,7 @@ public class DeviceController {
         return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.createDevice(request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "장비 수정 API", description = "요청 body는 등록과 동일하며 전체 교체입니다.")
     public ResponseEntity<ApiResponse<DeviceResponse>> updateDevice(
@@ -86,6 +89,7 @@ public class DeviceController {
         return ResponseEntity.ok(ApiResponse.ok(deviceQueryService.updateDevice(id, request)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "장비 삭제 API")
     public ResponseEntity<ApiResponse<Integer>> deleteDevice(

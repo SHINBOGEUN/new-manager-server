@@ -2,6 +2,7 @@ package net.vivans.dcim.module.device.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +35,12 @@ class DeviceControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Test
     void createDevice_returnsCreatedDevice() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-01");
 
@@ -67,7 +71,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_withoutEnabled_defaultsToTrue() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-default-enabled", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-default-enabled", "password123");
         Integer modelId = createDeviceModel(accessToken, "LHT65N", "Dragino");
         String locationCode = createRootLocation(accessToken, "Zone-A");
 
@@ -88,7 +92,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_whenModelNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-model-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-model-nf", "password123");
         String locationCode = createRootLocation(accessToken, "Rack-NF");
 
         mockMvc.perform(post("/api/manager/devices")
@@ -107,7 +111,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_whenLocationNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-loc-nf", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-loc-nf", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
 
         mockMvc.perform(post("/api/manager/devices")
@@ -126,7 +130,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_withDuplicateNameAtSameLocation_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-dup", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-dup", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Dup");
 
@@ -154,7 +158,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_withBlankName_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-blank-name", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-blank-name", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Blank");
 
@@ -174,7 +178,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevice_returnsDevice() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-get-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-get-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Get");
         int deviceId = createDevice(accessToken, modelId, locationCode, "PDU-좌", "단건 조회용");
@@ -196,7 +200,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevice_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-get-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-get-nf-user", "password123");
 
         mockMvc.perform(get("/api/manager/devices/{id}", 999999)
                         .header("Authorization", bearerToken(accessToken)))
@@ -206,7 +210,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevices_returnsPagedList() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-list-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-list-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-List");
         createDevice(accessToken, modelId, locationCode, "PDU-01", "d1");
@@ -242,7 +246,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevices_filtersByName() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-list-name-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-list-name-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-NameFilter");
         createDevice(accessToken, modelId, locationCode, "PDU-좌", "left");
@@ -259,7 +263,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevices_filtersByEnabledAndLocation() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-list-enabled-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-list-enabled-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationA = createRootLocation(accessToken, "Rack-A");
         String locationB = createRootLocation(accessToken, "Rack-B");
@@ -280,7 +284,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void getDevices_includeSubtree_returnsDevicesUnderDescendantLocations() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-subtree-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-subtree-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         Integer groupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
         Integer zoneTypeId = findOrCreateCommonCode(accessToken, groupId, "ZONE", "존", 1);
@@ -308,7 +312,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_updatesFields() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         Integer newModelId = createDeviceModel(accessToken, "LHT65N", "Dragino");
         String locationCode = createRootLocation(accessToken, "Rack-Update");
@@ -342,7 +346,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-nf-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Update-NF");
 
@@ -362,7 +366,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_withDuplicateNameAtSameLocation_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-dup-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-dup-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Update-Dup");
         createDevice(accessToken, modelId, locationCode, "PDU-좌", "first");
@@ -384,7 +388,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_keepsSameNameAtSameLocation() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-same-name", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-same-name", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Update-Same");
         int deviceId = createDevice(accessToken, modelId, locationCode, "PDU-좌", "before");
@@ -407,7 +411,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_whenModelChangeHasUnsupportedEndpoint_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-endpoint-conflict", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-endpoint-conflict", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modbusId = modbusProtocolTypeId(accessToken);
         Integer snmpModelId = createDeviceModelWithProtocol(accessToken, "SNMP-ONLY", "APC", snmpId);
@@ -433,7 +437,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_whenModelChangeWithMatchingEndpoint_succeeds() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-endpoint-ok", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-endpoint-ok", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer sourceModelId = createDeviceModelWithProtocol(accessToken, "AP8959-A", "APC", snmpId);
         Integer targetModelId = createDeviceModelWithProtocol(accessToken, "AP8959-B", "APC", snmpId);
@@ -459,7 +463,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void updateDevice_whenModelChangeToDualProtocolModelWithSingleEndpoint_succeeds() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-update-dual-model", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-update-dual-model", "password123");
         Integer snmpId = snmpProtocolTypeId(accessToken);
         Integer modbusId = modbusProtocolTypeId(accessToken);
         Integer snmpOnlyModelId = createDeviceModelWithProtocol(accessToken, "SNMP-ONLY-2", "APC", snmpId);
@@ -485,7 +489,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void createDevice_withoutModelId_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-create-null-model", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-create-null-model", "password123");
         String locationCode = createRootLocation(accessToken, "Rack-NullModel");
 
         mockMvc.perform(post("/api/manager/devices")
@@ -503,7 +507,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void deleteDevice_removesDevice() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-delete-user", "password123");
         Integer modelId = createDeviceModel(accessToken, "AP8959", "APC");
         String locationCode = createRootLocation(accessToken, "Rack-Delete");
         int deviceId = createDevice(accessToken, modelId, locationCode, "PDU-좌", "to delete");
@@ -521,7 +525,7 @@ class DeviceControllerIntegrationTest {
 
     @Test
     void deleteDevice_whenNotFound_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "device-delete-nf-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "device-delete-nf-user", "password123");
 
         mockMvc.perform(delete("/api/manager/devices/{id}", 999999)
                         .header("Authorization", bearerToken(accessToken)))

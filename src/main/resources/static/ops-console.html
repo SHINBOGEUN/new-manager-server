@@ -614,6 +614,9 @@
     button.ghost:hover { background: #203149; border-color: #4a6687; }
     button.danger { background: linear-gradient(135deg, #be3b4f, #8f2639); border-color: #d6596b; }
     .chip { background: #172338; color: #a9bed6; border-color: #354860; }
+    /* 역할 기반 화면 제어: ADMIN이 아니면 data-role-gate="admin", GUEST면 data-role-gate="admin-user" 요소를 숨긴다. */
+    body:not(.role-admin) [data-role-gate="admin"] { display: none !important; }
+    body.role-guest [data-role-gate="admin-user"] { display: none !important; }
     .chip.ok { background: #123524; color: #67e3a1; border-color: #286746; }
     .chip.bad { background: #42202c; color: #ff94a2; border-color: #823446; }
     .chip.warn { background: #403018; color: #ffd07a; border-color: #79591d; }
@@ -999,7 +1002,7 @@
       <a class="chip" href="/">도구 목록</a>
       <a class="chip" href="/widget-dashboard.html">위젯 보드</a>
       <a class="chip" href="/live-test.html">실시간</a>
-      <a class="chip" href="/mqtt-monitor.html">MQTT 모니터</a>
+      <a class="chip" href="/mqtt-monitor.html" data-role-gate="admin">MQTT 모니터</a>
     </div>
   </header>
 
@@ -1008,7 +1011,7 @@
     <div class="group">시작</div>
     <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 현황 · 다음 할 일</small></button>
     <div class="group">운영</div>
-    <button type="button" data-tab="wizard">장비 추가<small>등록부터 수집까지</small></button>
+    <button type="button" data-tab="wizard" data-role-gate="admin">장비 추가<small>등록부터 수집까지</small></button>
     <button type="button" data-tab="devices">장비 목록<small>통신 · 수집 연결</small></button>
     <button type="button" data-tab="assets">자산관리<small>Rack · U · 이미지</small></button>
     <button type="button" data-tab="rack-overview">랙 현황<small>점유 U · 설치 장비</small></button>
@@ -1019,9 +1022,9 @@
     <div class="group">기준 정보</div>
     <button type="button" data-tab="locations">위치<small>존 · Path · 랙</small></button>
     <button type="button" data-tab="models">장비 모델<small>OID · 측정 항목</small></button>
-    <button type="button" data-tab="codes">공통코드<small>그룹 · 코드 값</small></button>
+    <button type="button" data-tab="codes" data-role-gate="admin-user">공통코드<small>그룹 · 코드 값</small></button>
     <div class="group">시스템</div>
-    <button type="button" data-tab="users">사용자 관리<small>계정 · 역할 분류</small></button>
+    <button type="button" data-tab="users" data-role-gate="admin">사용자 관리<small>계정 · 역할 분류</small></button>
     <button type="button" data-tab="notes">API 안내<small>콘솔 커버리지</small></button>
     <div class="side-footer"><span class="status-pulse"></span><div><strong>Manager Online</strong><small>Operations workspace</small></div></div>
   </aside>
@@ -1072,7 +1075,7 @@
     <section class="panel active" id="tab-home">
       <div class="home-hero">
         <div><span class="eyebrow">OPERATIONS CENTER</span><h1 class="page-title">데이터센터 운영을 한눈에</h1><p class="page-desc">장비 등록부터 수집 상태, 자산과 Rack, 위젯 구성까지 하나의 흐름으로 관리하세요.</p></div>
-        <div class="hero-actions"><button type="button" class="primary" id="goWizard">＋ 새 장비 등록</button><a class="hero-link" href="/widget-dashboard.html">위젯 대시보드 열기 ↗</a></div>
+        <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><a class="hero-link" href="/widget-dashboard.html">위젯 대시보드 열기 ↗</a></div>
       </div>
       <div class="stats home-stats">
         <div class="stat stat-location"><div class="stat-icon">⌖</div><div><div class="k">등록 위치</div><div class="v"><span id="statLoc">–</span><small> locations</small></div><p>Zone · Row · Rack</p></div></div>
@@ -1217,7 +1220,7 @@
                 <label class="field">보증 만료일<input id="assetWarrantyExpiresOn" type="date" /></label>
                 <label class="field full">설명<input id="assetDescription" placeholder="선택" /></label>
               </div>
-              <button type="button" class="primary" style="margin-top:12px" id="assetSave">자산 정보 저장</button>
+              <button type="button" class="primary" style="margin-top:12px" id="assetSave" data-role-gate="admin">자산 정보 저장</button>
             </div>
           </div>
           <div class="card">
@@ -1246,7 +1249,7 @@
                 <label class="field" id="assetRackSideField" style="display:none">장착 측면<select id="assetRackSide"><option value="LEFT">왼쪽</option><option value="RIGHT">오른쪽</option><option value="REAR">후면</option></select></label>
                 <div id="assetUFields" class="fields" style="display:contents"><label class="field">시작 U<input id="assetUPosition" type="number" min="1" value="1" /></label><label class="field">사용 U<input id="assetUHeight" type="number" min="1" value="1" /></label><label class="field full">Form Factor<input id="assetFormFactor" placeholder="예: 4U" /></label></div>
               </div>
-              <div class="row" style="margin-top:12px"><button type="button" class="primary" id="assetRackSave">Rack 배치 저장</button><button type="button" class="ghost" id="assetRackDelete">배치 해제</button></div>
+              <div class="row" style="margin-top:12px" data-role-gate="admin"><button type="button" class="primary" id="assetRackSave">Rack 배치 저장</button><button type="button" class="ghost" id="assetRackDelete">배치 해제</button></div>
             </div>
           </div>
           <div class="card">
@@ -1321,6 +1324,24 @@
         </div>
         <div class="collector-sync-grid" id="collectorSyncSummary"><div class="empty">동기화 상태를 조회하는 중입니다.</div></div>
       </div>
+
+      <!-- COLLECTOR JOB HEALTH (수집 작업 단위 성공/실패 이력 — 장비별 InfluxDB 최신값 상태(아래 표)와는 별개) -->
+      <div class="card" id="collectionJobHealthCard">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div>
+            <span class="eyebrow">COLLECTOR JOBS</span>
+            <h2 style="margin:4px 0 0">수집 작업 상태</h2>
+            <p class="muted" style="margin:6px 0 0;font-size:12px">Collector에 등록된 수집 작업(그룹) 단위 실행 결과입니다. 아래 장비별 수집 상태(InfluxDB 최신값 기준)와는 별개로, Collector가 직접 보고하는 성공/실패 이력입니다.</p>
+          </div>
+          <button type="button" class="ghost" id="cjhReload">새로고침</button>
+        </div>
+        <div class="muted" id="cjhCheckedAt" style="margin:10px 0 8px;font-size:12px"></div>
+        <div class="table-wrap" style="max-height:520px"><table>
+          <thead><tr><th>수집 그룹</th><th>모델</th><th>프로토콜</th><th>상태</th><th>마지막 성공</th><th>마지막 실패</th><th>연속 실패</th><th>마지막 실패 원인</th><th>Collector Job ID</th></tr></thead>
+          <tbody id="cjhBody"></tbody>
+        </table></div>
+      </div>
+
       <div class="stats">
         <div class="stat"><div class="k">전체 장비</div><div class="v" id="csTotal">–</div></div>
         <div class="stat"><div class="k">정상</div><div class="v" id="csNormal" style="color:var(--ok)">–</div></div>
@@ -1357,7 +1378,7 @@
             <select id="devFilterModel"><option value="">모든 모델</option></select>
             <select id="devFilterGroup"><option value="">모든 장비 그룹</option></select>
             <button type="button" class="ghost" id="devReload">조회</button>
-            <button type="button" class="primary" id="devGoWizard">새 장비</button>
+            <button type="button" class="primary" id="devGoWizard" data-role-gate="admin">새 장비</button>
           </div>
           <div style="overflow:auto;max-height:520px">
             <table>
@@ -1408,8 +1429,8 @@
                 </label>
               </div>
               <div class="row" style="margin-top:12px">
-                <button type="button" class="primary" id="devSave">저장</button>
-                <button type="button" class="danger" id="devDelete">삭제</button>
+                <button type="button" class="primary" id="devSave" data-role-gate="admin">저장</button>
+                <button type="button" class="danger" id="devDelete" data-role-gate="admin">삭제</button>
               </div>
             </div>
           </div>
@@ -1430,10 +1451,10 @@
               </label>
             </div>
             <div class="row" style="margin-top:12px">
-              <button type="button" class="primary" id="epCreate">통신 설정 추가</button>
+              <button type="button" class="primary" id="epCreate" data-role-gate="admin">통신 설정 추가</button>
               <button type="button" class="ghost" id="epCancelEdit" style="display:none">수정 취소</button>
               <button type="button" class="ghost" id="epReload">다시 읽기</button>
-              <button type="button" class="ghost" id="instCreate" style="display:none">인스턴스만 저장</button>
+              <button type="button" class="ghost" id="instCreate" style="display:none" data-role-gate="admin">인스턴스만 저장</button>
             </div>
             <div id="epOut"></div>
           </div>
@@ -1447,7 +1468,7 @@
                 <select id="attachGroup"></select>
               </label>
             </div>
-            <button type="button" class="primary" style="margin-top:12px" id="attachBtn">이 장비를 그룹에 추가</button>
+            <button type="button" class="primary" style="margin-top:12px" id="attachBtn" data-role-gate="admin">이 장비를 그룹에 추가</button>
             <details class="raw"><summary>응답 상세</summary><pre id="attachOut"></pre></details>
           </div>
         </div>
@@ -1492,7 +1513,7 @@
             <div id="dgDevicePick" class="device-pick-box" style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface2)"></div>
           </div>
           <div class="row" style="margin-top:12px">
-            <button type="button" class="primary" id="dgSave">그룹 저장</button>
+            <button type="button" class="primary" id="dgSave" data-role-gate="admin">그룹 저장</button>
             <button type="button" class="ghost" id="dgCancel" style="display:none">새 그룹으로</button>
           </div>
         </div>
@@ -1550,7 +1571,7 @@
             </label>
             <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">이 시간이 지나면 위젯에 수집 지연 상태로 표시됩니다.</div>
           </div>
-          <button type="button" class="primary" style="margin-top:12px" id="taskCreate">만들고 collector에 반영</button>
+          <button type="button" class="primary" style="margin-top:12px" id="taskCreate" data-role-gate="admin">만들고 collector에 반영</button>
           <details class="raw"><summary>응답 상세</summary><pre id="taskOut"></pre></details>
         </div>
       </div>
@@ -1806,7 +1827,7 @@
           </div>
 
           <div class="row" style="margin-top:14px;gap:8px">
-            <button type="button" class="primary" id="wCreate">만들기</button>
+            <button type="button" class="primary" id="wCreate" data-role-gate="admin">만들기</button>
             <button type="button" class="ghost" id="wCancelEdit" style="display:none">수정 취소</button>
             <button type="button" class="danger" id="wDeleteEdit" style="display:none">삭제</button>
           </div>
@@ -1893,9 +1914,9 @@
                 </label>
               </div>
               <div class="row" style="margin-top:12px">
-                <button type="button" class="primary" id="locSave">이름·유형 저장</button>
-                <button type="button" class="ghost" id="locDelete">이 노드만 삭제</button>
-                <button type="button" class="danger" id="locDeleteSubtree">하위 포함 삭제</button>
+                <button type="button" class="primary" id="locSave" data-role-gate="admin">이름·유형 저장</button>
+                <button type="button" class="ghost" id="locDelete" data-role-gate="admin">이 노드만 삭제</button>
+                <button type="button" class="danger" id="locDeleteSubtree" data-role-gate="admin">하위 포함 삭제</button>
               </div>
               <hr style="border:0;border-top:1px solid var(--line);margin:16px 0" />
               <h2 style="margin:0 0 8px;font-size:15px">이 위치의 장비</h2>
@@ -1922,7 +1943,7 @@
                 <input id="locName" placeholder="예: A열 랙01" />
               </label>
             </div>
-            <button type="button" class="primary" style="margin-top:12px" id="locCreate">하위로 추가</button>
+            <button type="button" class="primary" style="margin-top:12px" id="locCreate" data-role-gate="admin">하위로 추가</button>
             <details class="raw"><summary>응답 상세</summary><pre id="locOut"></pre></details>
           </div>
         </div>
@@ -1966,7 +1987,7 @@
                 <input id="modelDesc" placeholder="선택" />
               </label>
             </div>
-            <button type="button" class="primary" style="margin-top:12px" id="modelCreate">모델 등록</button>
+            <button type="button" class="primary" style="margin-top:12px" id="modelCreate" data-role-gate="admin">모델 등록</button>
           </div>
         </div>
         <div class="card">
@@ -2000,8 +2021,8 @@
               </table>
             </div>
             <div class="row" style="margin-top:10px">
-              <button type="button" class="ghost" id="mpAddRow">행 추가</button>
-              <button type="button" class="primary" id="mpCreate">일괄 등록</button>
+              <button type="button" class="ghost" id="mpAddRow" data-role-gate="admin">행 추가</button>
+              <button type="button" class="primary" id="mpCreate" data-role-gate="admin">일괄 등록</button>
             </div>
           </div>
           <div class="mp-table-wrap">
@@ -2051,7 +2072,7 @@
               </label>
             </div>
             <div class="row" style="margin-top:12px">
-              <button type="button" class="primary" id="mpEditSave">저장 (spec 재생성)</button>
+              <button type="button" class="primary" id="mpEditSave" data-role-gate="admin">저장 (spec 재생성)</button>
               <button type="button" class="ghost" id="mpEditCancel">취소</button>
             </div>
           </div>
@@ -2091,7 +2112,7 @@
               </label>
             </div>
             <div class="row" style="margin-top:12px">
-              <button type="button" class="primary" id="cgSave">그룹 등록</button>
+              <button type="button" class="primary" id="cgSave" data-role-gate="admin">그룹 등록</button>
               <button type="button" class="ghost" id="cgCancelEdit" style="display:none">취소</button>
             </div>
           </div>
@@ -2114,7 +2135,7 @@
               </label>
             </div>
             <div class="row" style="margin-top:12px">
-              <button type="button" class="primary" id="ccSave">등록</button>
+              <button type="button" class="primary" id="ccSave" data-role-gate="admin">등록</button>
               <button type="button" class="ghost" id="ccCancelEdit" style="display:none">취소</button>
             </div>
           </div>
@@ -2212,6 +2233,7 @@
     const state = {
       // Access Token은 메모리에만 둔다. 페이지 재진입 시 HttpOnly Refresh Token 쿠키로 복구한다.
       token: "",
+      role: "",
       refreshPromise: null,
       codes: {},
       codeGroups: [],
@@ -2223,6 +2245,7 @@
       rackLayouts: [],
       collectionStatus: null,
       operationsHealth: null,
+      collectionJobHealth: null,
       groupDevices: [],
       deviceGroups: [],
       locations: [],
@@ -2302,16 +2325,35 @@
       if (el.textContent.length > 8000) el.textContent = el.textContent.slice(0, 8000);
     }
 
+    const ADMIN_ONLY_TABS = new Set(["wizard", "users"]);
+    const ADMIN_USER_TABS = new Set(["codes"]);
+
+    function canAccessTab(name) {
+      const role = state.role || "";
+      if (ADMIN_ONLY_TABS.has(name)) return role === "ADMIN";
+      if (ADMIN_USER_TABS.has(name)) return role === "ADMIN" || role === "USER";
+      return true;
+    }
+
+    function applyRolePermissions() {
+      const role = state.role || "";
+      document.body.classList.toggle("role-admin", role === "ADMIN");
+      document.body.classList.toggle("role-user", role === "USER");
+      document.body.classList.toggle("role-guest", role === "GUEST");
+    }
+
     function setAuth() {
       const ok = !!state.token;
       $("authStatus").textContent = ok ? "로그인됨" : "로그인 필요";
       $("authStatus").className = "chip " + (ok ? "ok" : "bad");
       document.body.classList.toggle("is-authed", ok);
       if ($("loginError")) $("loginError").style.display = "none";
+      applyRolePermissions();
     }
 
     function clearAuth() {
       state.token = "";
+      state.role = "";
       setAuth();
     }
 
@@ -2334,6 +2376,7 @@
             return false;
           }
           state.token = json.data.accessToken;
+          state.role = json.data.role || "";
           setAuth();
           return true;
         } catch (_) {
@@ -2390,6 +2433,7 @@
       });
       if (!data?.accessToken) throw new Error("토큰이 없습니다. 응답을 확인하세요.");
       state.token = data.accessToken;
+      state.role = data.role || "";
       setAuth();
       toast((data.username || username) + "님, 로그인했습니다");
       log("로그인 OK: " + (data.username || username));
@@ -2406,6 +2450,10 @@
     }
 
     function goTab(name) {
+      if (!canAccessTab(name)) {
+        toast("이 메뉴에 접근할 권한이 없습니다", true);
+        name = "home";
+      }
       document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
       const activeMenu = document.querySelector(`#tabs button[data-tab="${name}"]`);
@@ -2417,6 +2465,7 @@
       if (name === "collection-status" && state.token) {
         loadCollectionStatus().catch((e) => toast(e.message, true));
         loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
+        loadCollectionJobHealth().catch((e) => toast(e.message, true));
       }
     }
 
@@ -4073,6 +4122,75 @@
       renderCollectionOperationsHealth();
     }
 
+    function collectionJobStatusChip(status) {
+      const labels = {
+        NORMAL: ["ok", "정상"],
+        FAILING: ["bad", "수집 실패"],
+        RECOVERED: ["warn", "복구됨"],
+        NOT_SYNCED: ["", "동기화 안 됨"],
+        UNKNOWN: ["warn", "상태 확인 불가"],
+      };
+      const [className, label] = labels[status] || ["", status || "미확인"];
+      return `<span class="chip ${className}">${esc(label)}</span>`;
+    }
+
+    // 실패 중(FAILING) · 동기화 안 됨(NOT_SYNCED) · 확인 불가(UNKNOWN)를 위로, 복구됨/정상을 아래로.
+    function collectionJobIssuePriority(status) {
+      return (status === "FAILING" || status === "NOT_SYNCED" || status === "UNKNOWN") ? 0 : 1;
+    }
+
+    function collectionJobTimestampCell(value) {
+      return value ? esc(new Date(value).toLocaleString("ko-KR")) : '<span class="muted">–</span>';
+    }
+
+    function renderCollectionJobHealth() {
+      const jobs = state.collectionJobHealth || [];
+      const sorted = [...jobs].sort((a, b) => {
+        const diff = collectionJobIssuePriority(a.status) - collectionJobIssuePriority(b.status);
+        return diff !== 0 ? diff : String(a.groupName || "").localeCompare(String(b.groupName || ""));
+      });
+      $("cjhBody").innerHTML = sorted.map((job) => {
+        const reason = job.lastFailureReason || "";
+        let reasonCell = '<span class="muted">–</span>';
+        if (reason) {
+          reasonCell = reason.length > 60
+            ? `<span>${esc(reason.slice(0, 60))}…</span> <button type="button" class="ghost" data-detail-toggle style="font-size:10px;padding:1px 6px;margin-left:4px">상세</button><div class="muted mono" style="font-size:10px;margin-top:3px;display:none;white-space:pre-wrap" data-detail>${esc(reason)}</div>`
+            : `<span>${esc(reason)}</span>`;
+        }
+        return `<tr>
+          <td><b>${esc(job.groupName || "–")}</b><div class="muted" style="font-size:11px">${esc(job.taskName || "")}</div></td>
+          <td>${esc(job.modelName || "–")}</td>
+          <td>${job.protocol ? `<span class="chip">${esc(job.protocol.toUpperCase())}</span>` : '<span class="muted">–</span>'}</td>
+          <td>${collectionJobStatusChip(job.status)}</td>
+          <td>${collectionJobTimestampCell(job.lastSuccessAt)}</td>
+          <td>${collectionJobTimestampCell(job.lastFailureAt)}</td>
+          <td>${job.consecutiveFailureCount || 0}</td>
+          <td>${reasonCell}</td>
+          <td class="muted mono" style="font-size:11px">${esc(job.collectorJobId || "–")}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="9"><div class="empty">표시할 수집 작업이 없습니다.</div></td></tr>';
+      $("cjhBody").querySelectorAll("[data-detail-toggle]").forEach((button) => {
+        button.onclick = (event) => {
+          event.stopPropagation();
+          const detailEl = button.nextElementSibling;
+          if (detailEl) detailEl.style.display = detailEl.style.display === "none" ? "block" : "none";
+        };
+      });
+    }
+
+    async function loadCollectionJobHealth() {
+      $("cjhBody").innerHTML = '<tr><td colspan="9"><div class="empty">수집 작업 상태를 조회하는 중입니다.</div></td></tr>';
+      $("cjhCheckedAt").textContent = "";
+      try {
+        state.collectionJobHealth = await api("/api/manager/operations/collection/jobs");
+        renderCollectionJobHealth();
+        $("cjhCheckedAt").textContent = `조회 시각: ${new Date().toLocaleString("ko-KR")}`;
+      } catch (e) {
+        $("cjhBody").innerHTML = `<tr><td colspan="9"><div class="empty">${esc(e.message)}</div></td></tr>`;
+        throw e;
+      }
+    }
+
     async function loadDevices() {
       const qs = new URLSearchParams({ page: "1", size: "100" });
       const name = $("devFilterName").value.trim();
@@ -4149,7 +4267,7 @@
           <div><b>${esc(group.name)}</b> ${group.enabled ? '<span class="chip ok">사용</span>' : '<span class="chip bad">중지</span>'}
             <div class="muted" style="font-size:12px;margin-top:3px">${esc(group.description || "설명 없음")} · 장비 ${group.deviceCount || 0}대</div>
           </div>
-          <div class="row" style="gap:6px"><button type="button" class="ghost" data-dg-edit="${group.id}">수정</button><button type="button" class="danger" data-dg-delete="${group.id}">삭제</button></div>
+          <div class="row" style="gap:6px" data-role-gate="admin"><button type="button" class="ghost" data-dg-edit="${group.id}">수정</button><button type="button" class="danger" data-dg-delete="${group.id}">삭제</button></div>
         </div>`).join("") : '<div class="empty">등록된 장비 그룹이 없습니다.</div>';
       box.querySelectorAll("[data-dg-edit]").forEach((button) => {
         button.onclick = () => editDeviceGroup(Number(button.dataset.dgEdit));
@@ -5224,11 +5342,11 @@
                   <span class="chip ${g.active ? "ok" : "bad"}">${g.active ? "ON" : "OFF"}</span>
                 </div>
                 <div class="row" style="gap:6px">
-                  <button type="button" class="ghost" data-toggle-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">${g.active ? "중지" : "시작"}</button>
-                  <button type="button" class="danger" data-del-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px">삭제</button>
+                  <button type="button" class="ghost" data-toggle-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px" data-role-gate="admin-user">${g.active ? "중지" : "시작"}</button>
+                  <button type="button" class="danger" data-del-group="${g.id}" data-task-id="${t.id}" style="padding:4px 8px;font-size:12px" data-role-gate="admin">삭제</button>
                 </div>
               </div>
-              <div class="fields">
+              <div class="fields" data-role-gate="admin">
                 <label class="field">이름
                   <input data-edit-gname="${key}" value="${esc(g.name)}" />
                 </label>
@@ -5245,10 +5363,10 @@
                 </label>
               </div>
               ${excludedDevicesHtml(t, g)}
-              <button type="button" class="primary" data-save-group="${g.id}" data-task-id="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 저장 (주기·장비)</button>
+              <button type="button" class="primary" data-save-group="${g.id}" data-task-id="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px" data-role-gate="admin">그룹 저장 (주기·장비)</button>
             </div>`;
           }).join("")}
-          <div class="task-group-create" style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px dashed var(--line)">
+          <div class="task-group-create" style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px dashed var(--line)" data-role-gate="admin">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">그룹 추가</div>
             <div class="fields">
               <label class="field">이름
@@ -5270,8 +5388,8 @@
             <button type="button" class="primary" data-add-group="${t.id}" style="margin-top:8px;padding:6px 10px;font-size:12px">그룹 추가</button>
           </div>
           <div class="row" style="margin-top:10px">
-            <button type="button" class="ghost" data-toggle-task="${t.id}">${t.active ? "Task 중지" : "Task 시작"}</button>
-            <button type="button" class="danger" data-del-task="${t.id}">Task 삭제</button>
+            <button type="button" class="ghost" data-toggle-task="${t.id}" data-role-gate="admin-user">${t.active ? "Task 중지" : "Task 시작"}</button>
+            <button type="button" class="danger" data-del-task="${t.id}" data-role-gate="admin">Task 삭제</button>
           </div>
         </div>`).join("") || '<div class="empty">수집 작업이 없습니다</div>';
       $("taskList").querySelectorAll("[data-toggle-task]").forEach((btn) => {
@@ -5452,7 +5570,7 @@
             <td class="mono code-group-key">${esc(group.groupKey)}</td>
             <td class="code-group-name"><b>${esc(group.groupName)}</b> <span class="muted">#${group.id}</span></td>
             <td colspan="3" class="muted">하위 코드 ${codes.length}개</td>
-            <td class="actions"><div class="action-btns code-tree-actions">
+            <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
               <button type="button" class="primary" data-add-cc="${group.id}">코드 추가</button>
               <button type="button" class="ghost" data-edit-cg="${group.id}">그룹 수정</button>
               <button type="button" class="danger" data-delete-cg="${group.id}">삭제</button>
@@ -5465,7 +5583,7 @@
             <td class="mono">${esc(code.code)}</td>
             <td>${esc(code.name)}</td>
             <td>${code.sortOrder ?? "–"}</td>
-            <td class="actions"><div class="action-btns code-tree-actions">
+            <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
               <button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>
               <button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>
             </div></td>
@@ -5690,7 +5808,12 @@
       $("bootStatus").textContent = "불러오는 중…";
       $("wzHint").textContent = "불러오는 중…";
       try {
-        await loadCodes();
+        if (state.role !== "GUEST") {
+          await loadCodes();
+        } else {
+          state.codeGroups = [];
+          state.codes = {};
+        }
         fillPages();
         fillProtocolSelect();
         fillPathSelects();
@@ -5731,6 +5854,7 @@
     $("assetFilterStatus").addEventListener("change", () => loadAssets().catch((e) => toast(e.message, true)));
     $("csReload").onclick = () => loadCollectionStatus().catch((e) => toast(e.message, true));
     $("opsHealthReload").onclick = () => loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
+    $("cjhReload").onclick = () => loadCollectionJobHealth().catch((e) => toast(e.message, true));
     $("opsReconcile").onclick = async () => {
       if (!confirm("활성 수집 그룹과 PUE 정의를 Collector에 다시 반영할까요? 기존 Job은 업데이트합니다.")) return;
       const button = $("opsReconcile");
@@ -5738,7 +5862,7 @@
       try {
         const result = await api("/api/manager/operations/collection/reconcile", { method: "POST" });
         toast(result.message || "Collector 재동기화를 요청했습니다.");
-        await Promise.all([loadCollectionOperationsHealth(), loadCollectionStatus()]);
+        await Promise.all([loadCollectionOperationsHealth(), loadCollectionStatus(), loadCollectionJobHealth()]);
       } catch (e) {
         toast(e.message, true);
       } finally {
@@ -6732,9 +6856,9 @@
           <td class="actions">
             <div class="action-btns">
             ${queryBtn}
-            <button type="button" class="ghost" data-edit="${w.id}">수정</button>
-            <button type="button" class="danger" data-delete="${w.id}" data-name="${esc(w.name)}">삭제</button>
-            <button type="button" class="ghost" data-en="${w.id}" data-v="${w.enabled ? "0" : "1"}">${w.enabled ? "끄기" : "켜기"}</button>
+            <button type="button" class="ghost" data-edit="${w.id}" data-role-gate="admin">수정</button>
+            <button type="button" class="danger" data-delete="${w.id}" data-name="${esc(w.name)}" data-role-gate="admin">삭제</button>
+            <button type="button" class="ghost" data-en="${w.id}" data-v="${w.enabled ? "0" : "1"}" data-role-gate="admin">${w.enabled ? "끄기" : "켜기"}</button>
             </div>
           </td>
         </tr>`;
@@ -6839,7 +6963,7 @@
         return `<tr><td><b>${esc(definition.name)}</b><div class="muted mono">#${definition.id} · v${definition.configVersion}</div></td>`
           + `<td class="mono">${esc(definition.calculationCron || "0 */5 * * * *")}</td>`
           + `<td>${definition.collectionEnabled ? '<span class="chip ok">ON</span>' : '<span class="chip">OFF</span>'}</td>`
-          + `<td>${sources || "–"}</td><td class="actions"><div class="action-btns">`
+          + `<td>${sources || "–"}</td><td class="actions"><div class="action-btns" data-role-gate="admin">`
           + `<button type="button" class="ghost" data-pue-definition-edit="${definition.id}">수정</button>`
           + `<button type="button" class="ghost" data-pue-definition-toggle="${definition.id}" data-pue-definition-enabled="${!definition.collectionEnabled}">${definition.collectionEnabled ? "수집 중지" : "수집 시작"}</button>`
           + `<button type="button" class="danger" data-pue-definition-delete="${definition.id}">삭제</button></div></td></tr>`;

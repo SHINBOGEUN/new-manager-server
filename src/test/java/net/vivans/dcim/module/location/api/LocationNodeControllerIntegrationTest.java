@@ -2,6 +2,7 @@ package net.vivans.dcim.module.location.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.vivans.dcim.module.identity.domain.repository.UserRepository;
 import net.vivans.dcim.bootstrap.ManagerServerApplication;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -42,6 +43,9 @@ class LocationNodeControllerIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private LocationNodeRepository locationNodeRepository;
 
     @Autowired
@@ -49,7 +53,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void createAndGetTree_returnsNestedChildren() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-tree-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-tree-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -71,7 +75,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void createIntermediateType_reparentsExistingChildren() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-reparent-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-reparent-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer zoneTypeId = createCommonCode(accessToken, groupId, "ZONE", "존", 2);
@@ -94,7 +98,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void create_invalidLocationTypeOrder_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-type-order-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-type-order-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
 
@@ -112,7 +116,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void update_updatesNameAndLocationType() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-update-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-update-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer zoneTypeId = createCommonCode(accessToken, groupId, "ZONE", "존", 2);
@@ -134,7 +138,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void updateParent_promotesChildToRoot() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-parent-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-parent-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -156,7 +160,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void create_duplicateNameUnderSameParent_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-dup-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-dup-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
 
@@ -174,7 +178,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void bulkCreate_registersTreeWithChildren() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-bulk-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-bulk-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -220,7 +224,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteLeafNode_removesNode() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -245,7 +249,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteNodeWithChildren_returnsBadRequest() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-parent-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-parent-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -261,7 +265,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteSubtree_removesNodeAndDescendants() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-subtree-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-subtree-user", "password123");
         Integer groupId = createCodeGroup(accessToken, "LOCATION_TYPE", "위치 유형");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
         Integer rowTypeId = createCommonCode(accessToken, groupId, "ROW", "열", 2);
@@ -283,7 +287,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteLeafNode_reassignsReferencedDevicesToUnassigned() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-device-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-device-user", "password123");
         ensureUnassignedLocationNode(accessToken);
         Integer groupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
         Integer rackTypeId = createCommonCode(accessToken, groupId, "RACK", "랙", 3);
@@ -310,7 +314,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteSubtree_whenDeviceNamesConflictAtUnassigned_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-conflict-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-conflict-user", "password123");
         ensureUnassignedLocationNode(accessToken);
         Integer groupId = findOrCreateCodeGroup(accessToken, "LOCATION_TYPE", "Location Type");
         Integer containerTypeId = createCommonCode(accessToken, groupId, "CONTAINER", "컨테이너", 1);
@@ -336,7 +340,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void deleteUnassignedNode_returnsConflict() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-delete-unassigned-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-delete-unassigned-user", "password123");
 
         mockMvc.perform(delete("/api/manager/location-node/{code}", "UNASSIGNED")
                         .header("Authorization", bearerToken(accessToken)))
@@ -346,7 +350,7 @@ class LocationNodeControllerIntegrationTest {
 
     @Test
     void get_withUnknownParentCode_returnsNotFound() throws Exception {
-        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, "location-notfound-user", "password123");
+        String accessToken = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "location-notfound-user", "password123");
 
         mockMvc.perform(get("/api/manager/location-node")
                         .param("parentCode", "UNKNOWN01")
