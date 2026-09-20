@@ -22,6 +22,7 @@ public class DeviceLoraEndpointService {
 
     private final DeviceLoraEndpointRepository deviceLoraEndpointRepository;
     private final DeviceRepository deviceRepository;
+    private final LoraModelTypeValidator loraModelTypeValidator;
 
     public List<DeviceLoraEndpointResponse> getAll() {
         List<DeviceLoraEndpointResponse> responses = new ArrayList<>();
@@ -42,6 +43,7 @@ public class DeviceLoraEndpointService {
     @Transactional
     public DeviceLoraEndpointResponse create(DeviceLoraEndpointRequest request) {
         Device device = findDevice(request.deviceId());
+        loraModelTypeValidator.requireLoraSensor(device);
         validateUnique(request.deviceId(), request.idType(), request.externalId(), null);
         boolean enabled = request.enabled() == null || request.enabled();
         DeviceLoraEndpoint saved = deviceLoraEndpointRepository.save(
@@ -52,6 +54,7 @@ public class DeviceLoraEndpointService {
     @Transactional
     public DeviceLoraEndpointResponse update(Integer id, DeviceLoraEndpointRequest request) {
         DeviceLoraEndpoint endpoint = findEndpoint(id);
+        loraModelTypeValidator.requireLoraSensor(endpoint.getDevice());
         validateUnique(request.deviceId(), request.idType(), request.externalId(), id);
         boolean enabled = request.enabled() == null || request.enabled();
         endpoint.update(request.externalId(), enabled);

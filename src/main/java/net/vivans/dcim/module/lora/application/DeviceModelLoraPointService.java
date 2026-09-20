@@ -28,6 +28,7 @@ public class DeviceModelLoraPointService {
     private final DeviceModelRepository deviceModelRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final LoraValueMapValidator loraValueMapValidator;
+    private final LoraModelTypeValidator loraModelTypeValidator;
 
     public List<DeviceModelLoraPointResponse> getAllByModelId(Integer deviceModelId) {
         List<DeviceModelLoraPointResponse> responses = new ArrayList<>();
@@ -40,6 +41,7 @@ public class DeviceModelLoraPointService {
     @Transactional
     public DeviceModelLoraPointResponse create(Integer deviceModelId, DeviceModelLoraPointRequest request) {
         DeviceModel deviceModel = findDeviceModel(deviceModelId);
+        loraModelTypeValidator.requireLoraSensor(deviceModel);
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceModelId, request.payloadField(), request.pointName(), null);
         boolean enabled = request.enabled() == null || request.enabled();
@@ -53,6 +55,7 @@ public class DeviceModelLoraPointService {
     @Transactional
     public DeviceModelLoraPointResponse update(Integer deviceModelId, Integer id, DeviceModelLoraPointRequest request) {
         DeviceModelLoraPoint point = findPoint(deviceModelId, id);
+        loraModelTypeValidator.requireLoraSensor(point.getDeviceModel());
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceModelId, request.payloadField(), request.pointName(), id);
         boolean enabled = request.enabled() == null || request.enabled();

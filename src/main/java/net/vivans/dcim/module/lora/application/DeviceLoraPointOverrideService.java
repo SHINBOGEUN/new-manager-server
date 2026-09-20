@@ -28,6 +28,7 @@ public class DeviceLoraPointOverrideService {
     private final DeviceRepository deviceRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final LoraValueMapValidator loraValueMapValidator;
+    private final LoraModelTypeValidator loraModelTypeValidator;
 
     public List<DeviceLoraPointOverrideResponse> getAllByDeviceId(Integer deviceId) {
         List<DeviceLoraPointOverrideResponse> responses = new ArrayList<>();
@@ -40,6 +41,7 @@ public class DeviceLoraPointOverrideService {
     @Transactional
     public DeviceLoraPointOverrideResponse create(Integer deviceId, DeviceLoraPointOverrideRequest request) {
         Device device = findDevice(deviceId);
+        loraModelTypeValidator.requireLoraSensor(device);
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceId, request.payloadField(), request.pointName(), null);
         boolean enabled = request.enabled() == null || request.enabled();
@@ -53,6 +55,7 @@ public class DeviceLoraPointOverrideService {
     @Transactional
     public DeviceLoraPointOverrideResponse update(Integer deviceId, Integer id, DeviceLoraPointOverrideRequest request) {
         DeviceLoraPointOverride override = findOverride(deviceId, id);
+        loraModelTypeValidator.requireLoraSensor(override.getDevice());
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceId, request.payloadField(), request.pointName(), id);
         boolean enabled = request.enabled() == null || request.enabled();
