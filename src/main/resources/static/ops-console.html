@@ -2176,6 +2176,7 @@
         <div class="fields">
           <label class="field">장비
             <select id="loraEpDevice"></select>
+            <div class="muted" style="font-size:12px;margin-top:4px;display:none" id="loraEpDeviceHint">등록된 LoRa 센서 모델 또는 장비가 없습니다. 장비 모델에서 모델 타입을 &#39;LoRa 센서&#39;로 등록하세요.</div>
           </label>
           <label class="field">식별자 유형
             <select id="loraEpIdType">
@@ -7895,8 +7896,11 @@
       state.loraEndpoints = list;
       $("loraEpSummary").textContent = `${list.length}건`;
       const keep = $("loraEpDevice").value;
-      fillSelect($("loraEpDevice"), state.devices || [], (d) => `<option value="${d.id}">${esc(d.name)} (#${d.id})</option>`, "장비 선택");
+      const loraDevices = (state.devices || []).filter((d) => d.deviceTypeCode === "LORA_SENSOR");
+      fillSelect($("loraEpDevice"), loraDevices, (d) => `<option value="${d.id}">${esc(d.name)} (#${d.id})</option>`, "장비 선택");
       if (keep) $("loraEpDevice").value = keep;
+      const epHint = $("loraEpDeviceHint");
+      if (epHint) epHint.style.display = loraDevices.length ? "none" : "";
       renderLoraEndpoints();
     }
 
@@ -7956,11 +7960,12 @@
 
     async function loadLoraModels() {
       if (!state.models || !state.models.length) await loadModels();
-      $("loraMpModelBody").innerHTML = (state.models || []).map((m) => `
+      const loraModels = (state.models || []).filter((m) => m.deviceTypeCode === "LORA_SENSOR");
+      $("loraMpModelBody").innerHTML = loraModels.map((m) => `
         <tr class="clickable" data-id="${m.id}">
           <td><b>${esc(m.name)}</b><div class="muted mono">#${m.id}</div></td>
           <td>${esc(m.deviceTypeName || m.deviceTypeCode || "—")}</td>
-        </tr>`).join("") || `<tr><td colspan="2"><div class="empty">모델이 없습니다</div></td></tr>`;
+        </tr>`).join("") || `<tr><td colspan="2"><div class="empty">등록된 LoRa 센서 모델 또는 장비가 없습니다. 장비 모델에서 모델 타입을 &#39;LoRa 센서&#39;로 등록하세요.</div></td></tr>`;
       $("loraMpModelBody").querySelectorAll("tr[data-id]").forEach((tr) => {
         tr.onclick = () => selectLoraModel(Number(tr.dataset.id));
       });
@@ -8052,12 +8057,14 @@
 
     function renderLoraOverrideDevices() {
       const filterText = ($("loraOvDeviceFilter")?.value || "").trim().toLowerCase();
-      const devices = (state.devices || []).filter((d) => !filterText || String(d.name || "").toLowerCase().includes(filterText));
+      const devices = (state.devices || [])
+        .filter((d) => d.deviceTypeCode === "LORA_SENSOR")
+        .filter((d) => !filterText || String(d.name || "").toLowerCase().includes(filterText));
       $("loraOvDeviceBody").innerHTML = devices.map((d) => `
         <tr class="clickable" data-id="${d.id}">
           <td><b>${esc(d.name)}</b><div class="muted mono">#${d.id}</div></td>
           <td>${esc(d.modelName || "—")}</td>
-        </tr>`).join("") || `<tr><td colspan="2"><div class="empty">장비가 없습니다</div></td></tr>`;
+        </tr>`).join("") || `<tr><td colspan="2"><div class="empty">등록된 LoRa 센서 모델 또는 장비가 없습니다. 장비 모델에서 모델 타입을 &#39;LoRa 센서&#39;로 등록하세요.</div></td></tr>`;
       $("loraOvDeviceBody").querySelectorAll("tr[data-id]").forEach((tr) => {
         tr.onclick = () => selectLoraOverrideDevice(Number(tr.dataset.id));
       });
