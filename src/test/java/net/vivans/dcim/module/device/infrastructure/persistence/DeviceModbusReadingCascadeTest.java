@@ -25,7 +25,7 @@ class DeviceModbusReadingCascadeTest {
         execute("CREATE TABLE devices (id INT PRIMARY KEY)");
         execute("CREATE TABLE device_model_modbus_point (id INT PRIMARY KEY)");
         execute(Files.readString(Path.of("sql/schema/23_device_endpoint_modbus.sql")));
-        execute(Files.readString(Path.of("sql/schema/27_device_modbus_reading.sql")));
+        execute(Files.readString(Path.of("sql/schema/43_device_modbus_reading.sql")));
         execute("INSERT INTO device_protocol_endpoint VALUES (14), (15)");
         execute("INSERT INTO devices VALUES (14), (20)");
         execute("INSERT INTO device_model_modbus_point VALUES (1)");
