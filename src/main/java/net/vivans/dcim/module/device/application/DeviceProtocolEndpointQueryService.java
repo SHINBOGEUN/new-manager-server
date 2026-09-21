@@ -32,6 +32,10 @@ public class DeviceProtocolEndpointQueryService {
     private static final String PROTOCOL_NOT_SUPPORTED_MESSAGE = "protocol not supported by device model";
 
     private static final String SNMP_PROTOCOL_CODE = "snmp";
+    private static final String MQTT_PROTOCOL_CODE = "mqtt";
+    private static final String LORA_SENSOR_MODEL_TYPE_CODE = "LORA_SENSOR";
+    private static final String LORA_MQTT_ENDPOINT_NOT_SUPPORTED_MESSAGE =
+            "LoRa MQTT 장비는 IP/port 대신 devEUI 또는 deviceName을 등록하세요";
 
     private final DeviceRepository deviceRepository;
     private final DeviceModelRepository deviceModelRepository;
@@ -64,6 +68,7 @@ public class DeviceProtocolEndpointQueryService {
         Device device = findDevice(deviceId);
         CommonCode protocolType = findProtocolType(request.protocolTypeId());
         validateProtocolSupportedByModel(device, protocolType);
+        validateLoraMqttEndpoint(device, protocolType);
 
         if (deviceProtocolEndpointRepository.existsByDeviceIdAndProtocolTypeId(
                 deviceId, protocolType.getId())) {
@@ -94,6 +99,7 @@ public class DeviceProtocolEndpointQueryService {
         DeviceProtocolEndpoint endpoint = findEndpoint(endpointId, deviceId);
         CommonCode protocolType = findProtocolType(request.protocolTypeId());
         validateProtocolSupportedByModel(device, protocolType);
+        validateLoraMqttEndpoint(device, protocolType);
 
         if (deviceProtocolEndpointRepository.existsByDeviceIdAndProtocolTypeIdAndIdNot(
                 deviceId, protocolType.getId(), endpointId)) {
@@ -164,6 +170,14 @@ public class DeviceProtocolEndpointQueryService {
             }
         }
         throw new IllegalArgumentException(PROTOCOL_NOT_SUPPORTED_MESSAGE);
+    }
+
+    private void validateLoraMqttEndpoint(Device device, CommonCode protocolType) {
+        if (MQTT_PROTOCOL_CODE.equals(protocolType.getCode())
+                && device.getDeviceModel().getDeviceType() != null
+                && LORA_SENSOR_MODEL_TYPE_CODE.equals(device.getDeviceModel().getDeviceType().getCode())) {
+            throw new IllegalArgumentException(LORA_MQTT_ENDPOINT_NOT_SUPPORTED_MESSAGE);
+        }
     }
 
     private void validateUniqueHostPort(String host, int port, Integer excludeId) {

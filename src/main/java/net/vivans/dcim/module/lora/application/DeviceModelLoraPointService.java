@@ -10,6 +10,7 @@ import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointRequest;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
 import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
 import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class DeviceModelLoraPointService {
     private final CommonCodeRepository commonCodeRepository;
     private final LoraValueMapValidator loraValueMapValidator;
     private final LoraModelTypeValidator loraModelTypeValidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<DeviceModelLoraPointResponse> getAllByModelId(Integer deviceModelId) {
         List<DeviceModelLoraPointResponse> responses = new ArrayList<>();
@@ -49,6 +51,7 @@ public class DeviceModelLoraPointService {
                 deviceModel, request.payloadField(), request.pointName(),
                 resolveDataPointType(request.dataPointTypeId()), request.unit(), request.scale(),
                 request.valueMap(), enabled));
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-created:" + saved.getId()));
         return DeviceModelLoraPointResponse.from(saved);
     }
 
@@ -61,13 +64,16 @@ public class DeviceModelLoraPointService {
         boolean enabled = request.enabled() == null || request.enabled();
         point.update(request.payloadField(), request.pointName(), resolveDataPointType(request.dataPointTypeId()),
                 request.unit(), request.scale(), request.valueMap(), enabled);
-        return DeviceModelLoraPointResponse.from(deviceModelLoraPointRepository.save(point));
+        DeviceModelLoraPoint saved = deviceModelLoraPointRepository.save(point);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-updated:" + id));
+        return DeviceModelLoraPointResponse.from(saved);
     }
 
     @Transactional
     public Integer delete(Integer deviceModelId, Integer id) {
         DeviceModelLoraPoint point = findPoint(deviceModelId, id);
         deviceModelLoraPointRepository.delete(point);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-deleted:" + id));
         return id;
     }
 

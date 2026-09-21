@@ -10,6 +10,7 @@ import net.vivans.dcim.module.lora.api.dto.DeviceLoraPointOverrideRequest;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraPointOverrideResponse;
 import net.vivans.dcim.module.lora.domain.model.DeviceLoraPointOverride;
 import net.vivans.dcim.module.lora.domain.repository.DeviceLoraPointOverrideRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class DeviceLoraPointOverrideService {
     private final CommonCodeRepository commonCodeRepository;
     private final LoraValueMapValidator loraValueMapValidator;
     private final LoraModelTypeValidator loraModelTypeValidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<DeviceLoraPointOverrideResponse> getAllByDeviceId(Integer deviceId) {
         List<DeviceLoraPointOverrideResponse> responses = new ArrayList<>();
@@ -49,6 +51,7 @@ public class DeviceLoraPointOverrideService {
                 device, request.payloadField(), request.pointName(),
                 resolveDataPointType(request.dataPointTypeId()), request.unit(), request.scale(),
                 request.valueMap(), enabled));
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("override-created:" + saved.getId()));
         return DeviceLoraPointOverrideResponse.from(saved);
     }
 
@@ -61,13 +64,16 @@ public class DeviceLoraPointOverrideService {
         boolean enabled = request.enabled() == null || request.enabled();
         override.update(request.payloadField(), request.pointName(), resolveDataPointType(request.dataPointTypeId()),
                 request.unit(), request.scale(), request.valueMap(), enabled);
-        return DeviceLoraPointOverrideResponse.from(deviceLoraPointOverrideRepository.save(override));
+        DeviceLoraPointOverride saved = deviceLoraPointOverrideRepository.save(override);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("override-updated:" + id));
+        return DeviceLoraPointOverrideResponse.from(saved);
     }
 
     @Transactional
     public Integer delete(Integer deviceId, Integer id) {
         DeviceLoraPointOverride override = findOverride(deviceId, id);
         deviceLoraPointOverrideRepository.delete(override);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("override-deleted:" + id));
         return id;
     }
 

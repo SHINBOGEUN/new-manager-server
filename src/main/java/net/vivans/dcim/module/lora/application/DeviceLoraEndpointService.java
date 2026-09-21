@@ -9,6 +9,7 @@ import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
 import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
 import net.vivans.dcim.module.lora.domain.model.LoraExternalIdNormalizer;
 import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class DeviceLoraEndpointService {
     private final DeviceLoraEndpointRepository deviceLoraEndpointRepository;
     private final DeviceRepository deviceRepository;
     private final LoraModelTypeValidator loraModelTypeValidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<DeviceLoraEndpointResponse> getAll() {
         List<DeviceLoraEndpointResponse> responses = new ArrayList<>();
@@ -48,6 +50,7 @@ public class DeviceLoraEndpointService {
         boolean enabled = request.enabled() == null || request.enabled();
         DeviceLoraEndpoint saved = deviceLoraEndpointRepository.save(
                 DeviceLoraEndpoint.create(device, request.idType(), request.externalId(), enabled));
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("endpoint-created:" + saved.getId()));
         return DeviceLoraEndpointResponse.from(saved);
     }
 
@@ -58,13 +61,16 @@ public class DeviceLoraEndpointService {
         validateUnique(request.deviceId(), request.idType(), request.externalId(), id);
         boolean enabled = request.enabled() == null || request.enabled();
         endpoint.update(request.externalId(), enabled);
-        return DeviceLoraEndpointResponse.from(deviceLoraEndpointRepository.save(endpoint));
+        DeviceLoraEndpoint saved = deviceLoraEndpointRepository.save(endpoint);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("endpoint-updated:" + id));
+        return DeviceLoraEndpointResponse.from(saved);
     }
 
     @Transactional
     public Integer delete(Integer id) {
         DeviceLoraEndpoint endpoint = findEndpoint(id);
         deviceLoraEndpointRepository.delete(endpoint);
+        eventPublisher.publishEvent(new LoraConfigChangedEvent("endpoint-deleted:" + id));
         return id;
     }
 

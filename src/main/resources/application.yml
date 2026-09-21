@@ -69,6 +69,14 @@ collector:
   reconciliation:
     fixed-delay-ms: ${COLLECTOR_RECONCILIATION_FIXED_DELAY_MS:60000}
 
+# LoRa MQTT 수집 소스 변경을 Sensor Data에 즉시 전달한다.
+# 실제 MQTT 비밀번호는 Manager DB가 아닌 Sensor Data 환경변수에서 credentialKey로 해석한다.
+sensor-data:
+  service:
+    url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
+    api-key: ${SENSOR_DATA_API_KEY:sensor-data-server}
+    enabled: ${SENSOR_DATA_SYNC_ENABLED:true}
+
 operations:
   health:
     sensor-data-url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
