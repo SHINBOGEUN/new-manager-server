@@ -12,6 +12,7 @@ import net.vivans.dcim.module.lora.api.dto.DeviceLoraPointOverrideResponse;
 import net.vivans.dcim.module.lora.domain.model.DeviceLoraPointOverride;
 import net.vivans.dcim.module.lora.domain.repository.DeviceLoraPointOverrideRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -34,9 +35,10 @@ class DeviceLoraPointOverrideServiceTest {
     private final DeviceLoraPointOverrideRepository deviceLoraPointOverrideRepository = mock(DeviceLoraPointOverrideRepository.class);
     private final DeviceRepository deviceRepository = mock(DeviceRepository.class);
     private final CommonCodeRepository commonCodeRepository = mock(CommonCodeRepository.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceLoraPointOverrideService service = new DeviceLoraPointOverrideService(
             deviceLoraPointOverrideRepository, deviceRepository, commonCodeRepository,
-            new LoraValueMapValidator(new com.fasterxml.jackson.databind.ObjectMapper()), new LoraModelTypeValidator());
+            new LoraValueMapValidator(new com.fasterxml.jackson.databind.ObjectMapper()), new LoraModelTypeValidator(), eventPublisher);
 
     @Test
     void create_withLoraSensorDevice_succeeds() {

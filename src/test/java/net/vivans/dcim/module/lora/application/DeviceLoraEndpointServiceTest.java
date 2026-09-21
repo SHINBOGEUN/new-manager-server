@@ -12,6 +12,7 @@ import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
 import net.vivans.dcim.module.lora.domain.model.LoraIdType;
 import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -33,8 +34,9 @@ class DeviceLoraEndpointServiceTest {
 
     private final DeviceLoraEndpointRepository deviceLoraEndpointRepository = mock(DeviceLoraEndpointRepository.class);
     private final DeviceRepository deviceRepository = mock(DeviceRepository.class);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceLoraEndpointService service = new DeviceLoraEndpointService(
-            deviceLoraEndpointRepository, deviceRepository, new LoraModelTypeValidator());
+            deviceLoraEndpointRepository, deviceRepository, new LoraModelTypeValidator(), eventPublisher);
 
     @Test
     void create_withLoraSensorDevice_succeeds() {
