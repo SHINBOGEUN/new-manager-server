@@ -10,6 +10,7 @@ import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelModbusPointResponse
 import net.vivans.dcim.module.devicemodel.application.DeviceModelModbusPointQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import retrofit2.http.Path;
 
@@ -44,6 +45,7 @@ public class DeviceModelModbusPointController {
         return ResponseEntity.ok(ApiResponse.ok(deviceModelModbusPointQueryService.getDeviceModelModbusPoint(modelId, protocolId, pointId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(summary = "Modbus 수집 POINT 등록 API")
     public ResponseEntity<ApiResponse<DeviceModelModbusPointResponse>> createDeviceModelModbusPoint(
@@ -56,6 +58,7 @@ public class DeviceModelModbusPointController {
         ));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{pointId}")
     @Operation(summary = "Modbus 수집 POINT 수정 API")
     public ResponseEntity<ApiResponse<DeviceModelModbusPointResponse>> updateDeviceModelModbusPoint(
@@ -68,6 +71,7 @@ public class DeviceModelModbusPointController {
         ));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{pointId}")
     @Operation(summary = "Modbus 수집 POINT 삭제 API")
     public ResponseEntity<ApiResponse<Integer>> deleteDeviceModelModbusPoint(
