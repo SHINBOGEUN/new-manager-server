@@ -11,6 +11,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceModbusReadingUpdateRequest;
 import net.vivans.dcim.module.device.application.DeviceModbusReadingQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,6 +58,7 @@ public class DeviceModbusReadingController {
         return ResponseEntity.ok(ApiResponse.ok(readingQueryService.getReading(deviceId, endpointId, readingId)));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     @Operation(
             summary = "Modbus reading 등록 API",
@@ -80,6 +82,7 @@ public class DeviceModbusReadingController {
         ));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{readingId}")
     @Operation(
             summary = "Modbus reading 수정 API",
@@ -108,6 +111,7 @@ public class DeviceModbusReadingController {
         ));
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{readingId}")
     @Operation(
             summary = "Modbus reading 삭제 API",
