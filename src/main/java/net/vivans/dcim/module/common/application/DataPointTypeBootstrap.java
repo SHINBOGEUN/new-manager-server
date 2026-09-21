@@ -23,7 +23,9 @@ public class DataPointTypeBootstrap implements CommandLineRunner {
                 .findFirst()
                 .orElseGet(() -> codeGroupRepository.save(CodeGroup.createCodeGroup(
                         "DATA_POINT_TYPE", "Data Point Type")));
-        String[] codes = {"POWER", "ENERGY", "CURRENT", "VOLTAGE", "TEMPERATURE", "PRESSURE", "FLOW", "POWER_FACTOR"};
+        // HUMIDITY: Dragino LoRa 온습도 센서 등 실사용 확인됨. UNCLASSIFIED: 배터리·문열림·누수·CO2 등
+        // DATA_POINT_TYPE을 불필요하게 세분화하지 않기 위한 공용 미분류 타입 (point_name으로 실제 의미 구분).
+        String[] codes = {"POWER", "ENERGY", "CURRENT", "VOLTAGE", "TEMPERATURE", "PRESSURE", "FLOW", "POWER_FACTOR", "HUMIDITY", "UNCLASSIFIED"};
         for (int i = 0; i < codes.length; i++) {
             if (!commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", codes[i]).isPresent()) {
                 commonCodeRepository.save(CommonCode.createCommonCode(group, codes[i], codes[i], i + 1));
