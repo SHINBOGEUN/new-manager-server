@@ -11,6 +11,7 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetLastSourceRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueSourceRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPageResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricSourceRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricUpdateRequest;
@@ -71,6 +72,22 @@ public class PageWidgetQueryService {
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final PueDefinitionRepository pueDefinitionRepository;
     private final PueCollectorSyncService pueCollectorSyncService;
+
+    public List<PageWidgetPageResponse> getPages() {
+        return commonCodeRepository.findAll().stream()
+                .filter(code -> DevicePageCodes.DEVICE_PAGE_GROUP_KEY.equals(
+                        code.getCodeGroup().getGroupKey()))
+                .sorted((left, right) -> {
+                    int sortOrder = Integer.compare(
+                            left.getSortOrder() == null ? 0 : left.getSortOrder(),
+                            right.getSortOrder() == null ? 0 : right.getSortOrder());
+                    return sortOrder != 0
+                            ? sortOrder
+                            : left.getName().compareToIgnoreCase(right.getName());
+                })
+                .map(PageWidgetPageResponse::from)
+                .toList();
+    }
 
     public List<PageWidgetResponse> getWidgets(String pageCode, Boolean enabled) {
         CommonCode code = findPageCode(pageCode);

@@ -10,6 +10,7 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPueUpdateRequest;
+import net.vivans.dcim.module.device.api.dto.PageWidgetPageResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricCreateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPsychrometricUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionCreateRequest;
@@ -40,6 +41,12 @@ import java.util.List;
 public class PageWidgetController {
 
     private final PageWidgetQueryService pageWidgetQueryService;
+
+    @GetMapping("/pages")
+    @Operation(summary = "위젯 페이지 목록")
+    public ResponseEntity<ApiResponse<List<PageWidgetPageResponse>>> getPages() {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getPages()));
+    }
 
     @GetMapping
     @Operation(summary = "페이지 위젯 목록")
