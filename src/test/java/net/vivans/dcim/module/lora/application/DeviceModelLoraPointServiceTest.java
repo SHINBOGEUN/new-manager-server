@@ -36,7 +36,7 @@ class DeviceModelLoraPointServiceTest {
     private final CommonCodeRepository commonCodeRepository = mock(CommonCodeRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceModelLoraPointService service = new DeviceModelLoraPointService(
-            deviceModelLoraPointRepository, deviceModelRepository, commonCodeRepository,
+            deviceModelLoraPointRepository, deviceModelRepository, new LoraDataPointTypeResolver(commonCodeRepository),
             new LoraValueMapValidator(new ObjectMapper()), new LoraModelTypeValidator(), eventPublisher);
 
     @Test

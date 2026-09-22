@@ -2,8 +2,6 @@ package net.vivans.dcim.module.lora.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.common.domain.model.CommonCode;
-import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointRequest;
@@ -22,12 +20,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class DeviceModelLoraPointService {
 
-    private static final String DATA_POINT_TYPE_GROUP = "DATA_POINT_TYPE";
-    private static final String DEFAULT_DATA_POINT_TYPE = "UNCLASSIFIED";
-
     private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
     private final DeviceModelRepository deviceModelRepository;
-    private final CommonCodeRepository commonCodeRepository;
+    private final LoraDataPointTypeResolver dataPointTypeResolver;
     private final LoraValueMapValidator loraValueMapValidator;
     private final LoraModelTypeValidator loraModelTypeValidator;
     private final ApplicationEventPublisher eventPublisher;
@@ -49,7 +44,7 @@ public class DeviceModelLoraPointService {
         boolean enabled = request.enabled() == null || request.enabled();
         DeviceModelLoraPoint saved = deviceModelLoraPointRepository.save(DeviceModelLoraPoint.create(
                 deviceModel, request.payloadField(), request.pointName(),
-                resolveDataPointType(request.dataPointTypeId()), request.unit(), request.scale(),
+                dataPointTypeResolver.resolve(request.dataPointTypeId()), request.unit(), request.scale(),
                 request.valueMap(), enabled));
         eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-created:" + saved.getId()));
         return DeviceModelLoraPointResponse.from(saved);
@@ -62,7 +57,7 @@ public class DeviceModelLoraPointService {
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceModelId, request.payloadField(), request.pointName(), id);
         boolean enabled = request.enabled() == null || request.enabled();
-        point.update(request.payloadField(), request.pointName(), resolveDataPointType(request.dataPointTypeId()),
+        point.update(request.payloadField(), request.pointName(), dataPointTypeResolver.resolve(request.dataPointTypeId()),
                 request.unit(), request.scale(), request.valueMap(), enabled);
         DeviceModelLoraPoint saved = deviceModelLoraPointRepository.save(point);
         eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-updated:" + id));
@@ -106,16 +101,4 @@ public class DeviceModelLoraPointService {
         return point;
     }
 
-    private CommonCode resolveDataPointType(Integer id) {
-        if (id == null) {
-            return commonCodeRepository.findByCodeGroupGroupKeyAndCode(DATA_POINT_TYPE_GROUP, DEFAULT_DATA_POINT_TYPE)
-                    .orElseThrow(() -> new EntityNotFoundException(DATA_POINT_TYPE_GROUP + "/" + DEFAULT_DATA_POINT_TYPE + " is not configured"));
-        }
-        CommonCode code = commonCodeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));
-        if (!DATA_POINT_TYPE_GROUP.equals(code.getCodeGroup().getGroupKey())) {
-            throw new IllegalArgumentException("dataPointTypeId must belong to DATA_POINT_TYPE");
-        }
-        return code;
-    }
 }
