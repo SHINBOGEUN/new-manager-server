@@ -3,13 +3,11 @@ package net.vivans.dcim.module.lora.application;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
-import net.vivans.dcim.module.lora.api.dto.DeviceLoraPointOverrideResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraDeviceLookupResponse;
 import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
 import net.vivans.dcim.module.lora.domain.model.LoraExternalIdNormalizer;
 import net.vivans.dcim.module.lora.domain.model.LoraIdType;
 import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
-import net.vivans.dcim.module.lora.domain.repository.DeviceLoraPointOverrideRepository;
 import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +27,6 @@ public class LoraLookupService {
 
     private final DeviceLoraEndpointRepository deviceLoraEndpointRepository;
     private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
-    private final DeviceLoraPointOverrideRepository deviceLoraPointOverrideRepository;
 
     public Optional<LoraDeviceLookupResponse> resolve(LoraIdType idType, String externalId) {
         String normalized = LoraExternalIdNormalizer.normalize(externalId);
@@ -60,9 +57,4 @@ public class LoraLookupService {
         return responses;
     }
 
-    public List<DeviceLoraPointOverrideResponse> getAllEnabledOverrides() {
-        List<DeviceLoraPointOverrideResponse> responses = new ArrayList<>();
-        deviceLoraPointOverrideRepository.findAllEnabled().forEach(override -> responses.add(DeviceLoraPointOverrideResponse.from(override)));
-        return responses;
-    }
 }

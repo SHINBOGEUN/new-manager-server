@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
-import net.vivans.dcim.module.lora.api.dto.DeviceLoraPointOverrideResponse;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraDeviceLookupResponse;
 import net.vivans.dcim.module.lora.application.LoraLookupService;
@@ -52,9 +51,4 @@ public class LoraLookupController {
         return ResponseEntity.ok(ApiResponse.ok(loraLookupService.getAllEnabledModelMappings()));
     }
 
-    @GetMapping("/mappings/overrides/bulk")
-    @Operation(summary = "장비별 override 매핑 일괄 조회", description = "활성화된 장비 단위 override 전체를 반환한다. TTL 캐시 주기 갱신용.")
-    public ResponseEntity<ApiResponse<List<DeviceLoraPointOverrideResponse>>> getAllEnabledOverrides() {
-        return ResponseEntity.ok(ApiResponse.ok(loraLookupService.getAllEnabledOverrides()));
-    }
 }
