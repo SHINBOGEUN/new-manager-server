@@ -35,6 +35,8 @@ class PsychrometricQueryServiceTest {
     private PageWidgetRepository pageWidgetRepository;
     @Mock
     private PointQuery pointQuery;
+    @org.mockito.Spy
+    private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
     @InjectMocks
     private PsychrometricQueryService service;
 

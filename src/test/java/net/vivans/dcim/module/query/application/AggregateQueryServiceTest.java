@@ -55,6 +55,9 @@ class AggregateQueryServiceTest {
     @Mock
     private DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
 
+    @org.mockito.Spy
+    private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
+
     @InjectMocks
     private AggregateQueryService service;
 

@@ -56,6 +56,9 @@ class PueQueryServiceTest {
     @Mock
     private PageWidgetRepository pageWidgetRepository;
 
+    @org.mockito.Spy
+    private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
+
     @InjectMocks
     private PueQueryService service;
 
