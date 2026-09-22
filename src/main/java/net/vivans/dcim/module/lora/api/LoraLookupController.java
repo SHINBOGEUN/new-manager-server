@@ -32,12 +32,12 @@ public class LoraLookupController {
     private final LoraLookupService loraLookupService;
 
     @GetMapping("/endpoints/resolve")
-    @Operation(summary = "외부 식별자별 장비 조회 API", description = "캐시 미스 시 즉시 조회용. idType+externalId로 device를 찾는다.")
+    @Operation(summary = "외부 식별자별 장비 조회 API", description = "캐시 미스 시 즉시 조회용. 미등록 식별자는 data=null을 반환한다.")
     public ResponseEntity<ApiResponse<LoraDeviceLookupResponse>> resolve(
             @Parameter(description = "DEV_EUI 또는 DEVICE_NAME") @RequestParam LoraIdType idType,
             @Parameter(description = "원본 식별자 값") @RequestParam String externalId
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(loraLookupService.resolve(idType, externalId)));
+        return ResponseEntity.ok(ApiResponse.ok(loraLookupService.resolve(idType, externalId).orElse(null)));
     }
 
     @GetMapping("/endpoints/bulk")
