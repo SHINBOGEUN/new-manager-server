@@ -11,6 +11,7 @@ import net.vivans.dcim.module.location.api.dto.LocationNodeParentUpdateRequest;
 import net.vivans.dcim.module.location.api.dto.LocationNodeDeleteResponse;
 import net.vivans.dcim.module.location.api.dto.LocationNodeResponse;
 import net.vivans.dcim.module.location.api.dto.LocationNodeUpdateRequest;
+import net.vivans.dcim.module.location.application.LocationNodeCommandService;
 import net.vivans.dcim.module.location.application.LocationNodeQueryService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +27,7 @@ import java.util.List;
 public class LocationNodeController {
 
     private final LocationNodeQueryService nodeQueryService;
+    private final LocationNodeCommandService nodeCommandService;
 
     @GetMapping
     @Operation(summary = "위치 노드 트리 조회 API", description = "전체 노드를 조회한 뒤 children에 중첩해 트리로 반환합니다.")
@@ -41,7 +43,7 @@ public class LocationNodeController {
     @Operation(summary = "위치 노드 등록 API", description = "code는 서버에서 10자 Base62 문자열로 자동 생성됩니다.")
     public ResponseEntity<ApiResponse<LocationNodeResponse>> createLocationNode(
             @Valid @RequestBody LocationNodeCreateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.createLocationNode(request)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.createLocationNode(request)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -49,7 +51,7 @@ public class LocationNodeController {
     @Operation(summary = "위치 노드 일괄 등록 API", description = "트리 구조 요청을 받아 부모부터 자식까지 순서대로 등록합니다.")
     public ResponseEntity<ApiResponse<List<LocationNodeResponse>>> createBatchLocationNodes(
             @Valid @RequestBody LocationNodeBulkCreateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.createBatchLocationNodes(request)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.createBatchLocationNodes(request)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -58,7 +60,7 @@ public class LocationNodeController {
     public ResponseEntity<ApiResponse<LocationNodeResponse>> updateLocationNode(
             @Parameter(description = "위치 노드 code") @PathVariable String code,
             @Valid @RequestBody LocationNodeUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.updateLocationNode(code, request)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.updateLocationNode(code, request)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -67,7 +69,7 @@ public class LocationNodeController {
     public ResponseEntity<ApiResponse<LocationNodeResponse>> updateParentLocationNode(
             @Parameter(description = "위치 노드 code") @PathVariable String code,
             @Valid @RequestBody LocationNodeParentUpdateRequest request){
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.updateParentLocationNode(code, request)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.updateParentLocationNode(code, request)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -75,7 +77,7 @@ public class LocationNodeController {
     @Operation(summary = "위치 노드 삭제 API", description = "리프 노드만 삭제합니다. 참조 중인 장비는 UNASSIGNED로 이동합니다.")
     public ResponseEntity<ApiResponse<LocationNodeDeleteResponse>> deleteLocationNode(
             @Parameter(description = "위치 노드 code") @PathVariable String code) {
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.deleteLocationNode(code)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.deleteLocationNode(code)));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -83,6 +85,6 @@ public class LocationNodeController {
     @Operation(summary = "위치 노드 서브트리 삭제 API", description = "해당 노드와 모든 자손을 삭제합니다. 참조 중인 장비는 UNASSIGNED로 이동합니다.")
     public ResponseEntity<ApiResponse<LocationNodeDeleteResponse>> deleteLocationNodeSubtree(
             @Parameter(description = "위치 노드 code") @PathVariable String code) {
-        return ResponseEntity.ok(ApiResponse.ok(nodeQueryService.deleteLocationNodeSubtree(code)));
+        return ResponseEntity.ok(ApiResponse.ok(nodeCommandService.deleteLocationNodeSubtree(code)));
     }
 }
