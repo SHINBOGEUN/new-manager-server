@@ -9,8 +9,8 @@ import net.vivans.dcim.module.pue.domain.model.PueDefinitionSourceRole;
 import net.vivans.dcim.module.pue.domain.model.PueDefinition;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
-import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
+import net.vivans.dcim.module.pue.application.PuePowerPointValidator;
 import net.vivans.dcim.module.query.api.dto.PueDeviceValueResponse;
 import net.vivans.dcim.module.query.api.dto.PueQueryRequest;
 import net.vivans.dcim.module.query.api.dto.PueQueryResponse;
@@ -26,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -43,7 +42,6 @@ import java.time.Instant;
 public class PueQueryService {
 
     static final int MAX_SOURCES = 200;
-    private static final String POWER_DATA_POINT_TYPE = "POWER";
     private static final String ROLE_TOTAL = "total";
     private static final String ROLE_COOLER = "cooler";
 
@@ -284,49 +282,20 @@ public class PueQueryService {
     }
 
     private String validatePowerPointsAndResolveUnit(List<RequestedSource> sources) {
-        Set<Integer> modelIds = new LinkedHashSet<>();
-        for (RequestedSource source : sources) {
-            modelIds.add(source.device().getDeviceModel().getId());
-        }
-        List<DeviceModelSnmpPoint> points = deviceModelSnmpPointRepository
-                .findAllEnabledByDeviceModelIds(modelIds);
-        Map<String, List<DeviceModelSnmpPoint>> pointsByModelAndName = new HashMap<>();
-        for (DeviceModelSnmpPoint point : points) {
-            Integer modelId = point.getModelProtocol().getDeviceModel().getId();
-            pointsByModelAndName.computeIfAbsent(
-                    key(modelId, point.getName()), ignored -> new ArrayList<>()).add(point);
-        }
-
-        String commonUnit = null;
+        List<PuePowerPointValidator.Source> validationSources = sources.stream()
+                .map(source -> new PuePowerPointValidator.Source(
+                        source.device(), source.pointName()))
+                .toList();
+        PuePowerPointValidator.ValidationResult validation =
+                new PuePowerPointValidator(deviceModelSnmpPointRepository)
+                        .validateQuerySources(validationSources);
         for (int index = 0; index < sources.size(); index++) {
             RequestedSource source = sources.get(index);
-            Integer modelId = source.device().getDeviceModel().getId();
-            List<DeviceModelSnmpPoint> matches = pointsByModelAndName.getOrDefault(
-                    key(modelId, source.pointName()), List.of());
-            if (matches.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "POWER point not found for device " + source.device().getId()
-                                + ": " + source.pointName());
-            }
-            DeviceModelSnmpPoint point = matches.get(0);
-            String dataPointType = point.getDataPointType() == null
-                    ? null : point.getDataPointType().getCode();
-            if (!POWER_DATA_POINT_TYPE.equalsIgnoreCase(dataPointType)) {
-                throw new IllegalArgumentException(
-                        "PUE source point must have DATA_POINT_TYPE=POWER: device "
-                                + source.device().getId() + ", point " + source.pointName());
-            }
-            String unit = normalizeUnit(point.getUnit(), source);
-            if (commonUnit == null) {
-                commonUnit = unit;
-            } else if (!commonUnit.equalsIgnoreCase(unit)) {
-                throw new IllegalArgumentException(
-                        "PUE source points must use the same unit: " + commonUnit + ", " + unit);
-            }
             sources.set(index, new RequestedSource(
-                    source.device(), source.pointName(), source.role(), unit));
+                    source.device(), source.pointName(), source.role(),
+                    validation.unitFor(validationSources.get(index))));
         }
-        return commonUnit;
+        return validation.commonUnit();
     }
 
     private static List<PueSourceRequest> requireSources(
@@ -392,15 +361,6 @@ public class PueQueryService {
             throw new IllegalArgumentException(role + " source pointName is required");
         }
         return pointName.trim();
-    }
-
-    private static String normalizeUnit(String unit, RequestedSource source) {
-        if (unit == null || unit.isBlank()) {
-            throw new IllegalArgumentException(
-                    "PUE source point unit is required: device " + source.device().getId()
-                            + ", point " + source.pointName());
-        }
-        return unit.trim();
     }
 
     private static String key(Integer deviceIdOrModelId, String pointName) {

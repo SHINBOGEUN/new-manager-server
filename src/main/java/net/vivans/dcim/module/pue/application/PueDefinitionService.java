@@ -7,7 +7,6 @@ import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
 import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
-import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.pue.api.dto.*;
 import net.vivans.dcim.module.pue.domain.model.*;
@@ -157,29 +156,9 @@ public class PueDefinitionService {
     }
 
     private void validatePowerPoints(List<PueDefinition.SourceDefinition> sources) {
-        Set<Integer> modelIds = new LinkedHashSet<>();
-        for (PueDefinition.SourceDefinition source : sources) {
-            if (!source.device().isEnabled()) {
-                throw new IllegalArgumentException("PUE source device is disabled: " + source.device().getId());
-            }
-            modelIds.add(source.device().getDeviceModel().getId());
-        }
-        Map<String, DeviceModelSnmpPoint> catalog = new HashMap<>();
-        for (DeviceModelSnmpPoint point : pointRepository.findAllEnabledByDeviceModelIds(modelIds)) {
-            catalog.put(point.getModelProtocol().getDeviceModel().getId() + "|" + point.getName().toUpperCase(Locale.ROOT), point);
-        }
-        for (PueDefinition.SourceDefinition source : sources) {
-            DeviceModelSnmpPoint point = catalog.get(source.device().getDeviceModel().getId() + "|" + source.pointName().trim().toUpperCase(Locale.ROOT));
-            if (point == null || point.getDataPointType() == null
-                    || !"POWER".equalsIgnoreCase(point.getDataPointType().getCode())) {
-                throw new IllegalArgumentException("PUE group point must be an enabled POWER point: device "
-                        + source.device().getId() + ", point " + source.pointName());
-            }
-            if (!"W".equalsIgnoreCase(point.getUnit() == null ? "" : point.getUnit().trim())) {
-                throw new IllegalArgumentException("PUE group point unit must be W: device "
-                        + source.device().getId() + ", point " + source.pointName());
-            }
-        }
+        new PuePowerPointValidator(pointRepository).validateDefinitionSources(sources.stream()
+                .map(source -> new PuePowerPointValidator.Source(source.device(), source.pointName()))
+                .toList());
     }
 
     private static boolean hasItems(List<?> values) {
