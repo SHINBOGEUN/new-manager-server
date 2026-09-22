@@ -43,7 +43,7 @@ public class LastQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public LastWidgetResponse getLast(Integer widgetId, Integer lookbackHours) {
         PageWidget widget = findLastWidget(widgetId);
@@ -145,7 +145,7 @@ public class LastQueryService {
                 collectedTimes.add(point == null ? null : point.time());
             }
         }
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
 
         return new LastWidgetResponse(
@@ -198,7 +198,7 @@ public class LastQueryService {
                 null,
                 null,
                 List.of(),
-                WIDGET_DATA_STATUS_RESOLVER.resolve(List.of(), widget.getDataFreshnessMinutes())
+                widgetDataStatusResolver.resolve(List.of(), widget.getDataFreshnessMinutes())
         );
     }
 

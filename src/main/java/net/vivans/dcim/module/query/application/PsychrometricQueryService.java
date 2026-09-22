@@ -38,7 +38,7 @@ public class PsychrometricQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public PsychrometricWidgetResponse getPsychrometric(Integer widgetId) {
         PageWidget widget = findPsychrometricWidget(widgetId);
@@ -82,7 +82,7 @@ public class PsychrometricQueryService {
                 .map(source -> latestBySource.get(new SourceKey(source.getDevice().getId(), source.getPointName())))
                 .map(point -> point == null ? null : point.time())
                 .toList();
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
         return new PsychrometricWidgetResponse(
                 widget.getId(),

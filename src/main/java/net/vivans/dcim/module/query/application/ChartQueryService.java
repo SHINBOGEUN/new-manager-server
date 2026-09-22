@@ -46,7 +46,7 @@ public class ChartQueryService {
     private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public ChartWidgetResponse getChart(
             Integer widgetId,
@@ -102,7 +102,7 @@ public class ChartQueryService {
                 collectedTimes.add(point == null ? null : point.time());
             }
         }
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
 
         List<ChartSeriesResponse> series = switch (mode) {
@@ -531,7 +531,7 @@ public class ChartQueryService {
                 unit,
                 unit == null ? List.of() : List.of(unit),
                 List.of(),
-                WIDGET_DATA_STATUS_RESOLVER.resolve(List.of(), widget.getDataFreshnessMinutes())
+                widgetDataStatusResolver.resolve(List.of(), widget.getDataFreshnessMinutes())
         );
     }
 

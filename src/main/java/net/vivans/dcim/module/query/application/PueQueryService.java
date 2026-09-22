@@ -51,7 +51,7 @@ public class PueQueryService {
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final PointQuery pointQuery;
     private final PageWidgetRepository pageWidgetRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public PueQueryResponse getPue(Integer widgetId) {
         PageWidget widget = pageWidgetRepository.findById(widgetId)
@@ -93,7 +93,7 @@ public class PueQueryService {
                 .map(source -> source.device().getId())
                 .distinct()
                 .toList();
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER.resolve(
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver.resolve(
                 java.util.Collections.singletonList(point == null ? null : point.time()), widget.getPueFreshnessMinutes());
 
         return new PueQueryResponse(

@@ -40,7 +40,7 @@ public class AggregateQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public AggregateWidgetResponse getAggregate(Integer widgetId, String rangePresetOverride) {
         PageWidget widget = findAggregateWidget(widgetId);
@@ -332,7 +332,7 @@ public class AggregateQueryService {
                 .map(device -> latestBySource.get(key(device.getId(), pointName)))
                 .map(point -> point == null ? null : point.time())
                 .toList();
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
         return new AggregateWidgetResponse(
                 response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
