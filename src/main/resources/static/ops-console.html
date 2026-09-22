@@ -676,7 +676,6 @@
     .side button[data-tab="lora-mqtt-sources"]::before { content:"◉"; }
     .side button[data-tab="lora-endpoints"]::before { content:"⟴"; }
     .side button[data-tab="lora-model-mapping"]::before { content:"⧉"; }
-    .side button[data-tab="lora-device-override"]::before { content:"✎"; }
     .side button[data-tab="lora-error-log"]::before { content:"⚠"; }
     .side button[data-tab="users"]::before { content:"♙"; }
     .side button[data-tab="notes"]::before { content:"?"; }
@@ -1032,7 +1031,6 @@
     <button type="button" data-tab="lora-mqtt-sources">MQTT 수집 소스<small>Broker · Topic · 연결 상태</small></button>
     <button type="button" data-tab="lora-endpoints">LoRa 엔드포인트<small>devEUI · deviceName 매칭</small></button>
     <button type="button" data-tab="lora-model-mapping">LoRa 모델 매핑<small>모델별 payload 필드</small></button>
-    <button type="button" data-tab="lora-device-override">LoRa 장비 override<small>장비별 매핑 예외</small></button>
     <button type="button" data-tab="lora-error-log">LoRa 오류 이력<small>미등록 · 미매핑 · 변환실패</small></button>
     <div class="group">시스템</div>
     <button type="button" data-tab="users" data-role-gate="admin">사용자 관리<small>계정 · 역할 분류</small></button>
@@ -2310,7 +2308,7 @@
     <!-- LORA MODEL MAPPING -->
     <section class="panel" id="tab-lora-model-mapping">
       <h1 class="page-title">LoRa 모델 매핑</h1>
-      <p class="page-desc">장비 모델별 payload 필드 → 측정 항목 매핑 기본값입니다. 장비 개별 예외는 「LoRa 장비 override」에서 관리합니다. 실제 payload 필드 경로는 장비마다 확인 후 등록하세요.</p>
+      <p class="page-desc">장비 모델별 payload 필드 → 측정 항목 매핑입니다. 실제 payload 필드 경로는 장비마다 확인 후 등록하세요.</p>
       <div class="models-layout">
         <div class="card">
           <div class="row" style="justify-content:space-between;align-items:center">
@@ -2366,69 +2364,6 @@
             <div class="row" style="margin-top:12px">
               <button type="button" class="primary" id="loraMpSave" data-role-gate="admin">등록</button>
               <button type="button" class="ghost" id="loraMpCancelEdit" style="display:none">취소</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- LORA DEVICE OVERRIDE -->
-    <section class="panel" id="tab-lora-device-override">
-      <h1 class="page-title">LoRa 장비 override</h1>
-      <p class="page-desc">특정 장비에서만 모델 기본 매핑과 다르게 적용할 payload 필드 매핑입니다. 같은 payload_field가 있으면 모델 기본 매핑보다 우선 적용됩니다.</p>
-      <div class="models-layout">
-        <div class="card">
-          <h2>장비 선택</h2>
-          <div class="row" style="margin-bottom:10px">
-            <input id="loraOvDeviceFilter" placeholder="장비 이름 검색" style="flex:1" />
-            <button type="button" class="ghost" id="loraOvDeviceReload">새로고침</button>
-          </div>
-          <div style="overflow:auto;max-height:420px">
-            <table>
-              <thead><tr><th>이름</th><th>모델</th></tr></thead>
-              <tbody id="loraOvDeviceBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <h2>override 항목 <span id="loraOvSelectedDevice" class="muted mono"></span></h2>
-          <div style="overflow:auto;max-height:320px">
-            <table>
-              <thead><tr><th>payload_field</th><th>point_name</th><th>데이터 유형</th><th>단위</th><th>scale</th><th>value_map</th><th>사용</th><th>작업</th></tr></thead>
-              <tbody id="loraOvBody"><tr><td colspan="8"><div class="empty">왼쪽에서 장비를 선택하세요</div></td></tr></tbody>
-            </table>
-          </div>
-          <div id="loraOvFormBox" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
-            <h2 id="loraOvFormTitle" style="margin:0 0 10px">override 추가</h2>
-            <div class="fields">
-              <label class="field">payload_field
-                <input id="loraOvPayloadField" class="mono" placeholder="예: object.TempC_SHT" />
-              </label>
-              <label class="field">point_name
-                <input id="loraOvPointName" placeholder="예: TEMPERATURE" />
-              </label>
-              <label class="field">데이터 유형
-                <select id="loraOvDataPointTypeId"></select>
-              </label>
-              <label class="field">단위
-                <input id="loraOvUnit" placeholder="예: C" />
-              </label>
-              <label class="field">scale
-                <input id="loraOvScale" class="mono" type="number" step="any" placeholder="비우면 1" />
-              </label>
-              <label class="field full">value_map (JSON, 선택)
-                <input id="loraOvValueMap" class="mono" placeholder='예: {"leak":1,"no leak":0}' />
-              </label>
-              <label class="field">사용
-                <select id="loraOvEnabled">
-                  <option value="true">enabled</option>
-                  <option value="false">disabled</option>
-                </select>
-              </label>
-            </div>
-            <div class="row" style="margin-top:12px">
-              <button type="button" class="primary" id="loraOvSave" data-role-gate="admin">등록</button>
-              <button type="button" class="ghost" id="loraOvCancelEdit" style="display:none">취소</button>
             </div>
           </div>
         </div>
@@ -2797,7 +2732,6 @@
       if (name === "lora-endpoints" && state.token) loadLoraEndpoints().catch((e) => toast(e.message, true));
       if (name === "lora-mqtt-sources" && state.token) loadLoraSources().catch((e) => toast(e.message, true));
       if (name === "lora-model-mapping" && state.token) loadLoraModels().catch((e) => toast(e.message, true));
-      if (name === "lora-device-override" && state.token) loadLoraOverrideDevices().catch((e) => toast(e.message, true));
       if (name === "lora-error-log" && state.token) loadLoraErrorLog().catch((e) => toast(e.message, true));
     }
 
@@ -8633,104 +8567,6 @@
       $("loraMpCancelEdit").style.display = "none";
     }
 
-    async function loadLoraOverrideDevices() {
-      if (!state.devices || !state.devices.length) await loadDevices();
-      renderLoraOverrideDevices();
-    }
-
-    function renderLoraOverrideDevices() {
-      const filterText = ($("loraOvDeviceFilter")?.value || "").trim().toLowerCase();
-      const devices = (state.devices || [])
-        .filter((d) => d.deviceTypeCode === "LORA_SENSOR")
-        .filter((d) => !filterText || String(d.name || "").toLowerCase().includes(filterText));
-      $("loraOvDeviceBody").innerHTML = devices.map((d) => `
-        <tr class="clickable" data-id="${d.id}">
-          <td><b>${esc(d.name)}</b><div class="muted mono">#${d.id}</div></td>
-          <td>${esc(d.modelName || "—")}</td>
-        </tr>`).join("") || `<tr><td colspan="2"><div class="empty">등록된 LoRa 센서 모델 또는 장비가 없습니다. 장비 모델에서 모델 타입을 &#39;LoRa 센서&#39;로 등록하세요.</div></td></tr>`;
-      $("loraOvDeviceBody").querySelectorAll("tr[data-id]").forEach((tr) => {
-        tr.onclick = () => selectLoraOverrideDevice(Number(tr.dataset.id));
-      });
-    }
-
-    async function selectLoraOverrideDevice(deviceId) {
-      state.selectedLoraOverrideDeviceId = deviceId;
-      document.querySelectorAll("#loraOvDeviceBody tr[data-id]").forEach((r) =>
-        r.classList.toggle("selected", Number(r.dataset.id) === deviceId));
-      const device = (state.devices || []).find((d) => d.id === deviceId);
-      $("loraOvSelectedDevice").textContent = device ? `#${device.id} ${device.name}` : "";
-      $("loraOvFormBox").style.display = "";
-      clearLoraOvForm();
-      await loadLoraOverridePoints(deviceId);
-    }
-
-    async function loadLoraOverridePoints(deviceId) {
-      const points = await api(`/api/manager/devices/${deviceId}/lora-point-overrides`) || [];
-      state.loraOverridePoints = points;
-      renderLoraOverridePoints2();
-    }
-
-    function renderLoraOverridePoints2() {
-      const points = state.loraOverridePoints || [];
-      $("loraOvBody").innerHTML = points.map((p) => `
-        <tr data-id="${p.id}">
-          <td class="mono">${esc(p.payloadField)}</td>
-          <td>${esc(p.pointName)}</td>
-          <td>${esc(p.dataPointTypeCode || "—")}</td>
-          <td>${esc(p.unit || "—")}</td>
-          <td class="mono">${p.scale ?? "—"}</td>
-          <td class="mono muted">${esc(p.valueMap || "—")}</td>
-          <td>${p.enabled ? '<span class="chip ok">사용</span>' : '<span class="chip bad">중지</span>'}</td>
-          <td class="actions"><div class="action-btns" data-role-gate="admin">
-            <button type="button" class="ghost" data-edit-ov="${p.id}">수정</button>
-            <button type="button" class="danger" data-delete-ov="${p.id}">삭제</button>
-          </div></td>
-        </tr>`).join("") || `<tr><td colspan="8"><div class="empty">등록된 override가 없습니다</div></td></tr>`;
-
-      $("loraOvBody").querySelectorAll("[data-edit-ov]").forEach((button) => {
-        button.onclick = () => {
-          const p = points.find((x) => x.id === Number(button.dataset.editOv));
-          if (!p) return;
-          state.editingLoraOvId = p.id;
-          $("loraOvPayloadField").value = p.payloadField || "";
-          $("loraOvPointName").value = p.pointName || "";
-          fillDataPointTypeSelect($("loraOvDataPointTypeId"), p.dataPointTypeId);
-          $("loraOvUnit").value = p.unit || "";
-          $("loraOvScale").value = p.scale ?? "";
-          $("loraOvValueMap").value = p.valueMap || "";
-          $("loraOvEnabled").value = String(p.enabled);
-          $("loraOvFormTitle").textContent = `override 수정 #${p.id}`;
-          $("loraOvSave").textContent = "저장";
-          $("loraOvCancelEdit").style.display = "";
-        };
-      });
-      $("loraOvBody").querySelectorAll("[data-delete-ov]").forEach((button) => {
-        button.onclick = async () => {
-          const p = points.find((x) => x.id === Number(button.dataset.deleteOv));
-          if (!p || !confirm(`「${p.payloadField}」 override를 삭제할까요?`)) return;
-          try {
-            await api(`/api/manager/devices/${state.selectedLoraOverrideDeviceId}/lora-point-overrides/${p.id}`, { method: "DELETE" });
-            toast("override를 삭제했습니다");
-            await loadLoraOverridePoints(state.selectedLoraOverrideDeviceId);
-          } catch (e) { toast(e.message, true); }
-        };
-      });
-    }
-
-    function clearLoraOvForm() {
-      state.editingLoraOvId = null;
-      $("loraOvPayloadField").value = "";
-      $("loraOvPointName").value = "";
-      fillDataPointTypeSelect($("loraOvDataPointTypeId"));
-      $("loraOvUnit").value = "";
-      $("loraOvScale").value = "";
-      $("loraOvValueMap").value = "";
-      $("loraOvEnabled").value = "true";
-      $("loraOvFormTitle").textContent = "override 추가";
-      $("loraOvSave").textContent = "등록";
-      $("loraOvCancelEdit").style.display = "none";
-    }
-
     async function loadLoraErrorLog(page) {
       const resolvedFilter = $("loraErrFilter").value;
       const targetPage = page ?? (state.loraErrPage || 0);
@@ -8894,44 +8730,6 @@
         }
         clearLoraMpForm();
         await loadLoraModelPoints(state.selectedLoraModelId);
-      } catch (e) { toast(e.message, true); }
-    };
-
-    $("loraOvDeviceReload").onclick = async () => {
-      try { await loadLoraOverrideDevices(); toast("장비 목록을 새로고침했습니다"); }
-      catch (e) { toast(e.message, true); }
-    };
-    $("loraOvDeviceFilter").oninput = () => renderLoraOverrideDevices();
-    $("loraOvCancelEdit").onclick = clearLoraOvForm;
-    $("loraOvSave").onclick = async () => {
-      if (!state.selectedLoraOverrideDeviceId) return toast("장비를 먼저 선택하세요", true);
-      const payloadField = $("loraOvPayloadField").value.trim();
-      const pointName = $("loraOvPointName").value.trim();
-      if (!payloadField || !pointName) return toast("payload_field와 point_name을 입력하세요", true);
-      const valueMapRaw = $("loraOvValueMap").value.trim();
-      if (valueMapRaw) {
-        try { JSON.parse(valueMapRaw); } catch (e) { return toast("value_map은 올바른 JSON이어야 합니다", true); }
-      }
-      const scaleRaw = $("loraOvScale").value;
-      const body = {
-        payloadField,
-        pointName,
-        dataPointTypeId: $("loraOvDataPointTypeId").value ? Number($("loraOvDataPointTypeId").value) : null,
-        unit: $("loraOvUnit").value.trim() || null,
-        scale: scaleRaw === "" ? null : Number(scaleRaw),
-        valueMap: valueMapRaw || null,
-        enabled: $("loraOvEnabled").value === "true",
-      };
-      try {
-        if (state.editingLoraOvId) {
-          await api(`/api/manager/devices/${state.selectedLoraOverrideDeviceId}/lora-point-overrides/${state.editingLoraOvId}`, { method: "PUT", body: JSON.stringify(body) });
-          toast("override를 저장했습니다");
-        } else {
-          await api(`/api/manager/devices/${state.selectedLoraOverrideDeviceId}/lora-point-overrides`, { method: "POST", body: JSON.stringify(body) });
-          toast("override를 등록했습니다");
-        }
-        clearLoraOvForm();
-        await loadLoraOverridePoints(state.selectedLoraOverrideDeviceId);
       } catch (e) { toast(e.message, true); }
     };
 

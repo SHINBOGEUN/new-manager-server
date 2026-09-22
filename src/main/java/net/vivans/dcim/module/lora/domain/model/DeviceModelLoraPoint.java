@@ -18,8 +18,7 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
 /**
- * 장비 모델 단위 LoRa payload 필드 → pointName/타입/단위 매핑(기본값).
- * device_lora_point_override가 있으면 그쪽이 우선한다.
+ * 장비 모델 단위 LoRa payload 필드 → pointName/타입/단위 매핑.
  */
 @Entity
 @Table(
