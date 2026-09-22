@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
@@ -124,11 +123,7 @@ public class CountQueryService {
     }
 
     private PageWidget findCountWidget(Integer widgetId) {
-        if (widgetId == null) {
-            throw new IllegalArgumentException("widgetId is required");
-        }
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.count) {
             throw new IllegalArgumentException(
                     "widget queryKind must be count, but was " + widget.getQueryKind());

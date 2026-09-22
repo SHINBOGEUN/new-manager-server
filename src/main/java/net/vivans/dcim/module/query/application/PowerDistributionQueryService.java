@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
 import net.vivans.dcim.module.device.domain.model.PageWidgetPowerDistributionGroup;
@@ -36,8 +35,7 @@ public class PowerDistributionQueryService {
     private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public PowerDistributionWidgetResponse getPowerDistribution(Integer widgetId) {
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.power_distribution) {
             throw new IllegalArgumentException("queryKind must be power_distribution");
         }

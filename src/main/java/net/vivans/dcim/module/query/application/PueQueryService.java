@@ -54,8 +54,7 @@ public class PueQueryService {
     private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public PueQueryResponse getPue(Integer widgetId) {
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind.pue) {
             throw new IllegalArgumentException("queryKind must be pue");
         }
@@ -132,8 +131,7 @@ public class PueQueryService {
                 && (windowOverride == null || windowOverride.isBlank())) {
             return latest;
         }
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         PageWidgetChartRangePreset preset = resolveRangePreset(rangePresetOverride);
         String window = resolveTrendWindow(windowOverride);
         QueryRanges.Range range = QueryRanges.resolve(preset);
