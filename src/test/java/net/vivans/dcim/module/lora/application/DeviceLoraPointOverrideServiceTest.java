@@ -37,7 +37,7 @@ class DeviceLoraPointOverrideServiceTest {
     private final CommonCodeRepository commonCodeRepository = mock(CommonCodeRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceLoraPointOverrideService service = new DeviceLoraPointOverrideService(
-            deviceLoraPointOverrideRepository, deviceRepository, commonCodeRepository,
+            deviceLoraPointOverrideRepository, deviceRepository, new LoraDataPointTypeResolver(commonCodeRepository),
             new LoraValueMapValidator(new com.fasterxml.jackson.databind.ObjectMapper()), new LoraModelTypeValidator(), eventPublisher);
 
     @Test

@@ -297,7 +297,7 @@ class PageWidgetTest {
 
     @Test
     void queryKindFrom_rejectsUnknown() {
-        assertThatThrownBy(() -> PageWidgetQueryKind.from("gauge"))
+        assertThatThrownBy(() -> PageWidgetQueryKind.from("unknown"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("queryKind must be last, aggregate, count, chart, pue, psychrometric, or power_distribution");
     }

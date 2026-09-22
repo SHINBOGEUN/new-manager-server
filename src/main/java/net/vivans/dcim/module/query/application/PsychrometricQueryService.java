@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
 import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSource;
@@ -38,7 +37,7 @@ public class PsychrometricQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public PsychrometricWidgetResponse getPsychrometric(Integer widgetId) {
         PageWidget widget = findPsychrometricWidget(widgetId);
@@ -82,7 +81,7 @@ public class PsychrometricQueryService {
                 .map(source -> latestBySource.get(new SourceKey(source.getDevice().getId(), source.getPointName())))
                 .map(point -> point == null ? null : point.time())
                 .toList();
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
         return new PsychrometricWidgetResponse(
                 widget.getId(),
@@ -137,11 +136,7 @@ public class PsychrometricQueryService {
     }
 
     private PageWidget findPsychrometricWidget(Integer widgetId) {
-        if (widgetId == null) {
-            throw new IllegalArgumentException("widgetId is required");
-        }
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.psychrometric) {
             throw new IllegalArgumentException(
                     "widget queryKind must be psychrometric, but was " + widget.getQueryKind());

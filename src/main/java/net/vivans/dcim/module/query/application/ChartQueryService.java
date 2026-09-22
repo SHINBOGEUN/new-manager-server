@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
@@ -46,7 +45,7 @@ public class ChartQueryService {
     private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public ChartWidgetResponse getChart(
             Integer widgetId,
@@ -102,7 +101,7 @@ public class ChartQueryService {
                 collectedTimes.add(point == null ? null : point.time());
             }
         }
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
 
         List<ChartSeriesResponse> series = switch (mode) {
@@ -531,16 +530,12 @@ public class ChartQueryService {
                 unit,
                 unit == null ? List.of() : List.of(unit),
                 List.of(),
-                WIDGET_DATA_STATUS_RESOLVER.resolve(List.of(), widget.getDataFreshnessMinutes())
+                widgetDataStatusResolver.resolve(List.of(), widget.getDataFreshnessMinutes())
         );
     }
 
     private PageWidget findChartWidget(Integer widgetId) {
-        if (widgetId == null) {
-            throw new IllegalArgumentException("widgetId is required");
-        }
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.chart) {
             throw new IllegalArgumentException(
                     "widget queryKind must be chart, but was " + widget.getQueryKind());

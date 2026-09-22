@@ -36,6 +36,8 @@ class PageWidgetQueryServiceTest {
     private DeviceModelRepository deviceModelRepository;
     @Mock
     private DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
+    @Mock
+    private PageWidgetSpecializedSupport widgetSupport;
     @InjectMocks
     private PageWidgetQueryService service;
 
@@ -47,8 +49,7 @@ class PageWidgetQueryServiceTest {
         DeviceModel model = org.mockito.Mockito.mock(DeviceModel.class);
         DeviceModelSnmpPoint energyPoint = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
 
-        when(commonCodeRepository.findByCodeGroupGroupKeyAndCode("DEVICE_PAGE", "POWER"))
-                .thenReturn(Optional.of(pageCode));
+        when(widgetSupport.findPageCode("POWER")).thenReturn(pageCode);
         when(pageCode.getId()).thenReturn(1);
         when(pageWidgetRepository.existsByPageCodeIdAndName(1, "누적 전력량")).thenReturn(false);
         when(deviceRepository.findById(7)).thenReturn(Optional.of(device));
@@ -82,8 +83,7 @@ class PageWidgetQueryServiceTest {
         DeviceModelSnmpPoint temperature = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
         DeviceModelSnmpPoint humidity = org.mockito.Mockito.mock(DeviceModelSnmpPoint.class);
 
-        when(commonCodeRepository.findByCodeGroupGroupKeyAndCode("DEVICE_PAGE", "POWER"))
-                .thenReturn(Optional.of(pageCode));
+        when(widgetSupport.findPageCode("POWER")).thenReturn(pageCode);
         when(pageCode.getId()).thenReturn(1);
         when(pageWidgetRepository.existsByPageCodeIdAndName(1, "혼합 단위")).thenReturn(false);
         when(deviceRepository.findById(7)).thenReturn(Optional.of(device));

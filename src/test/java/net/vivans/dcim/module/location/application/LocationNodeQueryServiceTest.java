@@ -33,7 +33,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -74,6 +73,9 @@ class LocationNodeQueryServiceTest {
     @InjectMocks
     private LocationNodeQueryService locationNodeQueryService;
 
+    @InjectMocks
+    private LocationNodeCommandService locationNodeCommandService;
+
     private LocationNode container;
     private LocationNode row;
 
@@ -91,7 +93,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.existsByCode(anyString())).thenReturn(false);
         when(locationNodeRepository.save(any(LocationNode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LocationNodeResponse response = locationNodeQueryService.createLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest(null, 1, "컨테이너 A")
         );
 
@@ -111,7 +113,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.existsByCode(anyString())).thenReturn(false);
         when(locationNodeRepository.save(any(LocationNode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LocationNodeResponse response = locationNodeQueryService.createLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest("TSTCNTR001", 3, "A열")
         );
 
@@ -125,7 +127,7 @@ class LocationNodeQueryServiceTest {
         when(commonCodeRepository.findById(3)).thenReturn(Optional.of(ROW_TYPE));
         when(locationNodeRepository.findByCode("UNKNOWN01")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> locationNodeQueryService.createLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest("UNKNOWN01", 3, "A열")
         ))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -138,7 +140,7 @@ class LocationNodeQueryServiceTest {
     void createLocationNode_throwsWhenLocationTypeNotFound() {
         when(commonCodeRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> locationNodeQueryService.createLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest(null, 999, "컨테이너 A")
         ))
                 .isInstanceOf(EntityNotFoundException.class)
@@ -151,7 +153,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.existsByParentIsNullAndName("컨테이너 A")).thenReturn(false);
         when(locationNodeRepository.existsByCode(anyString())).thenReturn(false);
 
-        assertThatThrownBy(() -> locationNodeQueryService.createLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest(null, 99, "컨테이너 A")
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -163,7 +165,7 @@ class LocationNodeQueryServiceTest {
         when(commonCodeRepository.findById(1)).thenReturn(Optional.of(CONTAINER_TYPE));
         when(locationNodeRepository.existsByParentIsNullAndName("컨테이너 A")).thenReturn(true);
 
-        assertThatThrownBy(() -> locationNodeQueryService.createLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest(null, 1, "컨테이너 A")
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -178,7 +180,7 @@ class LocationNodeQueryServiceTest {
                 .thenReturn(false);
         when(locationNodeRepository.save(container)).thenReturn(container);
 
-        LocationNodeResponse response = locationNodeQueryService.updateLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.updateLocationNode(
                 "TSTCNTR001",
                 new LocationNodeUpdateRequest(3, "컨테이너 B")
         );
@@ -192,7 +194,7 @@ class LocationNodeQueryServiceTest {
     void updateLocationNode_throwsWhenNodeNotFound() {
         when(locationNodeRepository.findByCode("UNKNOWN01")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> locationNodeQueryService.updateLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.updateLocationNode(
                 "UNKNOWN01",
                 new LocationNodeUpdateRequest(1, "이름")
         ))
@@ -207,7 +209,7 @@ class LocationNodeQueryServiceTest {
                 .thenReturn(false);
         when(locationNodeRepository.save(row)).thenReturn(row);
 
-        LocationNodeResponse response = locationNodeQueryService.updateParentLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.updateParentLocationNode(
                 "TSTROW0001",
                 new LocationNodeParentUpdateRequest(null)
         );
@@ -226,7 +228,7 @@ class LocationNodeQueryServiceTest {
                 .thenReturn(false);
         when(locationNodeRepository.save(row)).thenReturn(row);
 
-        LocationNodeResponse response = locationNodeQueryService.updateParentLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.updateParentLocationNode(
                 "TSTROW0001",
                 new LocationNodeParentUpdateRequest("TSTCNTR002")
         );
@@ -240,7 +242,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByCode("TSTROW0001")).thenReturn(Optional.of(row));
         when(locationNodeRepository.findByCode("UNKNOWN01")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> locationNodeQueryService.updateParentLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.updateParentLocationNode(
                 "TSTROW0001",
                 new LocationNodeParentUpdateRequest("UNKNOWN01")
         ))
@@ -337,7 +339,7 @@ class LocationNodeQueryServiceTest {
         );
         LocationNodeBulkCreateRequest bulkRequest = new LocationNodeBulkCreateRequest(null, List.of(containerRequest));
 
-        List<LocationNodeResponse> result = locationNodeQueryService.createBatchLocationNodes(bulkRequest);
+        List<LocationNodeResponse> result = locationNodeCommandService.createBatchLocationNodes(bulkRequest);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name()).isEqualTo("컨테이너 A");
@@ -361,7 +363,7 @@ class LocationNodeQueryServiceTest {
                 List.of(rowRequest)
         );
 
-        List<LocationNodeResponse> result = locationNodeQueryService.createBatchLocationNodes(bulkRequest);
+        List<LocationNodeResponse> result = locationNodeCommandService.createBatchLocationNodes(bulkRequest);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).parentCode()).isEqualTo("TSTCNTR001");
@@ -379,7 +381,7 @@ class LocationNodeQueryServiceTest {
                 List.of(first, second)
         );
 
-        assertThatThrownBy(() -> locationNodeQueryService.createBatchLocationNodes(bulkRequest))
+        assertThatThrownBy(() -> locationNodeCommandService.createBatchLocationNodes(bulkRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("name already exists under parent");
     }
@@ -390,7 +392,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.existsByParent_Code("TSTROW0001")).thenReturn(false);
         when(deviceRepository.findByLocationNodeCodeIn(any())).thenReturn(List.of());
 
-        LocationNodeDeleteResponse response = locationNodeQueryService.deleteLocationNode("TSTROW0001");
+        LocationNodeDeleteResponse response = locationNodeCommandService.deleteLocationNode("TSTROW0001");
 
         assertThat(response.deletedCode()).isEqualTo("TSTROW0001");
         assertThat(response.reassignedDeviceCount()).isZero();
@@ -409,7 +411,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByCode(Device.UNASSIGNED_LOCATION_CODE)).thenReturn(Optional.of(unassigned));
         when(deviceRepository.findByLocationNodeCode(Device.UNASSIGNED_LOCATION_CODE)).thenReturn(List.of());
 
-        LocationNodeDeleteResponse response = locationNodeQueryService.deleteLocationNode("TSTROW0001");
+        LocationNodeDeleteResponse response = locationNodeCommandService.deleteLocationNode("TSTROW0001");
 
         assertThat(response.reassignedDeviceCount()).isEqualTo(1);
         assertThat(device.getLocationNode()).isEqualTo(unassigned);
@@ -430,7 +432,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByCode(Device.UNASSIGNED_LOCATION_CODE)).thenReturn(Optional.of(unassigned));
         when(deviceRepository.findByLocationNodeCode(Device.UNASSIGNED_LOCATION_CODE)).thenReturn(List.of(existing));
 
-        assertThatThrownBy(() -> locationNodeQueryService.deleteLocationNode("TSTROW0001"))
+        assertThatThrownBy(() -> locationNodeCommandService.deleteLocationNode("TSTROW0001"))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("device name conflict at UNASSIGNED; rename devices before deleting location");
 
@@ -439,7 +441,7 @@ class LocationNodeQueryServiceTest {
 
     @Test
     void deleteLocationNode_throwsWhenDeletingSystemNode() {
-        assertThatThrownBy(() -> locationNodeQueryService.deleteLocationNode(Device.UNASSIGNED_LOCATION_CODE))
+        assertThatThrownBy(() -> locationNodeCommandService.deleteLocationNode(Device.UNASSIGNED_LOCATION_CODE))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("cannot delete system location node");
 
@@ -451,7 +453,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByCode("TSTCNTR001")).thenReturn(Optional.of(container));
         when(locationNodeRepository.existsByParent_Code("TSTCNTR001")).thenReturn(true);
 
-        assertThatThrownBy(() -> locationNodeQueryService.deleteLocationNode("TSTCNTR001"))
+        assertThatThrownBy(() -> locationNodeCommandService.deleteLocationNode("TSTCNTR001"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("cannot delete node with children");
 
@@ -464,7 +466,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findAll()).thenReturn(List.of(container, row));
         when(deviceRepository.findByLocationNodeCodeIn(any())).thenReturn(List.of());
 
-        LocationNodeDeleteResponse response = locationNodeQueryService.deleteLocationNodeSubtree("TSTCNTR001");
+        LocationNodeDeleteResponse response = locationNodeCommandService.deleteLocationNodeSubtree("TSTCNTR001");
 
         assertThat(response.deletedCode()).isEqualTo("TSTCNTR001");
         assertThat(response.reassignedDeviceCount()).isZero();
@@ -476,7 +478,7 @@ class LocationNodeQueryServiceTest {
         when(commonCodeRepository.findById(1)).thenReturn(Optional.of(CONTAINER_TYPE));
         when(locationNodeRepository.findByCode("TSTCNTR001")).thenReturn(Optional.of(container));
 
-        assertThatThrownBy(() -> locationNodeQueryService.createLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest("TSTCNTR001", 1, "중복 컨테이너")
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -494,7 +496,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByParent_Code("TSTCNTR001")).thenReturn(List.of(row));
         when(locationNodeRepository.save(any(LocationNode.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        LocationNodeResponse response = locationNodeQueryService.createLocationNode(
+        LocationNodeResponse response = locationNodeCommandService.createLocationNode(
                 new LocationNodeCreateRequest("TSTCNTR001", 2, "존 1")
         );
 
@@ -512,7 +514,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.existsByParentIsNullAndNameAndCodeNot("컨테이너 B", "TSTCNTR001"))
                 .thenReturn(false);
 
-        assertThatThrownBy(() -> locationNodeQueryService.updateLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.updateLocationNode(
                 "TSTCNTR001",
                 new LocationNodeUpdateRequest(3, "컨테이너 B")
         ))
@@ -529,7 +531,7 @@ class LocationNodeQueryServiceTest {
         when(locationNodeRepository.findByCode("TSTZONE001")).thenReturn(Optional.of(zone));
         when(locationNodeRepository.findByCode("TSTROW0001")).thenReturn(Optional.of(row));
 
-        assertThatThrownBy(() -> locationNodeQueryService.updateParentLocationNode(
+        assertThatThrownBy(() -> locationNodeCommandService.updateParentLocationNode(
                 "TSTZONE001",
                 new LocationNodeParentUpdateRequest("TSTROW0001")
         ))

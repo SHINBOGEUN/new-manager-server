@@ -279,6 +279,9 @@
     .dashboard-actions { display:flex; align-items:center; gap:8px; }
     .dashboard-actions button,.dashboard-actions a { min-height:36px; display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:8px; text-decoration:none; font-size:12px; font-weight:700; }
     .dashboard-actions a { color:var(--text); border:1px solid var(--line); background:#162235; }
+    .page-switcher { display:flex; align-items:center; gap:7px; min-height:36px; padding:4px 5px 4px 10px; border:1px solid var(--line); border-radius:8px; background:#111c2c; }
+    .page-switcher span { color:#7f96b0; font-size:10px; font-weight:800; letter-spacing:.08em; }
+    .page-switcher select { min-width:130px; padding:6px 28px 6px 9px; border:0; background:#1a2940; font-weight:700; }
     .dashboard-controls { display:none; grid-template-columns:repeat(4,minmax(180px,1fr)); gap:12px; padding:14px 22px 16px; border-bottom:1px solid var(--line); background:#101a29; }
     body.controls-open .dashboard-controls { display:grid; }
     .control-group { min-width:0; padding:12px; border:1px solid #263951; border-radius:10px; background:#131f30; }
@@ -313,6 +316,15 @@
     .log { display:none; position:fixed; z-index:80; right:18px; bottom:18px; width:min(520px,calc(100vw - 36px)); max-height:180px; box-shadow:0 16px 42px rgba(0,0,0,.45); }
     body.log-open .log { display:block; }
     #logBtn.active { color:#06111c; background:var(--accent); }
+    .login-modal { position:fixed; z-index:120; inset:0; display:none; align-items:center; justify-content:center; padding:24px; background:rgba(4,8,14,.78); backdrop-filter:blur(8px); }
+    .login-modal.open { display:flex; }
+    .login-dialog { width:min(420px,100%); padding:24px; border:1px solid #36506d; border-radius:16px; background:linear-gradient(145deg,#18253a,#101827); box-shadow:0 22px 70px rgba(0,0,0,.55); }
+    .login-dialog h2 { margin:0 0 8px; font-size:20px; }
+    .login-dialog p { margin:0 0 18px; color:var(--muted); font-size:12px; line-height:1.5; }
+    .login-dialog .control-field { display:block; margin-bottom:12px; }
+    .login-dialog input { width:100%; min-width:0; }
+    .login-dialog button { width:100%; margin-top:4px; }
+    .login-error { display:none; margin:12px 0 0; color:var(--bad); font-size:12px; line-height:1.45; }
 
     @media (max-width: 1120px) {
       .dashboard-controls { grid-template-columns:repeat(2,minmax(220px,1fr)); }
@@ -325,6 +337,9 @@
       .dashboard-context small { display:none; }
       .dashboard-actions a,.dashboard-actions #logBtn { display:none; }
       .dashboard-actions button { padding:7px 9px; min-width:0; }
+      .page-switcher span { display:none; }
+      .page-switcher { padding-left:5px; }
+      .page-switcher select { min-width:104px; max-width:118px; }
       .dashboard-controls { grid-template-columns:1fr; padding:12px; max-height:calc(100vh - 68px); overflow:auto; }
       aside { width:min(340px,90vw); }
       body.edit-mode .board-wrap { margin-left:0; }
@@ -340,6 +355,7 @@
       <div class="dashboard-context"><small>MONITORING DASHBOARD</small><h1 id="dashboardPageTitle">통합 운영 현황</h1></div>
       <div class="dashboard-actions">
         <span id="authStatus" class="chip">미로그인</span>
+        <label class="page-switcher" for="pageCode"><span>페이지</span><select id="pageCode" disabled><option value="">페이지 불러오는 중...</option></select></label>
         <button id="reloadBtn" class="ghost" type="button">↻ 새로고침</button>
         <button id="editBtn" type="button" title="클릭 후 이동·리사이즈">배치 편집</button>
         <button id="controlsBtn" class="ghost" type="button">설정</button>
@@ -350,11 +366,7 @@
     <section id="dashboardControls" class="dashboard-controls">
       <div class="control-group">
         <p class="control-group-title">Dashboard source</p>
-        <div class="row"><span class="control-field"><label>Manager 서버</label><input id="managerUrl" placeholder="http://localhost:8080" /></span><span class="control-field"><label>페이지</label><select id="pageCode"><option value="dashboard" selected>통합 대시보드</option><option value="ENVIRONMENT">환경</option><option value="COOLING">냉각</option><option value="POWER">전력</option></select></span><span class="control-field"><label>최근값 범위(h)</label><input id="lookbackHours" type="number" min="1" max="168" value="24" /></span></div>
-      </div>
-      <div class="control-group">
-        <p class="control-group-title">Authentication</p>
-        <div class="row"><span class="control-field"><label>아이디</label><input id="username" placeholder="username" /></span><span class="control-field"><label>비밀번호</label><input id="password" type="password" placeholder="password" /></span><button id="loginBtn" type="button">로그인</button></div>
+        <div class="row"><span class="control-field"><label>Manager 서버</label><input id="managerUrl" placeholder="http://localhost:8080" /></span><span class="control-field"><label>최근값 범위(h)</label><input id="lookbackHours" type="number" min="1" max="168" value="24" /></span></div>
       </div>
       <div class="control-group">
         <p class="control-group-title">Chart display</p>
@@ -393,6 +405,16 @@
       <div class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
     </div>
   </div>
+  <div id="loginModal" class="login-modal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <form id="dashboardLoginForm" class="login-dialog">
+      <h2 id="loginModalTitle">대시보드 로그인</h2>
+      <p>기존 로그인 세션은 자동으로 이어집니다. 세션이 없거나 만료된 경우에만 다시 로그인해 주세요.</p>
+      <label class="control-field"><span>아이디</span><input id="username" autocomplete="username" placeholder="아이디" required /></label>
+      <label class="control-field"><span>비밀번호</span><input id="password" type="password" autocomplete="current-password" placeholder="비밀번호" required /></label>
+      <button id="loginBtn" type="submit">로그인</button>
+      <p id="loginError" class="login-error"></p>
+    </form>
+  </div>
   <script>
     const POLL_MS = 15000;
     const COLS = 48;
@@ -403,7 +425,8 @@
     // 스케일: 12칸→×4, 24칸→×2, 이미 48칸이면 그대로
 
     const state = {
-      token: sessionStorage.getItem("widgetDashToken") || "",
+      token: "",
+      refreshPromise: null,
       widgets: [],
       devices: [],
       models: [],
@@ -431,8 +454,6 @@
     }
 
     $("managerUrl").value = localStorage.getItem("widgetDashManagerUrl") ?? defaultManagerUrl();
-    $("pageCode").value = localStorage.getItem("widgetDashPageCode") || "dashboard";
-
     function managerBase() {
       return $("managerUrl").value.replace(/\/$/, "");
     }
@@ -445,18 +466,90 @@
     }
 
     function setAuthStatus() {
-      $("authStatus").textContent = state.token ? "로그인됨" : "미로그인";
+      $("authStatus").textContent = state.token ? "로그인됨" : "로그인 필요";
+    }
+
+    function showLoginModal(message = "") {
+      $("loginError").textContent = message;
+      $("loginError").style.display = message ? "block" : "none";
+      $("loginModal").classList.add("open");
+      $("username").focus();
+    }
+
+    function hideLoginModal() {
+      $("loginModal").classList.remove("open");
+      $("loginError").style.display = "none";
+    }
+
+    function clearAuth() {
+      state.token = "";
+      setAuthStatus();
+    }
+
+    async function refreshAccessToken() {
+      if (state.refreshPromise) return state.refreshPromise;
+      state.refreshPromise = (async () => {
+        try {
+          const res = await fetch(managerBase() + "/api/manager/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.data?.accessToken) return false;
+          state.token = json.data.accessToken;
+          setAuthStatus();
+          return true;
+        } catch (error) {
+          log("세션 복구 실패: " + error.message);
+          return false;
+        } finally {
+          state.refreshPromise = null;
+        }
+      })();
+      return state.refreshPromise;
     }
 
     async function api(path, options = {}) {
-      const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+      const { retryOnUnauthorized = true, ...requestOptions } = options;
+      const headers = { "Content-Type": "application/json", ...(requestOptions.headers || {}) };
       if (state.token) headers.Authorization = "Bearer " + state.token;
-      const res = await fetch(managerBase() + path, { ...options, headers });
+      const res = await fetch(managerBase() + path, { ...requestOptions, headers, credentials: "include" });
       const json = await res.json().catch(() => ({}));
+      const isAuthRequest = path.startsWith("/api/manager/auth/");
+      if (res.status === 401 && retryOnUnauthorized && !isAuthRequest) {
+        if (await refreshAccessToken()) {
+          return api(path, { ...requestOptions, retryOnUnauthorized: false });
+        }
+        clearAuth();
+        showLoginModal("로그인 세션이 만료되었습니다.");
+      }
       if (!res.ok) {
         throw new Error(json.error || json.message || `HTTP ${res.status}`);
       }
       return json.data;
+    }
+
+    async function loadDashboardPages() {
+      const pages = await api("/api/manager/widgets/pages");
+      const sortedPages = [...(pages || [])].sort((left, right) =>
+        (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
+        || String(left.name || left.code).localeCompare(String(right.name || right.code), "ko")
+      );
+      if (!sortedPages.length) throw new Error("DEVICE_PAGE에 등록된 페이지가 없습니다.");
+
+      const pageSelect = $("pageCode");
+      pageSelect.innerHTML = sortedPages.map((page) =>
+        `<option value="${escapeHtml(page.code)}">${escapeHtml(page.name)}</option>`
+      ).join("");
+
+      const savedPageCode = localStorage.getItem("widgetDashPageCode");
+      const defaultPage = sortedPages.find((page) => page.code === "dashboard") || sortedPages[0];
+      pageSelect.value = sortedPages.some((page) => page.code === savedPageCode)
+        ? savedPageCode
+        : defaultPage.code;
+      pageSelect.disabled = false;
+      updateDashboardTitle();
     }
 
     /** 저장된 레이아웃을 현재 48칸 그리드 단위로 맞춤 */
@@ -493,9 +586,12 @@
         body: JSON.stringify({ username, password }),
       });
       state.token = data.accessToken;
-      sessionStorage.setItem("widgetDashToken", state.token);
+      sessionStorage.removeItem("widgetDashToken");
       setAuthStatus();
+      hideLoginModal();
+      $("password").value = "";
       log("로그인: " + data.username);
+      await loadDashboardPages();
       await reload();
     }
 
@@ -1748,7 +1844,13 @@
       $("boardPageTitle").textContent = title;
     }
 
-    $("loginBtn").addEventListener("click", () => login().catch((e) => log("login: " + e.message)));
+    $("dashboardLoginForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      login().catch((error) => {
+        log("login: " + error.message);
+        showLoginModal("로그인 실패: " + error.message);
+      });
+    });
     $("reloadBtn").addEventListener("click", () => reload().catch((e) => log("reload: " + e.message)));
     $("trendModalClose")?.addEventListener("click", closeTrendModal);
     $("trendModal")?.addEventListener("click", (event) => {
@@ -1790,15 +1892,21 @@
     });
     window.addEventListener("resize", () => drawPsychrometricCanvases());
 
+    sessionStorage.removeItem("widgetDashToken");
     setAuthStatus();
     updateDashboardTitle();
-    if (state.token) {
-      reload().catch(() => {
-        state.token = "";
-        sessionStorage.removeItem("widgetDashToken");
-        setAuthStatus();
+    (async () => {
+      if (!await refreshAccessToken()) {
+        clearAuth();
+        showLoginModal();
+        return;
+      }
+      hideLoginModal();
+      loadDashboardPages().then(reload).catch((error) => {
+        log("대시보드 초기화 실패: " + error.message);
+        if (!state.token) showLoginModal("로그인이 필요합니다.");
       });
-    }
+    })();
   </script>
 </body>
 </html>

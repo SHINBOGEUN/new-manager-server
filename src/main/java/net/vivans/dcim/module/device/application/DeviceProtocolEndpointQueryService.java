@@ -12,8 +12,6 @@ import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceProtocolEndpointRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
-import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
-import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +36,7 @@ public class DeviceProtocolEndpointQueryService {
             "LoRa MQTT 장비는 IP/port 대신 devEUI 또는 deviceName을 등록하세요";
 
     private final DeviceRepository deviceRepository;
-    private final DeviceModelRepository deviceModelRepository;
+    private final DeviceModelProtocolResolver deviceModelProtocolResolver;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final CollectionScriptSyncService collectionScriptSyncService;
@@ -160,16 +158,10 @@ public class DeviceProtocolEndpointQueryService {
     }
 
     private void validateProtocolSupportedByModel(Device device, CommonCode protocolType) {
-        DeviceModel deviceModel = deviceModelRepository.findById(device.getDeviceModel().getId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "DeviceModel not found: " + device.getDeviceModel().getId()));
-
-        for (DeviceModelProtocol protocol : deviceModel.getProtocols()) {
-            if (protocolType.getId().equals(protocol.getProtocolType().getId())) {
-                return;
-            }
+        DeviceModel deviceModel = deviceModelProtocolResolver.resolveModel(device);
+        if (!deviceModelProtocolResolver.supports(deviceModel, protocolType.getId())) {
+            throw new IllegalArgumentException(PROTOCOL_NOT_SUPPORTED_MESSAGE);
         }
-        throw new IllegalArgumentException(PROTOCOL_NOT_SUPPORTED_MESSAGE);
     }
 
     private void validateLoraMqttEndpoint(Device device, CommonCode protocolType) {

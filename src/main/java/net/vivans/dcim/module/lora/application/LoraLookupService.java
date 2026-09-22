@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.lora.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Sensor Data 서버가 TTL 캐시를 채우기 위해 호출하는 조회 전용 API의 서비스 계층.
@@ -31,18 +31,17 @@ public class LoraLookupService {
     private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
     private final DeviceLoraPointOverrideRepository deviceLoraPointOverrideRepository;
 
-    public LoraDeviceLookupResponse resolve(LoraIdType idType, String externalId) {
+    public Optional<LoraDeviceLookupResponse> resolve(LoraIdType idType, String externalId) {
         String normalized = LoraExternalIdNormalizer.normalize(externalId);
-        DeviceLoraEndpoint endpoint = deviceLoraEndpointRepository
+        return deviceLoraEndpointRepository
                 .findByIdTypeAndNormalizedExternalIdAndEnabledTrue(idType, normalized)
-                .orElseThrow(() -> new EntityNotFoundException("no device registered for " + idType + "=" + externalId));
-        return new LoraDeviceLookupResponse(
-                endpoint.getDevice().getId(),
-                endpoint.getDevice().getName(),
-                endpoint.getDevice().getDeviceModel().getId(),
-                endpoint.getDevice().getDeviceModel().getName(),
-                endpoint.isEnabled()
-        );
+                .map(endpoint -> new LoraDeviceLookupResponse(
+                        endpoint.getDevice().getId(),
+                        endpoint.getDevice().getName(),
+                        endpoint.getDevice().getDeviceModel().getId(),
+                        endpoint.getDevice().getDeviceModel().getName(),
+                        endpoint.isEnabled()
+                ));
     }
 
     public List<DeviceLoraEndpointResponse> getAllEnabledEndpoints() {

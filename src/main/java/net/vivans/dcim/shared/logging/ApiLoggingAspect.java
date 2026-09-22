@@ -11,6 +11,9 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -22,37 +25,56 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ApiLoggingAspect {
 
+    private static final Set<String> SENSITIVE_QUERY_KEYS = Set.of(
+            "password", "passwd", "token", "secret", "authorization",
+            "credential", "api_key", "apikey", "cookie"
+    );
+
     @Around("execution(* net.vivans.dcim..api..*(..))")
     public Object logApi(ProceedingJoinPoint joinPoint) throws Throwable {
         HttpServletRequest request = currentRequest();
         HttpServletResponse response = currentResponse();
         String method = request == null ? "-" : request.getMethod();
         String path = request == null ? "-" : request.getRequestURI();
+        String url = request == null ? "-" : request.getRequestURL().toString();
+        String query = safeQueryString(request);
         String handler = joinPoint.getSignature().toShortString();
         long startedAt = System.nanoTime();
 
-        log.info("[API_START] method={} path={} handler={}", method, path, handler);
+        log.info("""
+                ==================== API REQUEST START ====================
+                Method  : {}
+                URL     : {}
+                Path    : {}
+                Query   : {}
+                Handler : {}
+                ===========================================================""",
+                method, url, path, query, handler);
         try {
             Object result = joinPoint.proceed();
-            log.info(
-                    "[API_END] method={} path={} handler={} status={} elapsedMs={}",
-                    method,
-                    path,
-                    handler,
-                    response == null ? "-" : response.getStatus(),
-                    elapsedMillis(startedAt)
-            );
+            log.info("""
+                    ===================== API REQUEST END =====================
+                    Method  : {}
+                    Path    : {}
+                    Status  : {}
+                    Elapsed : {} ms
+                    Handler : {}
+                    ===========================================================""",
+                    method, path, response == null ? "-" : response.getStatus(),
+                    elapsedMillis(startedAt), handler);
             return result;
         } catch (Throwable exception) {
-            log.warn(
-                    "[API_ERROR] method={} path={} handler={} elapsedMs={} exception={} message={}",
-                    method,
-                    path,
-                    handler,
-                    elapsedMillis(startedAt),
-                    exception.getClass().getSimpleName(),
-                    safeMessage(exception)
-            );
+            log.warn("""
+                    ==================== API REQUEST ERROR ====================
+                    Method    : {}
+                    Path      : {}
+                    Elapsed   : {} ms
+                    Handler   : {}
+                    Exception : {}
+                    Message   : {}
+                    ===========================================================""",
+                    method, path, elapsedMillis(startedAt), handler,
+                    exception.getClass().getSimpleName(), safeMessage(exception));
             throw exception;
         }
     }
@@ -75,6 +97,25 @@ public class ApiLoggingAspect {
 
     private static long elapsedMillis(long startedAt) {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+    }
+
+    private static String safeQueryString(HttpServletRequest request) {
+        if (request == null || request.getQueryString() == null || request.getQueryString().isBlank()) {
+            return "-";
+        }
+        return Arrays.stream(request.getQueryString().split("&"))
+                .map(ApiLoggingAspect::redactQueryPart)
+                .map(part -> part.replaceAll("[\\r\\n]+", " "))
+                .reduce((left, right) -> left + "&" + right)
+                .orElse("-");
+    }
+
+    private static String redactQueryPart(String part) {
+        int separator = part.indexOf('=');
+        String key = separator < 0 ? part : part.substring(0, separator);
+        String normalizedKey = key.toLowerCase(Locale.ROOT);
+        boolean sensitive = SENSITIVE_QUERY_KEYS.stream().anyMatch(normalizedKey::contains);
+        return sensitive ? key + "=***" : part;
     }
 
     private static String safeMessage(Throwable exception) {

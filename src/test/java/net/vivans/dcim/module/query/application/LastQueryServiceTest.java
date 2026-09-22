@@ -55,6 +55,9 @@ class LastQueryServiceTest {
     @Mock
     private DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
 
+    @org.mockito.Spy
+    private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
+
     @InjectMocks
     private LastQueryService service;
 

@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
@@ -40,7 +39,7 @@ public class AggregateQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private static final WidgetDataStatusResolver WIDGET_DATA_STATUS_RESOLVER = new WidgetDataStatusResolver();
+    private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public AggregateWidgetResponse getAggregate(Integer widgetId, String rangePresetOverride) {
         PageWidget widget = findAggregateWidget(widgetId);
@@ -230,11 +229,7 @@ public class AggregateQueryService {
     }
 
     private PageWidget findAggregateWidget(Integer widgetId) {
-        if (widgetId == null) {
-            throw new IllegalArgumentException("widgetId is required");
-        }
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.aggregate) {
             throw new IllegalArgumentException(
                     "widget queryKind must be aggregate, but was " + widget.getQueryKind());
@@ -332,7 +327,7 @@ public class AggregateQueryService {
                 .map(device -> latestBySource.get(key(device.getId(), pointName)))
                 .map(point -> point == null ? null : point.time())
                 .toList();
-        WidgetDataStatusResponse dataStatus = WIDGET_DATA_STATUS_RESOLVER
+        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
                 .resolve(collectedTimes, widget.getDataFreshnessMinutes());
         return new AggregateWidgetResponse(
                 response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),

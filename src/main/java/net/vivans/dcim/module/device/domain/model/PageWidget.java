@@ -119,9 +119,7 @@ public class PageWidget extends BaseEntity {
             PageWidgetQueryKind queryKind,
             PageWidgetGroupBy groupBy
     ) {
-        validatePageCode(pageCode);
-        validateName(name);
-        validateQueryKind(queryKind);
+        PageWidgetPolicy.validateIdentity(pageCode, name, queryKind);
         this.pageCode = pageCode;
         this.name = name.trim();
         this.enabled = enabled;
@@ -237,8 +235,10 @@ public class PageWidget extends BaseEntity {
             List<Device> itDevices,
             List<Integer> modelIds
     ) {
-        validateName(name);
-        validateQueryKind(queryKind);
+        PageWidgetPolicy.validateName(name);
+        if (queryKind == null) {
+            throw new IllegalArgumentException("queryKind is required");
+        }
         this.name = name.trim();
         this.enabled = enabled;
         this.queryKind = queryKind;
@@ -263,7 +263,7 @@ public class PageWidget extends BaseEntity {
     }
 
     public void updateLast(String name, boolean enabled, List<LastSourceDefinition> sources) {
-        validateName(name);
+        PageWidgetPolicy.validateName(name);
         this.name = name.trim();
         this.enabled = enabled;
         this.queryKind = PageWidgetQueryKind.last;
@@ -323,7 +323,7 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.psychrometric || psychrometric == null) {
             throw new IllegalArgumentException("queryKind must be psychrometric");
         }
-        validateName(name);
+        PageWidgetPolicy.validateName(name);
         this.name = name.trim();
         this.enabled = enabled;
         psychrometric.update(sources);
@@ -339,7 +339,7 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.pue || pue == null) {
             throw new IllegalArgumentException("queryKind must be pue");
         }
-        validateName(name);
+        PageWidgetPolicy.validateName(name);
         this.name = name.trim();
         this.enabled = enabled;
         pue.update(pueDefinition, rangePreset, freshnessMinutes);
@@ -353,7 +353,7 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.power_distribution || powerDistribution == null) {
             throw new IllegalArgumentException("queryKind must be power_distribution");
         }
-        validateName(name);
+        PageWidgetPolicy.validateName(name);
         this.name = name.trim();
         this.enabled = enabled;
         powerDistribution.update(groups);
@@ -518,8 +518,8 @@ public class PageWidget extends BaseEntity {
             }
             default -> { /* last: no extension row */ }
         }
-        validateKindOptions(op, aggregateRangePreset, countMode, countModelId,
-                chartScope, chartSeriesMode, chartRangePreset, chartWindow);
+        PageWidgetPolicy.validateKindOptions(queryKind, aggregate != null, op, aggregateRangePreset,
+                countMode, countModelId, chartScope, chartSeriesMode, chartRangePreset, chartWindow);
     }
 
     private void applyBindings(
@@ -663,91 +663,8 @@ public class PageWidget extends BaseEntity {
     }
 
     private void validateBindings() {
-        if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.pue
-                || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.power_distribution) {
-            return;
-        }
-        if (queryKind == PageWidgetQueryKind.chart) {
-            if (points.isEmpty()) {
-                throw new IllegalArgumentException("pointNames is required for chart");
-            }
-            if (resolvedChartScope() == PageWidgetChartScope.models) {
-                if (models.isEmpty()) {
-                    throw new IllegalArgumentException("modelIds is required when chartScope is models");
-                }
-            } else if (devices.isEmpty() && deviceGroups.isEmpty()) {
-                throw new IllegalArgumentException("deviceIds is required when chartScope is devices");
-            }
-            return;
-        }
-        if (queryKind == PageWidgetQueryKind.aggregate) {
-            if (devices.isEmpty() && deviceGroups.isEmpty()) {
-                throw new IllegalArgumentException("deviceIds is required");
-            }
-            if (points.isEmpty()) {
-                throw new IllegalArgumentException("pointNames is required for aggregate");
-            }
-            if (points.size() != 1) {
-                throw new IllegalArgumentException("aggregate supports exactly one pointName");
-            }
-            return;
-        }
-        if (devices.isEmpty() && deviceGroups.isEmpty()) {
-            throw new IllegalArgumentException("deviceIds is required");
-        }
-        if (queryKind == PageWidgetQueryKind.last && points.isEmpty()) {
-            throw new IllegalArgumentException("pointNames is required for last");
-        }
-    }
-
-    private void validateKindOptions(
-            PageWidgetOp op,
-            PageWidgetChartRangePreset aggregateRangePreset,
-            PageWidgetCountMode countMode,
-            Integer countModelId,
-            PageWidgetChartScope chartScope,
-            PageWidgetChartSeriesMode chartSeriesMode,
-            PageWidgetChartRangePreset chartRangePreset,
-            String chartWindow
-    ) {
-        if (queryKind == PageWidgetQueryKind.aggregate && aggregate == null) {
-            throw new IllegalArgumentException("aggregatePreset/op is required for aggregate");
-        }
-        if (queryKind != PageWidgetQueryKind.aggregate && op != null) {
-            throw new IllegalArgumentException("op is only allowed for aggregate");
-        }
-        if (queryKind != PageWidgetQueryKind.aggregate && aggregateRangePreset != null) {
-            throw new IllegalArgumentException("aggregateRangePreset is only allowed for aggregate");
-        }
-        if (queryKind != PageWidgetQueryKind.count && (countMode != null || countModelId != null)) {
-            throw new IllegalArgumentException("countMode is only allowed for count");
-        }
-        if (queryKind != PageWidgetQueryKind.chart
-                && (chartScope != null || chartSeriesMode != null
-                || chartRangePreset != null || (chartWindow != null && !chartWindow.isBlank()))) {
-            throw new IllegalArgumentException("chart options are only allowed for chart");
-        }
-    }
-
-    private static void validatePageCode(CommonCode pageCode) {
-        if (pageCode == null) {
-            throw new IllegalArgumentException("pageCode is required");
-        }
-        if (!DevicePageCodes.DEVICE_PAGE_GROUP_KEY.equals(pageCode.getCodeGroup().getGroupKey())) {
-            throw new IllegalArgumentException("pageCode must belong to DEVICE_PAGE group");
-        }
-    }
-
-    private static void validateName(String name) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("name is required");
-        }
-    }
-
-    private static void validateQueryKind(PageWidgetQueryKind queryKind) {
-        if (queryKind == null) {
-            throw new IllegalArgumentException("queryKind is required");
-        }
+        PageWidgetPolicy.validateBindings(queryKind, resolvedChartScope(), points.size(), devices.size(),
+                deviceGroups.size(), models.size());
     }
 
     public record LastSourceDefinition(Device device, List<String> pointNames) {

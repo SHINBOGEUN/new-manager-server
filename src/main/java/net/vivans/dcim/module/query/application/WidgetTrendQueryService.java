@@ -1,6 +1,5 @@
 package net.vivans.dcim.module.query.application;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
@@ -42,8 +41,7 @@ public class WidgetTrendQueryService {
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
 
     public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window) {
-        PageWidget widget = pageWidgetRepository.findById(widgetId)
-                .orElseThrow(() -> new EntityNotFoundException("PageWidget not found: " + widgetId));
+        PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (!widget.isEnabled()) throw new IllegalArgumentException("widget is disabled");
         PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
         String resolvedWindow = resolveWindow(window);
