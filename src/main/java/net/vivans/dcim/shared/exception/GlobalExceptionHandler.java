@@ -27,14 +27,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Object>> httpMessageNotReadableException(HttpMessageNotReadableException e) {
-        log.error("HttpMessageNotReadableException: {}", e.getMessage(), e);
-
         String message = "Invalid JSON format in request body";
         if (e.getCause() instanceof JsonParseException) {
             message = "JSON syntax error in request body";
         } else if (e.getCause() instanceof JsonMappingException) {
             message = "JSON mapping error - invalid field values";
         }
+        log.warn("[REQUEST][INVALID] status=400 type=JSON message={}", message);
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(400, message, "Please check your request format"));
@@ -48,42 +47,41 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<ApiResponse<Object>> invalidTokenExceptionHandle(InvalidTokenException e) {
-        log.error("InvalidTokenException: {}", e, e);
+        log.warn("[AUTH][REJECTED] status=401 type=INVALID_TOKEN message={}", safeMessage(e));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(401, "Please Check your token", e.getMessage()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Object>> badCredentialsExceptionHandle(BadCredentialsException e) {
-        log.error("BadCredentialsException: {}", e.getMessage(), e);
+        log.warn("[AUTH][REJECTED] status=401 type=BAD_CREDENTIALS");
         return ResponseEntity.status(401).body(ApiResponse.error(401, "Please check your credentials", "Invalid username or password"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Object>> methodArgumentNotValidExceptionHandler(MethodArgumentNotValidException e) {
-        log.error("MethodArgumentNotValidException: {}", e.getMessage(), e);
-
         FieldError fieldError = (FieldError) e.getBindingResult().getAllErrors().get(0);
         String message = String.format("Invalid value for parameter '%s'", fieldError.getField());
+        log.warn("[REQUEST][INVALID] status=400 field={} message={}", fieldError.getField(), fieldError.getDefaultMessage());
         return ResponseEntity.badRequest().body(ApiResponse.error(400, message));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Object>> missingServletRequestParameterExceptionHandler(MissingServletRequestParameterException e) {
-        log.error("MissingServletRequestParameterException: {}", e, e);
         String message = String.format("Required parameter '%s' (%s) is missing", e.getParameterName(), e.getParameterType());
+        log.warn("[REQUEST][INVALID] status=400 parameter={} reason=MISSING", e.getParameterName());
         return ResponseEntity.badRequest().body(ApiResponse.error(400, message));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Object>> methodArgumentTypeMismatchExceptionHandler(MethodArgumentTypeMismatchException e) {
-        log.error("MethodArgumentTypeMismatchException: {}", e, e);
         String message = String.format("Invalid value for parameter '%s'", e.getName());
+        log.warn("[REQUEST][INVALID] status=400 parameter={} reason=TYPE_MISMATCH", e.getName());
         return ResponseEntity.badRequest().body(ApiResponse.error(400, message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Object>> illegalArgumentExceptionHandler(IllegalArgumentException e) {
-        log.error("IllegalArgumentException: {}", e, e);
+        log.warn("[REQUEST][REJECTED] status=400 message={}", safeMessage(e));
         return ResponseEntity.badRequest().body(ApiResponse.error(400, e.getMessage()));
     }
 
@@ -140,5 +138,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> exceptionHandler(Exception e) {
         log.error("Exception: {}", e, e);
         return ResponseEntity.internalServerError().body(ApiResponse.error(500, e.getMessage()));
+    }
+
+    private static String safeMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? "-" : message.replaceAll("[\\r\\n]+", " ");
     }
 }

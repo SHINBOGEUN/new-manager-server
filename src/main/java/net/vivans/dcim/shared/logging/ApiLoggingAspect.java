@@ -31,11 +31,11 @@ public class ApiLoggingAspect {
         String handler = joinPoint.getSignature().toShortString();
         long startedAt = System.nanoTime();
 
-        log.info("[API_START] method={} path={} handler={}", method, path, handler);
+        log.info("[API][START] method={} path={} handler={}", method, path, handler);
         try {
             Object result = joinPoint.proceed();
             log.info(
-                    "[API_END] method={} path={} handler={} status={} elapsedMs={}",
+                    "[API][END] method={} path={} handler={} status={} elapsedMs={}",
                     method,
                     path,
                     handler,
@@ -45,7 +45,7 @@ public class ApiLoggingAspect {
             return result;
         } catch (Throwable exception) {
             log.warn(
-                    "[API_ERROR] method={} path={} handler={} elapsedMs={} exception={} message={}",
+                    "[API][ERROR] method={} path={} handler={} elapsedMs={} exception={} message={}",
                     method,
                     path,
                     handler,
