@@ -14,7 +14,6 @@ import net.vivans.dcim.module.device.domain.repository.DeviceSnmpInstanceReposit
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
-import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.location.domain.repository.LocationNodeRepository;
@@ -38,7 +37,7 @@ public class DeviceCapabilityQueryService {
 
     private final DeviceRepository deviceRepository;
     private final LocationNodeRepository locationNodeRepository;
-    private final DeviceModelRepository deviceModelRepository;
+    private final DeviceModelProtocolResolver deviceModelProtocolResolver;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
@@ -66,11 +65,11 @@ public class DeviceCapabilityQueryService {
     }
 
     private DeviceCapabilityResponse buildCapability(Device device) {
-        DeviceModel deviceModel = deviceModelRepository.findById(device.getDeviceModel().getId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "DeviceModel not found: " + device.getDeviceModel().getId()));
+        DeviceModel deviceModel = deviceModelProtocolResolver.resolveModel(device);
 
-        DeviceModelProtocol snmpProtocol = findSnmpProtocol(deviceModel);
+        DeviceModelProtocol snmpProtocol = deviceModelProtocolResolver
+                .findByCode(deviceModel, SNMP_PROTOCOL_CODE)
+                .orElse(null);
         DeviceProtocolEndpoint snmpEndpoint = findSnmpEndpoint(device.getId());
         Integer instanceId = resolveInstanceId(snmpEndpoint);
 
@@ -113,15 +112,6 @@ public class DeviceCapabilityQueryService {
                 endpointResponse,
                 points
         );
-    }
-
-    private DeviceModelProtocol findSnmpProtocol(DeviceModel deviceModel) {
-        for (DeviceModelProtocol protocol : deviceModel.getProtocols()) {
-            if (SNMP_PROTOCOL_CODE.equals(protocol.getProtocolType().getCode())) {
-                return protocol;
-            }
-        }
-        return null;
     }
 
     private DeviceProtocolEndpoint findSnmpEndpoint(Integer deviceId) {
