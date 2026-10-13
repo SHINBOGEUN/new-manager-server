@@ -19,7 +19,7 @@ logging:
       total-size-cap: ${LOG_TOTAL_SIZE:1GB}
 
 app:
-  version: "1.0.0-TEST"
+  version: "1.0.1-TEST"
 
 jwt:
   secret: ${JWT_SECRET:lusR6p5tGwGKEWC2rWRYyCVbOzsVOMxMCtxOtHT+V4SiKE8ODJbomdCOl7cy5qbv7JQVHNRPKnwvxhmo9NYmlg==}

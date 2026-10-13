@@ -50,8 +50,8 @@ services:
       context: ../new-collector-server
       dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
       args:
-        JAR_FILE: new-collector-server-1.0.0.jar
-    image: defog-collector:${APP_TAG:-1.0.0}
+        JAR_FILE: new-collector-server-1.0.1.jar
+    image: defog-collector:${APP_TAG:-1.0.1}
     restart: unless-stopped
     env_file: .env
     environment:
@@ -67,8 +67,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        JAR_FILE: new-manager-server-1.0.0.jar
-    image: defog-manager:${APP_TAG:-1.0.0}
+        JAR_FILE: new-manager-server-1.0.1.jar
+    image: defog-manager:${APP_TAG:-1.0.1}
     restart: unless-stopped
     env_file: .env
     ports:
@@ -89,8 +89,8 @@ services:
       context: ../new-sensor-data-server
       dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
       args:
-        JAR_FILE: new-sensor-data-server-1.0.0.jar
-    image: defog-sensor-data:${APP_TAG:-1.0.0}
+        JAR_FILE: new-sensor-data-server-1.0.1.jar
+    image: defog-sensor-data:${APP_TAG:-1.0.1}
     restart: unless-stopped
     env_file: .env
     environment:

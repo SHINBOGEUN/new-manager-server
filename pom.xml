@@ -10,7 +10,7 @@
     </parent>
     <groupId>net.vivans</groupId>
     <artifactId>new-manager-server</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>new-manager-server</name>
     <description>new-manager-server</description>
     <url/>

@@ -59,7 +59,7 @@ DB에는 파일 메타데이터만 저장되므로, DB와 파일 경로는 반�
 $env:SPRING_PROFILES_ACTIVE = "prod"
 $env:JAVA_HOME = "C:\\Program Files\\Amazon Corretto\\jdk17"
 .\mvnw.cmd clean package -DskipTests
-java -jar target\new-manager-server-1.0.0.jar
+java -jar target\new-manager-server-1.0.1.jar
 ```
 
 ### Docker 실행
