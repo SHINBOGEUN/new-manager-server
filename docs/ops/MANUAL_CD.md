@@ -7,7 +7,7 @@
 - 대상: `/dcim_new/backend/docker-compose.yml`의 `manager-server`, `collector-service`, `sensor-data-service`만.
 - 실행 중인 Compose 프로젝트 `dcim-new-backend`만 허용한다. 같은 디렉터리에 남아 있는 다른 `backend` 프로젝트는 건드리지 않는다.
 - 기존 서버의 JAR 바인드 마운트와 이미지·환경변수·볼륨·네트워크를 유지한다.
-- Manager JAR는 `1.0.1-new`, Collector·Sensor Data JAR는 `1.0.1`이다. 서버 Compose의 기존 바인드 마운트 파일명은 `new-*-1.0.0.jar`로 유지하되, CD가 각 버전의 JAR 내용으로 교체한다. 파일명은 마운트 경로일 뿐 실행 버전을 나타내지 않는다. 새 현장 설치용 `compose.yaml`은 각 서비스의 실제 JAR 파일명을 사용한다.
+- 세 서비스의 JAR 버전은 모두 `1.0.1-new`이다. 서버 Compose의 기존 바인드 마운트 파일명은 `new-*-1.0.0.jar`로 유지하되, CD가 `1.0.1-new` JAR 내용으로 교체한다. 파일명은 마운트 경로일 뿐 실행 버전을 나타내지 않는다. 새 현장 설치용 `compose.yaml`은 실제 JAR 파일명을 사용한다.
 - MQTT 브로커, MariaDB, InfluxDB, 레거시 서비스는 재생성하지 않는다.
 - DB 스키마 변경은 이 워크플로에 포함하지 않는다. 필요한 DDL은 별도 승인·적용 후 배포한다.
 - `main` 병합은 배포를 시작하지 않는다. `workflow_dispatch`를 사용한다. GitHub의 `production` Environment에 required reviewer를 설정하면 빌드 이후에도 별도 승인을 요구할 수 있다.
