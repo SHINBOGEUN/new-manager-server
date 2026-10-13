@@ -60,7 +60,9 @@ for index in "${!jars[@]}"; do
   }
 done
 [[ -s "$incoming/revisions.txt" ]] || { echo 'Missing revision manifest' >&2; exit 1; }
-grep -Fxq 'version=1.0.1' "$incoming/revisions.txt" || { echo 'Unexpected bundle version' >&2; exit 1; }
+for expected_version in 'manager-version=1.0.1-new' 'collector-version=1.0.1' 'sensor-data-version=1.0.1'; do
+  grep -Fxq "$expected_version" "$incoming/revisions.txt" || { echo "Unexpected bundle version: $expected_version" >&2; exit 1; }
+done
 
 mkdir -p "$app_dir/.cd-releases"
 mv "$incoming" "$release"

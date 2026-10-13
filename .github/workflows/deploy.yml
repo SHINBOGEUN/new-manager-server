@@ -65,12 +65,14 @@ jobs:
       - name: Assemble versioned bundle
         run: |
           mkdir -p bundle
-          cp manager/target/new-manager-server-1.0.1.jar bundle/manager.jar
+          cp manager/target/new-manager-server-1.0.1-new.jar bundle/manager.jar
           cp collector/target/new-collector-server-1.0.1.jar bundle/collector.jar
           cp sensor-data/target/new-sensor-data-server-1.0.1.jar bundle/sensor-data.jar
           cp manager/scripts/deploy-three-services.sh bundle/
           {
-            printf 'version=1.0.1\n'
+            printf 'manager-version=1.0.1-new\n'
+            printf 'collector-version=1.0.1\n'
+            printf 'sensor-data-version=1.0.1\n'
             printf 'manager=%s\n' "$(git -C manager rev-parse HEAD)"
             printf 'collector=%s\n' "$(git -C collector rev-parse HEAD)"
             printf 'sensor-data=%s\n' "$(git -C sensor-data rev-parse HEAD)"

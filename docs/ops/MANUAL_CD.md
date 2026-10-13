@@ -7,7 +7,7 @@
 - 대상: `/dcim_new/backend/docker-compose.yml`의 `manager-server`, `collector-service`, `sensor-data-service`만.
 - 실행 중인 Compose 프로젝트 `dcim-new-backend`만 허용한다. 같은 디렉터리에 남아 있는 다른 `backend` 프로젝트는 건드리지 않는다.
 - 기존 서버의 JAR 바인드 마운트와 이미지·환경변수·볼륨·네트워크를 유지한다.
-- 프로젝트와 빌드된 JAR의 버전은 `1.0.1`이다. 서버 Compose의 기존 바인드 마운트 파일명은 `new-*-1.0.0.jar`로 유지하되, CD가 그 파일에 **1.0.1 내용**을 설치한다. 파일명은 마운트 경로일 뿐 실행 버전을 나타내지 않는다. 새 현장 설치용 `compose.yaml`은 1.0.1 파일명을 사용한다.
+- Manager JAR는 `1.0.1-new`, Collector·Sensor Data JAR는 `1.0.1`이다. 서버 Compose의 기존 바인드 마운트 파일명은 `new-*-1.0.0.jar`로 유지하되, CD가 각 버전의 JAR 내용으로 교체한다. 파일명은 마운트 경로일 뿐 실행 버전을 나타내지 않는다. 새 현장 설치용 `compose.yaml`은 각 서비스의 실제 JAR 파일명을 사용한다.
 - MQTT 브로커, MariaDB, InfluxDB, 레거시 서비스는 재생성하지 않는다.
 - DB 스키마 변경은 이 워크플로에 포함하지 않는다. 필요한 DDL은 별도 승인·적용 후 배포한다.
 - `main` 병합은 배포를 시작하지 않는다. `workflow_dispatch`를 사용한다. GitHub의 `production` Environment에 required reviewer를 설정하면 빌드 이후에도 별도 승인을 요구할 수 있다.
@@ -32,7 +32,7 @@ Manager 저장소의 `Settings → Environments → production`에 다음 값을
 
 1. 세 저장소의 변경을 각각 `main`에 병합한다. Collector·Sensor Data의 CI가 통과했는지 확인한다.
 2. Manager 저장소 `Actions → Deploy three services → Run workflow`에서 `main`을 선택한다.
-3. `build` 단계가 세 프로젝트를 검증하고 1.0.1 JAR 묶음 및 정확한 커밋 SHA를 담은 `revisions.txt`를 만든다.
+3. `build` 단계가 세 프로젝트를 검증하고 각 서비스의 버전과 정확한 커밋 SHA를 담은 `revisions.txt` 및 JAR 묶음을 만든다.
 4. `production` 승인 규칙을 설정했다면 승인 후 `deploy` 단계가 SSH로 묶음을 업로드한다.
 5. 서버 스크립트가 기존 JAR를 `.cd-releases/<run-id>-<attempt>/previous`에 보관하고, 새 JAR를 교체한 다음 앱 서비스 3개만 `--no-deps --force-recreate`한다. JAR 파일을 원자적으로 교체하므로 단순 `restart`가 아니라 컨테이너 재생성이 필요하다.
 6. Manager 정적 페이지와 Collector·Sensor Data의 `/api/health`가 응답하는지 확인한다. 실패하면 이전 JAR를 복원하고 앱 3개를 다시 재생성한다. 복구에도 실패하면 Actions 로그를 확인해 수동으로 조치한다.
