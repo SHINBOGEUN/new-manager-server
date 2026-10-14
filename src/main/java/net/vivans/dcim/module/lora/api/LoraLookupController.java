@@ -22,15 +22,16 @@ import java.util.List;
  * Sensor Data 서버 전용 조회 API. sensor-data-service API Key로 호출하므로 ADMIN 권한을 요구하지 않는다
  * (기존 ManagerDeviceClient가 쓰는 /api/manager/devices/{id}와 동일한 인증 방식).
  */
-@RestController
+// 공통 MqttLookupController로 전환. 기존 구현은 원복용으로 보존하되 API 등록은 중지한다.
+// @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/manager/lora")
-@Tag(name = "lora-lookup", description = "Sensor Data가 TTL 캐시를 채우기 위해 쓰는 LoRa 설정 조회 API")
+// @RequestMapping("/api/manager/lora")
+// @Tag(name = "lora-lookup", description = "Sensor Data가 TTL 캐시를 채우기 위해 쓰는 LoRa 설정 조회 API")
 public class LoraLookupController {
 
     private final LoraLookupService loraLookupService;
 
-    @GetMapping("/endpoints/resolve")
+    // @GetMapping("/endpoints/resolve")
     @Operation(summary = "외부 식별자별 장비 조회 API", description = "캐시 미스 시 즉시 조회용. 미등록 식별자는 data=null을 반환한다.")
     public ResponseEntity<ApiResponse<LoraDeviceLookupResponse>> resolve(
             @Parameter(description = "DEV_EUI 또는 DEVICE_NAME") @RequestParam MqttIdentityType idType,
@@ -39,13 +40,13 @@ public class LoraLookupController {
         return ResponseEntity.ok(ApiResponse.ok(loraLookupService.resolve(idType, externalId).orElse(null)));
     }
 
-    @GetMapping("/endpoints/bulk")
+    // @GetMapping("/endpoints/bulk")
     @Operation(summary = "활성 외부 식별자 전체 조회", description = "TTL 캐시 주기 갱신용 대량 조회.")
     public ResponseEntity<ApiResponse<List<DeviceLoraEndpointResponse>>> getAllEnabledEndpoints() {
         return ResponseEntity.ok(ApiResponse.ok(loraLookupService.getAllEnabledEndpoints()));
     }
 
-    @GetMapping("/mappings/models/bulk")
+    // @GetMapping("/mappings/models/bulk")
     @Operation(summary = "모델별 매핑 일괄 조회 API", description = "활성화된 모델 단위 매핑 전체를 반환한다. TTL 캐시 주기 갱신용.")
     public ResponseEntity<ApiResponse<List<DeviceModelLoraPointResponse>>> getAllEnabledModelMappings() {
         return ResponseEntity.ok(ApiResponse.ok(loraLookupService.getAllEnabledModelMappings()));
