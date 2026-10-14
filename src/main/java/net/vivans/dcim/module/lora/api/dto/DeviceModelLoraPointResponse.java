@@ -1,6 +1,6 @@
 package net.vivans.dcim.module.lora.api.dto;
 
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
 
 import java.time.Instant;
 
@@ -23,7 +23,7 @@ public record DeviceModelLoraPointResponse(
         Instant createdDt,
         Instant updatedDt
 ) {
-    public static DeviceModelLoraPointResponse from(DeviceModelLoraPoint point) {
+    public static DeviceModelLoraPointResponse from(DeviceModelMqttPoint point) {
         return new DeviceModelLoraPointResponse(
                 point.getId(),
                 point.getDeviceModel().getId(),

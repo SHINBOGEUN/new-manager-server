@@ -15,7 +15,7 @@ public final class LoraExternalIdNormalizer {
             return null;
         }
         return externalId.trim()
-                .toUpperCase()
+                .toUpperCase(java.util.Locale.ROOT)
                 .replace(":", "")
                 .replace("-", "")
                 .replace("_", "")

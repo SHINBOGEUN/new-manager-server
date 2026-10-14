@@ -1,7 +1,9 @@
-package net.vivans.dcim.module.lora.domain.model;
+package net.vivans.dcim.module.mqtt.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,25 +20,25 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
 /**
- * 장비 모델 단위 LoRa payload 필드 → pointName/타입/단위 매핑.
+ * 모델별 MQTT 포인트 정의. 물리 GPU 개수와 UUID별 행을 생성하지 않는다.
  */
 @Entity
 @Table(
-        name = "device_model_lora_point",
+        name = "device_model_mqtt_point",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_device_model_lora_point_model_field",
-                        columnNames = {"device_model_id", "payload_field"}
+                        name = "uk_device_model_mqtt_point_model_field",
+                        columnNames = {"device_model_id", "component_path", "payload_field"}
                 ),
                 @UniqueConstraint(
-                        name = "uk_device_model_lora_point_model_name",
+                        name = "uk_device_model_mqtt_point_model_name",
                         columnNames = {"device_model_id", "point_name"}
                 )
         }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DeviceModelLoraPoint extends BaseEntity {
+public class DeviceModelMqttPoint extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,6 +66,22 @@ public class DeviceModelLoraPoint extends BaseEntity {
     @JoinColumn(name = "unit_code_id")
     private CommonCode unitCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "component_scope", nullable = false, length = 20)
+    private MqttPointScope componentScope = MqttPointScope.DEVICE;
+
+    @Column(name = "component_type", length = 50)
+    private String componentType;
+
+    @Column(name = "component_path", nullable = false)
+    private String componentPath = "";
+
+    @Column(name = "component_index_field")
+    private String componentIndexField;
+
+    @Column(name = "component_uuid_field")
+    private String componentUuidField;
+
     private Double scale;
 
     @Column(name = "value_map", length = 1000)
@@ -72,7 +90,7 @@ public class DeviceModelLoraPoint extends BaseEntity {
     @Column(nullable = false)
     private boolean enabled;
 
-    private DeviceModelLoraPoint(
+    private DeviceModelMqttPoint(
             DeviceModel deviceModel, String payloadField, String pointName, CommonCode dataPointType,
             CommonCode unitCode, Double scale, String valueMap, boolean enabled, CommonCode categoryCode
     ) {
@@ -92,14 +110,14 @@ public class DeviceModelLoraPoint extends BaseEntity {
         this.enabled = enabled;
     }
 
-    public static DeviceModelLoraPoint create(
+    public static DeviceModelMqttPoint create(
             DeviceModel deviceModel, String payloadField, String pointName, CommonCode dataPointType,
             CommonCode unitCode, Double scale, String valueMap, boolean enabled, CommonCode categoryCode
     ) {
-        return new DeviceModelLoraPoint(deviceModel, payloadField, pointName, dataPointType, unitCode, scale, valueMap, enabled, categoryCode);
+        return new DeviceModelMqttPoint(deviceModel, payloadField, pointName, dataPointType, unitCode, scale, valueMap, enabled, categoryCode);
     }
 
-    public static DeviceModelLoraPoint create(
+    public static DeviceModelMqttPoint create(
             DeviceModel deviceModel, String payloadField, String pointName, CommonCode dataPointType,
             CommonCode unitCode, Double scale, String valueMap, boolean enabled
     ) {
@@ -133,6 +151,21 @@ public class DeviceModelLoraPoint extends BaseEntity {
 
     public String getUnit() {
         return unitCode == null ? null : unitCode.getName();
+    }
+
+    /** 예: type=GPU, path=gpus, indexField=gpu_index, uuidField=gpu_uuid. */
+    public void configureComponent(String type, String path, String indexField, String uuidField) {
+        if (type == null || type.isBlank() || type.trim().length() > 50
+                || path == null || path.isBlank() || path.trim().length() > 255
+                || indexField == null || indexField.isBlank() || indexField.trim().length() > 255
+                || (uuidField != null && uuidField.trim().length() > 255)) {
+            throw new IllegalArgumentException("component type, path and index field are required within column limits");
+        }
+        this.componentScope = MqttPointScope.COMPONENT;
+        this.componentType = type.trim();
+        this.componentPath = path.trim();
+        this.componentIndexField = indexField.trim();
+        this.componentUuidField = uuidField == null || uuidField.isBlank() ? null : uuidField.trim();
     }
 
     public String getCategory() {

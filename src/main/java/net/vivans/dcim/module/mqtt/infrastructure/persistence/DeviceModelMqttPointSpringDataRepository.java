@@ -1,6 +1,6 @@
-package net.vivans.dcim.module.lora.infrastructure.persistence;
+package net.vivans.dcim.module.mqtt.infrastructure.persistence;
 
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,20 +9,20 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 
-public interface DeviceModelLoraPointSpringDataRepository extends JpaRepository<DeviceModelLoraPoint, Integer> {
+public interface DeviceModelMqttPointSpringDataRepository extends JpaRepository<DeviceModelMqttPoint, Integer> {
 
     @EntityGraph(attributePaths = {"deviceModel", "dataPointType", "unitCode", "categoryCode"})
-    List<DeviceModelLoraPoint> findAllByDeviceModelIdOrderByIdAsc(Integer deviceModelId);
+    List<DeviceModelMqttPoint> findAllByDeviceModelIdOrderByIdAsc(Integer deviceModelId);
 
     @Query("""
-            SELECT p FROM DeviceModelLoraPoint p
+            SELECT p FROM DeviceModelMqttPoint p
             WHERE p.deviceModel.id IN :deviceModelIds AND p.enabled = true
             """)
     @EntityGraph(attributePaths = {"deviceModel", "dataPointType", "unitCode", "categoryCode"})
-    List<DeviceModelLoraPoint> findAllEnabledByDeviceModelIdIn(@Param("deviceModelIds") Collection<Integer> deviceModelIds);
+    List<DeviceModelMqttPoint> findAllEnabledByDeviceModelIdIn(@Param("deviceModelIds") Collection<Integer> deviceModelIds);
 
     @EntityGraph(attributePaths = {"deviceModel", "dataPointType", "unitCode", "categoryCode"})
-    List<DeviceModelLoraPoint> findAllByEnabledTrue();
+    List<DeviceModelMqttPoint> findAllByEnabledTrue();
 
     boolean existsByDeviceModelIdAndPayloadField(Integer deviceModelId, String payloadField);
 

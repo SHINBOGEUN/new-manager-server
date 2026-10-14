@@ -1,8 +1,8 @@
-package net.vivans.dcim.module.lora.infrastructure.persistence;
+package net.vivans.dcim.module.mqtt.infrastructure.persistence;
 
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -11,27 +11,27 @@ import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
-public class DeviceModelLoraPointJpaRepository implements DeviceModelLoraPointRepository {
+public class DeviceModelMqttPointJpaRepository implements DeviceModelMqttPointRepository {
 
-    private final DeviceModelLoraPointSpringDataRepository springDataRepository;
+    private final DeviceModelMqttPointSpringDataRepository springDataRepository;
 
     @Override
-    public DeviceModelLoraPoint save(DeviceModelLoraPoint point) {
+    public DeviceModelMqttPoint save(DeviceModelMqttPoint point) {
         return springDataRepository.save(point);
     }
 
     @Override
-    public Optional<DeviceModelLoraPoint> findById(Integer id) {
+    public Optional<DeviceModelMqttPoint> findById(Integer id) {
         return springDataRepository.findById(id);
     }
 
     @Override
-    public List<DeviceModelLoraPoint> findAllByDeviceModelIdOrderByIdAsc(Integer deviceModelId) {
+    public List<DeviceModelMqttPoint> findAllByDeviceModelIdOrderByIdAsc(Integer deviceModelId) {
         return springDataRepository.findAllByDeviceModelIdOrderByIdAsc(deviceModelId);
     }
 
     @Override
-    public List<DeviceModelLoraPoint> findAllEnabledByDeviceModelIdIn(Collection<Integer> deviceModelIds) {
+    public List<DeviceModelMqttPoint> findAllEnabledByDeviceModelIdIn(Collection<Integer> deviceModelIds) {
         if (deviceModelIds == null || deviceModelIds.isEmpty()) {
             return List.of();
         }
@@ -39,7 +39,7 @@ public class DeviceModelLoraPointJpaRepository implements DeviceModelLoraPointRe
     }
 
     @Override
-    public List<DeviceModelLoraPoint> findAllEnabled() {
+    public List<DeviceModelMqttPoint> findAllEnabled() {
         return springDataRepository.findAllByEnabledTrue();
     }
 
@@ -64,7 +64,7 @@ public class DeviceModelLoraPointJpaRepository implements DeviceModelLoraPointRe
     }
 
     @Override
-    public void delete(DeviceModelLoraPoint point) {
+    public void delete(DeviceModelMqttPoint point) {
         springDataRepository.delete(point);
     }
 }

@@ -10,8 +10,8 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointRequest;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -33,12 +33,12 @@ import static org.mockito.Mockito.when;
  */
 class DeviceModelLoraPointServiceTest {
 
-    private final DeviceModelLoraPointRepository deviceModelLoraPointRepository = mock(DeviceModelLoraPointRepository.class);
+    private final DeviceModelMqttPointRepository mqttPointRepository = mock(DeviceModelMqttPointRepository.class);
     private final DeviceModelRepository deviceModelRepository = mock(DeviceModelRepository.class);
     private final CommonCodeRepository commonCodeRepository = mock(CommonCodeRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceModelLoraPointService service = new DeviceModelLoraPointService(
-            deviceModelLoraPointRepository, deviceModelRepository, new LoraDataPointTypeResolver(commonCodeRepository),
+            mqttPointRepository, deviceModelRepository, new LoraDataPointTypeResolver(commonCodeRepository),
             new LoraValueMapValidator(new ObjectMapper()), new LoraModelTypeValidator(),
             new UnitCodeResolver(commonCodeRepository), new CategoryCodeResolver(commonCodeRepository), eventPublisher);
 
@@ -48,9 +48,9 @@ class DeviceModelLoraPointServiceTest {
         when(deviceModelRepository.findById(1)).thenReturn(Optional.of(model));
         when(commonCodeRepository.findByCodeGroupGroupKeyAndCode("DATA_POINT_TYPE", "UNCLASSIFIED"))
                 .thenReturn(Optional.of(dataPointType()));
-        when(deviceModelLoraPointRepository.existsByDeviceModelIdAndPayloadField(anyInt(), anyString())).thenReturn(false);
-        when(deviceModelLoraPointRepository.existsByDeviceModelIdAndPointName(anyInt(), anyString())).thenReturn(false);
-        when(deviceModelLoraPointRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mqttPointRepository.existsByDeviceModelIdAndPayloadField(anyInt(), anyString())).thenReturn(false);
+        when(mqttPointRepository.existsByDeviceModelIdAndPointName(anyInt(), anyString())).thenReturn(false);
+        when(mqttPointRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         DeviceModelLoraPointResponse response = service.create(1,
                 new DeviceModelLoraPointRequest("object.TempC_SHT", "TEMPERATURE", null, null, null, 1.0, null, true));
@@ -69,22 +69,22 @@ class DeviceModelLoraPointServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("LoRa 설정은 MODEL_TYPE=LORA_SENSOR 모델에만 등록할 수 있습니다.");
 
-        verify(deviceModelLoraPointRepository, never()).save(any());
+        verify(mqttPointRepository, never()).save(any());
     }
 
     @Test
     void update_withNonLoraSensorModel_throwsAndDoesNotSave() {
         DeviceModel model = deviceModel("COOLER", "쿨러");
-        DeviceModelLoraPoint point = DeviceModelLoraPoint.create(
+        DeviceModelMqttPoint point = DeviceModelMqttPoint.create(
                 model, "object.TempC_SHT", "TEMPERATURE", dataPointType(), null, 1.0, null, true);
-        when(deviceModelLoraPointRepository.findById(9)).thenReturn(Optional.of(point));
+        when(mqttPointRepository.findById(9)).thenReturn(Optional.of(point));
 
         assertThatThrownBy(() -> service.update(1, 9,
                 new DeviceModelLoraPointRequest("object.TempC_SHT", "TEMPERATURE", null, null, null, 1.0, null, true)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("LoRa 설정은 MODEL_TYPE=LORA_SENSOR 모델에만 등록할 수 있습니다.");
 
-        verify(deviceModelLoraPointRepository, never()).save(any());
+        verify(mqttPointRepository, never()).save(any());
     }
 
     private DeviceModel deviceModel(String code, String name) {

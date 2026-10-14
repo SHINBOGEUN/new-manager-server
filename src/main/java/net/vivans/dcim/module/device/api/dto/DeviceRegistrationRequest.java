@@ -3,7 +3,7 @@ package net.vivans.dcim.module.device.api.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -19,7 +19,7 @@ public record DeviceRegistrationRequest(
         @Valid LoraIdentity loraIdentity,
         @Valid CollectionGroup collectionGroup
 ) {
-    public record LoraIdentity(@NotNull LoraIdType idType, @NotBlank String externalId, Boolean enabled) {
+    public record LoraIdentity(@NotNull MqttIdentityType idType, @NotBlank String externalId, Boolean enabled) {
     }
 
     public record CollectionGroup(@NotNull Integer taskId, @NotNull Integer groupId) {

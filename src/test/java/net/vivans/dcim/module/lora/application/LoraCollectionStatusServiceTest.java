@@ -9,13 +9,13 @@ import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusRow;
 import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceStatusResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
 import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceStatusType;
 import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceType;
-import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraCollectionInfluxQuery;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraInfluxPointRecord;
 import net.vivans.dcim.module.lora.infrastructure.sensordata.LoraRuntimeStatusClient;
@@ -44,24 +44,24 @@ import static org.mockito.Mockito.when;
  */
 class LoraCollectionStatusServiceTest {
 
-    private final DeviceLoraEndpointRepository deviceLoraEndpointRepository = mock(DeviceLoraEndpointRepository.class);
-    private final DeviceModelLoraPointRepository deviceModelLoraPointRepository = mock(DeviceModelLoraPointRepository.class);
+    private final DeviceMqttIdentityRepository mqttIdentityRepository = mock(DeviceMqttIdentityRepository.class);
+    private final DeviceModelMqttPointRepository mqttPointRepository = mock(DeviceModelMqttPointRepository.class);
     private final LoraMqttSourceService loraMqttSourceService = mock(LoraMqttSourceService.class);
     private final LoraCollectionInfluxQuery influxQuery = mock(LoraCollectionInfluxQuery.class);
     private final LoraRuntimeStatusClient runtimeStatusClient = mock(LoraRuntimeStatusClient.class);
 
     private final LoraCollectionStatusService service = new LoraCollectionStatusService(
-            deviceLoraEndpointRepository, deviceModelLoraPointRepository,
+            mqttIdentityRepository, mqttPointRepository,
             loraMqttSourceService, influxQuery, runtimeStatusClient);
 
     @Test
     void noEnabledSource_deviceStatusIsNoSource() {
         DeviceModel model = model(100);
-        DeviceLoraEndpoint endpoint = endpoint(1, device(1, model, "센서-1"), LoraIdType.DEV_EUI, "AA01", true);
+        DeviceMqttIdentity endpoint = endpoint(1, device(1, model, "센서-1"), MqttIdentityType.DEV_EUI, "AA01", true);
 
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of()); // 등록된 소스 자체가 없음
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(model));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(model));
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of());
 
         LoraCollectionStatusResponse response = service.getCollectionStatus();
@@ -73,12 +73,12 @@ class LoraCollectionStatusServiceTest {
     @Test
     void enabledSourceButNoneConnected_deviceStatusIsSourceDown() {
         DeviceModel model = model(100);
-        DeviceLoraEndpoint endpoint = endpoint(1, device(1, model, "센서-1"), LoraIdType.DEV_EUI, "AA01", true);
+        DeviceMqttIdentity endpoint = endpoint(1, device(1, model, "센서-1"), MqttIdentityType.DEV_EUI, "AA01", true);
 
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
                 source(1, true, LoraMqttSourceStatusType.DISCONNECTED)));
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(model));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(model));
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of());
 
         LoraCollectionStatusResponse response = service.getCollectionStatus();
@@ -98,18 +98,18 @@ class LoraCollectionStatusServiceTest {
         Device fieldErrorDevice = device(5, mappedModel, "장비-FIELD_ERROR");
         Device savedDevice = device(6, mappedModel, "장비-SAVED");
 
-        List<DeviceLoraEndpoint> endpoints = List.of(
-                endpoint(1, disabledDevice, LoraIdType.DEV_EUI, "D1", false),
-                endpoint(2, noMappingDevice, LoraIdType.DEV_EUI, "D2", true),
-                endpoint(3, neverSavedDevice, LoraIdType.DEV_EUI, "D3", true),
-                endpoint(4, influxFailedDevice, LoraIdType.DEV_EUI, "D4", true),
-                endpoint(5, fieldErrorDevice, LoraIdType.DEV_EUI, "D5", true),
-                endpoint(6, savedDevice, LoraIdType.DEV_EUI, "D6", true)
+        List<DeviceMqttIdentity> endpoints = List.of(
+                endpoint(1, disabledDevice, MqttIdentityType.DEV_EUI, "D1", false),
+                endpoint(2, noMappingDevice, MqttIdentityType.DEV_EUI, "D2", true),
+                endpoint(3, neverSavedDevice, MqttIdentityType.DEV_EUI, "D3", true),
+                endpoint(4, influxFailedDevice, MqttIdentityType.DEV_EUI, "D4", true),
+                endpoint(5, fieldErrorDevice, MqttIdentityType.DEV_EUI, "D5", true),
+                endpoint(6, savedDevice, MqttIdentityType.DEV_EUI, "D6", true)
         );
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
                 source(1, true, LoraMqttSourceStatusType.CONNECTED)));
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant now = Instant.now();
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of(
@@ -151,14 +151,14 @@ class LoraCollectionStatusServiceTest {
         Device influxFailedNoHistory = device(9, mappedModel, "장비-INFLUX_WRITE_FAILED-이력없음");
         Device fieldErrorNoHistory = device(10, mappedModel, "장비-FIELD_ERROR-이력없음");
 
-        List<DeviceLoraEndpoint> endpoints = List.of(
-                endpoint(9, influxFailedNoHistory, LoraIdType.DEV_EUI, "D9", true),
-                endpoint(10, fieldErrorNoHistory, LoraIdType.DEV_EUI, "D10", true)
+        List<DeviceMqttIdentity> endpoints = List.of(
+                endpoint(9, influxFailedNoHistory, MqttIdentityType.DEV_EUI, "D9", true),
+                endpoint(10, fieldErrorNoHistory, MqttIdentityType.DEV_EUI, "D10", true)
         );
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
                 source(1, true, LoraMqttSourceStatusType.CONNECTED)));
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of());
 
         Instant now = Instant.now();
@@ -184,12 +184,12 @@ class LoraCollectionStatusServiceTest {
     void runtimeErrorReasonAndTimestamp_areSurfacedOnRow() {
         DeviceModel mappedModel = model(100);
         Device deviceEntity = device(7, mappedModel, "장비-필드오류");
-        DeviceLoraEndpoint endpoint = endpoint(7, deviceEntity, LoraIdType.DEV_EUI, "D7", true);
+        DeviceMqttIdentity endpoint = endpoint(7, deviceEntity, MqttIdentityType.DEV_EUI, "D7", true);
 
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
                 source(1, true, LoraMqttSourceStatusType.CONNECTED)));
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant saved = Instant.now().minusSeconds(120);
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of(
@@ -211,12 +211,12 @@ class LoraCollectionStatusServiceTest {
     void staleUnrelatedRuntimeErrorCode_doesNotForceErrorStatus() {
         DeviceModel mappedModel = model(100);
         Device deviceEntity = device(8, mappedModel, "장비-무관오류");
-        DeviceLoraEndpoint endpoint = endpoint(8, deviceEntity, LoraIdType.DEV_EUI, "D8", true);
+        DeviceMqttIdentity endpoint = endpoint(8, deviceEntity, MqttIdentityType.DEV_EUI, "D8", true);
 
-        when(deviceLoraEndpointRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
+        when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
                 source(1, true, LoraMqttSourceStatusType.CONNECTED)));
-        when(deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant saved = Instant.now().minusSeconds(60);
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of(
@@ -257,8 +257,8 @@ class LoraCollectionStatusServiceTest {
         return device;
     }
 
-    private DeviceLoraEndpoint endpoint(int id, Device device, LoraIdType idType, String externalId, boolean enabled) {
-        DeviceLoraEndpoint endpoint = DeviceLoraEndpoint.create(device, idType, externalId, enabled);
+    private DeviceMqttIdentity endpoint(int id, Device device, MqttIdentityType idType, String externalId, boolean enabled) {
+        DeviceMqttIdentity endpoint = DeviceMqttIdentity.create(device, idType, externalId, enabled);
         ReflectionTestUtils.setField(endpoint, "id", id);
         return endpoint;
     }
@@ -269,11 +269,11 @@ class LoraCollectionStatusServiceTest {
         return LocationNode.createRoot(Device.UNASSIGNED_LOCATION_CODE, type, "미배정");
     }
 
-    /** deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(...) 결과처럼 해당 모델에 활성 매핑이 1건 있음을 흉내낸다. */
-    private List<DeviceModelLoraPoint> mappingsFor(DeviceModel deviceModel) {
+    /** mqttPointRepository.findAllEnabledByDeviceModelIdIn(...) 결과처럼 해당 모델에 활성 매핑이 1건 있음을 흉내낸다. */
+    private List<DeviceModelMqttPoint> mappingsFor(DeviceModel deviceModel) {
         CodeGroup group = CodeGroup.createCodeGroup("DATA_POINT_TYPE", "데이터 포인트 유형");
         CommonCode dataPointType = CommonCode.createCommonCode(group, "TEMPERATURE", "온도", 1);
-        DeviceModelLoraPoint point = DeviceModelLoraPoint.create(
+        DeviceModelMqttPoint point = DeviceModelMqttPoint.create(
                 deviceModel, "object.TempC_SHT", "TEMPERATURE", dataPointType, null, 1.0, null, true);
         return List.of(point);
     }

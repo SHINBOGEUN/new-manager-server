@@ -100,7 +100,7 @@ erDiagram
         timestamp updated_dt "수정 시각"
     }
 
-    device_model_lora_point {
+    device_model_mqtt_point {
         int id PK "AUTO_INCREMENT"
         int device_model_id FK "device_model.id"
         varchar payload_field "payload JSON 경로"
@@ -108,6 +108,25 @@ erDiagram
         int data_point_type_id FK "DATA_POINT_TYPE"
         int category_code_id FK "CATEGORY, nullable"
         int unit_code_id FK "UNIT, nullable"
+        varchar component_scope "DEVICE 또는 COMPONENT"
+        varchar component_type "GPU, CPU 등, nullable"
+        varchar component_path "구성요소 배열 경로, DEVICE는 빈 문자열"
+        varchar component_index_field "항목의 논리 슬롯 경로, nullable"
+        varchar component_uuid_field "항목의 실제 부품 식별 경로, nullable"
+        double scale "배율, nullable"
+        varchar value_map "상태값 숫자 매핑 JSON, nullable"
+        tinyint enabled "기본 1"
+        timestamp created_dt "생성 시각"
+        timestamp updated_dt "수정 시각"
+    }
+
+    device_mqtt_identity {
+        int id PK "AUTO_INCREMENT"
+        int device_id FK "devices.id, Influx device_id"
+        varchar identity_type "MAC, DEV_EUI, DEVICE_NAME, UUID, SERIAL"
+        varchar external_id "현재 원본 식별값"
+        varchar normalized_external_id "유형별 정규화, binary 비교"
+        tinyint enabled "기본 1"
         timestamp created_dt "생성 시각"
         timestamp updated_dt "수정 시각"
     }
@@ -131,11 +150,12 @@ erDiagram
     common_code ||--o{ device_model_protocol : "protocol_type_id"
     device_model_protocol ||--o{ device_model_snmp_point : "model_protocol_id"
     device_model_protocol ||--o{ device_model_modbus_point : "model_protocol_id"
-    device_model ||--o{ device_model_lora_point : "device_model_id"
+    device_model ||--o{ device_model_mqtt_point : "device_model_id"
     common_code ||--o{ device_model_snmp_point : "data_point_type_id/category_code_id/unit_code_id"
     common_code ||--o{ device_model_modbus_point : "data_point_type_id/category_code_id/unit_code_id"
-    common_code ||--o{ device_model_lora_point : "data_point_type_id/category_code_id/unit_code_id"
+    common_code ||--o{ device_model_mqtt_point : "data_point_type_id/category_code_id/unit_code_id"
     device_model ||--o{ devices : "model_id"
+    devices ||--o{ device_mqtt_identity : "device_id"
     location_node ||--o{ devices : "location_node_code"
 ```
 
@@ -149,6 +169,8 @@ erDiagram
 | devicemodel | `device_model_protocol` | 모델 ↔ PROTOCOL_TYPE N:M (UK: model_id+protocol_type_id) |
 | devicemodel | `device_model_snmp_point` | ✅ SNMP point (UK: model_protocol_id+name) |
 | devicemodel | `device_model_modbus_point` | ✅ Modbus point 카탈로그 (UK: model_protocol_id+name) |
+| mqtt | `device_model_mqtt_point` | LoRa 및 공통 MQTT 포인트. UK: model+point_name, model+component_path+payload_field |
+| mqtt | `device_mqtt_identity` | UK: identity_type+normalized_external_id, device_id+identity_type |
 | device | `devices` | ⏳ 장비 인스턴스 (UK: location_node_code+name, 미지정=`UNASSIGNED`) |
 
 ---

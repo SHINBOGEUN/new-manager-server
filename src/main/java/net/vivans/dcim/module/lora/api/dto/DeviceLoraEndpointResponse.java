@@ -1,7 +1,7 @@
 package net.vivans.dcim.module.lora.api.dto;
 
-import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
 
 import java.time.Instant;
 
@@ -11,21 +11,21 @@ public record DeviceLoraEndpointResponse(
         String deviceName,
         Integer deviceModelId,
         String deviceModelName,
-        LoraIdType idType,
+        MqttIdentityType idType,
         String externalId,
         String normalizedExternalId,
         boolean enabled,
         Instant createdDt,
         Instant updatedDt
 ) {
-    public static DeviceLoraEndpointResponse from(DeviceLoraEndpoint endpoint) {
+    public static DeviceLoraEndpointResponse from(DeviceMqttIdentity endpoint) {
         return new DeviceLoraEndpointResponse(
                 endpoint.getId(),
                 endpoint.getDevice().getId(),
                 endpoint.getDevice().getName(),
                 endpoint.getDevice().getDeviceModel().getId(),
                 endpoint.getDevice().getDeviceModel().getName(),
-                endpoint.getIdType(),
+                endpoint.getIdentityType(),
                 endpoint.getExternalId(),
                 endpoint.getNormalizedExternalId(),
                 endpoint.isEnabled(),

@@ -16,7 +16,7 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 
 /**
  * LoRaWAN MQTT broker/topic 단위 수집 소스.
- * device_lora_endpoint는 메시지 안 장비를 식별하는 매핑일 뿐 MQTT 연결 단위가 아니다.
+ * device_mqtt_identity는 메시지 안 장비를 식별하는 매핑일 뿐 MQTT 연결 단위가 아니다.
  */
 @Entity
 @Table(name = "lora_mqtt_source", uniqueConstraints = @UniqueConstraint(name = "uk_lora_mqtt_source_name", columnNames = "name"))

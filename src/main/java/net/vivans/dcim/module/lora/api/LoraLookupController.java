@@ -8,7 +8,7 @@ import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraDeviceLookupResponse;
 import net.vivans.dcim.module.lora.application.LoraLookupService;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +33,7 @@ public class LoraLookupController {
     @GetMapping("/endpoints/resolve")
     @Operation(summary = "외부 식별자별 장비 조회 API", description = "캐시 미스 시 즉시 조회용. 미등록 식별자는 data=null을 반환한다.")
     public ResponseEntity<ApiResponse<LoraDeviceLookupResponse>> resolve(
-            @Parameter(description = "DEV_EUI 또는 DEVICE_NAME") @RequestParam LoraIdType idType,
+            @Parameter(description = "DEV_EUI 또는 DEVICE_NAME") @RequestParam MqttIdentityType idType,
             @Parameter(description = "원본 식별자 값") @RequestParam String externalId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(loraLookupService.resolve(idType, externalId).orElse(null)));

@@ -1,4 +1,4 @@
-package net.vivans.dcim.module.lora.domain.model;
+package net.vivans.dcim.module.mqtt.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,26 +19,25 @@ import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.shared.persistence.BaseEntity;
 
 /**
- * LoRa/Dragino 외부 식별자(devEUI 또는 deviceName) ↔ 내부 device 매칭.
- * 매칭 우선순위(payload에 devEUI가 있으면 devEUI, 없으면 deviceName)는 조회하는 쪽(Sensor Data)에서 적용한다.
+ * MQTT 외부 식별값과 내부 장비의 현재 연결. 식별값 변경 시 device_id를 유지한다.
  */
 @Entity
 @Table(
-        name = "device_lora_endpoint",
+        name = "device_mqtt_identity",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_device_lora_endpoint_type_normalized",
-                        columnNames = {"id_type", "normalized_external_id"}
+                        name = "uk_device_mqtt_identity_type_normalized",
+                        columnNames = {"identity_type", "normalized_external_id"}
                 ),
                 @UniqueConstraint(
-                        name = "uk_device_lora_endpoint_device_type",
-                        columnNames = {"device_id", "id_type"}
+                        name = "uk_device_mqtt_identity_device_type",
+                        columnNames = {"device_id", "identity_type"}
                 )
         }
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DeviceLoraEndpoint extends BaseEntity {
+public class DeviceMqttIdentity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -49,8 +48,8 @@ public class DeviceLoraEndpoint extends BaseEntity {
     private Device device;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "id_type", nullable = false, length = 20)
-    private LoraIdType idType;
+    @Column(name = "identity_type", nullable = false, length = 20)
+    private MqttIdentityType identityType;
 
     @Column(name = "external_id", nullable = false)
     private String externalId;
@@ -61,25 +60,26 @@ public class DeviceLoraEndpoint extends BaseEntity {
     @Column(nullable = false)
     private boolean enabled;
 
-    private DeviceLoraEndpoint(Device device, LoraIdType idType, String externalId, boolean enabled) {
+    private DeviceMqttIdentity(Device device, MqttIdentityType idType, String externalId, boolean enabled) {
         validateDevice(device);
         validateIdType(idType);
         validateExternalId(externalId);
         this.device = device;
-        this.idType = idType;
+        this.identityType = idType;
         this.externalId = externalId.trim();
-        this.normalizedExternalId = LoraExternalIdNormalizer.normalize(externalId);
+        this.normalizedExternalId = MqttExternalIdNormalizer.normalize(idType, externalId);
         this.enabled = enabled;
     }
 
-    public static DeviceLoraEndpoint create(Device device, LoraIdType idType, String externalId, boolean enabled) {
-        return new DeviceLoraEndpoint(device, idType, externalId, enabled);
+    public static DeviceMqttIdentity create(Device device, MqttIdentityType idType, String externalId, boolean enabled) {
+        return new DeviceMqttIdentity(device, idType, externalId, enabled);
     }
 
     public void update(String externalId, boolean enabled) {
         validateExternalId(externalId);
+        String normalized = MqttExternalIdNormalizer.normalize(identityType, externalId);
         this.externalId = externalId.trim();
-        this.normalizedExternalId = LoraExternalIdNormalizer.normalize(externalId);
+        this.normalizedExternalId = normalized;
         this.enabled = enabled;
     }
 
@@ -89,7 +89,7 @@ public class DeviceLoraEndpoint extends BaseEntity {
         }
     }
 
-    private static void validateIdType(LoraIdType idType) {
+    private static void validateIdType(MqttIdentityType idType) {
         if (idType == null) {
             throw new IllegalArgumentException("idType is required");
         }

@@ -19,8 +19,9 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelModbusPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.model.MqttPointScope;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +49,7 @@ public class DeviceModelQueryService {
     private final CollectionScriptSyncService collectionScriptSyncService;
     private final DeviceModelSnmpPointRepository snmpPointRepository;
     private final DeviceModelModbusPointRepository modbusPointRepository;
-    private final DeviceModelLoraPointRepository loraPointRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
 
     @Transactional
     public DeviceModelResponse cloneDeviceModel(Integer sourceId, DeviceModelCloneRequest request) {
@@ -81,10 +82,15 @@ public class DeviceModelQueryService {
                         point.getUnitCode(), point.isEnabled()));
             }
         }
-        for (DeviceModelLoraPoint point : loraPointRepository.findAllByDeviceModelIdOrderByIdAsc(sourceId)) {
-            loraPointRepository.save(DeviceModelLoraPoint.create(clone, point.getPayloadField(), point.getPointName(),
+        for (DeviceModelMqttPoint point : mqttPointRepository.findAllByDeviceModelIdOrderByIdAsc(sourceId)) {
+            DeviceModelMqttPoint copied = DeviceModelMqttPoint.create(clone, point.getPayloadField(), point.getPointName(),
                     point.getDataPointType(), point.getUnitCode(), point.getScale(), point.getValueMap(),
-                    point.isEnabled(), point.getCategoryCode()));
+                    point.isEnabled(), point.getCategoryCode());
+            if (point.getComponentScope() == MqttPointScope.COMPONENT) {
+                copied.configureComponent(point.getComponentType(), point.getComponentPath(),
+                        point.getComponentIndexField(), point.getComponentUuidField());
+            }
+            mqttPointRepository.save(copied);
         }
         return DeviceModelResponse.from(clone);
     }

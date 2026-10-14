@@ -6,10 +6,10 @@ import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusRow;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusSummary;
 import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
 import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceStatusType;
-import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraCollectionInfluxQuery;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraInfluxPointRecord;
 import net.vivans.dcim.module.lora.infrastructure.sensordata.LoraRuntimeStatusClient;
@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 /**
  * LoRa 실제 수집 검증(1차) — Ops Console "LoRa 수집 상태" 탭이 사용하는 조회 전용 서비스.
- * 새 DB 테이블/컬럼 없이 기존 device_lora_endpoint / device_model_lora_point / lora_mqtt_source(_status) 와
+ * 새 DB 테이블/컬럼 없이 기존 device_mqtt_identity / device_model_mqtt_point / lora_mqtt_source(_status) 와
  * InfluxDB(protocol=mqtt), 그리고 Sensor Data의 장비별 런타임 상태(메모리, GET /api/internal/lora/runtime-status)
  * 를 조합해서 판정한다. 영구 오류 이력 테이블(lora_ingest_error_log)은 더 이상 존재하지 않는다.
  *
@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  *
  * 미등록(devEUI/deviceName) 장비는 운영 정책상 Sensor Data가 DEBUG 로그만 남기고 조용히 무시하므로
  * 이 화면·API의 판정 대상이 아니다.
- * 1차 범위에서는 STALE(지연) 상태를 판정하지 않는다 — device_lora_endpoint/device_model_lora_point에
+ * 1차 범위에서는 STALE(지연) 상태를 판정하지 않는다 — device_mqtt_identity/device_model_mqtt_point에
  * 장비별 전송 주기 정보가 없어 오탐 없이 판정할 기준이 없기 때문이며, 2차 확장 범위로 분리했다.
  */
 @Service
@@ -66,8 +66,8 @@ public class LoraCollectionStatusService {
     public static final String STATUS_FIELD_ERROR = "FIELD_ERROR";
     public static final String STATUS_SAVED = "SAVED";
 
-    private final DeviceLoraEndpointRepository deviceLoraEndpointRepository;
-    private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
+    private final DeviceMqttIdentityRepository mqttIdentityRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
     private final LoraMqttSourceService loraMqttSourceService;
     private final LoraCollectionInfluxQuery influxQuery;
     private final LoraRuntimeStatusClient runtimeStatusClient;
@@ -76,13 +76,15 @@ public class LoraCollectionStatusService {
         List<LoraMqttSourceResponse> sources = loraMqttSourceService.getAll();
         LoraCollectionSourceSummary sourceSummary = buildSourceSummary(sources);
 
-        List<DeviceLoraEndpoint> endpoints = deviceLoraEndpointRepository.findAllOrderByIdAsc();
+        List<DeviceMqttIdentity> endpoints = mqttIdentityRepository.findAllOrderByIdAsc().stream()
+                .filter(LoraMqttSelection::isLora).toList();
 
         Set<Integer> deviceModelIds = endpoints.stream()
                 .map(endpoint -> endpoint.getDevice().getDeviceModel().getId())
                 .collect(Collectors.toSet());
         Set<Integer> modelIdsWithMapping = deviceModelIds.isEmpty() ? Set.of()
-                : deviceModelLoraPointRepository.findAllEnabledByDeviceModelIdIn(deviceModelIds).stream()
+                : mqttPointRepository.findAllEnabledByDeviceModelIdIn(deviceModelIds).stream()
+                        .filter(LoraMqttSelection::isLora)
                         .map(point -> point.getDeviceModel().getId())
                         .collect(Collectors.toSet());
 
@@ -98,7 +100,7 @@ public class LoraCollectionStatusService {
 
         List<LoraCollectionStatusRow> rows = new ArrayList<>();
         int savedCount = 0;
-        for (DeviceLoraEndpoint endpoint : endpoints) {
+        for (DeviceMqttIdentity endpoint : endpoints) {
             Integer deviceId = endpoint.getDevice().getId();
             Integer deviceModelId = endpoint.getDevice().getDeviceModel().getId();
             List<LoraInfluxPointRecord> points = influxByDevice.getOrDefault(deviceId, List.of());
@@ -145,7 +147,7 @@ public class LoraCollectionStatusService {
                     endpoint.getDevice().getName(),
                     deviceModelId,
                     endpoint.getDevice().getDeviceModel().getName(),
-                    endpoint.getIdType(),
+                    endpoint.getIdentityType(),
                     endpoint.getExternalId(),
                     endpoint.isEnabled(),
                     status,

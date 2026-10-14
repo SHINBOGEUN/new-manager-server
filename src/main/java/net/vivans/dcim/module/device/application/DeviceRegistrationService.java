@@ -21,7 +21,7 @@ import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPoi
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointRequest;
 import net.vivans.dcim.module.lora.application.DeviceLoraEndpointService;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +37,7 @@ public class DeviceRegistrationService {
     private final CollectionTaskRepository taskRepository;
     private final DeviceModelSnmpPointRepository snmpPoints;
     private final DeviceModelModbusPointRepository modbusPoints;
-    private final DeviceModelLoraPointRepository loraPoints;
+    private final DeviceModelMqttPointRepository loraPoints;
     private final DeviceQueryService deviceService;
     private final DeviceProtocolEndpointQueryService endpointService;
     private final DeviceSnmpInstanceQueryService snmpInstanceService;
