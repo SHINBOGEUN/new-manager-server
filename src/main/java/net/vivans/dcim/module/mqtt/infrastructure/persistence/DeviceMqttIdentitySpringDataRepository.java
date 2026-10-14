@@ -6,12 +6,20 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface DeviceMqttIdentitySpringDataRepository extends JpaRepository<DeviceMqttIdentity, Integer> {
 
     @EntityGraph(attributePaths = {"device", "device.deviceModel"})
     List<DeviceMqttIdentity> findAllByDeviceId(Integer deviceId);
+
+    @EntityGraph(attributePaths = {"device"})
+    List<DeviceMqttIdentity> findAllByDeviceIdIn(Collection<Integer> deviceIds);
+
+    @EntityGraph(attributePaths = {"device"})
+    Optional<DeviceMqttIdentity> findByIdentityTypeAndNormalizedExternalId(
+            MqttIdentityType identityType, String normalizedExternalId);
 
     @EntityGraph(attributePaths = {"device", "device.deviceModel"})
     List<DeviceMqttIdentity> findAllByOrderByIdAsc();

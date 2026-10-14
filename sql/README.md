@@ -148,8 +148,9 @@ DDL은 자동 커밋되므로 실패 시 적용된 단계부터 복구하며 스
 - 페이지별 포인트 노출은 기존 `device_page_model_point_setting`을 사용합니다.
 - GPU 개수·실제 UUID별 카탈로그 행을 생성하지 않습니다. 반복 구성요소 추출 경로만 정의합니다.
 
-이번 변경은 Manager DB/도메인 통합입니다. GPU 에이전트, Sensor Data 수신·Influx 저장,
-구성요소별 분석 API와 신규 MQTT 설정 UI/API는 후속 단계에서 구현합니다.
+장비 식별값은 기존 등록·수정 API와 화면의 `mqttIdentities` 목록으로 관리합니다.
+자세한 요청과 동작은 `docs/MQTT_DEVICE_REGISTRATION.md`를 참고합니다.
+GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 공통 포인트 관리/수집 조회 API는 후속 단계입니다.
 
 ---
 

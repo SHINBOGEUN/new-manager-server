@@ -3,6 +3,7 @@ package net.vivans.dcim.module.device.api.dto;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceAsset;
 import net.vivans.dcim.module.devicegroup.api.dto.DeviceGroupSummaryResponse;
+import net.vivans.dcim.module.mqtt.api.dto.DeviceMqttIdentityResponse;
 
 import java.util.Comparator;
 import java.util.List;
@@ -32,7 +33,8 @@ public record DeviceResponse(
         String assetManagerName,
         String supplierName,
         LocalDate warrantyExpiresOn,
-        List<DeviceGroupSummaryResponse> deviceGroups
+        List<DeviceGroupSummaryResponse> deviceGroups,
+        List<DeviceMqttIdentityResponse> mqttIdentities
 ) {
 
     public static DeviceResponse from(Device device) {
@@ -43,6 +45,11 @@ public record DeviceResponse(
     }
 
     public static DeviceResponse from(Device device, List<DeviceGroupSummaryResponse> deviceGroups) {
+        return from(device, deviceGroups, List.of());
+    }
+
+    public static DeviceResponse from(Device device, List<DeviceGroupSummaryResponse> deviceGroups,
+                                      List<DeviceMqttIdentityResponse> mqttIdentities) {
         DeviceAsset asset = device.getAsset();
         Integer pathId = null;
         String pathCode = null;
@@ -76,7 +83,8 @@ public record DeviceResponse(
                 asset == null ? null : asset.getAssetManagerName(),
                 asset == null ? null : asset.getSupplierName(),
                 asset == null ? null : asset.getWarrantyExpiresOn(),
-                deviceGroups
+                deviceGroups,
+                mqttIdentities
         );
     }
 }

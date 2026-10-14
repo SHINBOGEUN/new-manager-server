@@ -7,6 +7,7 @@ import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepositor
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -28,6 +29,17 @@ public class DeviceMqttIdentityJpaRepository implements DeviceMqttIdentityReposi
     @Override
     public List<DeviceMqttIdentity> findAllByDeviceId(Integer deviceId) {
         return springDataRepository.findAllByDeviceId(deviceId);
+    }
+
+    @Override
+    public List<DeviceMqttIdentity> findAllByDeviceIdIn(Collection<Integer> deviceIds) {
+        return deviceIds.isEmpty() ? List.of() : springDataRepository.findAllByDeviceIdIn(deviceIds);
+    }
+
+    @Override
+    public Optional<DeviceMqttIdentity> findByIdentityTypeAndNormalizedExternalId(
+            MqttIdentityType identityType, String normalizedExternalId) {
+        return springDataRepository.findByIdentityTypeAndNormalizedExternalId(identityType, normalizedExternalId);
     }
 
     @Override

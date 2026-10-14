@@ -1531,16 +1531,16 @@
           <label class="field" id="wzModbusUnitField" style="display:none">Modbus Unit ID
             <input id="wzModbusUnit" type="number" min="0" max="247" placeholder="비우면 장비별 매핑 사용" />
           </label>
-          <div class="field full" id="wzLoraFields" style="display:none">
+          <div class="field full" id="wzMqttFields" style="display:none">
             <div class="fields">
-              <label class="field">LoRa 식별자 종류
-                <select id="wzLoraIdType"><option value="DEV_EUI">devEUI</option><option value="DEVICE_NAME">deviceName</option></select>
+              <label class="field">MQTT 식별자 종류
+                <select id="wzMqttIdentityType"><option value="DEV_EUI">devEUI</option><option value="DEVICE_NAME">deviceName</option></select>
               </label>
-              <label class="field">LoRa 외부 식별자
-                <input id="wzLoraExternalId" class="mono" placeholder="예: 24E124710C123456" />
+              <label class="field"><span id="wzMqttExternalIdLabel">장비 식별값</span>
+                <input id="wzMqttExternalId" class="mono" placeholder="예: 24E124710C123456" />
               </label>
             </div>
-            <p class="muted" style="margin:8px 0 0;font-size:12px">게이트웨이 MQTT IP·port는 Sensor Data 공통 설정입니다. 장비마다 devEUI 또는 deviceName만 연결합니다.</p>
+            <p class="muted" id="wzMqttHint" style="margin:8px 0 0;font-size:12px">장비가 보내는 MAC·UUID 또는 LoRa 식별값을 연결합니다.</p>
           </div>
         </div>
         <p class="muted" id="wzProtocolHint" style="margin:14px 0 0;font-size:12px;line-height:1.5">모델을 고르면 통신 방식과 측정항목 준비 상태를 알려드립니다.</p>
@@ -1870,6 +1870,12 @@
                   </select>
                 </label>
               </div>
+              <div id="editDevMqttFields" style="display:none;margin-top:18px">
+                <h3>MQTT 식별값</h3>
+                <p class="muted" id="editDevMqttHint" style="font-size:12px">현재 장비가 보내는 식별값을 입력하고 저장하세요. MAC을 변경해도 장비 ID와 기존 측정 이력은 유지됩니다.</p>
+                <div id="editDevMqttList"></div>
+                <button type="button" class="ghost" id="editDevMqttAdd" data-role-gate="admin">＋ 식별값 추가</button>
+              </div>
               <div class="row" style="margin-top:12px">
                 <button type="button" class="primary" id="devSave" data-role-gate="admin">저장</button>
                 <button type="button" class="danger" id="devDelete" data-role-gate="admin">삭제</button>
@@ -1898,7 +1904,7 @@
               <label class="field" id="epModbusUnitField" style="display:none">Modbus Unit ID
                 <input id="epModbusUnit" type="number" min="0" max="247" placeholder="비우면 장비별 매핑 사용" />
               </label>
-              <div class="field full muted" id="epLoraHint" style="display:none;font-size:12px">LoRa 장비는 게이트웨이 IP·port를 장비별로 등록하지 않습니다. 「LoRa 엔드포인트」에서 devEUI 또는 deviceName을 연결하세요.</div>
+              <div class="field full muted" id="epMqttHint" style="display:none;font-size:12px">MQTT 장비의 식별값은 「기본 정보」에서 등록·수정합니다. 브로커 연결은 수집 서비스 공통 설정을 사용합니다.</div>
             </div>
             <div class="row" style="margin-top:12px">
               <button type="button" class="primary" id="epCreate" data-role-gate="admin">통신 설정 추가</button>
@@ -4070,6 +4076,61 @@
 
     function isLoraMqtt(model, protocol) {
       return isLoraSensorModel(model) && protocolCode(protocol) === "mqtt";
+    }
+
+    function mqttIdentityTypes(model) {
+      return isLoraSensorModel(model)
+        ? [{ code:"DEV_EUI", name:"devEUI" }, { code:"DEVICE_NAME", name:"deviceName" }]
+        : [{ code:"MAC", name:"MAC 주소" }, { code:"UUID", name:"UUID" }, { code:"SERIAL", name:"고유 시리얼" }];
+    }
+
+    function mqttIdentityPlaceholder(type) {
+      return type === "MAC" ? "예: 9c:6b:00:9b:4b:d7"
+        : type === "DEV_EUI" ? "예: 24E124710C123456"
+        : type === "UUID" ? "예: 9b006b9c-464b-0000-0000-000000000000" : "장비가 보내는 식별값";
+    }
+
+    function readDeviceMqttIdentities() {
+      return [...$("editDevMqttList").querySelectorAll("[data-mqtt-identity-row]")].map((row) => ({
+        identityType:row.querySelector("[data-mqtt-identity-type]").value,
+        externalId:row.querySelector("[data-mqtt-identity-value]").value.trim(),
+        enabled:row.querySelector("[data-mqtt-identity-enabled]").checked,
+      }));
+    }
+
+    function renderDeviceMqttIdentities(identities) {
+      const model = state.models.find((item) => Number(item.id) === Number($("editDevModel").value));
+      const supportsMqtt = (model?.protocols || []).some((protocol) => protocolCode(protocol) === "mqtt");
+      const types = mqttIdentityTypes(model);
+      $("editDevMqttFields").style.display = supportsMqtt || identities.length ? "" : "none";
+      $("editDevMqttAdd").disabled = !supportsMqtt || identities.length >= types.length;
+      $("editDevMqttHint").textContent = supportsMqtt
+        ? "현재 장비가 보내는 식별값을 입력하고 저장하세요. MAC을 변경해도 장비 ID와 기존 측정 이력은 유지됩니다."
+        : "선택한 모델은 MQTT를 지원하지 않습니다. 모델을 변경하거나 식별값 연결을 제거해 주세요.";
+      $("editDevMqttList").innerHTML = identities.map((identity) => {
+        const options = types.some((type) => type.code === identity.identityType) ? types
+          : [...types, { code:identity.identityType, name:identity.identityType + " (현재 값)" }];
+        return `<div class="fields" data-mqtt-identity-row style="margin-bottom:10px;padding:10px;border:1px solid var(--line);border-radius:8px">
+          <label class="field">식별자 종류<select data-mqtt-identity-type>${options.map((type) =>
+            `<option value="${esc(type.code)}" ${type.code === identity.identityType ? "selected" : ""}>${esc(type.name)}</option>`).join("")}</select></label>
+          <label class="field">외부 식별값<input class="mono" data-mqtt-identity-value value="${esc(identity.externalId || "")}" placeholder="${esc(mqttIdentityPlaceholder(identity.identityType))}" maxlength="255" /></label>
+          <div class="field full row" style="justify-content:space-between">
+            <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" data-mqtt-identity-enabled style="width:auto" ${identity.enabled !== false ? "checked" : ""} />사용</label>
+            <button type="button" class="ghost" data-remove-mqtt-identity data-role-gate="admin">연결 제거</button>
+          </div></div>`;
+      }).join("") || '<p class="muted" style="font-size:12px">등록된 식별값이 없습니다.</p>';
+      $("editDevMqttList").querySelectorAll("[data-remove-mqtt-identity]").forEach((button) => {
+        button.onclick = () => {
+          const rows = [...$("editDevMqttList").querySelectorAll("[data-mqtt-identity-row]")];
+          const index = rows.indexOf(button.closest("[data-mqtt-identity-row]"));
+          renderDeviceMqttIdentities(readDeviceMqttIdentities().filter((_, i) => i !== index));
+        };
+      });
+      $("editDevMqttList").querySelectorAll("[data-mqtt-identity-type]").forEach((select) => {
+        select.onchange = () => {
+          select.closest("[data-mqtt-identity-row]").querySelector("[data-mqtt-identity-value]").placeholder = mqttIdentityPlaceholder(select.value);
+        };
+      });
     }
 
     function invalidateModelRequiresInstance(modelId) {
@@ -6877,6 +6938,7 @@
       $("editDevPath").value = d.pathCodeId != null ? String(d.pathCodeId) : "";
       $("editDevDesc").value = d.description || "";
       $("editDevEnabled").value = d.enabled ? "true" : "false";
+      renderDeviceMqttIdentities(d.mqttIdentities || []);
       syncEditManufacturer();
       await updateInstanceUiForModel(d.modelId);
       fillEndpointProtocolSelect(d.modelId);
@@ -7745,10 +7807,19 @@
       const loraMqtt = isLoraMqtt(model, protocol);
       const mqtt = code === "mqtt";
       const modbus = code === "modbus";
-      $("wzConnectionTitle").innerHTML = `<span class="step">2</span> ${loraMqtt ? "LoRa 장비를 식별할까요?" : `${esc(protocol?.protocolName || protocol?.protocolCode || "통신")}로 어떻게 연결하나요?`}`;
-      $("wzHostField").style.display = loraMqtt ? "none" : "";
-      $("wzPortField").style.display = loraMqtt ? "none" : "";
-      $("wzLoraFields").style.display = loraMqtt ? "" : "none";
+      $("wzConnectionTitle").innerHTML = `<span class="step">2</span> ${mqtt ? "MQTT 수신 데이터를 어떤 장비에 연결하나요?" : `${esc(protocol?.protocolName || protocol?.protocolCode || "통신")}로 어떻게 연결하나요?`}`;
+      $("wzHostField").style.display = mqtt ? "none" : "";
+      $("wzPortField").style.display = mqtt ? "none" : "";
+      $("wzMqttFields").style.display = mqtt ? "" : "none";
+      const previousIdentityType = $("wzMqttIdentityType").value;
+      const identityTypes = mqttIdentityTypes(model);
+      $("wzMqttIdentityType").innerHTML = identityTypes.map((type) => `<option value="${type.code}">${esc(type.name)}</option>`).join("");
+      if (identityTypes.some((type) => type.code === previousIdentityType)) $("wzMqttIdentityType").value = previousIdentityType;
+      $("wzMqttExternalId").placeholder = mqttIdentityPlaceholder($("wzMqttIdentityType").value);
+      $("wzMqttExternalIdLabel").textContent = $("wzMqttIdentityType").value === "MAC" ? "GPU 서버 MAC 주소" : "장비 식별값";
+      $("wzMqttHint").textContent = loraMqtt
+        ? "IP·포트 입력은 필요하지 않습니다. 장비가 보내는 devEUI 또는 deviceName을 입력하세요. 브로커는 수집 서비스 공통 설정을 사용합니다."
+        : "IP·포트 입력은 필요하지 않습니다. GPU 서버는 MAC을 선택하고 에이전트가 보내는 서버 MAC 주소를 입력하세요. 서버 안의 GPU별 UUID가 아닙니다.";
       $("wzModbusUnitField").style.display = modbus ? "" : "none";
       $("wzCollectionCard").style.display = mqtt ? "none" : "";
       if (modbus && !$("wzPort").dataset.userEdited) $("wzPort").value = "502";
@@ -7764,7 +7835,7 @@
           ? "등록 옵션을 불러오는 중입니다."
           : option.modelPointCount === 0
             ? "이 모델에 측정항목이 없습니다. 장비 등록은 가능하지만 수집 전에 모델 관리에서 측정항목을 설정해야 합니다."
-            : `모델 측정항목 ${option.modelPointCount}개 · ${loraMqtt ? "LoRa 식별자로 연결" : code === "modbus" ? "Modbus 회선별 주소는 장비 목록에서 설정" : "통신 설정 후 수집 가능"}`;
+            : `모델 측정항목 ${option.modelPointCount}개 · ${mqtt ? "MQTT 식별값으로 연결" : code === "modbus" ? "Modbus 회선별 주소는 장비 목록에서 설정" : "통신 설정 후 수집 가능"}`;
       if (!mqtt) fillWizardTasks(model?.id, code);
       updateWizardSummary();
     }
@@ -7830,13 +7901,13 @@
       const model = state.models.find((item) => Number(item.id) === Number(device?.modelId));
       const protocol = selectedEndpointProtocol();
       const code = protocolCode(protocol);
-      const loraMqtt = isLoraMqtt(model, protocol);
-      $("epHostField").style.display = loraMqtt ? "none" : "";
-      $("epPortField").style.display = loraMqtt ? "none" : "";
+      const mqtt = code === "mqtt";
+      $("epHostField").style.display = mqtt ? "none" : "";
+      $("epPortField").style.display = mqtt ? "none" : "";
       $("epModbusUnitField").style.display = code === "modbus" ? "" : "none";
-      $("epLoraHint").style.display = loraMqtt ? "" : "none";
-      $("epCreate").disabled = loraMqtt;
-      $("epCreate").title = loraMqtt ? "LoRa 장비는 LoRa 엔드포인트에서 devEUI/deviceName을 등록하세요" : "";
+      $("epMqttHint").style.display = mqtt ? "" : "none";
+      $("epCreate").disabled = mqtt;
+      $("epCreate").title = mqtt ? "MQTT 식별값은 기본 정보에서 등록·수정하세요" : "";
       if (code === "modbus" && !$("epPort").dataset.userEdited) $("epPort").value = "502";
       if (code === "snmp" && !$("epPort").dataset.userEdited) $("epPort").value = "161";
       $("attachCollectionCard").style.display = code === "mqtt" ? "none" : "";
@@ -8570,6 +8641,7 @@
             serialNumber: d?.serialNumber || null,
             assetStatusId: d?.assetStatusId || null,
             assetColor: d?.assetColor || null,
+            mqttIdentities: readDeviceMqttIdentities(),
           }),
         });
         toast("장비 정보를 저장했습니다");
@@ -8686,7 +8758,7 @@
       try {
         const protocol = selectedEndpointProtocol();
         const code = protocolCode(protocol);
-        if (code === "mqtt") throw new Error("LoRa MQTT 장비는 LoRa 엔드포인트에서 devEUI/deviceName을 등록하세요");
+        if (code === "mqtt") throw new Error("MQTT 식별값은 기본 정보에서 등록·수정하세요");
         if (state.editingEndpointId) {
           const saved = await api(`/api/manager/devices/${id}/endpoints/${state.editingEndpointId}`, {
             method: "PUT",
@@ -8776,10 +8848,10 @@
       if (!name) return toast("표시 이름을 입력하세요", true);
       if (!$("wzModel").value || !$("wzLoc").value) return toast("모델과 위치를 선택하세요", true);
       if (!protocol) return toast("모델에서 지원하는 프로토콜을 선택하세요", true);
-      if (!loraMqtt && !host) return toast("IP / 호스트를 입력하세요", true);
-      if (loraMqtt && !$("wzLoraExternalId").value.trim()) return toast("LoRa 외부 식별자를 입력하세요", true);
+      if (!mqtt && !host) return toast("IP / 호스트를 입력하세요", true);
+      if (mqtt && !$("wzMqttExternalId").value.trim()) return toast("MQTT 외부 식별값을 입력하세요", true);
       const port = Number($("wzPort").value);
-      if (!loraMqtt && (!Number.isInteger(port) || port < 1 || port > 65535)) return toast("포트는 1~65535 사이여야 합니다", true);
+      if (!mqtt && (!Number.isInteger(port) || port < 1 || port > 65535)) return toast("포트는 1~65535 사이여야 합니다", true);
       const taskId = Number($("wzTask").value);
       const groupId = Number($("wzGroup").value);
       if (!mqtt && taskId && !groupId) return toast("수집 주기 그룹을 선택하세요", true);
@@ -8799,16 +8871,16 @@
             description: $("wzDesc").value.trim() || null,
             enabled: true,
             pathCodeId: $("wzPath").value ? Number($("wzPath").value) : null,
+            mqttIdentities: mqtt ? [{
+              identityType:$("wzMqttIdentityType").value,
+              externalId:$("wzMqttExternalId").value.trim(),
+              enabled:true,
+            }] : undefined,
           },
           protocolTypeId: protocolId,
-          endpoint: loraMqtt ? undefined : { protocolTypeId:protocolId, host, port, enabled:true },
+          endpoint: mqtt ? undefined : { protocolTypeId:protocolId, host, port, enabled:true },
           snmpInstance: needsInstance ? { instanceId:parseInstanceId($("wzInstance").value, true) } : undefined,
           modbus: code === "modbus" ? { unitId:readModbusUnitId("wzModbusUnit") } : undefined,
-          loraIdentity: loraMqtt ? {
-            idType:$("wzLoraIdType").value,
-            externalId:$("wzLoraExternalId").value.trim(),
-            enabled:true,
-          } : undefined,
           collectionGroup: !mqtt && taskId && groupId ? { taskId, groupId } : undefined,
         };
         const registered = await api("/api/manager/device-registrations", {
@@ -8818,10 +8890,10 @@
         const device = registered.device;
         state.wizardDeviceId = device.id;
         setWizProgress(4);
-        const connectionLabel = loraMqtt
-          ? `MQTT · ${$("wzLoraIdType").value} ${$("wzLoraExternalId").value.trim()}`
+        const connectionLabel = mqtt
+          ? `MQTT · ${$("wzMqttIdentityType").value} ${$("wzMqttExternalId").value.trim()}`
           : `${host}:${port}`;
-        const attachMsg = registered.groupId ? "수집 그룹에 추가함" : "수집 연결은 건너뜀";
+        const attachMsg = mqtt ? "MQTT 식별값 연결 완료" : registered.groupId ? "수집 그룹에 추가함" : "수집 연결은 건너뜀";
         await loadDevices();
         await loadTasks();
         $("wzResult").innerHTML =
@@ -8840,7 +8912,7 @@
         toast("장비 등록이 끝났습니다");
         $("wzName").value = "";
         $("wzHost").value = "";
-        $("wzLoraExternalId").value = "";
+        $("wzMqttExternalId").value = "";
         updateWizardSummary();
       } catch (e) {
         toast(e.message, true);
@@ -8859,13 +8931,13 @@
 
     $("wzProtocol").addEventListener("change", () => syncWizardProtocolUi().catch((error) => toast(error.message, true)));
     $("wzPort").addEventListener("input", () => { $("wzPort").dataset.userEdited = "true"; });
-    ["wzName", "wzLoc", "wzPath", "wzHost", "wzLoraExternalId"].forEach((id) => {
+    ["wzName", "wzLoc", "wzPath", "wzHost", "wzMqttExternalId"].forEach((id) => {
       $(id).addEventListener("input", updateWizardSummary);
       $(id).addEventListener("change", updateWizardSummary);
     });
 
     $("wzCancel").onclick = () => {
-      ["wzName", "wzDesc", "wzHost", "wzLoraExternalId", "wzModbusUnit"].forEach((id) => { $(id).value = ""; });
+      ["wzName", "wzDesc", "wzHost", "wzMqttExternalId", "wzModbusUnit"].forEach((id) => { $(id).value = ""; });
       $("wzModel").value = "";
       $("wzLoc").value = "";
       $("wzPath").value = "";
@@ -8970,7 +9042,19 @@
 
     $("editDevModel").addEventListener("change", async () => {
       syncEditManufacturer();
+      renderDeviceMqttIdentities(readDeviceMqttIdentities());
       await updateInstanceUiForModel(Number($("editDevModel").value));
+    });
+
+    $("editDevMqttAdd").onclick = () => {
+      const model = state.models.find((item) => Number(item.id) === Number($("editDevModel").value));
+      const identities = readDeviceMqttIdentities();
+      const type = mqttIdentityTypes(model).find((item) => !identities.some((identity) => identity.identityType === item.code));
+      if (type) renderDeviceMqttIdentities([...identities, { identityType:type.code, externalId:"", enabled:true }]);
+    };
+    $("wzMqttIdentityType").addEventListener("change", () => {
+      $("wzMqttExternalId").placeholder = mqttIdentityPlaceholder($("wzMqttIdentityType").value);
+      $("wzMqttExternalIdLabel").textContent = $("wzMqttIdentityType").value === "MAC" ? "GPU 서버 MAC 주소" : "장비 식별값";
     });
 
     bindCronPreset($("taskCronPreset"), $("taskCron"), $("taskCronCustomField"));

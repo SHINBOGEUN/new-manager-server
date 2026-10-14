@@ -63,7 +63,7 @@ public class DeviceRegistrationService {
         int pointCount = switch (code) {
             case "snmp" -> snmpPoints.findAllByModelProtocolIdOrderByIdAsc(protocol.getId()).size();
             case "modbus" -> modbusPoints.findAllByModelProtocolIdOrderByIdAsc(protocol.getId()).size();
-            case "mqtt" -> lora ? loraPoints.findAllByDeviceModelIdOrderByIdAsc(model.getId()).size() : 0;
+            case "mqtt" -> loraPoints.findAllByDeviceModelIdOrderByIdAsc(model.getId()).size();
             default -> 0;
         };
         List<DeviceRegistrationOptionsResponse.CollectionGroupOption> groups = tasks.stream()
@@ -75,7 +75,7 @@ public class DeviceRegistrationService {
                 .toList();
         return new DeviceRegistrationOptionsResponse.ProtocolOption(
                 protocol.getProtocolType().getId(), code, protocol.getProtocolType().getName(),
-                lora ? "LORA_IDENTITY" : "IP_PORT", pointCount,
+                lora ? "LORA_IDENTITY" : "mqtt".equals(code) ? "MQTT_IDENTITY" : "IP_PORT", pointCount,
                 "snmp".equals(code) && snmpPoints.existsByModelProtocolIdAndRequiresInstanceTrue(protocol.getId()),
                 groups);
     }
@@ -98,10 +98,15 @@ public class DeviceRegistrationService {
 
         Integer deviceId = deviceService.createDevice(request.device(), false).id();
         Integer endpointId;
-        if (lora) {
-            DeviceRegistrationRequest.LoraIdentity identity = request.loraIdentity();
-            endpointId = loraEndpointService.create(new DeviceLoraEndpointRequest(
-                    deviceId, identity.idType(), identity.externalId(), identity.enabled())).id();
+        if ("mqtt".equals(code)) {
+            if (request.loraIdentity() != null) {
+                // 이전 LoRa 등록 요청의 JSON 계약도 계속 지원한다.
+                DeviceRegistrationRequest.LoraIdentity identity = request.loraIdentity();
+                endpointId = loraEndpointService.create(new DeviceLoraEndpointRequest(
+                        deviceId, identity.idType(), identity.externalId(), identity.enabled())).id();
+            } else {
+                endpointId = deviceService.getDevice(deviceId).mqttIdentities().get(0).id();
+            }
         } else {
             DeviceProtocolEndpointResponse endpoint = endpointService.createEndpoint(deviceId, request.endpoint(), false);
             endpointId = endpoint.id();
@@ -132,16 +137,20 @@ public class DeviceRegistrationService {
     }
 
     private void validateSettings(DeviceRegistrationRequest request, String code, boolean lora) {
-        if (lora) {
-            if (request.loraIdentity() == null || request.endpoint() != null || request.snmpInstance() != null
+        if ("mqtt".equals(code)) {
+            var identities = request.device().mqttIdentities();
+            boolean legacyLora = lora && request.loraIdentity() != null && identities == null;
+            boolean mqttIdentities = request.loraIdentity() == null && identities != null && !identities.isEmpty();
+            if (!(legacyLora || mqttIdentities) || request.endpoint() != null || request.snmpInstance() != null
                     || request.modbus() != null || request.modbusReadings() != null
                     || request.collectionGroup() != null) {
-                throw new IllegalArgumentException("LoRa MQTT registration requires loraIdentity only");
+                throw new IllegalArgumentException("MQTT registration requires mqttIdentities without IP/port or collection settings");
             }
             return;
         }
         if (request.endpoint() == null || !request.protocolTypeId().equals(request.endpoint().protocolTypeId())
-                || request.loraIdentity() != null) {
+                || request.loraIdentity() != null
+                || (request.device().mqttIdentities() != null && !request.device().mqttIdentities().isEmpty())) {
             throw new IllegalArgumentException("endpoint must match selected protocol");
         }
         if (request.snmpInstance() != null && !"snmp".equals(code)) {
