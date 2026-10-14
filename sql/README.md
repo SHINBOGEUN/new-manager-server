@@ -16,7 +16,9 @@ sql/
     ├── …
     ├── 53_device_page_device.sql
     ├── 58_device_mqtt_identity.sql
-    └── 59_device_model_mqtt_point.sql
+    ├── 59_device_model_mqtt_point.sql
+    ├── 60_mqtt_source.sql
+    └── 61_mqtt_source_status.sql
 ```
 
 운영 DB(`dcim_new`) **현재 구조**를 FK 생성 순서대로 나눈 baseline입니다 (스냅샷: `192.168.10.14:20181`, 2026-09-02).
@@ -33,12 +35,12 @@ sql/
 
 단, `ALTER` 형식의 증분 파일은 기존 DB 업그레이드용입니다. 신규 빈 DB에는 해당 변경이 반영된 최신 테이블 DDL을 사용하며, 이미 컬럼이 포함된 상태에서 같은 `ALTER` 파일을 다시 실행하지 않습니다.
 
-신규 설치 제외: `44`(기존 DB용 ALTER), `46`·`47`(이관 전 LoRa 테이블), `56`(기존 DB용 ALTER).
+신규 설치 제외: `44`(기존 DB용 ALTER), `46`·`47`(이관 전 LoRa 테이블), `50`·`51`(공통화 전 소스 테이블), `56`(기존 DB용 ALTER).
 `46`·`47`은 과거 구조 기록 및 기존 DB 이관 검증용으로 유지하며 최종 테이블은 `58`·`59`로 생성합니다.
 
 ```bash
 for f in sql/schema/[0-9][0-9]_*.sql; do
-  case "$(basename "$f")" in 44_*|46_*|47_*|56_*) continue ;; esac
+  case "$(basename "$f")" in 44_*|46_*|47_*|50_*|51_*|56_*) continue ;; esac
   mysql -h HOST -P PORT -u dcim -p dcim < "$f"
 done
 ```
@@ -46,7 +48,7 @@ done
 Windows PowerShell:
 
 ```powershell
-Get-ChildItem sql/schema/*_*.sql | Where-Object { $_.Name -notmatch '^(44|46|47|56)_' } | Sort-Object Name | ForEach-Object {
+Get-ChildItem sql/schema/*_*.sql | Where-Object { $_.Name -notmatch '^(44|46|47|50|51|56)_' } | Sort-Object Name | ForEach-Object {
   Get-Content $_.FullName -Raw -Encoding UTF8 | mysql -h HOST -P PORT -u dcim -p dcim
 }
 ```
@@ -129,6 +131,8 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/42_device_asset_document.sql
 | 57 | `57_external_data.sql` | 외부 데이터 JSON 수신 이력 |
 | 58 | `58_device_mqtt_identity.sql` | MQTT 외부 식별값과 devices 연결 (LoRa 포함) |
 | 59 | `59_device_model_mqtt_point.sql` | 공통 MQTT 모델 포인트, DEVICE/COMPONENT 범위 |
+| 60 | `60_mqtt_source.sql` | 공통 MQTT 브로커·토픽·메시지 형식 |
+| 61 | `61_mqtt_source_status.sql` | 공통 MQTT 소스 연결·수신 상태 |
 
 ## LoRa → 공통 MQTT 이관 (2026-10-14)
 
@@ -153,6 +157,17 @@ DDL은 자동 커밋되므로 실패 시 적용된 단계부터 복구하며 스
 GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 공통 포인트 관리/수집 조회 API는 후속 단계입니다.
 
 ---
+
+## 공통 MQTT 수집 소스 이관
+
+기존 DB는 `migration/20261014_unify_mqtt_sources.sql`로
+`lora_mqtt_source`와 `lora_mqtt_source_status`를 `mqtt_source`와 `mqtt_source_status`로 전환합니다.
+소스 ID·상태·브로커·토픽·자격증명 키·설정 버전을 보존합니다.
+메시지 형식은 기존 `CHIRPSTACK_LORA`와 GPU/공통 에이전트용 `AGENT`를 지원합니다.
+
+신규 DB에서는 구 `schema/50`, `schema/51`을 건너뛰고 `schema/60`, `schema/61`을 사용합니다.
+이관 SQL과 신규 생성 SQL을 같은 기존 DB에 혼용하지 않습니다. 자세한 API와 배포 순서는
+`docs/MQTT_SOURCE_API.md`를 참고합니다. Sensor Data의 공통 소스 구독 전환은 별도 작업입니다.
 
 ## 적용 이력 (수동 기록)
 

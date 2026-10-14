@@ -1,4 +1,4 @@
-package net.vivans.dcim.module.lora.domain.model;
+package net.vivans.dcim.module.mqtt.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,10 +15,10 @@ import java.time.Instant;
 
 /** Source 설정과 분리된, Sensor Data가 보고하는 연결/수신 상태 스냅샷. */
 @Entity
-@Table(name = "lora_mqtt_source_status")
+@Table(name = "mqtt_source_status")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class LoraMqttSourceStatus extends BaseEntity {
+public class MqttSourceStatus extends BaseEntity {
 
     @Id
     @Column(name = "source_id")
@@ -26,7 +26,7 @@ public class LoraMqttSourceStatus extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private LoraMqttSourceStatusType status;
+    private MqttSourceStatusType status;
 
     @Column(name = "last_connected_at")
     private Instant lastConnectedAt;
@@ -49,18 +49,18 @@ public class LoraMqttSourceStatus extends BaseEntity {
     @Column(name = "last_error", length = 2000)
     private String lastError;
 
-    private LoraMqttSourceStatus(Integer sourceId) {
+    private MqttSourceStatus(Integer sourceId) {
         this.sourceId = sourceId;
-        this.status = LoraMqttSourceStatusType.NOT_SYNCED;
+        this.status = MqttSourceStatusType.NOT_SYNCED;
     }
 
-    public static LoraMqttSourceStatus initial(Integer sourceId) {
-        return new LoraMqttSourceStatus(sourceId);
+    public static MqttSourceStatus initial(Integer sourceId) {
+        return new MqttSourceStatus(sourceId);
     }
 
-    public void report(LoraMqttSourceStatusType status, Instant lastConnectedAt, Instant lastMessageAt,
+    public void report(MqttSourceStatusType status, Instant lastConnectedAt, Instant lastMessageAt,
                        long messageCount, long errorCount, long reconnectCount, String lastError, Instant reportedAt) {
-        this.status = status == null ? LoraMqttSourceStatusType.ERROR : status;
+        this.status = status == null ? MqttSourceStatusType.ERROR : status;
         this.lastConnectedAt = lastConnectedAt;
         this.lastMessageAt = lastMessageAt;
         this.messageCount = Math.max(0, messageCount);

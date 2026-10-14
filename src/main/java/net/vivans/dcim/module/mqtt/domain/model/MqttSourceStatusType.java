@@ -1,7 +1,7 @@
-package net.vivans.dcim.module.lora.domain.model;
+package net.vivans.dcim.module.mqtt.domain.model;
 
 /** Sensor Data가 보고하는 MQTT 수집 소스의 현재 연결 상태. */
-public enum LoraMqttSourceStatusType {
+public enum MqttSourceStatusType {
     NOT_SYNCED,
     CONNECTING,
     CONNECTED,

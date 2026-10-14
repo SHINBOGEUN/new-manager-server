@@ -1,4 +1,5 @@
 package net.vivans.dcim.module.lora.application;
+import net.vivans.dcim.module.mqtt.application.MqttSourceService;
 
 import net.vivans.dcim.module.common.domain.model.CodeGroup;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
@@ -7,13 +8,13 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusRow;
-import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceResponse;
-import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceStatusResponse;
+import net.vivans.dcim.module.mqtt.api.dto.MqttSourceResponse;
+import net.vivans.dcim.module.mqtt.api.dto.MqttSourceStatusResponse;
 import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
 import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
 import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
-import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceStatusType;
-import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttSourceStatusType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttSourceType;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraCollectionInfluxQuery;
@@ -46,7 +47,7 @@ class LoraCollectionStatusServiceTest {
 
     private final DeviceMqttIdentityRepository mqttIdentityRepository = mock(DeviceMqttIdentityRepository.class);
     private final DeviceModelMqttPointRepository mqttPointRepository = mock(DeviceModelMqttPointRepository.class);
-    private final LoraMqttSourceService loraMqttSourceService = mock(LoraMqttSourceService.class);
+    private final MqttSourceService loraMqttSourceService = mock(MqttSourceService.class);
     private final LoraCollectionInfluxQuery influxQuery = mock(LoraCollectionInfluxQuery.class);
     private final LoraRuntimeStatusClient runtimeStatusClient = mock(LoraRuntimeStatusClient.class);
 
@@ -77,7 +78,7 @@ class LoraCollectionStatusServiceTest {
 
         when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
-                source(1, true, LoraMqttSourceStatusType.DISCONNECTED)));
+                source(1, true, MqttSourceStatusType.DISCONNECTED)));
         when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(model));
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of());
 
@@ -108,7 +109,7 @@ class LoraCollectionStatusServiceTest {
         );
         when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
-                source(1, true, LoraMqttSourceStatusType.CONNECTED)));
+                source(1, true, MqttSourceStatusType.CONNECTED)));
         when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant now = Instant.now();
@@ -157,7 +158,7 @@ class LoraCollectionStatusServiceTest {
         );
         when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(endpoints);
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
-                source(1, true, LoraMqttSourceStatusType.CONNECTED)));
+                source(1, true, MqttSourceStatusType.CONNECTED)));
         when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
         when(influxQuery.findRecentMqttPoints(any())).thenReturn(Map.of());
 
@@ -188,7 +189,7 @@ class LoraCollectionStatusServiceTest {
 
         when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
-                source(1, true, LoraMqttSourceStatusType.CONNECTED)));
+                source(1, true, MqttSourceStatusType.CONNECTED)));
         when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant saved = Instant.now().minusSeconds(120);
@@ -215,7 +216,7 @@ class LoraCollectionStatusServiceTest {
 
         when(mqttIdentityRepository.findAllOrderByIdAsc()).thenReturn(List.of(endpoint));
         when(loraMqttSourceService.getAll()).thenReturn(List.of(
-                source(1, true, LoraMqttSourceStatusType.CONNECTED)));
+                source(1, true, MqttSourceStatusType.CONNECTED)));
         when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(any())).thenReturn(mappingsFor(mappedModel));
 
         Instant saved = Instant.now().minusSeconds(60);
@@ -278,10 +279,10 @@ class LoraCollectionStatusServiceTest {
         return List.of(point);
     }
 
-    private LoraMqttSourceResponse source(int id, boolean enabled, LoraMqttSourceStatusType statusType) {
-        LoraMqttSourceStatusResponse status = new LoraMqttSourceStatusResponse(
+    private MqttSourceResponse source(int id, boolean enabled, MqttSourceStatusType statusType) {
+        MqttSourceStatusResponse status = new MqttSourceStatusResponse(
                 statusType, null, null, null, 0, 0, 0, null);
-        return new LoraMqttSourceResponse(id, "source-" + id, LoraMqttSourceType.CHIRPSTACK_LORA,
+        return new MqttSourceResponse(id, "source-" + id, MqttSourceType.CHIRPSTACK_LORA,
                 "tcp://broker:1883", "application/#", null, null, enabled, 1, null, null, status);
     }
 }

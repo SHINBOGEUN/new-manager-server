@@ -162,8 +162,8 @@ class DeviceMqttRegistrationIntegrationTest {
         mvc.perform(put("/api/manager/devices/{id}", deviceId).header("Authorization", authorization)
                         .contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(update)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.mqttIdentities", hasSize(2)));
-        mvc.perform(get("/api/manager/lora/endpoints/resolve").header("Authorization", authorization)
-                        .param("idType", "DEV_EUI").param("externalId", "24E124710C123457"))
+        mvc.perform(get("/api/manager/mqtt/identities/resolve").header("Authorization", authorization)
+                        .param("identityType", "DEV_EUI").param("externalId", "24E124710C123457"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.deviceId").value(deviceId));
         JsonNode modern = register(fixture, "Modern LoRa", "DEV_EUI", "24E124710C123458", true);
         assertThat(modern.path("mqttIdentities").get(0).path("identityType").asText()).isEqualTo("DEV_EUI");

@@ -1,13 +1,14 @@
 package net.vivans.dcim.module.lora.application;
+import net.vivans.dcim.module.mqtt.application.MqttSourceService;
 
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionSourceSummary;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusRow;
 import net.vivans.dcim.module.lora.api.dto.LoraCollectionStatusSummary;
-import net.vivans.dcim.module.lora.api.dto.LoraMqttSourceResponse;
+import net.vivans.dcim.module.mqtt.api.dto.MqttSourceResponse;
 import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
-import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceStatusType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttSourceStatusType;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.module.lora.infrastructure.influx.LoraCollectionInfluxQuery;
@@ -27,7 +28,7 @@ import java.util.stream.Collectors;
 
 /**
  * LoRa 실제 수집 검증(1차) — Ops Console "LoRa 수집 상태" 탭이 사용하는 조회 전용 서비스.
- * 새 DB 테이블/컬럼 없이 기존 device_mqtt_identity / device_model_mqtt_point / lora_mqtt_source(_status) 와
+ * device_mqtt_identity / device_model_mqtt_point / mqtt_source(_status) 와
  * InfluxDB(protocol=mqtt), 그리고 Sensor Data의 장비별 런타임 상태(메모리, GET /api/internal/lora/runtime-status)
  * 를 조합해서 판정한다. 영구 오류 이력 테이블(lora_ingest_error_log)은 더 이상 존재하지 않는다.
  *
@@ -68,12 +69,13 @@ public class LoraCollectionStatusService {
 
     private final DeviceMqttIdentityRepository mqttIdentityRepository;
     private final DeviceModelMqttPointRepository mqttPointRepository;
-    private final LoraMqttSourceService loraMqttSourceService;
+    private final MqttSourceService loraMqttSourceService;
     private final LoraCollectionInfluxQuery influxQuery;
     private final LoraRuntimeStatusClient runtimeStatusClient;
 
     public LoraCollectionStatusResponse getCollectionStatus() {
-        List<LoraMqttSourceResponse> sources = loraMqttSourceService.getAll();
+        List<MqttSourceResponse> sources = loraMqttSourceService.getAll().stream()
+                .filter(source -> source.sourceType() == net.vivans.dcim.module.mqtt.domain.model.MqttSourceType.CHIRPSTACK_LORA).toList();
         LoraCollectionSourceSummary sourceSummary = buildSourceSummary(sources);
 
         List<DeviceMqttIdentity> endpoints = mqttIdentityRepository.findAllOrderByIdAsc().stream()
@@ -164,11 +166,11 @@ public class LoraCollectionStatusService {
         return new LoraCollectionStatusResponse(summary, sourceSummary, rows);
     }
 
-    private static LoraCollectionSourceSummary buildSourceSummary(List<LoraMqttSourceResponse> sources) {
+    private static LoraCollectionSourceSummary buildSourceSummary(List<MqttSourceResponse> sources) {
         int total = sources.size();
-        int enabled = (int) sources.stream().filter(LoraMqttSourceResponse::enabled).count();
+        int enabled = (int) sources.stream().filter(MqttSourceResponse::enabled).count();
         int connected = (int) sources.stream()
-                .filter(source -> source.status() != null && source.status().status() == LoraMqttSourceStatusType.CONNECTED)
+                .filter(source -> source.status() != null && source.status().status() == MqttSourceStatusType.CONNECTED)
                 .count();
         return LoraCollectionSourceSummary.of(total, enabled, connected);
     }

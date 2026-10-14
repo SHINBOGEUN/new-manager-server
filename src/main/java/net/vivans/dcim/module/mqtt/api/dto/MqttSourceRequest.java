@@ -1,11 +1,11 @@
-package net.vivans.dcim.module.lora.api.dto;
+package net.vivans.dcim.module.mqtt.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import net.vivans.dcim.module.lora.domain.model.LoraMqttSourceType;
+import net.vivans.dcim.module.mqtt.domain.model.MqttSourceType;
 
-public record LoraMqttSourceRequest(
+public record MqttSourceRequest(
         @NotBlank String name,
-        LoraMqttSourceType sourceType,
+        MqttSourceType sourceType,
         @NotBlank String brokerUrl,
         @NotBlank String topic,
         String clientId,

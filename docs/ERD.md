@@ -932,3 +932,36 @@ erDiagram
 | `updated_dt` | `updatedDt` | `BaseEntity` |
 
 Spring Boot 기본 naming strategy 기준으로 camelCase → snake_case 변환됩니다.
+
+## 공통 MQTT 수집 소스
+
+`module.mqtt`의 `MqttSource`와 `MqttSourceStatus`가 브로커·토픽 및 연결 상태를 관리합니다.
+
+```mermaid
+erDiagram
+    mqtt_source ||--o| mqtt_source_status : "source_id = id"
+    mqtt_source {
+        int id PK
+        string name UK
+        string source_type "CHIRPSTACK_LORA 또는 AGENT"
+        string broker_url
+        string topic
+        string client_id
+        string credential_key
+        boolean enabled
+        long config_version
+    }
+    mqtt_source_status {
+        int source_id PK,FK
+        string status
+        timestamp last_connected_at
+        timestamp last_message_at
+        long message_count
+        long error_count
+        long reconnect_count
+    }
+```
+
+소스는 장비와 1:1로 연결하지 않습니다. 메시지 내부 식별값은 `device_mqtt_identity`,
+추출 포인트는 `device_model_mqtt_point`에서 별도로 관리합니다. 기존 DB는
+`sql/migration/20261014_unify_mqtt_sources.sql`로 ID와 상태를 유지하며 전환합니다.
