@@ -7,7 +7,7 @@
 - 대상: `/dcim_new/backend/docker-compose.yml`의 `manager-server`, `collector-service`, `sensor-data-service`만.
 - 실행 중인 Compose 프로젝트 `dcim-new-backend`만 허용한다. 같은 디렉터리에 남아 있는 다른 `backend` 프로젝트는 건드리지 않는다.
 - 기존 서버의 JAR 바인드 마운트와 이미지·환경변수·볼륨·네트워크를 유지한다.
-- CD는 각 `pom.xml`에서 서비스 버전을 읽고 `new-manager-server-{version}.jar`, `new-collector-server-{version}.jar`, `new-sensor-data-server-{version}.jar` 파일명으로 서버에 배포한다. 예를 들어 버전이 `1.0.1-new`면 파일명에도 `1.0.1-new`가 표시된다.
+- CD는 각 `pom.xml`에서 서비스 버전을 읽고 `new-manager-server-{version}.jar`, `new-collector-server-{version}.jar`, `new-sensor-data-server-{version}.jar` 파일명으로 서버에 배포한다. 예를 들어 버전이 `1.0.2-new`면 파일명에도 `1.0.2-new`가 표시된다.
 - 서버 Compose의 JAR 마운트 경로도 배포 시 새 파일명으로 자동 갱신한다. 이전에 마운트된 JAR와 Compose 파일은 `.cd-releases/<run-id>-<attempt>/previous`에 보관한다. 배포가 정상 확인되면 이전의 최상위 JAR 파일은 제거한다.
 - MQTT 브로커, MariaDB, InfluxDB, 레거시 서비스는 재생성하지 않는다.
 - DB 스키마 변경은 이 워크플로에 포함하지 않는다. 필요한 DDL은 별도 승인·적용 후 배포한다.
