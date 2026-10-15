@@ -1391,9 +1391,9 @@
     <button type="button" data-tab="models">장비 모델<small>OID · 측정 항목</small></button>
     <button type="button" data-tab="codes" data-role-gate="admin-user">공통코드<small>그룹 · 코드 값</small></button>
     <div class="group">LoRa / Dragino</div>
-    <button type="button" data-tab="lora-collection-status">LoRa 수집 상태<small>장비별 실제 수집 검증</small></button>
+    <button type="button" data-tab="lora-collection-status">MQTT 수집 상태<small>LoRa · GPU 저장 확인</small></button>
     <button type="button" data-tab="lora-mqtt-sources">MQTT 수집 소스<small>Broker · Topic · 연결 상태</small></button>
-    <button type="button" data-tab="lora-endpoints">LoRa 엔드포인트<small>devEUI · deviceName 매칭</small></button>
+    <button type="button" data-tab="lora-endpoints">MQTT 장비 식별자<small>MAC · UUID · devEUI 연결</small></button>
     <button type="button" data-tab="lora-model-mapping">MQTT 모델 포인트<small>LoRa · GPU · 공통 MQTT</small></button>
     <div class="group">시스템</div>
     <button type="button" data-tab="users" data-role-gate="admin">사용자 관리<small>계정 · 역할 분류</small></button>
@@ -2703,8 +2703,8 @@
 
     <!-- LORA COLLECTION STATUS -->
     <section class="panel" id="tab-lora-collection-status">
-      <h1 class="page-title">LoRa 수집 상태</h1>
-      <p class="page-desc">등록된 LoRa 장비별로 실제 수집이 정상 동작하는지 한 화면에서 확인합니다. MQTT 연결, devEUI/deviceName 매칭, 모델 필드 매핑, InfluxDB 저장까지의 결과를 종합해 상태를 판정합니다. 이 화면은 조회 전용이며 여기서 설정을 바꿀 수 없습니다(설정은 MQTT 수집 소스/LoRa 엔드포인트/LoRa 모델 매핑 화면을 이용하세요).</p>
+      <h1 class="page-title">MQTT 수집 상태</h1>
+      <p class="page-desc">LoRa · GPU 등 MQTT 장비의 식별자, 모델 매핑과 최근 7일 InfluxDB 저장 이력을 확인합니다. 저장 확인은 현재 정상 발행을 보장하지 않으므로 마지막 저장 시간을 함께 확인하세요. 소스 연결은 메시지 형식별 집계이며 특정 장비의 브로커 연결을 보장하지 않습니다. 상세 런타임 오류는 현재 LoRa만 지원하며 GPU 오류는 Sensor Data 로그에서 확인하세요.</p>
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
           <div>
@@ -2788,12 +2788,12 @@
 
     <!-- LORA ENDPOINTS -->
     <section class="panel" id="tab-lora-endpoints">
-      <h1 class="page-title">LoRa 엔드포인트</h1>
-      <p class="page-desc">Dragino/ChirpStack 등 LoRa 게이트웨이가 보내는 payload의 devEUI 또는 deviceName을 DCIM 장비와 매칭합니다. Broker와 구독 Topic은 「MQTT 수집 소스」에서 관리합니다.</p>
+      <h1 class="page-title">MQTT 장비 식별자</h1>
+      <p class="page-desc">GPU의 MAC · UUID · SERIAL과 LoRa의 devEUI · deviceName을 장비에 연결합니다. 같은 장비의 MAC만 변경할 때는 기존 식별자를 수정하면 device_id와 이전 시계열이 유지됩니다. 완전히 새 장비는 장비 등록에서 추가하세요. Broker와 Topic은 MQTT 수집 소스에서 관리합니다.</p>
       <div class="card workspace-table-card">
         <div class="row" style="justify-content:space-between;margin-bottom:10px">
           <div>
-            <h2 style="margin:0">엔드포인트 목록</h2>
+            <h2 style="margin:0">장비 식별자 목록</h2>
             <div class="muted" style="font-size:12px;margin-top:4px" id="loraEpSummary">불러오는 중입니다.</div>
           </div>
           <button type="button" class="ghost" id="loraEpReload">새로고침</button>
@@ -2806,11 +2806,11 @@
         </div>
       </div>
       <div class="card">
-        <h2 id="loraEpFormTitle">엔드포인트 등록</h2>
+        <h2 id="loraEpFormTitle">식별자 등록</h2>
         <div class="fields">
           <label class="field">장비
             <select id="loraEpDevice"></select>
-            <div class="muted" style="font-size:12px;margin-top:4px;display:none" id="loraEpDeviceHint">등록된 LoRa 센서 모델 또는 장비가 없습니다. 장비 모델에서 모델 타입을 &#39;LoRa 센서&#39;로 등록하세요.</div>
+            <div class="muted" style="font-size:12px;margin-top:4px;display:none" id="loraEpDeviceHint">MQTT 지원 모델의 장비를 먼저 등록하세요.</div>
           </label>
           <label class="field">식별자 유형
             <select id="loraEpIdType">
@@ -2819,7 +2819,7 @@
             </select>
           </label>
           <label class="field">외부 식별자
-            <input id="loraEpExternalId" class="mono" placeholder="예: 24E124710C123456 또는 dragino-lht65n-01" />
+            <input id="loraEpExternalId" class="mono" placeholder="예: 9c:6b:00:9b:49:71 또는 devEUI" />
           </label>
           <label class="field">사용
             <select id="loraEpEnabled">
@@ -10384,6 +10384,7 @@
       NEVER_SAVED: "아직 저장 이력 없음",
       INFLUX_WRITE_FAILED: "InfluxDB 저장 실패",
       FIELD_ERROR: "일부 필드 변환 실패",
+      INFLUX_UNAVAILABLE: "저장 조회 불가",
       SAVED: "저장 확인",
     };
 
@@ -10408,7 +10409,7 @@
 
     async function loadLoraCollectionStatus() {
       $("loraCsSummary").textContent = "불러오는 중입니다.";
-      const status = await api("/api/manager/lora/collection-status");
+      const status = await api("/api/manager/mqtt/collection-status");
       state.loraCsRows = status?.rows || [];
 
       const summary = status?.summary || {};
@@ -10438,7 +10439,7 @@
           <td class="mono">${row.lastPointCount ?? '<span class="muted">—</span>'}</td>
           <td class="mono">${row.recentErrorReason ? esc(row.recentErrorReason) + '<div class="muted">' + mqttSourceDate(row.recentErrorAt) + '</div>' : '<span class="muted">—</span>'}</td>
         </tr>`;
-      }).join("") || '<tr><td colspan="6"><div class="empty">등록된 LoRa 엔드포인트가 없습니다. &#39;LoRa 엔드포인트&#39; 화면에서 장비를 등록하세요.</div></td></tr>';
+      }).join("") || '<tr><td colspan="6"><div class="empty">등록된 MQTT 장비 식별자가 없습니다. MQTT 장비 식별자 화면에서 연결하세요.</div></td></tr>';
     }
 
     const LORA_SOURCE_STATUS_LABEL = {
@@ -10547,13 +10548,16 @@
     }
 
     async function loadLoraEndpoints() {
-      const list = await api("/api/manager/lora/endpoints") || [];
+      if (!state.models?.length) await loadModels();
+      if (!state.devices?.length) await loadDevices();
+      const list = await api("/api/manager/mqtt/identities") || [];
       state.loraEndpoints = list;
       $("loraEpSummary").textContent = `${list.length}건`;
       const keep = $("loraEpDevice").value;
-      const loraDevices = (state.devices || []).filter((d) => d.deviceTypeCode === "LORA_SENSOR");
+      const loraDevices = (state.devices || []).filter((d) => d.deviceTypeCode === "LORA_SENSOR" || list.some((identity) => identity.deviceId === d.id) || (state.models || []).some((m) => m.id === d.modelId && (m.protocols || []).some((p) => protocolCode(p) === "mqtt")));
       fillSelect($("loraEpDevice"), loraDevices, (d) => `<option value="${d.id}">${esc(d.name)} (#${d.id})</option>`, "장비 선택");
       if (keep) $("loraEpDevice").value = keep;
+      syncMqttIdentityType();
       const epHint = $("loraEpDeviceHint");
       if (epHint) epHint.style.display = loraDevices.length ? "none" : "";
       renderLoraEndpoints();
@@ -10573,7 +10577,7 @@
             <button type="button" class="ghost" data-edit-ep="${ep.id}">수정</button>
             <button type="button" class="danger" data-delete-ep="${ep.id}">삭제</button>
           </div></td>
-        </tr>`).join("") || `<tr><td colspan="7"><div class="empty">등록된 엔드포인트가 없습니다</div></td></tr>`;
+        </tr>`).join("") || `<tr><td colspan="7"><div class="empty">등록된 MQTT 장비 식별자가 없습니다</div></td></tr>`;
 
       $("loraEpBody").querySelectorAll("[data-edit-ep]").forEach((button) => {
         button.onclick = () => {
@@ -10581,10 +10585,13 @@
           if (!ep) return;
           state.editingLoraEndpointId = ep.id;
           $("loraEpDevice").value = String(ep.deviceId);
+          syncMqttIdentityType();
+          $("loraEpDevice").disabled = true;
           $("loraEpIdType").value = ep.idType;
+          $("loraEpIdType").disabled = true;
           $("loraEpExternalId").value = ep.externalId || "";
           $("loraEpEnabled").value = String(ep.enabled);
-          $("loraEpFormTitle").textContent = `엔드포인트 수정 #${ep.id}`;
+          $("loraEpFormTitle").textContent = `식별자 수정 #${ep.id} · 장비 ID 유지`;
           $("loraEpSave").textContent = "저장";
           $("loraEpCancelEdit").style.display = "";
         };
@@ -10592,10 +10599,10 @@
       $("loraEpBody").querySelectorAll("[data-delete-ep]").forEach((button) => {
         button.onclick = async () => {
           const ep = list.find((x) => x.id === Number(button.dataset.deleteEp));
-          if (!ep || !confirm(`「${ep.deviceName}」의 LoRa 엔드포인트를 삭제할까요?`)) return;
+          if (!ep || !confirm(`「${ep.deviceName}」의 MQTT 식별자 연결을 삭제할까요?\n장비와 기존 시계열은 유지되지만 이 식별자로 수신한 데이터는 저장되지 않습니다.`)) return;
           try {
-            await api(`/api/manager/lora/endpoints/${ep.id}`, { method: "DELETE" });
-            toast("엔드포인트를 삭제했습니다");
+            await api(`/api/manager/mqtt/identities/${ep.id}`, { method: "DELETE" });
+            toast("식별자 연결을 삭제했습니다");
             await loadLoraEndpoints();
           } catch (e) { toast(e.message, true); }
         };
@@ -10604,14 +10611,27 @@
 
     function clearLoraEndpointForm() {
       state.editingLoraEndpointId = null;
+      $("loraEpDevice").disabled = false;
+      $("loraEpIdType").disabled = false;
       $("loraEpDevice").value = "";
-      $("loraEpIdType").value = "DEV_EUI";
+      syncMqttIdentityType();
       $("loraEpExternalId").value = "";
       $("loraEpEnabled").value = "true";
-      $("loraEpFormTitle").textContent = "엔드포인트 등록";
+      $("loraEpFormTitle").textContent = "식별자 등록";
       $("loraEpSave").textContent = "등록";
       $("loraEpCancelEdit").style.display = "none";
     }
+
+    function syncMqttIdentityType() {
+      const device = (state.devices || []).find((d) => d.id === Number($("loraEpDevice").value));
+      const model = (state.models || []).find((m) => m.id === device?.modelId);
+      const lora = (device?.deviceTypeCode || model?.deviceTypeCode) === "LORA_SENSOR";
+      const types = lora ? ["DEV_EUI", "DEVICE_NAME"] : ["MAC", "UUID", "SERIAL"];
+      const keep = $("loraEpIdType").value;
+      $("loraEpIdType").innerHTML = types.map((type) => `<option value="${type}">${type}</option>`).join("");
+      if (types.includes(keep)) $("loraEpIdType").value = keep;
+    }
+    $("loraEpDevice").onchange = syncMqttIdentityType;
 
     async function loadLoraModels() {
       if (!state.models || !state.models.length) await loadModels();
@@ -10810,11 +10830,11 @@
       };
       try {
         if (state.editingLoraEndpointId) {
-          await api(`/api/manager/lora/endpoints/${state.editingLoraEndpointId}`, { method: "PUT", body: JSON.stringify(body) });
-          toast("엔드포인트를 저장했습니다");
+          await api(`/api/manager/mqtt/identities/${state.editingLoraEndpointId}`, { method: "PUT", body: JSON.stringify(body) });
+          toast("식별자를 저장했습니다");
         } else {
-          await api("/api/manager/lora/endpoints", { method: "POST", body: JSON.stringify(body) });
-          toast("엔드포인트를 등록했습니다");
+          await api("/api/manager/mqtt/identities", { method: "POST", body: JSON.stringify(body) });
+          toast("식별자를 등록했습니다");
         }
         clearLoraEndpointForm();
         await loadLoraEndpoints();
