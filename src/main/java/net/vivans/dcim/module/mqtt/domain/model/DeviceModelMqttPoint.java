@@ -168,6 +168,14 @@ public class DeviceModelMqttPoint extends BaseEntity {
         this.componentUuidField = uuidField == null || uuidField.isBlank() ? null : uuidField.trim();
     }
 
+    public void configureDevice() {
+        this.componentScope = MqttPointScope.DEVICE;
+        this.componentType = null;
+        this.componentPath = "";
+        this.componentIndexField = null;
+        this.componentUuidField = null;
+    }
+
     public String getCategory() {
         return categoryCode == null ? null : categoryCode.getName();
     }
