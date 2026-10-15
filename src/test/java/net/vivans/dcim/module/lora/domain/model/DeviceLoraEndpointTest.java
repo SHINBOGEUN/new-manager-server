@@ -1,5 +1,8 @@
 package net.vivans.dcim.module.lora.domain.model;
 
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
+
 import net.vivans.dcim.module.device.domain.model.Device;
 import org.junit.jupiter.api.Test;
 
@@ -13,11 +16,11 @@ class DeviceLoraEndpointTest {
     void create_setsFieldsAndNormalizesExternalId() {
         Device device = mock(Device.class);
 
-        DeviceLoraEndpoint endpoint = DeviceLoraEndpoint.create(
-                device, LoraIdType.DEV_EUI, "  24:E1:24:71:0C:12:34:56  ", true);
+        DeviceMqttIdentity endpoint = DeviceMqttIdentity.create(
+                device, MqttIdentityType.DEV_EUI, "  24:E1:24:71:0C:12:34:56  ", true);
 
         assertThat(endpoint.getDevice()).isEqualTo(device);
-        assertThat(endpoint.getIdType()).isEqualTo(LoraIdType.DEV_EUI);
+        assertThat(endpoint.getIdentityType()).isEqualTo(MqttIdentityType.DEV_EUI);
         assertThat(endpoint.getExternalId()).isEqualTo("24:E1:24:71:0C:12:34:56");
         assertThat(endpoint.getNormalizedExternalId()).isEqualTo("24E124710C123456");
         assertThat(endpoint.isEnabled()).isTrue();
@@ -25,7 +28,7 @@ class DeviceLoraEndpointTest {
 
     @Test
     void create_throwsWhenDeviceIsNull() {
-        assertThatThrownBy(() -> DeviceLoraEndpoint.create(null, LoraIdType.DEV_EUI, "abc", true))
+        assertThatThrownBy(() -> DeviceMqttIdentity.create(null, MqttIdentityType.DEV_EUI, "abc", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("device is required");
     }
@@ -33,7 +36,7 @@ class DeviceLoraEndpointTest {
     @Test
     void create_throwsWhenIdTypeIsNull() {
         Device device = mock(Device.class);
-        assertThatThrownBy(() -> DeviceLoraEndpoint.create(device, null, "abc", true))
+        assertThatThrownBy(() -> DeviceMqttIdentity.create(device, null, "abc", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("idType is required");
     }
@@ -41,7 +44,7 @@ class DeviceLoraEndpointTest {
     @Test
     void create_throwsWhenExternalIdIsBlank() {
         Device device = mock(Device.class);
-        assertThatThrownBy(() -> DeviceLoraEndpoint.create(device, LoraIdType.DEVICE_NAME, "   ", true))
+        assertThatThrownBy(() -> DeviceMqttIdentity.create(device, MqttIdentityType.DEVICE_NAME, "   ", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("externalId is required");
     }
@@ -49,7 +52,7 @@ class DeviceLoraEndpointTest {
     @Test
     void update_changesExternalIdAndRecomputesNormalizedValue() {
         Device device = mock(Device.class);
-        DeviceLoraEndpoint endpoint = DeviceLoraEndpoint.create(device, LoraIdType.DEVICE_NAME, "old-name", true);
+        DeviceMqttIdentity endpoint = DeviceMqttIdentity.create(device, MqttIdentityType.DEVICE_NAME, "old-name", true);
 
         endpoint.update("dragino_new-name", false);
 

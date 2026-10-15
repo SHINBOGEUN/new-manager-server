@@ -15,7 +15,12 @@ public record AnalysisMeasurementsRequest(
 ) {
     public record Target(
             @NotNull Integer deviceId,
-            @NotEmpty List<@NotBlank String> pointNames
+            @NotEmpty List<@NotBlank String> pointNames,
+            List<@NotBlank String> componentIndices,
+            List<@Valid ComponentSelection> componentSelections
     ) {
+        public Target(Integer deviceId, List<String> pointNames) { this(deviceId, pointNames, null, null); }
+        public Target(Integer deviceId, List<String> pointNames, List<String> componentIndices) { this(deviceId, pointNames, componentIndices, null); }
     }
+    public record ComponentSelection(@NotBlank String pointName, @NotBlank String componentType, @NotBlank String componentIndex) {}
 }

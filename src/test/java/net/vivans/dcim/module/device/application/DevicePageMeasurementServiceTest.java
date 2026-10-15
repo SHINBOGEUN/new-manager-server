@@ -18,8 +18,9 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.model.MqttPointScope;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class DevicePageMeasurementServiceTest {
     @Mock DeviceModelModbusPointRepository modbusPointRepository;
     @Mock DeviceModbusReadingRepository modbusReadingRepository;
     @Mock DeviceModbusBitFieldRepository bitFieldRepository;
-    @Mock DeviceModelLoraPointRepository loraPointRepository;
+    @Mock DeviceModelMqttPointRepository mqttPointRepository;
     @Mock PointQuery pointQuery;
     @InjectMocks DevicePageMeasurementService service;
 
@@ -90,7 +91,8 @@ class DevicePageMeasurementServiceTest {
         when(bit.getPointName()).thenReturn("VALVE_1");
         when(bitFieldRepository.findAllByReading_IdInOrderByIdAsc(List.of(7))).thenReturn(List.of(bit));
 
-        DeviceModelLoraPoint loraPoint = mock(DeviceModelLoraPoint.class);
+        DeviceModelMqttPoint loraPoint = mock(DeviceModelMqttPoint.class);
+        when(loraPoint.getComponentScope()).thenReturn(MqttPointScope.DEVICE);
         DeviceModel loraModel = loraDevice.getDeviceModel();
         when(loraPoint.getDeviceModel()).thenReturn(loraModel);
         when(loraPoint.getPointName()).thenReturn("HUM");
@@ -98,7 +100,9 @@ class DevicePageMeasurementServiceTest {
         CommonCode humidityType = mock(CommonCode.class);
         when(humidityType.getCode()).thenReturn("HUMIDITY");
         when(loraPoint.getDataPointType()).thenReturn(humidityType);
-        when(loraPointRepository.findAllEnabledByDeviceModelIdIn(anyCollection())).thenReturn(List.of(loraPoint));
+        DeviceModelMqttPoint gpuPoint = mock(DeviceModelMqttPoint.class);
+        when(gpuPoint.getComponentScope()).thenReturn(MqttPointScope.COMPONENT);
+        when(mqttPointRepository.findAllEnabledByDeviceModelIdIn(anyCollection())).thenReturn(List.of(loraPoint, gpuPoint));
 
         Instant time = Instant.parse("2026-10-03T01:00:00Z");
         when(pointQuery.findLast(eq(List.of(1)), eq(List.of("TEMP")), eq(Duration.ofHours(168)), eq("snmp")))

@@ -14,7 +14,8 @@ import net.vivans.dcim.module.device.infrastructure.persistence.DeviceModbusBitF
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDeviceRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.MqttPointScope;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,7 @@ public class DevicePageMeasurementService {
     private final DeviceModelModbusPointRepository modbusPointRepository;
     private final DeviceModbusReadingRepository modbusReadingRepository;
     private final DeviceModbusBitFieldRepository bitFieldRepository;
-    private final DeviceModelLoraPointRepository loraPointRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
     private final PointQuery pointQuery;
 
     @Transactional
@@ -156,7 +157,10 @@ public class DevicePageMeasurementService {
                     }
                 });
 
-        loraPointRepository.findAllEnabledByDeviceModelIdIn(modelIds).forEach(point -> {
+        // 구성요소별 최신값/차트 응답은 별도 GPU 조회 단계에서 구현한다.
+        mqttPointRepository.findAllEnabledByDeviceModelIdIn(modelIds).stream()
+                .filter(point -> point.getComponentScope() == MqttPointScope.DEVICE)
+                .forEach(point -> {
             int modelId = point.getDeviceModel().getId();
             for (Device device : devicesByModel.getOrDefault(modelId, List.of())) {
                 add(result, device.getId(), new PointDefinition(point.getPointName(), "mqtt", point.getUnit(),

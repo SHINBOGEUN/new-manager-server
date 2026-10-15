@@ -13,8 +13,8 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelSnmpPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +30,7 @@ public class DeviceModelMeasurementPointQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceModelSnmpPointRepository snmpPointRepository;
     private final DeviceModelModbusPointRepository modbusPointRepository;
-    private final DeviceModelLoraPointRepository loraPointRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
 
     public DeviceModelMeasurementPointOptionsResponse getMeasurementPoints(Integer modelId) {
         DeviceModel model = deviceModelRepository.findById(modelId)
@@ -62,8 +62,8 @@ public class DeviceModelMeasurementPointQueryService {
             }
         }
 
-        List<DeviceModelLoraPoint> loraPoints =
-                loraPointRepository.findAllByDeviceModelIdOrderByIdAsc(modelId);
+        List<DeviceModelMqttPoint> loraPoints =
+                mqttPointRepository.findAllByDeviceModelIdOrderByIdAsc(modelId);
         Integer mqttProtocolTypeId = loraPoints.isEmpty() ? null : findProtocolTypeId("mqtt");
         loraPoints.forEach(point ->
                 points.add(new PointOption(
@@ -79,7 +79,9 @@ public class DeviceModelMeasurementPointQueryService {
                         point.getCategoryCode() == null ? null : point.getCategoryCode().getCode(),
                         point.getCategoryCode() == null ? null : point.getCategoryCode().getName(),
                         null,
-                        point.isEnabled()
+                        point.isEnabled(),
+                        point.getComponentScope().name(),
+                        point.getComponentType()
                 )));
 
         points.sort(Comparator.comparing(PointOption::protocol)

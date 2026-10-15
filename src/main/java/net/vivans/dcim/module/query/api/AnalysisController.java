@@ -24,6 +24,12 @@ public class AnalysisController {
 
     private final AnalysisQueryService queryService;
 
+    @PostMapping("/components")
+    public ResponseEntity<ApiResponse<List<AnalysisQueryService.ComponentOption>>> getComponents(
+            @Valid @RequestBody AnalysisMeasurementsRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(queryService.getComponents(request)));
+    }
+
     @PostMapping("/measurements")
     @Operation(
             summary = "선택 장비·포인트의 과거 측정값 조회",

@@ -8,9 +8,9 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointRequest;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
-import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -32,26 +32,26 @@ import static org.mockito.Mockito.when;
  */
 class DeviceLoraEndpointServiceTest {
 
-    private final DeviceLoraEndpointRepository deviceLoraEndpointRepository = mock(DeviceLoraEndpointRepository.class);
+    private final DeviceMqttIdentityRepository mqttIdentityRepository = mock(DeviceMqttIdentityRepository.class);
     private final DeviceRepository deviceRepository = mock(DeviceRepository.class);
     private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
     private final DeviceLoraEndpointService service = new DeviceLoraEndpointService(
-            deviceLoraEndpointRepository, deviceRepository, new LoraModelTypeValidator(), eventPublisher);
+            mqttIdentityRepository, deviceRepository, new LoraModelTypeValidator(), eventPublisher);
 
     @Test
     void create_withLoraSensorDevice_succeeds() {
         Device device = device("LORA_SENSOR", "LoRa 센서", "센서-01");
         when(deviceRepository.findById(1)).thenReturn(Optional.of(device));
-        when(deviceLoraEndpointRepository.existsByDeviceIdAndIdType(1, LoraIdType.DEV_EUI)).thenReturn(false);
-        when(deviceLoraEndpointRepository.findByIdTypeAndNormalizedExternalIdAndEnabledTrue(any(), any()))
+        when(mqttIdentityRepository.existsByDeviceIdAndIdentityType(1, MqttIdentityType.DEV_EUI)).thenReturn(false);
+        when(mqttIdentityRepository.findByIdentityTypeAndNormalizedExternalIdAndEnabledTrue(any(), any()))
                 .thenReturn(Optional.empty());
-        when(deviceLoraEndpointRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mqttIdentityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         DeviceLoraEndpointResponse response = service.create(
-                new DeviceLoraEndpointRequest(1, LoraIdType.DEV_EUI, "24E124710C123456", true));
+                new DeviceLoraEndpointRequest(1, MqttIdentityType.DEV_EUI, "24E124710C123456", true));
 
         assertThat(response.externalId()).isEqualTo("24E124710C123456");
-        assertThat(response.idType()).isEqualTo(LoraIdType.DEV_EUI);
+        assertThat(response.idType()).isEqualTo(MqttIdentityType.DEV_EUI);
     }
 
     @Test
@@ -60,39 +60,39 @@ class DeviceLoraEndpointServiceTest {
         when(deviceRepository.findById(1)).thenReturn(Optional.of(device));
 
         assertThatThrownBy(() -> service.create(
-                new DeviceLoraEndpointRequest(1, LoraIdType.DEV_EUI, "24E124710C123456", true)))
+                new DeviceLoraEndpointRequest(1, MqttIdentityType.DEV_EUI, "24E124710C123456", true)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("LoRa 설정은 MODEL_TYPE=LORA_SENSOR 모델에만 등록할 수 있습니다.");
 
-        verify(deviceLoraEndpointRepository, never()).save(any());
+        verify(mqttIdentityRepository, never()).save(any());
     }
 
     @Test
     void update_withNonLoraSensorDevice_throwsAndDoesNotSave() {
         Device device = device("COOLER", "쿨러", "쿨러-01");
-        DeviceLoraEndpoint endpoint = DeviceLoraEndpoint.create(device, LoraIdType.DEV_EUI, "24E124710C123456", true);
-        when(deviceLoraEndpointRepository.findById(5)).thenReturn(Optional.of(endpoint));
+        DeviceMqttIdentity endpoint = DeviceMqttIdentity.create(device, MqttIdentityType.DEV_EUI, "24E124710C123456", true);
+        when(mqttIdentityRepository.findById(5)).thenReturn(Optional.of(endpoint));
 
         assertThatThrownBy(() -> service.update(5,
-                new DeviceLoraEndpointRequest(1, LoraIdType.DEV_EUI, "24E124710C999999", true)))
+                new DeviceLoraEndpointRequest(1, MqttIdentityType.DEV_EUI, "24E124710C999999", true)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("LoRa 설정은 MODEL_TYPE=LORA_SENSOR 모델에만 등록할 수 있습니다.");
 
-        verify(deviceLoraEndpointRepository, never()).save(any());
+        verify(mqttIdentityRepository, never()).save(any());
     }
 
     @Test
     void update_withLoraSensorDevice_succeeds() {
         Device device = device("LORA_SENSOR", "LoRa 센서", "센서-02");
-        DeviceLoraEndpoint endpoint = DeviceLoraEndpoint.create(device, LoraIdType.DEV_EUI, "24E124710C123456", true);
-        when(deviceLoraEndpointRepository.findById(5)).thenReturn(Optional.of(endpoint));
-        when(deviceLoraEndpointRepository.existsByDeviceIdAndIdTypeAndIdNot(anyInt(), any(), anyInt())).thenReturn(false);
-        when(deviceLoraEndpointRepository.findByIdTypeAndNormalizedExternalIdAndEnabledTrue(any(), any()))
+        DeviceMqttIdentity endpoint = DeviceMqttIdentity.create(device, MqttIdentityType.DEV_EUI, "24E124710C123456", true);
+        when(mqttIdentityRepository.findById(5)).thenReturn(Optional.of(endpoint));
+        when(mqttIdentityRepository.existsByDeviceIdAndIdentityTypeAndIdNot(anyInt(), any(), anyInt())).thenReturn(false);
+        when(mqttIdentityRepository.findByIdentityTypeAndNormalizedExternalIdAndEnabledTrue(any(), any()))
                 .thenReturn(Optional.empty());
-        when(deviceLoraEndpointRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(mqttIdentityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         DeviceLoraEndpointResponse response = service.update(5,
-                new DeviceLoraEndpointRequest(1, LoraIdType.DEV_EUI, "24E124710C999999", true));
+                new DeviceLoraEndpointRequest(1, MqttIdentityType.DEV_EUI, "24E124710C999999", true));
 
         assertThat(response.externalId()).isEqualTo("24E124710C999999");
     }
@@ -101,7 +101,9 @@ class DeviceLoraEndpointServiceTest {
         CodeGroup modelTypeGroup = CodeGroup.createCodeGroup("MODEL_TYPE", "모델 유형");
         CommonCode deviceType = CommonCode.createCommonCode(modelTypeGroup, modelTypeCode, modelTypeName, 1);
         DeviceModel model = DeviceModel.create(modelTypeCode + "-model", "Dragino", deviceType, null);
-        return Device.create(model, unassignedLocation(), deviceName, null);
+        Device device = Device.create(model, unassignedLocation(), deviceName, null);
+        org.springframework.test.util.ReflectionTestUtils.setField(device, "id", 1);
+        return device;
     }
 
     private LocationNode unassignedLocation() {

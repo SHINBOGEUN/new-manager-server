@@ -6,6 +6,11 @@ public record SeriesPoint(
         Integer deviceId,
         String pointName,
         Double value,
-        Instant time
+        Instant time,
+        String componentType,
+        String componentIndex
 ) {
+    public SeriesPoint(Integer deviceId, String pointName, Double value, Instant time) {
+        this(deviceId, pointName, value, time, null, null);
+    }
 }

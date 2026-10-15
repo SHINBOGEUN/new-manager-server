@@ -241,7 +241,7 @@ public class InfluxPointQuery implements PointQuery {
                 Instant time = record.getTime();
                 if (deviceId != null && pointName != null && min != null && max != null
                         && avg != null && time != null) {
-                    points.add(new StatsSeriesPoint(deviceId, pointName, min, max, avg, time));
+                    points.add(new StatsSeriesPoint(deviceId, pointName, min, max, avg, time, asText(record.getValueByKey("component_type")), asText(record.getValueByKey("component_index"))));
                 }
             }
         }
@@ -308,7 +308,7 @@ public class InfluxPointQuery implements PointQuery {
         if (deviceId == null || pointName == null || value == null || time == null) {
             return null;
         }
-        return new SeriesPoint(deviceId, pointName, value, time);
+        return new SeriesPoint(deviceId, pointName, value, time, asText(record.getValueByKey("component_type")), asText(record.getValueByKey("component_index")));
     }
 
     private static Integer parseDeviceId(Object raw) {

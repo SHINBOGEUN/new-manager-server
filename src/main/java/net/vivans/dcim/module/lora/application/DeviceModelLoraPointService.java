@@ -8,8 +8,9 @@ import net.vivans.dcim.module.common.application.UnitCodeResolver;
 import net.vivans.dcim.module.common.application.CategoryCodeResolver;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointRequest;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceModelLoraPoint;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
+import net.vivans.dcim.module.mqtt.domain.model.MqttPointScope;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +23,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class DeviceModelLoraPointService {
 
-    private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final LoraDataPointTypeResolver dataPointTypeResolver;
     private final LoraValueMapValidator loraValueMapValidator;
@@ -33,8 +34,10 @@ public class DeviceModelLoraPointService {
 
     public List<DeviceModelLoraPointResponse> getAllByModelId(Integer deviceModelId) {
         List<DeviceModelLoraPointResponse> responses = new ArrayList<>();
-        for (DeviceModelLoraPoint point : deviceModelLoraPointRepository.findAllByDeviceModelIdOrderByIdAsc(deviceModelId)) {
-            responses.add(DeviceModelLoraPointResponse.from(point));
+        for (DeviceModelMqttPoint point : mqttPointRepository.findAllByDeviceModelIdOrderByIdAsc(deviceModelId)) {
+            if (LoraMqttSelection.isLora(point)) {
+                responses.add(DeviceModelLoraPointResponse.from(point));
+            }
         }
         return responses;
     }
@@ -46,7 +49,7 @@ public class DeviceModelLoraPointService {
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceModelId, request.payloadField(), request.pointName(), null);
         boolean enabled = request.enabled() == null || request.enabled();
-        DeviceModelLoraPoint saved = deviceModelLoraPointRepository.save(DeviceModelLoraPoint.create(
+        DeviceModelMqttPoint saved = mqttPointRepository.save(DeviceModelMqttPoint.create(
                 deviceModel, request.payloadField(), request.pointName(),
                 dataPointTypeResolver.resolve(request.dataPointTypeId()), unitCodeResolver.resolve(request.unitCodeId()), request.scale(),
                 request.valueMap(), enabled, categoryCodeResolver.resolve(request.categoryCodeId())));
@@ -56,7 +59,7 @@ public class DeviceModelLoraPointService {
 
     @Transactional
     public DeviceModelLoraPointResponse update(Integer deviceModelId, Integer id, DeviceModelLoraPointRequest request) {
-        DeviceModelLoraPoint point = findPoint(deviceModelId, id);
+        DeviceModelMqttPoint point = findPoint(deviceModelId, id);
         loraModelTypeValidator.requireLoraSensor(point.getDeviceModel());
         loraValueMapValidator.validate(request.valueMap());
         validateUnique(deviceModelId, request.payloadField(), request.pointName(), id);
@@ -64,29 +67,30 @@ public class DeviceModelLoraPointService {
         point.update(request.payloadField(), request.pointName(), dataPointTypeResolver.resolve(request.dataPointTypeId()),
                 unitCodeResolver.resolve(request.unitCodeId()), request.scale(), request.valueMap(), enabled,
                 categoryCodeResolver.resolve(request.categoryCodeId()));
-        DeviceModelLoraPoint saved = deviceModelLoraPointRepository.save(point);
+        DeviceModelMqttPoint saved = mqttPointRepository.save(point);
         eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-updated:" + id));
         return DeviceModelLoraPointResponse.from(saved);
     }
 
     @Transactional
     public Integer delete(Integer deviceModelId, Integer id) {
-        DeviceModelLoraPoint point = findPoint(deviceModelId, id);
-        deviceModelLoraPointRepository.delete(point);
+        DeviceModelMqttPoint point = findPoint(deviceModelId, id);
+        loraModelTypeValidator.requireLoraSensor(point.getDeviceModel());
+        mqttPointRepository.delete(point);
         eventPublisher.publishEvent(new LoraConfigChangedEvent("model-mapping-deleted:" + id));
         return id;
     }
 
     private void validateUnique(Integer deviceModelId, String payloadField, String pointName, Integer excludeId) {
         boolean fieldConflict = excludeId == null
-                ? deviceModelLoraPointRepository.existsByDeviceModelIdAndPayloadField(deviceModelId, payloadField)
-                : deviceModelLoraPointRepository.existsByDeviceModelIdAndPayloadFieldAndIdNot(deviceModelId, payloadField, excludeId);
+                ? mqttPointRepository.existsByDeviceModelIdAndPayloadField(deviceModelId, payloadField)
+                : mqttPointRepository.existsByDeviceModelIdAndPayloadFieldAndIdNot(deviceModelId, payloadField, excludeId);
         if (fieldConflict) {
             throw new IllegalArgumentException("payloadField already mapped for this model");
         }
         boolean nameConflict = excludeId == null
-                ? deviceModelLoraPointRepository.existsByDeviceModelIdAndPointName(deviceModelId, pointName)
-                : deviceModelLoraPointRepository.existsByDeviceModelIdAndPointNameAndIdNot(deviceModelId, pointName, excludeId);
+                ? mqttPointRepository.existsByDeviceModelIdAndPointName(deviceModelId, pointName)
+                : mqttPointRepository.existsByDeviceModelIdAndPointNameAndIdNot(deviceModelId, pointName, excludeId);
         if (nameConflict) {
             throw new IllegalArgumentException("pointName already used for this model");
         }
@@ -97,11 +101,14 @@ public class DeviceModelLoraPointService {
                 .orElseThrow(() -> new EntityNotFoundException("DeviceModel not found: " + deviceModelId));
     }
 
-    private DeviceModelLoraPoint findPoint(Integer deviceModelId, Integer id) {
-        DeviceModelLoraPoint point = deviceModelLoraPointRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("DeviceModelLoraPoint not found: " + id));
+    private DeviceModelMqttPoint findPoint(Integer deviceModelId, Integer id) {
+        DeviceModelMqttPoint point = mqttPointRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("DeviceModelMqttPoint not found: " + id));
+        if (point.getComponentScope() != MqttPointScope.DEVICE) {
+            throw new EntityNotFoundException("LoRa point not found: " + id);
+        }
         if (!point.getDeviceModel().getId().equals(deviceModelId)) {
-            throw new EntityNotFoundException("DeviceModelLoraPoint not found: " + id);
+            throw new EntityNotFoundException("DeviceModelMqttPoint not found: " + id);
         }
         return point;
     }

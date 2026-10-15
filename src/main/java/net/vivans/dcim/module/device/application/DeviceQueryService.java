@@ -23,6 +23,7 @@ import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.location.domain.repository.LocationNodeRepository;
 import net.vivans.dcim.shared.api.PageResponse;
 import net.vivans.dcim.shared.exception.ConflictException;
+import net.vivans.dcim.module.mqtt.application.DeviceMqttIdentityService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -57,6 +58,7 @@ public class DeviceQueryService {
     private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceAssetService deviceAssetService;
     private final CollectionScriptSyncService collectionScriptSyncService;
+    private final DeviceMqttIdentityService mqttIdentityService;
 
     public PageResponse<DeviceResponse> getDevices(
             Integer modelId,
@@ -80,8 +82,10 @@ public class DeviceQueryService {
 
         Page<Device> devices = deviceRepository.findAll(modelId, locationNodeCodes, name, enabled, pageCode, deviceGroupId, pageable);
         Map<Integer, List<DeviceGroupSummaryResponse>> groupsByDeviceId = deviceGroupsByDeviceId(devices.getContent());
+        var identitiesByDeviceId = mqttIdentityService.getByDeviceIds(devices.getContent().stream().map(Device::getId).toList());
         return PageResponse.from(devices, device -> DeviceResponse.from(device,
-                groupsByDeviceId.getOrDefault(device.getId(), List.of())));
+                groupsByDeviceId.getOrDefault(device.getId(), List.of()),
+                identitiesByDeviceId.getOrDefault(device.getId(), List.of())));
     }
 
     private Map<Integer, List<DeviceGroupSummaryResponse>> deviceGroupsByDeviceId(List<Device> devices) {
@@ -152,7 +156,13 @@ public class DeviceQueryService {
     }
 
     public DeviceResponse getDevice(Integer id) {
-        return DeviceResponse.from(findDevice(id));
+        return response(findDevice(id));
+    }
+
+    private DeviceResponse response(Device device) {
+        var groups = device.getDeviceGroups().stream().sorted(java.util.Comparator.comparing(DeviceGroup::getName))
+                .map(DeviceGroupSummaryResponse::from).toList();
+        return DeviceResponse.from(device, groups, mqttIdentityService.getByDeviceId(device.getId()));
     }
 
     @Transactional
@@ -179,10 +189,11 @@ public class DeviceQueryService {
         );
         Device saved = deviceRepository.save(device);
         deviceAssetService.updateAsset(saved, request.assetCode(), request.serialNumber(), request.assetStatusId(), request.assetColor());
+        mqttIdentityService.replace(saved, request.mqttIdentities());
         if (autoAssignCollection) {
             collectionScriptSyncService.assignDeviceAndRegenerate(saved);
         }
-        return DeviceResponse.from(saved);
+        return response(saved);
     }
 
     @Transactional
@@ -211,7 +222,8 @@ public class DeviceQueryService {
         );
         Device saved = deviceRepository.save(device);
         deviceAssetService.updateAsset(saved, request.assetCode(), request.serialNumber(), request.assetStatusId(), request.assetColor());
-        DeviceResponse response = DeviceResponse.from(saved);
+        mqttIdentityService.replace(saved, request.mqttIdentities());
+        DeviceResponse response = response(saved);
         deviceAssetService.recordAssetChange(device, previousAsset);
         deviceAssetService.removeRackPlacementIfLocationChanged(id, locationNode.getCode());
         if (modelChanged) {
@@ -230,6 +242,7 @@ public class DeviceQueryService {
         Integer modelId = device.getDeviceModel().getId();
         collectionScriptSyncService.removeDeviceAndRegenerate(id, modelId);
         deleteEndpoints(id);
+        mqttIdentityService.deleteByDeviceId(id);
         deviceAssetService.deleteAssetData(id);
         deviceRepository.flush();
         int deleted = deviceRepository.deleteDirectlyById(id);

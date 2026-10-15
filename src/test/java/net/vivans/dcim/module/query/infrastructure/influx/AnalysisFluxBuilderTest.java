@@ -20,7 +20,7 @@ class AnalysisFluxBuilderTest {
         assertThat(flux).contains("range(start: time(v: \"2026-09-30T15:00:00Z\"), stop: time(v: \"2026-10-07T15:00:00Z\"))");
         assertThat(flux).contains("r[\"device_id\"] == \"17\"");
         assertThat(flux).contains("r[\"point_name\"] == \"AMP\"");
-        assertThat(flux).contains("keep(columns: [\"device_id\", \"point_name\", \"_value\", \"_time\"])");
+        assertThat(flux).contains("keep(columns: [\"device_id\", \"point_name\", \"component_type\", \"component_index\", \"_value\", \"_time\"])");
         assertThat(flux).doesNotContain("aggregateWindow");
     }
 
@@ -32,6 +32,7 @@ class AnalysisFluxBuilderTest {
         assertThat(flux).contains("aggregateWindow(every: 30m, fn: min, createEmpty: false)");
         assertThat(flux).contains("aggregateWindow(every: 30m, fn: max, createEmpty: false)");
         assertThat(flux).contains("aggregateWindow(every: 30m, fn: mean, createEmpty: false)");
-        assertThat(flux).contains("pivot(rowKey: [\"_time\", \"device_id\", \"point_name\"]");
+        assertThat(flux).contains("pivot(rowKey: [\"_time\", \"device_id\", \"point_name\", \"component_type\", \"component_index\"]");
+        assertThat(flux).doesNotContain("component_uuid");
     }
 }

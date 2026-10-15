@@ -3,6 +3,10 @@ package net.vivans.dcim.module.device.api.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import net.vivans.dcim.module.mqtt.api.dto.DeviceMqttIdentityRequest;
+import java.util.List;
 
 public record DeviceCreateRequest(
         @Schema(description = "장비 모델 ID", example = "1")
@@ -36,6 +40,9 @@ public record DeviceCreateRequest(
         Integer assetStatusId,
 
         @Schema(description = "자산 표시 색상(hex, 선택)", example = "#2563eb")
-        String assetColor
+        String assetColor,
+
+        @Schema(description = "현재 MQTT 식별값 목록. 생략하면 유지, 빈 목록이면 연결 제거")
+        @Valid @Size(max = 5) List<@NotNull DeviceMqttIdentityRequest> mqttIdentities
 ) {
 }

@@ -190,7 +190,9 @@ public class DevicePageOptionsQueryService {
                     point.requiresInstance(),
                     point.collectionEnabled(),
                     "MODEL_POINT",
-                    setting.getSortOrder()
+                    setting.getSortOrder(),
+                    point.componentScope(),
+                    point.componentType()
             ));
         }
     }

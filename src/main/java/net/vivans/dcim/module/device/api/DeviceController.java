@@ -82,7 +82,7 @@ public class DeviceController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
-    @Operation(summary = "장비 수정 API", description = "요청 body는 등록과 동일하며 전체 교체입니다.")
+    @Operation(summary = "장비 수정 API", description = "요청 body는 등록과 동일합니다. mqttIdentities는 생략하면 유지하고 빈 목록이면 연결을 제거합니다.")
     public ResponseEntity<ApiResponse<DeviceResponse>> updateDevice(
             @Parameter(description = "장비 ID") @PathVariable Integer id,
             @Valid @RequestBody DeviceCreateRequest request) {

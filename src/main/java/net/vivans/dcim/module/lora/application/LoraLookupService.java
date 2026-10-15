@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.lora.api.dto.DeviceLoraEndpointResponse;
 import net.vivans.dcim.module.lora.api.dto.DeviceModelLoraPointResponse;
 import net.vivans.dcim.module.lora.api.dto.LoraDeviceLookupResponse;
-import net.vivans.dcim.module.lora.domain.model.DeviceLoraEndpoint;
-import net.vivans.dcim.module.lora.domain.model.LoraExternalIdNormalizer;
-import net.vivans.dcim.module.lora.domain.model.LoraIdType;
-import net.vivans.dcim.module.lora.domain.repository.DeviceLoraEndpointRepository;
-import net.vivans.dcim.module.lora.domain.repository.DeviceModelLoraPointRepository;
+import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
+import net.vivans.dcim.module.mqtt.domain.model.MqttExternalIdNormalizer;
+import net.vivans.dcim.module.mqtt.domain.model.MqttIdentityType;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,13 +25,16 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class LoraLookupService {
 
-    private final DeviceLoraEndpointRepository deviceLoraEndpointRepository;
-    private final DeviceModelLoraPointRepository deviceModelLoraPointRepository;
+    private final DeviceMqttIdentityRepository mqttIdentityRepository;
+    private final DeviceModelMqttPointRepository mqttPointRepository;
 
-    public Optional<LoraDeviceLookupResponse> resolve(LoraIdType idType, String externalId) {
-        String normalized = LoraExternalIdNormalizer.normalize(externalId);
-        return deviceLoraEndpointRepository
-                .findByIdTypeAndNormalizedExternalIdAndEnabledTrue(idType, normalized)
+    public Optional<LoraDeviceLookupResponse> resolve(MqttIdentityType idType, String externalId) {
+        if (idType == null || !idType.isLora()) {
+            throw new IllegalArgumentException("LoRa idType must be DEV_EUI or DEVICE_NAME");
+        }
+        String normalized = MqttExternalIdNormalizer.normalize(idType, externalId);
+        return mqttIdentityRepository
+                .findByIdentityTypeAndNormalizedExternalIdAndEnabledTrue(idType, normalized)
                 .map(endpoint -> new LoraDeviceLookupResponse(
                         endpoint.getDevice().getId(),
                         endpoint.getDevice().getName(),
@@ -43,8 +46,8 @@ public class LoraLookupService {
 
     public List<DeviceLoraEndpointResponse> getAllEnabledEndpoints() {
         List<DeviceLoraEndpointResponse> responses = new ArrayList<>();
-        for (DeviceLoraEndpoint endpoint : deviceLoraEndpointRepository.findAllOrderByIdAsc()) {
-            if (endpoint.isEnabled()) {
+        for (DeviceMqttIdentity endpoint : mqttIdentityRepository.findAllOrderByIdAsc()) {
+            if (endpoint.isEnabled() && LoraMqttSelection.isLora(endpoint)) {
                 responses.add(DeviceLoraEndpointResponse.from(endpoint));
             }
         }
@@ -53,7 +56,9 @@ public class LoraLookupService {
 
     public List<DeviceModelLoraPointResponse> getAllEnabledModelMappings() {
         List<DeviceModelLoraPointResponse> responses = new ArrayList<>();
-        deviceModelLoraPointRepository.findAllEnabled().forEach(point -> responses.add(DeviceModelLoraPointResponse.from(point)));
+        mqttPointRepository.findAllEnabled().stream()
+                .filter(LoraMqttSelection::isLora)
+                .forEach(point -> responses.add(DeviceModelLoraPointResponse.from(point)));
         return responses;
     }
 
