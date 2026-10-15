@@ -405,9 +405,8 @@
     #analysisMain .analysis-chart-head small { display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:400; }
     #analysisMain .analysis-canvas-wrap { height:260px;position:relative; }
     body.analysis-page-active #reloadBtn,body.analysis-page-active #editBtn,body.analysis-page-active #controlsBtn,body.analysis-page-active #logBtn,body.analysis-page-active #dashboardControls { display:none; }
-    body.analysis-page-active .page-switcher { display:none; }
     body.embedded-analysis .page-switcher { display:none; }
-    body.analysis-page-active main { display:none; }
+    body.analysis-page-active main:not(#analysisMain) { display:none; }
     @media(max-width:1050px) { #analysisMain .analysis-toolbar { grid-template-columns:1fr 1fr; } #analysisMain .analysis-layout { grid-template-columns:300px minmax(0,1fr); } }
     @media(max-width:760px) { #analysisMain { padding:14px 10px; } #analysisMain .analysis-heading { align-items:flex-start;flex-direction:column; } #analysisMain .analysis-toolbar,#analysisMain .analysis-layout { grid-template-columns:1fr; } #analysisMain .analysis-selection { position:static;max-height:none; } #analysisMain .analysis-chart-grid { grid-template-columns:1fr; } #analysisMain .analysis-dates input { flex:1;width:1px; } }
     body.embedded .dashboard-brand, body.embedded .dashboard-context,
@@ -658,7 +657,7 @@
       return json.data;
     }
 
-    const analysisState = { options: null, selectedDevices: new Set(), selectedPoints: new Map(), charts: [], response: null, mode: "device", viewMode: "trend" };
+    const analysisState = { options: null, selectedDevices: new Set(), selectedPoints: new Map(), charts: [], response: null, mode: "device", viewMode: fixedAnalysisPage ? "trend" : "widgets" };
     const analysisPalette = ["#35bdf4", "#47d58c", "#ffbd54", "#ff7484", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
     function isAnalysisPage() { return String($("pageCode").value).toUpperCase() === "ANALYSIS"; }
     function destroyAnalysisCharts() { analysisState.charts.forEach(chart => chart.destroy()); analysisState.charts = []; }
@@ -772,9 +771,7 @@
     async function loadDashboardPages() {
       const pages = await api("/api/manager/widgets/pages");
       const sortedPages = [...(pages || [])]
-        .filter((page) => !embeddedInConsole || (fixedAnalysisPage
-          ? String(page.code).toUpperCase() === "ANALYSIS"
-          : String(page.code).toUpperCase() !== "ANALYSIS"))
+        .filter((page) => !fixedAnalysisPage || String(page.code).toUpperCase() === "ANALYSIS")
         .sort((left, right) =>
         (left.sortOrder ?? 0) - (right.sortOrder ?? 0)
         || String(left.name || left.code).localeCompare(String(right.name || right.code), "ko")
@@ -2128,6 +2125,8 @@
     });
     $("pageCode").addEventListener("change", () => {
       if (state.editMode) setEditMode(false);
+      // 페이지 드롭다운은 항상 위젯 보드로 전환한다. 측정 추이는 별도 버튼/분석 메뉴에서 연다.
+      analysisState.viewMode = "widgets";
       const pageCode = $("pageCode").value;
       localStorage.setItem("widgetDashPageCode", pageCode);
       activateSelectedPage().catch((e) => log("페이지 전환: " + e.message));
