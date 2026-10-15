@@ -24,8 +24,9 @@ final class AnalysisFluxBuilder {
                   |> filter(fn: (r) => r["_field"] == "value")
                   |> filter(fn: (r) => %s)
                   |> filter(fn: (r) => %s)
-                  |> group(columns: ["device_id", "point_name"])
-                  |> keep(columns: ["device_id", "point_name", "_value", "_time"])
+                  |> map(fn: (r) => ({r with component_type: if exists r.component_type then r.component_type else "", component_index: if exists r.component_index then r.component_index else ""}))
+                  |> group(columns: ["device_id", "point_name", "component_type", "component_index"])
+                  |> keep(columns: ["device_id", "point_name", "component_type", "component_index", "_value", "_time"])
                 """.formatted(
                 LastFluxBuilder.quote(bucket),
                 LastFluxBuilder.quote(start.toString()),
@@ -52,7 +53,8 @@ final class AnalysisFluxBuilder {
                   |> filter(fn: (r) => r["_field"] == "value")
                   |> filter(fn: (r) => %s)
                   |> filter(fn: (r) => %s)
-                  |> group(columns: ["device_id", "point_name"])
+                  |> map(fn: (r) => ({r with component_type: if exists r.component_type then r.component_type else "", component_index: if exists r.component_index then r.component_index else ""}))
+                  |> group(columns: ["device_id", "point_name", "component_type", "component_index"])
                 """.formatted(
                 LastFluxBuilder.quote(bucket),
                 LastFluxBuilder.quote(start.toString()),
@@ -70,8 +72,8 @@ final class AnalysisFluxBuilder {
                 means = data |> aggregateWindow(every: %s, fn: mean, createEmpty: false)
                   |> map(fn: (r) => ({r with statistic: "mean"}))
                 union(tables: [mins, maxs, means])
-                  |> pivot(rowKey: ["_time", "device_id", "point_name"], columnKey: ["statistic"], valueColumn: "_value")
-                  |> keep(columns: ["device_id", "point_name", "_time", "min", "max", "mean"])
+                  |> pivot(rowKey: ["_time", "device_id", "point_name", "component_type", "component_index"], columnKey: ["statistic"], valueColumn: "_value")
+                  |> keep(columns: ["device_id", "point_name", "component_type", "component_index", "_time", "min", "max", "mean"])
                 """.formatted(filtered, window, window, window);
     }
 

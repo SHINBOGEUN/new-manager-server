@@ -391,6 +391,11 @@
     #analysisMain .analysis-selected-device { border-top:1px solid var(--line); }
     #analysisMain .analysis-selected-device summary { padding:10px 5px;font-size:11px;font-weight:700;cursor:pointer; }
     #analysisMain .analysis-selected-device summary small { float:right;color:var(--muted);font-weight:400; }
+    #analysisMain .analysis-tree-branch > .analysis-tree-branch { margin-left:14px; }
+    #analysisMain .analysis-tree-branch > .analysis-point-option { margin-left:14px; }
+    #analysisMain .analysis-tree-branch summary { padding-top:8px;padding-bottom:8px; }
+    #analysisMain button.analysis-gpu-refresh { display:inline-flex;align-items:center;gap:4px;margin:6px 0 8px 14px;padding:4px 7px;min-height:0;border:1px solid var(--line);border-radius:5px;background:transparent;color:var(--muted);font-size:10px;font-weight:400;box-shadow:none; }
+    #analysisMain button.analysis-gpu-refresh:hover { background:rgba(53,189,244,.07);color:var(--accent); }
     #analysisMain .analysis-point-tools { display:flex;justify-content:flex-end;padding:0 4px 5px; }
     #analysisMain .analysis-point-tools button { padding:4px 7px;font-size:10px;background:transparent; }
     #analysisMain .analysis-point-option span { flex:1;font-size:11px; }
@@ -661,9 +666,18 @@
     const analysisPalette = ["#35bdf4", "#47d58c", "#ffbd54", "#ff7484", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
     function isAnalysisPage() { return String($("pageCode").value).toUpperCase() === "ANALYSIS"; }
     function destroyAnalysisCharts() { analysisState.charts.forEach(chart => chart.destroy()); analysisState.charts = []; }
-    function analysisPoints(device) {
+    analysisState.scopes = new Map();
+    analysisState.components = new Map();
+    analysisState.indices = new Map();
+    function analysisScope(device) {
+      return analysisState.scopes.get(device.deviceId) || ((device.points || []).some(p => p.componentScope !== "COMPONENT") ? "DEVICE" : "COMPONENT");
+    }
+    function analysisPoints(device, all = false) {
       const unique = new Map();
-      (device.points || []).forEach(point => { if (!unique.has(point.pointName)) unique.set(point.pointName, point); });
+      (device.points || []).forEach(point => {
+        if (!all && (point.componentScope || "DEVICE") !== analysisScope(device)) return;
+        if (!unique.has(point.pointName)) unique.set(point.pointName, point);
+      });
       return [...unique.values()].sort((a,b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.pointName).localeCompare(String(b.pointName), "ko"));
     }
     function renderAnalysisDeviceList() {
@@ -682,26 +696,91 @@
         label.append(input, name, model); root.append(label);
       });
     }
+    analysisState.componentPoints = new Map();
+    analysisState.loadingComponents = new Set();
+    analysisState.treeOpen = new Map();
+    function analysisTreeTargets() {
+      return [...analysisState.selectedDevices].map(deviceId => {
+        const componentSelections = [];
+        for (const [index, names] of (analysisState.componentPoints.get(deviceId) || new Map())) {
+          for (const pointName of names) componentSelections.push({pointName, componentType:"GPU", componentIndex:index});
+        }
+        const pointNames = [...new Set([...(analysisState.selectedPoints.get(deviceId) || []), ...componentSelections.map(c => c.pointName)])];
+        return {deviceId, pointNames, componentSelections};
+      }).filter(target => target.pointNames.length);
+    }
+    async function loadAnalysisTreeComponents(id) {
+      const device = analysisState.options?.devices.find(d => d.deviceId === id);
+      const pointNames = analysisPoints(device, true).filter(p => p.componentScope === "COMPONENT").map(p => p.pointName);
+      if (!pointNames.length || analysisState.loadingComponents.has(id)) return;
+      const startDate = $("analysisStartDate").value, endDate = $("analysisEndDate").value;
+      if (!startDate || !endDate || endDate < startDate) return;
+      analysisState.loadingComponents.add(id);
+      renderAnalysisSelectedDevices();
+      try {
+        const rows = await api("/api/manager/analysis/components", {method:"POST",body:JSON.stringify({startDate,endDate,targets:[{deviceId:id,pointNames}]})});
+        if (startDate !== $("analysisStartDate").value || endDate !== $("analysisEndDate").value || !analysisState.selectedDevices.has(id)) return;
+        const indices = [...new Set(rows.filter(r => r.deviceId === id && r.componentType === "GPU").map(r => r.componentIndex))];
+        analysisState.components.set(id, indices);
+        const previous = analysisState.componentPoints.get(id) || new Map();
+        analysisState.componentPoints.set(id, new Map(indices.map(index => [index, previous.get(index) || new Set(pointNames)])));
+      } catch(error) {
+        $("analysisErrorNotice").textContent = error.message;
+        $("analysisErrorNotice").classList.add("visible");
+      } finally {
+        analysisState.loadingComponents.delete(id);
+        renderAnalysisSelectedDevices(); updateAnalysisCounts();
+      }
+    }
     function renderAnalysisSelectedDevices() {
       const root = $("analysisSelectedDevices"); root.replaceChildren();
       const selected = (analysisState.options?.devices || []).filter(d => analysisState.selectedDevices.has(d.deviceId));
-      if (!selected.length) { const empty = document.createElement("div"); empty.className = "analysis-foot"; empty.textContent = "장비를 선택하면 포인트 목록이 표시됩니다."; root.append(empty); return; }
+      if (!selected.length) { const empty=document.createElement("div"); empty.className="analysis-foot"; empty.textContent="장비를 선택하면 측정항목이 표시됩니다."; root.append(empty); return; }
+      function branch(title, key) {
+        const details=document.createElement("details"); details.className="analysis-tree-branch";
+        details.open=analysisState.treeOpen.get(key) !== false;
+        const summary=document.createElement("summary"); summary.textContent=title; details.append(summary);
+        details.addEventListener("toggle",()=>analysisState.treeOpen.set(key,details.open));
+        return details;
+      }
+      function pointRow(device, point, index) {
+        const label=document.createElement("label"); label.className="analysis-point-option";
+        const input=document.createElement("input"); input.type="checkbox";
+        input.dataset.analysisPointDevice=device.deviceId; input.dataset.analysisPointName=point.pointName;
+        const chosen=index === undefined ? analysisState.selectedPoints.get(device.deviceId) : analysisState.componentPoints.get(device.deviceId)?.get(index);
+        if (index !== undefined) input.dataset.analysisGpuIndex=index;
+        input.checked=chosen?.has(point.pointName) || false;
+        const name=document.createElement("span"); name.textContent=point.pointName;
+        const meta=document.createElement("small"); meta.className="analysis-point-meta"; meta.textContent=[point.unit,point.categoryName || point.categoryCode].filter(Boolean).join(" · ");
+        label.append(input,name,meta); return label;
+      }
       selected.forEach(device => {
-        const details = document.createElement("details"); details.className = "analysis-selected-device"; details.open = true;
-        const summary = document.createElement("summary"); summary.textContent = device.deviceName;
-        const points = analysisPoints(device), chosen = analysisState.selectedPoints.get(device.deviceId) || new Set();
-        const count = document.createElement("small"); count.textContent = `${chosen.size} / ${points.length} 포인트`; summary.append(count); details.append(summary);
-        const tools = document.createElement("div"); tools.className = "analysis-point-tools"; const toggle = document.createElement("button"); toggle.type = "button"; toggle.textContent = chosen.size === points.length ? "전체 선택 해제" : "전체 선택"; toggle.dataset.analysisToggle = device.deviceId; tools.append(toggle); details.append(tools);
-        points.forEach(point => {
-          const label = document.createElement("label"); label.className = "analysis-point-option";
-          const input = document.createElement("input"); input.type = "checkbox"; input.checked = chosen.has(point.pointName); input.dataset.analysisPointDevice = device.deviceId; input.dataset.analysisPointName = point.pointName;
-          const name = document.createElement("span"); name.textContent = point.pointName; const meta = document.createElement("small"); meta.className = "analysis-point-meta"; meta.textContent = [point.unit, point.categoryName || point.categoryCode].filter(Boolean).join(" · ");
-          label.append(input, name, meta); details.append(label);
-        }); root.append(details);
+        const details=branch(device.deviceName, "device:"+device.deviceId); details.classList.add("analysis-selected-device");
+        const points=analysisPoints(device,true), devicePoints=points.filter(p=>p.componentScope !== "COMPONENT"), gpuPoints=points.filter(p=>p.componentScope === "COMPONENT");
+        const tools=document.createElement("div"); tools.className="analysis-point-tools";
+        const toggle=document.createElement("button"); toggle.type="button"; toggle.dataset.analysisToggle=device.deviceId; toggle.textContent="전체 선택 / 해제"; tools.append(toggle); details.append(tools);
+        devicePoints.forEach(point=>details.append(pointRow(device,point)));
+        if (gpuPoints.length) {
+          const gpu=branch("GPU별 측정항목", "gpu:"+device.deviceId); details.append(gpu);
+          if (analysisState.loadingComponents.has(device.deviceId)) { const note=document.createElement("div"); note.className="analysis-foot"; note.textContent="선택 기간의 GPU 목록을 불러오는 중…"; gpu.append(note); }
+          const indices=analysisState.components.get(device.deviceId);
+          (indices || []).forEach(index=>{
+            const item=branch("GPU "+index,"index:"+device.deviceId+":"+index);
+            gpuPoints.forEach(point=>item.append(pointRow(device,point,index))); gpu.append(item);
+          });
+          if (!indices?.length && !analysisState.loadingComponents.has(device.deviceId)) {
+            const note=document.createElement("div"); note.className="analysis-foot"; note.textContent=indices ? "선택 기간에 저장된 GPU 데이터가 없습니다." : "GPU 목록을 불러와 주세요."; gpu.append(note);
+          }
+          const reload=document.createElement("button"); reload.type="button"; reload.className="analysis-gpu-refresh"; reload.dataset.analysisLoadIndices=device.deviceId; reload.textContent="↻ GPU 목록 갱신"; reload.title="선택 기간에 데이터가 있는 GPU 목록을 다시 확인합니다"; reload.disabled=analysisState.loadingComponents.has(device.deviceId); gpu.append(reload);
+        }
+        root.append(details);
       });
     }
     function updateAnalysisCounts() {
-      let pointCount = 0; for (const id of analysisState.selectedDevices) pointCount += (analysisState.selectedPoints.get(id) || new Set()).size;
+      let pointCount = 0; for (const id of analysisState.selectedDevices) {
+        pointCount += (analysisState.selectedPoints.get(id) || new Set()).size;
+        for (const points of (analysisState.componentPoints.get(id) || new Map()).values()) pointCount += points.size;
+      }
       const deviceCount = analysisState.selectedDevices.size, tooMany = deviceCount > 100 || pointCount > 500;
       $("analysisSelectedDeviceCount").textContent = `${deviceCount}대 선택`;
       $("analysisSelectedPointCount").textContent = `${pointCount}개 선택`;
@@ -718,7 +797,7 @@
       $("analysisRangeHint").textContent = `자동 집계 · ${days}일 조회 → ${label}${aggregate === "raw" ? "" : " 평균·최솟값·최댓값"}`; return {days, aggregate};
     }
     function flattenAnalysis(response) {
-      const result = []; (response || []).forEach(device => (device.sensors || []).forEach(sensor => (sensor.units || []).forEach(unit => (unit.fields || []).forEach(field => result.push({deviceId:device.deviceId,deviceName:device.displayName,category:sensor.category || "기타",unit:unit.unit || "",pointName:field.pointName,raws:field.raws || [],stats:field.stats || [],aggregate:device.aggregate}))))); return result;
+      const result = []; (response || []).forEach(device => (device.sensors || []).forEach(sensor => (sensor.units || []).forEach(unit => (unit.fields || []).forEach(field => result.push({deviceId:device.deviceId,deviceName:device.displayName,category:sensor.category || "기타",unit:unit.unit || "",pointName:field.displayName || field.pointName,raws:field.raws || [],stats:field.stats || [],aggregate:device.aggregate}))))); return result;
     }
     function renderAnalysisResults(response) {
       destroyAnalysisCharts(); analysisState.response = response;
@@ -749,7 +828,7 @@
     }
     async function runAnalysisQuery() {
       const range = analysisRange(); if (!range) return;
-      const targets = [...analysisState.selectedDevices].map(deviceId => ({deviceId,pointNames:[...(analysisState.selectedPoints.get(deviceId) || new Set())]})).filter(target => target.pointNames.length);
+      const targets = analysisTreeTargets();
       if (!targets.length) return;
       $("analysisErrorNotice").classList.remove("visible"); $("analysisErrorNotice").textContent = ""; $("analysisResultsContent").classList.add("loading"); $("analysisRunButton").disabled = true;
       try { const response = await api("/api/manager/analysis/measurements", {method:"POST",body:JSON.stringify({startDate:$("analysisStartDate").value,endDate:$("analysisEndDate").value,targets})}); renderAnalysisResults(response); }
@@ -2142,24 +2221,50 @@
     });
     $("analysisDeviceSearch").addEventListener("input", renderAnalysisDeviceList);
     $("analysisDeviceList").addEventListener("change", event => {
-      const input = event.target.closest("input[data-analysis-device-id]"); if (!input) return;
-      const id = Number(input.dataset.analysisDeviceId);
-      if (input.checked) { analysisState.selectedDevices.add(id); const device = analysisState.options.devices.find(item => item.deviceId === id); analysisState.selectedPoints.set(id, new Set(analysisPoints(device).map(point => point.pointName))); }
-      else { analysisState.selectedDevices.delete(id); analysisState.selectedPoints.delete(id); }
+      const input=event.target.closest("input[data-analysis-device-id]"); if (!input) return;
+      const id=Number(input.dataset.analysisDeviceId);
+      if (input.checked) {
+        analysisState.selectedDevices.add(id);
+        const device=analysisState.options.devices.find(d=>d.deviceId === id);
+        analysisState.selectedPoints.set(id,new Set(analysisPoints(device,true).filter(p=>p.componentScope !== "COMPONENT").map(p=>p.pointName)));
+        loadAnalysisTreeComponents(id);
+      } else {
+        analysisState.selectedDevices.delete(id); analysisState.selectedPoints.delete(id);
+        analysisState.componentPoints.delete(id); analysisState.components.delete(id);
+      }
       renderAnalysisSelectedDevices(); updateAnalysisCounts();
     });
     $("analysisSelectedDevices").addEventListener("change", event => {
-      const input = event.target.closest("input[data-analysis-point-device]"); if (!input) return;
-      const id = Number(input.dataset.analysisPointDevice), name = input.dataset.analysisPointName, points = analysisState.selectedPoints.get(id) || new Set();
-      input.checked ? points.add(name) : points.delete(name); analysisState.selectedPoints.set(id, points); renderAnalysisSelectedDevices(); updateAnalysisCounts();
+      const input=event.target.closest("input[data-analysis-point-device]"); if (!input) return;
+      const id=Number(input.dataset.analysisPointDevice), name=input.dataset.analysisPointName, index=input.dataset.analysisGpuIndex;
+      let points;
+      if (index !== undefined) {
+        const map=analysisState.componentPoints.get(id) || new Map();
+        points=map.get(index) || new Set(); map.set(index,points); analysisState.componentPoints.set(id,map);
+      } else { points=analysisState.selectedPoints.get(id) || new Set(); analysisState.selectedPoints.set(id,points); }
+      input.checked ? points.add(name) : points.delete(name);
+      updateAnalysisCounts();
     });
-    $("analysisSelectedDevices").addEventListener("click", event => {
-      const button = event.target.closest("button[data-analysis-toggle]"); if (!button) return;
-      const id = Number(button.dataset.analysisToggle), device = analysisState.options.devices.find(item => item.deviceId === id), names = analysisPoints(device).map(point => point.pointName), selected = analysisState.selectedPoints.get(id) || new Set();
-      analysisState.selectedPoints.set(id, selected.size === names.length ? new Set() : new Set(names)); renderAnalysisSelectedDevices(); updateAnalysisCounts();
+    $("analysisSelectedDevices").addEventListener("click",event=>{
+      const load=event.target.closest("button[data-analysis-load-indices]");
+      if (load) { loadAnalysisTreeComponents(Number(load.dataset.analysisLoadIndices)); return; }
+      const toggle=event.target.closest("button[data-analysis-toggle]"); if (!toggle) return;
+      const id=Number(toggle.dataset.analysisToggle), device=analysisState.options.devices.find(d=>d.deviceId===id);
+      const points=analysisPoints(device,true), devicePoints=points.filter(p=>p.componentScope !== "COMPONENT"), gpuPoints=points.filter(p=>p.componentScope === "COMPONENT");
+      const selected=analysisState.selectedPoints.get(id) || new Set(), map=analysisState.componentPoints.get(id) || new Map();
+      const all=devicePoints.every(p=>selected.has(p.pointName)) && [...map.values()].every(set=>gpuPoints.every(p=>set.has(p.pointName)));
+      analysisState.selectedPoints.set(id,new Set(all ? [] : devicePoints.map(p=>p.pointName)));
+      for (const index of map.keys()) map.set(index,new Set(all ? [] : gpuPoints.map(p=>p.pointName)));
+      analysisState.componentPoints.set(id,map); renderAnalysisSelectedDevices(); updateAnalysisCounts();
     });
-    $("analysisStartDate").addEventListener("change", () => { analysisRange(); updateAnalysisCounts(); });
-    $("analysisEndDate").addEventListener("change", () => { analysisRange(); updateAnalysisCounts(); });
+    function resetAnalysisIndices() {
+      analysisState.components.clear(); analysisState.componentPoints.clear();
+      analysisRange(); renderAnalysisSelectedDevices(); updateAnalysisCounts();
+      for (const id of analysisState.selectedDevices) loadAnalysisTreeComponents(id);
+    }
+    $("analysisStartDate").addEventListener("change", resetAnalysisIndices);
+    $("analysisEndDate").addEventListener("change", resetAnalysisIndices);
+
     $("analysisRunButton").addEventListener("click", () => runAnalysisQuery());
     document.querySelectorAll("[data-analysis-mode]").forEach(button => button.addEventListener("click", () => {
       analysisState.mode = button.dataset.analysisMode;

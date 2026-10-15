@@ -36,7 +36,12 @@ public record DevicePageOptionsResponse(
             Boolean requiresInstance,
             boolean collectionEnabled,
             String origin,
-            int sortOrder
+            int sortOrder,
+            String componentScope,
+            String componentType
     ) {
+        public PointOption(Integer protocolTypeId, String protocol, Integer pointId, Integer sourceModelId, String pointName, String unit, String valueType, Integer dataPointTypeId, String dataPointType, Integer categoryCodeId, String categoryCode, String categoryName, Boolean requiresInstance, boolean collectionEnabled, String origin, int sortOrder) {
+            this(protocolTypeId, protocol, pointId, sourceModelId, pointName, unit, valueType, dataPointTypeId, dataPointType, categoryCodeId, categoryCode, categoryName, requiresInstance, collectionEnabled, origin, sortOrder, "DEVICE", null);
+        }
     }
 }

@@ -23,8 +23,13 @@ public record AnalysisDeviceResponse(
             String pointName,
             String displayName,
             List<RawValue> raws,
-            List<StatsValue> stats
+            List<StatsValue> stats,
+            String componentType,
+            String componentIndex
     ) {
+        public Field(String pointName, String displayName, List<RawValue> raws, List<StatsValue> stats) {
+            this(pointName, displayName, raws, stats, null, null);
+        }
     }
 
     public record RawValue(Instant time, Double value) {

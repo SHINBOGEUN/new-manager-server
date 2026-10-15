@@ -79,7 +79,9 @@ public class DeviceModelMeasurementPointQueryService {
                         point.getCategoryCode() == null ? null : point.getCategoryCode().getCode(),
                         point.getCategoryCode() == null ? null : point.getCategoryCode().getName(),
                         null,
-                        point.isEnabled()
+                        point.isEnabled(),
+                        point.getComponentScope().name(),
+                        point.getComponentType()
                 )));
 
         points.sort(Comparator.comparing(PointOption::protocol)
