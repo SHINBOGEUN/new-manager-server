@@ -18,6 +18,12 @@ public record CommonCodeRequest(
         String name,
 
         @Schema(description = "정렬 순서", example = "1")
-        Integer sortOrder
+        Integer sortOrder,
+
+        @Schema(description = "임계값 포인트 허용 여부 (DATA_POINT_TYPE에서만 사용)", example = "true")
+        Boolean thresholdSupported
 ) {
+    public CommonCodeRequest(Integer groupId, String code, String name, Integer sortOrder) {
+        this(groupId, code, name, sortOrder, null);
+    }
 }

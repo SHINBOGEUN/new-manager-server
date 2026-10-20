@@ -46,6 +46,13 @@ public class DisabledPointQuery implements PointQuery {
     }
 
     @Override
+    public List<SeriesPoint> findLatestRaw(List<Integer> deviceIds, List<String> pointNames,
+                                           Instant end, String protocol) {
+        log.warn("InfluxDB query disabled; returning empty latest raw values");
+        return List.of();
+    }
+
+    @Override
     public List<StatsSeriesPoint> findStatsSeries(
             List<Integer> deviceIds,
             List<String> pointNames,

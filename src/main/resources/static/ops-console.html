@@ -945,6 +945,28 @@
     .register-dialog .field { color:#9fb4ca; }
     .register-dialog input { min-height:43px; color:#edf6ff; border-color:#304761; background:#0a1421; }
     .register-dialog input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
+    .alarm-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(290px,38%); gap:14px; align-items:start; }
+    .alarm-list { display:grid; gap:9px; margin-top:12px; }
+    .alarm-row { padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
+    .alarm-row-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+    .alarm-row p { margin:7px 0 0; font-size:12px; color:var(--muted); line-height:1.5; }
+    .alarm-modal { display:none; position:fixed; inset:0; z-index:260; padding:18px; background:rgba(3,10,20,.78); overflow:auto; place-items:start center; }
+    .alarm-modal.open { display:grid; }
+    .alarm-dialog { width:min(860px,100%); max-height:calc(100vh - 36px); overflow:auto; padding:22px; border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:0 24px 70px rgba(0,0,0,.45); }
+    .alarm-step { margin:16px 0; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); }
+    .alarm-step h3 { margin:0 0 12px; font-size:15px; }
+    .alarm-device-list { max-height:175px; overflow:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 12px; margin-top:8px; }
+    .alarm-device-list label { display:flex; align-items:center; gap:7px; padding:5px; font-size:12px; }
+    .alarm-model-groups { display:grid; gap:8px; max-height:280px; overflow:auto; margin-top:10px; }
+    .alarm-model-group { border:1px solid var(--line); border-radius:9px; background:var(--surface); }
+    .alarm-model-heading { display:flex; align-items:center; gap:9px; padding:10px 12px; }
+    .alarm-model-heading small { margin-left:auto; }
+    .alarm-model-devices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px 10px; padding:8px 12px 12px; border-top:1px solid var(--line); }
+    .alarm-model-devices label { display:flex; align-items:center; gap:7px; padding:5px; font-size:12px; }
+    .alarm-source-row { display:grid; grid-template-columns:minmax(130px,1fr) minmax(200px,2fr); gap:12px; align-items:center; margin:8px 0; }
+    .alarm-condition { margin:10px 0; padding:12px; border:1px solid var(--line); border-radius:10px; }
+    .alarm-condition .fields { margin-top:10px; }
+    @media (max-width:800px) { .alarm-layout,.alarm-device-list,.alarm-source-row,.alarm-model-devices { grid-template-columns:1fr; } .alarm-dialog { padding:14px; } }
     @media (max-width:900px) { .login-experience { grid-template-columns:1fr; min-height:auto; } .login-promo { padding:32px; min-height:280px; } .login-copy h1 { font-size:34px; } .login-features,.login-foot { display:none; } .login-card { width:min(430px,calc(100% - 32px)); margin:24px auto 32px; } }
     @media (max-width:540px) { body:not(.is-authed) .content { padding:0; } .login-experience { min-height:100vh; border:0; border-radius:0; } .login-promo { min-height:220px; padding:26px 22px; } .login-copy h1 { font-size:28px; margin-bottom:10px; } .login-copy p { font-size:13px; } .login-card { margin:18px auto 26px; padding:24px 20px; } }
 
@@ -1379,6 +1401,7 @@
     <button type="button" data-tab="device-groups">장비 그룹<small>IT · Cooling · 운영 분류</small></button>
     <button type="button" data-tab="tasks">수집 작업<small>Task · 주기 그룹</small></button>
     <button type="button" data-tab="collection-status">수집 상태<small>지연 · 데이터 없음</small></button>
+    <button type="button" data-tab="alarms" data-role-gate="admin-user">알람 · 임계값<small>이력 · 경보 기준</small></button>
     <button type="button" data-tab="device-pages" data-role-gate="admin-user">페이지 장비<small>페이지별 표시 대상</small></button>
     <button type="button" data-tab="widgets">화면 위젯<small>표시 · 조회</small></button>
     <div class="group">모니터링 화면</div>
@@ -1791,6 +1814,42 @@
         </table></div>
       </div>
     </section>
+
+    <!-- DEVICES -->
+    <section class="panel" id="tab-alarms">
+      <h1 class="page-title">알람 · 임계값</h1>
+      <p class="page-desc">Manager가 기본 60초 간격으로 최신 저장값을 확인합니다. 장비 한 대의 측정항목 하나마다 임계값 하나를 설정하며, 해당 측정 유형의 사용 여부는 공통코드에서 관리합니다.</p>
+      <div class="alarm-layout">
+        <div class="card">
+          <div class="row" style="justify-content:space-between"><h2 style="margin:0">알람 이력</h2><button type="button" class="ghost" id="alarmReload">새로고침</button></div>
+          <div class="alarm-list" id="alarmList"><div class="muted">조회 중…</div></div>
+          <div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="ghost" id="alarmPrev">이전</button><span class="muted" id="alarmPageInfo">1 / 1</span><button type="button" class="ghost" id="alarmNext">다음</button></div>
+        </div>
+        <div class="card" data-role-gate="admin">
+          <div class="row" style="justify-content:space-between"><h2 style="margin:0">임계값 규칙</h2><button type="button" class="primary" id="alarmRuleOpen">＋ 규칙 등록</button></div>
+          <p class="muted">임계값 지원으로 지정된 측정 유형만 등록할 수 있습니다. 한 장비의 한 측정항목에는 임계값 하나만 허용하며, 수정 시 열린 알람은 종료됩니다.</p>
+          <div class="alarm-list" id="alarmRuleList"><div class="muted">조회 중…</div></div>
+        </div>
+      </div>
+    </section>
+    <div class="alarm-modal" id="alarmRuleModal" aria-hidden="true">
+      <div class="alarm-dialog" role="dialog" aria-modal="true" aria-labelledby="alarmRuleTitle">
+        <div class="row" style="justify-content:space-between"><h2 id="alarmRuleTitle" style="margin:0">임계값 등록</h2><button type="button" class="ghost" id="alarmRuleClose" aria-label="닫기">✕</button></div>
+        <div class="alarm-step"><h3>1. 장비와 측정항목</h3>
+          <p class="muted">장비 한 대의 임계값 지원 측정항목 하나에 기준 하나만 설정할 수 있습니다. 지원 측정 유형은 DATA_POINT_TYPE 공통코드에서 관리합니다.</p>
+          <div class="fields"><label class="field">장비<select id="alarmDevice"><option value="">장비 선택</option></select></label>
+            <label class="field">측정항목<select id="alarmSource"><option value="">장비를 먼저 선택하세요</option></select></label></div>
+        </div>
+        <div class="alarm-step"><h3>2. 임계값</h3>
+          <div class="fields"><label class="field">조건<select id="alarmOperator"><option value="ABOVE">초과 시 알람</option><option value="BELOW">미만 시 알람</option></select></label>
+            <label class="field">기준값<input id="alarmThresholdValue" type="number" step="any" placeholder="경보 기준값" /></label>
+            <label class="field">심각도<select id="alarmSeverity"><option value="WARNING">주의</option><option value="CRITICAL">위험</option></select></label>
+            <label class="row"><input type="checkbox" id="alarmEnabled" checked /> 임계값 활성화</label></div>
+          <p class="muted" id="alarmUnitHint"></p>
+        </div>
+        <div class="row" style="justify-content:flex-end"><button type="button" class="ghost" id="alarmRuleCancel">취소</button><button type="button" class="primary" id="alarmRuleSave">규칙 저장</button></div>
+      </div>
+    </div>
 
     <!-- DEVICES -->
     <section class="panel" id="tab-devices">
@@ -2693,6 +2752,7 @@
                 <input id="ccName" placeholder="표시 이름" />
               </label>
             </div>
+            <label class="row" id="ccThresholdSupportedWrap" hidden><input type="checkbox" id="ccThresholdSupported" /> 임계값 측정항목으로 사용</label>
             <div class="wizard-dialog-actions">
               <button type="button" class="primary" id="ccSave" data-role-gate="admin">등록</button>
               <button type="button" class="ghost" id="ccCancelEdit">취소</button>
@@ -3203,7 +3263,7 @@
     }
 
     const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor"]);
-    const ADMIN_USER_TABS = new Set(["codes", "device-pages"]);
+    const ADMIN_USER_TABS = new Set(["codes", "device-pages", "alarms"]);
 
     function canAccessTab(name) {
       const role = state.role || "";
@@ -3368,6 +3428,7 @@
         loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
         loadCollectionJobHealth().catch((e) => toast(e.message, true));
       }
+      if (name === "alarms" && state.token) loadAlarmPage().catch((e) => toast(e.message, true));
       if (name === "device-pages" && state.token) {
         fillPageDevicePageSelect();
         if (state.pageDeviceLoadedCode === $("pdPage").value) renderPageDeviceCandidates();
@@ -7937,7 +7998,7 @@
             <td></td>
             <td class="mono">${esc(code.code)}</td>
             <td>${esc(code.name)}</td>
-            <td>${code.sortOrder ?? "–"}</td>
+            <td>${code.sortOrder ?? "–"}${code.thresholdSupported ? ' <span class="chip ok">임계값 허용</span>' : ""}</td>
             <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
               <button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>
               <button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>
@@ -8002,6 +8063,8 @@
           $("ccCode").value = code.code || "";
           $("ccName").value = code.name || "";
           $("ccSort").value = code.sortOrder ?? 0;
+          $("ccThresholdSupported").checked = code.thresholdSupported === true;
+          syncThresholdCodeFlag();
           $("ccFormTitle").textContent = `코드 수정 — ${code.group.groupKey}`;
           $("ccSave").textContent = "저장";
           $("ccDialog").showModal();
@@ -8032,6 +8095,8 @@
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
+      $("ccThresholdSupported").checked = false;
+      syncThresholdCodeFlag();
       $("ccFormTitle").textContent = `코드 추가 — ${group.groupKey}`;
       $("ccSave").textContent = "등록";
       $("ccDialog").showModal();
@@ -8049,6 +8114,17 @@
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
+      $("ccThresholdSupported").checked = false;
+      syncThresholdCodeFlag();
+    }
+
+    function syncThresholdCodeFlag() {
+      const groupId = Number($("ccGroup").value);
+      const group = (state.codeGroups || []).find((item) => Number(item.id) === groupId);
+      const supportedGroup = group?.groupKey === "DATA_POINT_TYPE";
+      $("ccThresholdSupportedWrap").hidden = !supportedGroup;
+      $("ccThresholdSupported").disabled = !supportedGroup;
+      if (!supportedGroup) $("ccThresholdSupported").checked = false;
     }
 
     function clearCodeGroupEdit() {
@@ -8148,6 +8224,155 @@
       $("statDev").textContent = state.devices.length;
       $("statTask").textContent = state.tasks.length;
     }
+
+    const alarmUi = { page: 1, last: true, rules: [], devices: [], sources: [], editId: null, editingRule: null };
+
+    function alarmTime(value) {
+      return value ? new Date(value).toLocaleString("ko-KR") : "—";
+    }
+
+    async function loadAlarmPage() {
+      const jobs = [loadAlarmEvents()];
+      if (state.role === "ADMIN") jobs.push(loadAlarmRules());
+      await Promise.all(jobs);
+    }
+
+    function closeAlarmRule() {
+      $("alarmRuleModal").classList.remove("open");
+      $("alarmRuleModal").setAttribute("aria-hidden", "true");
+    }
+
+    $("alarmReload").onclick = () => loadAlarmPage().catch((e) => toast(e.message, true));
+    $("alarmPrev").onclick = () => { if (alarmUi.page > 1) { alarmUi.page--; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
+    $("alarmNext").onclick = () => { if (!alarmUi.last) { alarmUi.page++; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
+    $("alarmRuleOpen").onclick = () => openAlarmRule().catch((e) => toast(e.message, true));
+    $("alarmRuleClose").onclick = closeAlarmRule;
+    $("alarmRuleCancel").onclick = closeAlarmRule;
+    $("alarmRuleModal").addEventListener("click", (event) => { if (event.target === $("alarmRuleModal")) closeAlarmRule(); });
+    // Threshold page: one device, one point, one threshold per row.
+    async function loadAlarmEvents() {
+      const result = await api(`/api/manager/alarms?page=${alarmUi.page}&size=20`);
+      alarmUi.last = result.last;
+      $("alarmPageInfo").textContent = `${result.page} / ${Math.max(result.totalPages, 1)} · 전체 ${result.totalElements}건`;
+      $("alarmPrev").disabled = result.first;
+      $("alarmNext").disabled = result.last;
+      $("alarmList").innerHTML = (result.content || []).map((event) => {
+        const detail = event.details;
+        const status = event.clearedDt ? `복구 ${alarmTime(event.clearedDt)}` : "진행 중";
+        const title = detail ? `${detail.deviceName} · ${detail.pointName}` : `${event.alarmType} · ${event.subjectKey}`;
+        const summary = detail
+          ? `${detail.measuredValue} ${detail.unit} · ${detail.operator === "ABOVE" ? "초과" : "미만"} 기준 ${detail.thresholdValue} ${detail.unit}`
+          : "상세 측정정보 없음";
+        return `<article class="alarm-row"><div class="alarm-row-head"><strong>${esc(title)}</strong><span class="chip ${event.clearedDt ? "ok" : "bad"}">${esc(status)}</span></div>
+          <p>${esc(event.severity)} · ${esc(summary)} · 발생 ${esc(alarmTime(event.raisedDt))}</p></article>`;
+      }).join("") || '<div class="empty">표시할 알람이 없습니다.</div>';
+    }
+
+    async function loadAlarmRules() {
+      alarmUi.rules = await api("/api/manager/threshold-rules") || [];
+      $("alarmRuleList").innerHTML = alarmUi.rules.map((rule) => `<article class="alarm-row">
+        <div class="alarm-row-head"><strong>${esc(rule.deviceName)} · ${esc(rule.pointName)}</strong><span class="chip ${rule.enabled ? "ok" : ""}">${rule.enabled ? "사용" : "중지"}</span></div>
+        <p>${esc(rule.dataPointType)} · ${esc(rule.protocol.toUpperCase())} · ${esc(rule.operator === "ABOVE" ? "초과" : "미만")} ${esc(rule.thresholdValue)} ${esc(rule.unit)} · ${esc(rule.severity)}</p>
+        <div class="row" style="margin-top:9px"><button type="button" class="ghost" data-alarm-edit="${rule.id}">수정</button>${rule.enabled ? `<button type="button" class="ghost" data-alarm-disable="${rule.id}">중지</button>` : ""}</div></article>`
+      ).join("") || '<div class="empty">등록된 임계값이 없습니다.</div>';
+    }
+
+    async function loadAlarmCatalog() {
+      const [sources, allDevices] = await Promise.all([
+        api("/api/manager/threshold-rules/sources"),
+        (async () => {
+          const items = [];
+          for (let page = 1; ; page++) {
+            const response = await api(`/api/manager/devices?enabled=true&page=${page}&size=100`);
+            items.push(...(response.content || []));
+            if (response.last || !(response.content || []).length) return items;
+          }
+        })(),
+      ]);
+      alarmUi.sources = (sources || []).filter((source) => source.thresholdSupported && source.unit);
+      const sourceDeviceIds = new Set(alarmUi.sources.map((source) => Number(source.deviceId)));
+      alarmUi.devices = allDevices.filter((device) => sourceDeviceIds.has(Number(device.id)));
+      $("alarmDevice").innerHTML = '<option value="">장비 선택</option>' + alarmUi.devices.map((device) =>
+        `<option value="${Number(device.id)}">${esc(device.name)} · ${esc(device.modelName || "모델 미지정")}</option>`).join("");
+    }
+
+    function renderAlarmPointChoices(selectedSource = null) {
+      const deviceId = Number($("alarmDevice").value);
+      const sources = alarmUi.sources.filter((source) => Number(source.deviceId) === deviceId);
+      $("alarmSource").innerHTML = '<option value="">측정항목 선택</option>' + sources.map((source, index) =>
+        `<option value="${index}" ${selectedSource && source.protocol === selectedSource.protocol && source.pointName === selectedSource.pointName ? "selected" : ""}>${esc(source.pointName)} · ${esc(source.dataPointType)} · ${esc(source.unit)} · ${esc(source.protocol.toUpperCase())}</option>`).join("");
+      $("alarmSource").dataset.sourceIndexes = JSON.stringify(sources.map((_, index) => index));
+      $("alarmUnitHint").textContent = sources.length
+        ? "선택한 측정항목당 임계값 하나만 등록할 수 있습니다. 초과 또는 미만 조건 중 하나를 선택하세요."
+        : "이 장비에는 임계값 사용으로 표시된 측정항목이 없습니다. DATA_POINT_TYPE 공통코드 설정을 확인하세요.";
+      if (selectedSource) {
+        const chosen = sources.find((source) => source.protocol === selectedSource.protocol && source.pointName === selectedSource.pointName);
+        if (chosen) $("alarmUnitHint").textContent = `기준값 단위: ${chosen.unit} · 유형: ${chosen.dataPointType}`;
+      }
+    }
+
+    function selectedAlarmSource() {
+      if (!$("alarmSource").value) return null;
+      const deviceId = Number($("alarmDevice").value);
+      const index = Number($("alarmSource").value);
+      const options = alarmUi.sources.filter((source) => Number(source.deviceId) === deviceId);
+      return Number.isInteger(index) ? options[index] || null : null;
+    }
+
+    async function openAlarmRule(rule = null) {
+      if (state.role !== "ADMIN") return;
+      await loadAlarmCatalog();
+      alarmUi.editingRule = rule;
+      $("alarmRuleTitle").textContent = rule ? "임계값 수정" : "임계값 등록";
+      $("alarmDevice").value = rule ? String(rule.deviceId) : "";
+      renderAlarmPointChoices(rule ? { protocol: rule.protocol, pointName: rule.pointName } : null);
+      $("alarmOperator").value = rule?.operator || "ABOVE";
+      $("alarmThresholdValue").value = rule?.thresholdValue ?? "";
+      $("alarmSeverity").value = rule?.severity || "WARNING";
+      $("alarmEnabled").checked = rule?.enabled ?? true;
+      $("alarmRuleModal").classList.add("open");
+      $("alarmRuleModal").setAttribute("aria-hidden", "false");
+      $("alarmDevice").focus();
+    }
+
+    async function saveAlarmRule() {
+      const source = selectedAlarmSource();
+      if (!source) throw new Error("장비의 임계값 지원 측정항목을 선택하세요.");
+      const rawValue = $("alarmThresholdValue").value.trim();
+      const thresholdValue = Number(rawValue);
+      if (!rawValue || !Number.isFinite(thresholdValue)) throw new Error("유효한 경보 기준값을 입력하세요.");
+      const payload = { deviceId: Number(source.deviceId), protocol: source.protocol, pointName: source.pointName,
+        operator: $("alarmOperator").value, thresholdValue, severity: $("alarmSeverity").value,
+        enabled: $("alarmEnabled").checked };
+      $("alarmRuleSave").disabled = true;
+      try {
+        const id = alarmUi.editingRule?.id;
+        await api(id ? `/api/manager/threshold-rules/${id}` : "/api/manager/threshold-rules",
+          { method: id ? "PUT" : "POST", body: JSON.stringify(payload) });
+        closeAlarmRule();
+        await loadAlarmRules();
+        await loadAlarmEvents();
+        toast("임계값을 저장했습니다.");
+      } finally { $("alarmRuleSave").disabled = false; }
+    }
+
+    $("alarmDevice").onchange = () => renderAlarmPointChoices();
+    $("alarmSource").onchange = () => {
+      const source = selectedAlarmSource();
+      if (source) $("alarmUnitHint").textContent = `기준값 단위: ${source.unit} · 유형: ${source.dataPointType}`;
+    };
+    $("alarmRuleSave").onclick = () => saveAlarmRule().catch((e) => toast(e.message, true));
+    $("alarmRuleList").onclick = async (event) => {
+      const edit = event.target.closest("[data-alarm-edit]");
+      if (edit) return openAlarmRule(alarmUi.rules.find((r) => r.id === Number(edit.dataset.alarmEdit))).catch((e) => toast(e.message, true));
+      const disable = event.target.closest("[data-alarm-disable]");
+      if (!disable || !confirm("이 규칙을 중지하고 열린 알람을 종료할까요?")) return;
+      try {
+        await api(`/api/manager/threshold-rules/${disable.dataset.alarmDisable}`, { method: "DELETE" });
+        await loadAlarmPage();
+        toast("규칙을 중지했습니다.");
+      } catch (e) { toast(e.message, true); }
+    };
 
     function setWizProgress(step) {
       [...$("wizProgress").children].forEach((el, i) => {
@@ -8456,18 +8681,20 @@
       const code = $("ccCode").value.trim();
       const name = $("ccName").value.trim();
       const sortOrder = Number($("ccSort").value) || 0;
+      const thresholdSupported = $("ccThresholdSupported").checked &&
+        (state.codeGroups || []).some((group) => Number(group.id) === groupId && group.groupKey === "DATA_POINT_TYPE");
       if (!groupId || !code || !name) return toast("그룹·code·name을 입력하세요", true);
       try {
         if (state.editingCodeId) {
           await api(`/api/manager/common-codes/${state.editingCodeId}`, {
             method: "PUT",
-            body: JSON.stringify({ groupId, code, name, sortOrder }),
+            body: JSON.stringify({ groupId, code, name, sortOrder, thresholdSupported }),
           });
           toast("코드를 수정했습니다");
         } else {
           await api("/api/manager/common-codes", {
             method: "POST",
-            body: JSON.stringify({ groupId, code, name, sortOrder }),
+            body: JSON.stringify({ groupId, code, name, sortOrder, thresholdSupported }),
           });
           toast("코드를 등록했습니다");
         }
@@ -8478,6 +8705,7 @@
     };
 
     $("ccCancelEdit").onclick = () => { closeEntityDialog("ccDialog"); clearCodeEdit(); };
+    $("ccGroup").onchange = syncThresholdCodeFlag;
     $("locExpandAll").onclick = () => {
       Object.keys(state.locByCode).forEach((c) => state.locExpanded.add(c));
       paintLocationTree();
