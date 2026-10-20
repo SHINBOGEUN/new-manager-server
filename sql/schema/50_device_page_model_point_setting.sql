@@ -2,7 +2,7 @@
 -- point_id는 프로토콜별 모델 포인트 테이블 중 하나를 가리키므로,
 -- 해당 포인트가 지정된 모델과 프로토콜에 속하는지는 애플리케이션 서비스에서 검증합니다.
 CREATE TABLE IF NOT EXISTS `device_page_model_point_setting` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '페이지 포인트 설정 ID',
     `page_code_id` int(11) NOT NULL COMMENT 'common_code.id — DEVICE_PAGE 그룹의 페이지 코드',
     `model_id` int(11) NOT NULL COMMENT 'device_model.id — 같은 모델의 모든 장비 인스턴스가 공유하는 설정',
     `protocol_type_id` int(11) NOT NULL COMMENT 'common_code.id — PROTOCOL_TYPE 그룹의 프로토콜 코드',
