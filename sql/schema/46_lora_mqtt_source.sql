@@ -1,4 +1,4 @@
--- 50_lora_mqtt_source.sql — LoRaWAN/ChirpStack MQTT 수집 소스 설정
+-- 46_lora_mqtt_source.sql — LoRaWAN/ChirpStack MQTT 수집 소스 설정
 -- 비밀번호는 저장하지 않고 credential_key로 Sensor Data 환경변수의 자격증명을 참조한다.
 
 CREATE TABLE IF NOT EXISTS `lora_mqtt_source` (
@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS `lora_mqtt_source` (
   `credential_key` varchar(100) DEFAULT NULL COMMENT 'Sensor Data 환경변수 자격증명 키 (비밀번호 미저장)',
   `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '사용 여부',
   `config_version` bigint(20) NOT NULL DEFAULT 1 COMMENT '변경 감지용 설정 버전',
-  `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6),
-  `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
+  `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '소스 생성 시각',
+  `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '소스 수정 시각',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_lora_mqtt_source_name` (`name`),
   CONSTRAINT `chk_lora_mqtt_source_type` CHECK (`source_type` in ('CHIRPSTACK_LORA')),

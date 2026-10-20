@@ -34,7 +34,8 @@ public class CommonCodeQueryService {
         }
 
         CommonCode code = CommonCode.createCommonCode(
-                codeGroup, request.code(), request.name(), request.sortOrder());
+                codeGroup, request.code(), request.name(), request.sortOrder(),
+                Boolean.TRUE.equals(request.thresholdSupported()));
         commonCodeRepository.save(code);
         return CommonCodeResponse.from(code);
     }
@@ -49,7 +50,10 @@ public class CommonCodeQueryService {
         if (commonCodeRepository.existsByCodeGroupIdAndCodeAndIdNot(codeGroup.getId(), request.code(), id)) {
             throw new IllegalArgumentException("Code already exists in this group");
         }
-        code.update(codeGroup, request.code(), request.name(), request.sortOrder());
+        boolean thresholdSupported = request.thresholdSupported() == null
+                ? "DATA_POINT_TYPE".equals(codeGroup.getGroupKey()) && code.isThresholdSupported()
+                : request.thresholdSupported();
+        code.update(codeGroup, request.code(), request.name(), request.sortOrder(), thresholdSupported);
 
         return CommonCodeResponse.from(commonCodeRepository.save(code));
     }

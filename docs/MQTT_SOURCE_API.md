@@ -59,7 +59,7 @@ lora_mqtt_source와 lora_mqtt_source_status를 mqtt_source/mqtt_source_status로
 행을 복사/삭제하지 않으며 ID·상태·버전·브로커·토픽·credential key를 보존한다.
 DDL은 자동 커밋되므로 실패 시 적용된 단계를 확인하고 이어서 처리한다.
 
-신규 DB: 구 schema/50,51 대신 schema/60_mqtt_source.sql과 schema/61_mqtt_source_status.sql을 사용한다.
+신규 DB: 구 schema/46,47 대신 schema/55_mqtt_source.sql과 schema/56_mqtt_source_status.sql을 사용한다.
 DB 이관 후 Manager를 시작해야 한다. 코드만 배포하면 테이블 이름이 맞지 않는다.
 실제 운영 DB에는 이 작업에서 SQL을 자동 실행하지 않았다.
 

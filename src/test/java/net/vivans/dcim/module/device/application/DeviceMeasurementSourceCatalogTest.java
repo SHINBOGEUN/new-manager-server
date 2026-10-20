@@ -1,5 +1,7 @@
 package net.vivans.dcim.module.device.application;
 
+import net.vivans.dcim.module.common.domain.model.CodeGroup;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceEndpointModbus;
 import net.vivans.dcim.module.device.domain.model.DeviceModbusBitField;
@@ -14,6 +16,8 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelModbusPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,6 +39,8 @@ class DeviceMeasurementSourceCatalogTest {
     @Mock DeviceProtocolEndpointRepository endpoints;
     @Mock DeviceEndpointModbusRepository modbusEndpoints;
     @Mock DeviceModbusBitFieldRepository bitFields;
+    @Mock DeviceModelMqttPointRepository mqttPoints;
+    @Mock DeviceMqttIdentityRepository mqttIdentities;
     @InjectMocks DeviceMeasurementSourceCatalog catalog;
 
     @Test
@@ -50,6 +56,8 @@ class DeviceMeasurementSourceCatalogTest {
 
         DeviceModbusReading reading = mock(DeviceModbusReading.class);
         DeviceModelModbusPoint modelPoint = mock(DeviceModelModbusPoint.class);
+        CommonCode powerType = mock(CommonCode.class);
+        CodeGroup pointTypeGroup = mock(CodeGroup.class);
         DeviceEndpointModbus modbus = mock(DeviceEndpointModbus.class);
         DeviceProtocolEndpoint endpoint = mock(DeviceProtocolEndpoint.class);
         Device source = mock(Device.class);
@@ -58,6 +66,12 @@ class DeviceMeasurementSourceCatalogTest {
         when(reading.getPoint()).thenReturn(modelPoint);
         when(modelPoint.isEnabled()).thenReturn(true);
         when(modelPoint.getUnit()).thenReturn("W");
+        when(modelPoint.getDataPointType()).thenReturn(powerType);
+        when(powerType.getCodeGroup()).thenReturn(pointTypeGroup);
+        when(pointTypeGroup.getGroupKey()).thenReturn("DATA_POINT_TYPE");
+        when(powerType.getCode()).thenReturn("POWER");
+        when(powerType.getId()).thenReturn(8);
+        when(powerType.isThresholdSupported()).thenReturn(true);
         when(reading.getPointName()).thenReturn("TOTAL_WT");
         when(reading.getId()).thenReturn(5);
         when(reading.getEndpointModbus()).thenReturn(modbus);
@@ -80,6 +94,9 @@ class DeviceMeasurementSourceCatalogTest {
             assertThat(item.ambiguous()).isFalse();
         });
         assertThat(result.get(0).dataPointType()).isEqualTo("POWER");
-        assertThat(result.get(1).dataPointType()).isEqualTo("STATUS");
+        assertThat(result.get(0).dataPointTypeId()).isEqualTo(8);
+        assertThat(result.get(0).thresholdSupported()).isTrue();
+        assertThat(result.get(1).dataPointType()).isNull();
+        assertThat(result.get(1).thresholdSupported()).isFalse();
     }
 }

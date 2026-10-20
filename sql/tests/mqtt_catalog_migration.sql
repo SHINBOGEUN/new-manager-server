@@ -5,9 +5,9 @@ USE dcim_mqtt_legacy_test;
 CREATE TABLE devices (id int PRIMARY KEY) ENGINE=InnoDB;
 CREATE TABLE device_model (id int PRIMARY KEY) ENGINE=InnoDB;
 CREATE TABLE common_code (id int PRIMARY KEY) ENGINE=InnoDB;
-SOURCE /workspace/sql/schema/46_device_lora_endpoint.sql;
-SOURCE /workspace/sql/schema/47_device_model_lora_point.sql;
-SOURCE /workspace/sql/schema/54_device_page_model_point_setting.sql;
+SOURCE /workspace/sql/schema/44_device_lora_endpoint.sql;
+SOURCE /workspace/sql/schema/45_device_model_lora_point.sql;
+SOURCE /workspace/sql/schema/50_device_page_model_point_setting.sql;
 INSERT INTO devices VALUES (40),(41);
 INSERT INTO device_model VALUES (8),(9);
 INSERT INTO common_code VALUES (1),(2),(3),(4),(5);
@@ -97,8 +97,8 @@ USE dcim_mqtt_fresh_test;
 CREATE TABLE devices (id int PRIMARY KEY) ENGINE=InnoDB;
 CREATE TABLE device_model (id int PRIMARY KEY) ENGINE=InnoDB;
 CREATE TABLE common_code (id int PRIMARY KEY) ENGINE=InnoDB;
-SOURCE /workspace/sql/schema/58_device_mqtt_identity.sql;
-SOURCE /workspace/sql/schema/59_device_model_mqtt_point.sql;
+SOURCE /workspace/sql/schema/53_device_mqtt_identity.sql;
+SOURCE /workspace/sql/schema/54_device_model_mqtt_point.sql;
 
 -- 정보 스키마로 신규 DDL과 이관 결과의 컬럼/인덱스/제약 이름을 비교한다.
 DELIMITER //

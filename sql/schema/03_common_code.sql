@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS `common_code` (
   `code` varchar(100) NOT NULL COMMENT '코드 값 (예: ups, pdu)',
   `name` varchar(255) NOT NULL COMMENT '코드 표시명',
   `sort_order` int(11) DEFAULT NULL COMMENT '정렬 순서',
+  `threshold_supported` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'DATA_POINT_TYPE 임계값 지원 여부',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '생성 시각',
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '수정 시각',
   PRIMARY KEY (`id`),

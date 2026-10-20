@@ -29,6 +29,14 @@ public interface PointQuery {
             Instant end
     );
 
+    default List<SeriesPoint> findRawSeries(List<Integer> deviceIds, List<String> pointNames,
+                                            Instant start, Instant end, String protocol) {
+        return findRawSeries(deviceIds, pointNames, start, end);
+    }
+
+    List<SeriesPoint> findLatestRaw(List<Integer> deviceIds, List<String> pointNames,
+                                    Instant end, String protocol);
+
     List<StatsSeriesPoint> findStatsSeries(
             List<Integer> deviceIds,
             List<String> pointNames,

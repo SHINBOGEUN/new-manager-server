@@ -1,13 +1,13 @@
 -- 16_page_widget_aggregate.sql — dcim_new schema snapshot (FK order)
 
 CREATE TABLE IF NOT EXISTS `page_widget_aggregate` (
-  `widget_id` int(11) NOT NULL,
-  `op` varchar(16) NOT NULL,
+  `widget_id` int(11) NOT NULL COMMENT '집계 위젯 ID',
+  `op` varchar(16) NOT NULL COMMENT '집계 연산 종류 (usage 또는 power)',
   `range_preset` varchar(16) DEFAULT NULL COMMENT 'last_24h | today | yesterday | last_7d | this_month | last_month',
-  `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6),
-  `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
+  `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '설정 생성 시각',
+  `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '설정 수정 시각',
   PRIMARY KEY (`widget_id`),
   CONSTRAINT `fk_page_widget_aggregate_widget_id` FOREIGN KEY (`widget_id`) REFERENCES `page_widget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `chk_page_widget_aggregate_op` CHECK (`op` in ('usage','power')),
   CONSTRAINT `chk_page_widget_aggregate_range_preset` CHECK (`range_preset` is null or `range_preset` in ('last_24h','today','yesterday','last_7d','this_month','last_month'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용량 또는 전력 집계 위젯 설정'

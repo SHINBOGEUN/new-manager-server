@@ -1,6 +1,6 @@
 -- 자산별 첨부 문서 (자산당 여러 파일을 형식 구분 없이 관리)
 CREATE TABLE IF NOT EXISTS `device_asset_document` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '자산 문서 ID',
   `device_id` int(11) NOT NULL COMMENT 'devices.id',
   `storage_key` varchar(255) NOT NULL COMMENT '서버 파일 저장 키',
   `original_name` varchar(255) NOT NULL COMMENT '업로드 원본 파일명',

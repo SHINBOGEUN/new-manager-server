@@ -85,13 +85,32 @@ public class InfluxPointQuery implements PointQuery {
             Instant start,
             Instant end
     ) {
+        return findRawSeries(deviceIds, pointNames, start, end, null);
+    }
+
+    @Override
+    public List<SeriesPoint> findRawSeries(List<Integer> deviceIds, List<String> pointNames,
+                                           Instant start, Instant end, String protocol) {
         String flux = AnalysisFluxBuilder.buildRawQuery(
-                properties.getBucket(), properties.getMeasurement(), deviceIds, pointNames, start, end);
+                properties.getBucket(), properties.getMeasurement(), deviceIds, pointNames, start, end, protocol);
         try {
             return mapSeries(query(flux));
         } catch (RuntimeException exception) {
             log.error("Query raw analysis series failed: {}", exception.getMessage(), exception);
             throw new QueryException("InfluxDB query failed");
+        }
+    }
+
+    @Override
+    public List<SeriesPoint> findLatestRaw(List<Integer> deviceIds, List<String> pointNames,
+                                           Instant end, String protocol) {
+        String flux = AnalysisFluxBuilder.buildLatestRawQuery(
+                properties.getBucket(), properties.getMeasurement(), deviceIds, pointNames, end, protocol);
+        try {
+            return mapSeries(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query latest raw values failed: {}", exception.getMessage(), exception);
+            throw new QueryException("InfluxDB latest-value query failed");
         }
     }
 

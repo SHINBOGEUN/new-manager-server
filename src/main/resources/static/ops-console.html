@@ -220,6 +220,7 @@
     .collection-values-dialog { width: min(920px, 100%); max-height: min(85vh, 800px); display: flex; flex-direction: column; }
     .collection-values-body { overflow: auto; min-height: 0; }
     #calculatedMetricStatusModal .asset-preview { background:var(--surface); color:var(--text); border-color:var(--line); }
+    #calculatedMetricStatusModal { z-index:180; }
     #calculatedMetricStatusModal .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #calculatedMetricStatusModal .stat .v { color:var(--text); overflow-wrap:anywhere; }
     #calculatedMetricStatusBody code { overflow-wrap:anywhere; }
@@ -730,7 +731,6 @@
     .side button[data-tab="tasks"]::before { content:"↻"; }
     .side button[data-tab="collection-status"]::before { content:"◉"; }
     .side button[data-tab="device-pages"]::before { content:"▧"; }
-    .side button[data-tab="widgets"]::before { content:"▦"; }
     .side button[data-tab="locations"]::before { content:"⌖"; }
     .side button[data-tab="models"]::before { content:"◇"; }
     .side button[data-tab="codes"]::before { content:"⌘"; }
@@ -945,6 +945,32 @@
     .register-dialog .field { color:#9fb4ca; }
     .register-dialog input { min-height:43px; color:#edf6ff; border-color:#304761; background:#0a1421; }
     .register-dialog input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
+    .alarm-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(290px,38%); gap:14px; align-items:start; }
+    .alarm-list { display:grid; gap:9px; margin-top:12px; }
+    .alarm-row { padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
+    .alarm-row-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+    .alarm-row p { margin:7px 0 0; font-size:12px; color:var(--muted); line-height:1.5; }
+    .alarm-modal { display:none; position:fixed; inset:0; z-index:260; padding:18px; background:rgba(3,10,20,.78); overflow:auto; place-items:start center; }
+    .alarm-modal.open { display:grid; }
+    .alarm-dialog { width:min(860px,100%); max-height:calc(100vh - 36px); overflow:auto; padding:22px; border:1px solid var(--line); border-radius:16px; background:var(--surface); box-shadow:0 24px 70px rgba(0,0,0,.45); }
+    .alarm-step { margin:16px 0; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); }
+    .alarm-step h3 { margin:0 0 12px; font-size:15px; }
+    .alarm-device-picks { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; max-height:220px; overflow:auto; padding:10px; border:1px solid var(--line); border-radius:9px; background:var(--surface); }
+    .alarm-device-pick { display:flex; align-items:center; gap:9px; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:8px; cursor:pointer; }
+    .alarm-device-pick:has(input:checked) { border-color:var(--accent); background:rgba(32,166,220,.12); }
+    .alarm-device-pick span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .alarm-device-list { max-height:175px; overflow:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 12px; margin-top:8px; }
+    .alarm-device-list label { display:flex; align-items:center; gap:7px; padding:5px; font-size:12px; }
+    .alarm-model-groups { display:grid; gap:8px; max-height:280px; overflow:auto; margin-top:10px; }
+    .alarm-model-group { border:1px solid var(--line); border-radius:9px; background:var(--surface); }
+    .alarm-model-heading { display:flex; align-items:center; gap:9px; padding:10px 12px; }
+    .alarm-model-heading small { margin-left:auto; }
+    .alarm-model-devices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:3px 10px; padding:8px 12px 12px; border-top:1px solid var(--line); }
+    .alarm-model-devices label { display:flex; align-items:center; gap:7px; padding:5px; font-size:12px; }
+    .alarm-source-row { display:grid; grid-template-columns:minmax(130px,1fr) minmax(200px,2fr); gap:12px; align-items:center; margin:8px 0; }
+    .alarm-condition { margin:10px 0; padding:12px; border:1px solid var(--line); border-radius:10px; }
+    .alarm-condition .fields { margin-top:10px; }
+    @media (max-width:800px) { .alarm-layout,.alarm-device-list,.alarm-source-row,.alarm-model-devices { grid-template-columns:1fr; } .alarm-dialog { padding:14px; } }
     @media (max-width:900px) { .login-experience { grid-template-columns:1fr; min-height:auto; } .login-promo { padding:32px; min-height:280px; } .login-copy h1 { font-size:34px; } .login-features,.login-foot { display:none; } .login-card { width:min(430px,calc(100% - 32px)); margin:24px auto 32px; } }
     @media (max-width:540px) { body:not(.is-authed) .content { padding:0; } .login-experience { min-height:100vh; border:0; border-radius:0; } .login-promo { min-height:220px; padding:26px 22px; } .login-copy h1 { font-size:28px; margin-bottom:10px; } .login-copy p { font-size:13px; } .login-card { margin:18px auto 26px; padding:24px 20px; } }
 
@@ -1140,12 +1166,12 @@
     #tab-collection-status > .stats { flex:none; }
     #tab-collection-status > .workspace-table-card { flex:1 1 auto; margin:0; }
 
-    :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active { display:flex; flex-direction:column; overflow:hidden; }
-    :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations) > .grid2,
+    :is(#tab-device-groups,#tab-tasks,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active { display:flex; flex-direction:column; overflow:hidden; }
+    :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2,
     :is(#tab-models,#tab-lora-model-mapping) > .models-layout { flex:1 1 auto; min-height:0; align-items:stretch; overflow:hidden; }
-    :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations) > .grid2 > *,
+    :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > *,
     :is(#tab-models,#tab-lora-model-mapping) > .models-layout > * { height:100%; min-height:0; overflow:auto; scrollbar-gutter:stable; }
-    :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations) > .grid2 > .card,
+    :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > .card,
     #tab-lora-model-mapping > .models-layout > .card { margin-bottom:0; }
 
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes).panel.active { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(350px,.7fr); grid-template-rows:minmax(0,1fr); gap:14px; overflow:hidden; }
@@ -1167,12 +1193,12 @@
     .asset-detail-body > .card:first-child { grid-column:auto; }
     .asset-detail-body > .card[data-asset-pane="basic"] { grid-column:1 / -1; }
     @media (max-width:1180px) {
-      :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active,
+      :is(#tab-device-groups,#tab-tasks,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active,
       :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes).panel.active,
       #tab-wizard.panel.active { display:block; overflow:auto; }
-      :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations) > .grid2,
+      :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2,
       :is(#tab-models,#tab-lora-model-mapping) > .models-layout { display:grid; overflow:visible; }
-      :is(#tab-device-groups,#tab-tasks,#tab-widgets,#tab-locations) > .grid2 > *,
+      :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > *,
       :is(#tab-models,#tab-lora-model-mapping) > .models-layout > *,
       :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes) > .card { height:auto; overflow:visible; }
       #tab-codes > .grid2 { height:auto; overflow:visible; }
@@ -1209,17 +1235,15 @@
     .calculated-ratio-source .source-name { min-width:0; overflow-wrap:anywhere; }
     .calculated-ratio-source .row { gap:5px; }
     .calculated-ratio-source button.selected { border-color:var(--accent); background:var(--accent-soft); color:var(--text); }
-    /* 위젯 페이지는 목록/편집 영역 아래에 계산 지표 카드가 이어지므로 패널 내부를 스크롤한다. */
-    #tab-widgets.panel.active { display:block; overflow-x:hidden; overflow-y:auto; scrollbar-gutter:stable; padding-bottom:24px; }
-    #tab-widgets > .grid2 { height:auto; min-height:0; overflow:visible; align-items:start; grid-template-columns:minmax(0,1fr); }
-    #tab-widgets > .grid2 > * { height:auto; min-height:0; overflow:visible; }
-    #tab-widgets > .card:last-child { margin-bottom:16px; }
-    #tab-widgets .widget-list-card { min-height:0; }
-    #tab-widgets .widget-list-card > div[style*="overflow:auto"] { max-height:calc(100vh - 360px) !important; min-height:200px; }
     #wEditorBackdrop { display:none; position:fixed; inset:0; z-index:170; background:rgba(2,8,18,.76); }
     #wEditorBackdrop.open { display:block; }
-    #tab-widgets #wEditorCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1050px,calc(100vw - 36px)); max-height:min(92vh,900px); margin:0; padding:0 22px 18px; overflow-y:auto; overflow-x:hidden; box-shadow:0 32px 90px rgba(0,0,0,.55); scrollbar-gutter:stable; }
-    #tab-widgets #wEditorCard.open { display:block; }
+    #wEditorCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1050px,calc(100vw - 36px)); max-height:min(92vh,900px); margin:0; padding:0 22px 18px; overflow-y:auto; overflow-x:hidden; box-shadow:0 32px 90px rgba(0,0,0,.55); scrollbar-gutter:stable; }
+    #wEditorCard.open { display:block; }
+    #metricBackdrop { display:none; position:fixed; inset:0; z-index:170; background:rgba(2,8,18,.76); }
+    #metricBackdrop.open { display:block; }
+    #calculatedMetricCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1050px,calc(100vw - 36px)); max-height:min(92vh,900px); margin:0; padding:18px 22px; overflow:auto; box-shadow:0 32px 90px rgba(0,0,0,.55); }
+    #calculatedMetricCard.open { display:block; }
+    .metric-modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     .widget-editor-head { display:flex; justify-content:space-between; align-items:center; gap:12px; position:sticky; top:0; z-index:4; margin:0 -22px; padding:14px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
     .widget-editor-head h2 { margin:2px 0 0; font-size:18px; }
     .widget-editor-steps { display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 12px; }
@@ -1231,7 +1255,7 @@
     .widget-review { padding:16px; margin-top:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); line-height:1.7; }
     .widget-review .pick-item { margin-top:6px; }
     .widget-editor-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; position:sticky; bottom:-18px; z-index:4; margin:18px -22px -18px; padding:12px 22px; border-top:1px solid var(--line); background:var(--surface); }
-    @media (max-width:700px) { #tab-widgets #wEditorCard { width:100vw; max-height:100vh; height:100vh; border-radius:0; } .widget-editor-footer { flex-wrap:wrap; } }
+    @media (max-width:700px) { #wEditorCard, #calculatedMetricCard { width:100vw; max-height:100vh; height:100vh; border-radius:0; } .widget-editor-footer { flex-wrap:wrap; } }
 
     /* Shared registration and management workspace */
     body.is-authed .content { padding:16px 22px 12px; }
@@ -1319,6 +1343,8 @@
     /* Existing standalone tools are full-height pages in the same navigation. */
     .embedded-page.panel.active { display:flex; flex-direction:column; min-height:0; padding:0; overflow:hidden !important; }
     .embedded-page iframe { display:block; flex:1 1 auto; width:100%; min-height:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+    .widget-display-page.panel.active { gap:0; }
+    .widget-display-page iframe, #tab-widget-board iframe { border:0; border-radius:8px; background:#090f19; }
     body.external-view .log-bar { display:none; }
     @media (max-width:1200px) {
       #tab-wizard.panel.active { display:block; overflow:auto; }
@@ -1379,10 +1405,13 @@
     <button type="button" data-tab="device-groups">장비 그룹<small>IT · Cooling · 운영 분류</small></button>
     <button type="button" data-tab="tasks">수집 작업<small>Task · 주기 그룹</small></button>
     <button type="button" data-tab="collection-status">수집 상태<small>지연 · 데이터 없음</small></button>
+    <button type="button" data-tab="alarms" data-role-gate="admin-user">알람 · 임계값<small>이력 · 경보 기준</small></button>
     <button type="button" data-tab="device-pages" data-role-gate="admin-user">페이지 장비<small>페이지별 표시 대상</small></button>
-    <button type="button" data-tab="widgets">화면 위젯<small>표시 · 조회</small></button>
     <div class="group">모니터링 화면</div>
     <button type="button" data-tab="widget-board">위젯 보드<small>운영 대시보드 · 배치</small></button>
+    <button type="button" data-tab="dashboard-page">Dashboard<small>운영 현황 위젯</small></button>
+    <button type="button" data-tab="environment-page">Environment<small>환경 모니터링 위젯</small></button>
+    <button type="button" data-tab="cooling-page">Cooling<small>냉각 설비 위젯</small></button>
     <button type="button" data-tab="analysis">분석<small>측정값 이력 · 비교 차트</small></button>
     <button type="button" data-tab="live-telemetry">실시간 텔레메트리<small>MQTT 최신값 · 차트</small></button>
     <button type="button" data-tab="mqtt-monitor" data-role-gate="admin">MQTT 모니터<small>토픽 · 메시지 확인</small></button>
@@ -1476,7 +1505,7 @@
           <button type="button" data-quick-tab="collection-status"><span>◉</span><div><strong>수집 상태</strong><small>지연·누락 장비 확인</small></div><b>→</b></button>
           <button type="button" data-quick-tab="rack-overview"><span>▤</span><div><strong>Rack 현황</strong><small>U 점유와 배치 관리</small></div><b>→</b></button>
           <button type="button" data-quick-tab="assets"><span>◆</span><div><strong>자산 관리</strong><small>상태·문서·이력 관리</small></div><b>→</b></button>
-          <button type="button" data-quick-tab="widgets"><span>▦</span><div><strong>화면 위젯</strong><small>운영 화면 구성</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="widget-board"><span>▦</span><div><strong>위젯 보드</strong><small>위젯 등록 · 배치</small></div><b>→</b></button>
         </div>
       </div>
     </section>
@@ -1793,6 +1822,47 @@
     </section>
 
     <!-- DEVICES -->
+    <section class="panel" id="tab-alarms">
+      <h1 class="page-title">알람 · 임계값</h1>
+      <p class="page-desc">Manager가 기본 60초 간격으로 최신 저장값을 확인합니다. 장비 한 대의 측정항목 하나마다 임계값 하나를 설정하며, 해당 측정 유형의 사용 여부는 공통코드에서 관리합니다.</p>
+      <div class="alarm-layout">
+        <div class="card">
+          <div class="row" style="justify-content:space-between"><h2 style="margin:0">알람 이력</h2><button type="button" class="ghost" id="alarmReload">새로고침</button></div>
+          <div class="alarm-list" id="alarmList"><div class="muted">조회 중…</div></div>
+          <div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="ghost" id="alarmPrev">이전</button><span class="muted" id="alarmPageInfo">1 / 1</span><button type="button" class="ghost" id="alarmNext">다음</button></div>
+        </div>
+        <div class="card" data-role-gate="admin">
+          <div class="row" style="justify-content:space-between"><h2 style="margin:0">임계값 규칙</h2><button type="button" class="primary" id="alarmRuleOpen">＋ 규칙 등록</button></div>
+          <p class="muted">임계값 지원으로 지정된 측정 유형만 등록할 수 있습니다. 한 장비의 한 측정항목에는 임계값 하나만 허용하며, 수정 시 열린 알람은 종료됩니다.</p>
+          <div class="alarm-list" id="alarmRuleList"><div class="muted">조회 중…</div></div>
+        </div>
+      </div>
+    </section>
+    <div class="alarm-modal" id="alarmRuleModal" aria-hidden="true">
+      <div class="alarm-dialog" role="dialog" aria-modal="true" aria-labelledby="alarmRuleTitle">
+        <div class="row" style="justify-content:space-between"><h2 id="alarmRuleTitle" style="margin:0">임계값 등록</h2><button type="button" class="ghost" id="alarmRuleClose" aria-label="닫기">✕</button></div>
+        <div class="alarm-step"><h3>1. 모델·장비·측정항목</h3>
+          <p class="muted">먼저 모델을 고른 뒤 장비를 여러 대 선택하면 동일한 임계값을 한 번에 등록합니다. 선택한 모든 장비에 공통인 임계값 허용 측정항목만 표시됩니다.</p>
+          <div class="fields"><label class="field">장비 모델<select id="alarmModel"><option value="">모델 선택</option></select></label>
+            <label class="field">공통 측정항목<select id="alarmSource" disabled><option value="">장비를 먼저 선택하세요</option></select></label></div>
+          <div style="margin-top:12px">
+            <div class="row" style="justify-content:space-between;margin-bottom:8px"><strong>대상 장비</strong><span class="muted" id="alarmDeviceCount">0대 선택</span></div>
+            <div class="row" style="margin-bottom:8px"><button type="button" class="ghost" id="alarmDeviceSelectAll" disabled>전체 선택</button><button type="button" class="ghost" id="alarmDeviceClear" disabled>선택 해제</button></div>
+            <div class="alarm-device-picks" id="alarmDeviceList"><span class="muted">모델을 먼저 선택하세요.</span></div>
+          </div>
+        </div>
+        <div class="alarm-step"><h3>2. 임계값</h3>
+          <div class="fields"><label class="field">조건<select id="alarmOperator"><option value="ABOVE">초과 시 알람</option><option value="BELOW">미만 시 알람</option></select></label>
+            <label class="field">기준값<input id="alarmThresholdValue" type="number" step="any" placeholder="경보 기준값" /></label>
+            <label class="field">심각도<select id="alarmSeverity"><option value="WARNING">주의</option><option value="CRITICAL">위험</option></select></label>
+            <label class="row"><input type="checkbox" id="alarmEnabled" checked /> 임계값 활성화</label></div>
+          <p class="muted" id="alarmUnitHint"></p>
+        </div>
+        <div class="row" style="justify-content:flex-end"><button type="button" class="ghost" id="alarmRuleCancel">취소</button><button type="button" class="primary" id="alarmRuleSave">선택 장비에 일괄 등록</button></div>
+      </div>
+    </div>
+
+    <!-- DEVICES -->
     <section class="panel" id="tab-devices">
       <h1 class="page-title">장비 목록</h1>
       <p class="page-desc">장비를 찾아 선택하면 기본 정보·통신 설정·수집 연결을 한 화면에서 관리할 수 있습니다.</p>
@@ -2052,16 +2122,17 @@
         </div>
         <div class="row" style="margin-bottom:12px">
           <input id="pdSearch" type="search" placeholder="장비 이름·모델·위치 검색" aria-label="페이지 장비 검색" style="flex:1;min-width:200px" />
+          <button type="button" class="ghost" id="pdSelectAll" data-role-gate="admin" disabled>전체 선택</button>
+          <button type="button" class="ghost" id="pdClearAll" data-role-gate="admin" disabled>전체 해제</button>
           <label class="row" style="font-size:12px;cursor:pointer"><input type="checkbox" id="pdOnlySelected" />선택한 장비만</label>
         </div>
+        <p class="muted" style="font-size:11px;margin:-4px 0 10px">전체 선택·해제는 검색 결과가 아닌 이 페이지의 전체 장비에 적용됩니다. 선택 저장을 눌러야 반영됩니다.</p>
         <div id="pdDeviceList" class="page-device-list"><div class="empty">페이지를 선택하면 장비 목록이 나타납니다.</div></div>
       </div>
     </section>
 
-    <!-- WIDGETS -->
-    <section class="panel" id="tab-widgets">
-      <h1 class="page-title">화면 위젯</h1>
-      <p class="page-desc">페이지에 무엇을 보여줄지 정의합니다. 배치는 <button type="button" class="inline-link" data-quick-tab="widget-board">위젯 보드</button>에서 조절하세요.</p>
+    <!-- Widget editor backing fields; the visible workspace is Widget Board. -->
+    <section id="widgetEditorSupport" hidden>
       <div class="grid2">
         <div class="card widget-list-card">
           <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -2336,8 +2407,9 @@
           <details class="raw" data-widget-stage="3"><summary>응답 상세</summary><pre id="wOut"></pre></details>
         </div>
       </div>
-      <div class="card" style="margin-top:16px">
-        <h2>사용자 계산 지표</h2>
+      <div id="metricBackdrop" aria-hidden="true"></div>
+      <div class="card" id="calculatedMetricCard" role="dialog" aria-modal="true" aria-labelledby="calculatedMetricTitle" aria-hidden="true">
+        <div class="metric-modal-head"><h2 id="calculatedMetricTitle">사용자 계산 지표</h2><button type="button" class="ghost" id="metricClose">닫기 ×</button></div>
         <p class="muted" style="margin-top:-4px;font-size:13px">
           SNMP·Modbus 측정항목을 각 실행 회차에 새로 읽고, 모두 성공하면 아래 공식으로 계산해 저장합니다. LoRa/MQTT 입력은 지원하지 않습니다.
         </p>
@@ -2361,7 +2433,7 @@
             <div id="pueRatioSummary" class="muted" style="margin-top:8px"></div>
           </div>
         </div>
-        <div class="row" style="margin-top:14px">
+        <div class="row" style="margin-top:14px" data-role-gate="admin">
           <label class="field" style="min-width:220px">정의 이름
             <input id="pueWidgetName" placeholder="예: 데이터센터 PUE" />
           </label>
@@ -2693,6 +2765,7 @@
                 <input id="ccName" placeholder="표시 이름" />
               </label>
             </div>
+            <label class="row" id="ccThresholdSupportedWrap" hidden><input type="checkbox" id="ccThresholdSupported" /> 임계값 측정항목으로 사용</label>
             <div class="wizard-dialog-actions">
               <button type="button" class="primary" id="ccSave" data-role-gate="admin">등록</button>
               <button type="button" class="ghost" id="ccCancelEdit">취소</button>
@@ -2949,9 +3022,16 @@
 
     <!-- MONITORING PAGES: keep their existing functionality within the console navigation. -->
     <section class="panel embedded-page" id="tab-widget-board">
-      <h1 class="page-title">위젯 보드</h1>
-      <p class="page-desc">등록된 위젯의 실제 값과 배치를 확인하고 조정합니다.</p>
-      <iframe id="widgetBoardFrame" title="위젯 보드" data-page-src="/widget-dashboard.html?embedded=1&pageCode=dashboard" loading="lazy"></iframe>
+      <iframe id="widgetBoardFrame" title="위젯 보드" data-page-src="/widget-dashboard.html?embedded=1&boardView=1&pageCode=dashboard" loading="lazy"></iframe>
+    </section>
+    <section class="panel embedded-page widget-display-page" id="tab-dashboard-page">
+      <iframe title="Dashboard 위젯" data-page-key="dashboard" loading="lazy"></iframe>
+    </section>
+    <section class="panel embedded-page widget-display-page" id="tab-environment-page">
+      <iframe title="Environment 위젯" data-page-key="environment" loading="lazy"></iframe>
+    </section>
+    <section class="panel embedded-page widget-display-page" id="tab-cooling-page">
+      <iframe title="Cooling 위젯" data-page-key="cooling" loading="lazy"></iframe>
     </section>
     <section class="panel embedded-page" id="tab-analysis">
       <h1 class="page-title">분석</h1>
@@ -3203,7 +3283,7 @@
     }
 
     const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor"]);
-    const ADMIN_USER_TABS = new Set(["codes", "device-pages"]);
+    const ADMIN_USER_TABS = new Set(["codes", "device-pages", "alarms"]);
 
     function canAccessTab(name) {
       const role = state.role || "";
@@ -3229,6 +3309,8 @@
     }
 
     function clearAuth() {
+      closeWidgetEditor();
+      closeCalculatedMetrics();
       state.token = "";
       state.role = "";
       document.querySelectorAll(".embedded-page iframe").forEach((frame) => {
@@ -3273,6 +3355,7 @@
     // Same-origin monitoring iframes reuse this access token instead of rotating the refresh cookie independently.
     window.opsConsoleAuth = Object.freeze({
       getAccessToken: () => state.token,
+      getRole: () => state.role,
       refreshAccessToken: () => refreshAccessToken(),
       expire: () => clearAuth(),
     });
@@ -3339,11 +3422,12 @@
     }
 
     function goTab(name) {
+      if (name === "widgets") name = "widget-board";
       if (!canAccessTab(name)) {
         toast("이 메뉴에 접근할 권한이 없습니다", true);
         name = "home";
       }
-      const embedded = new Set(["widget-board", "analysis", "live-telemetry", "mqtt-monitor"]);
+      const embedded = new Set(["widget-board", "dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor"]);
       if (name !== "devices") closeDeviceDetail(false);
       document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
@@ -3356,6 +3440,20 @@
         if (frame && !frame.dataset.loaded) {
           frame.src = frame.dataset.pageSrc;
           frame.dataset.loaded = "true";
+        } else if (frame && name === "widget-board") {
+          frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+        }
+        const pageFrame = document.querySelector(`#tab-${name} iframe[data-page-key]`);
+        if (pageFrame) {
+          if (!pageFrame.dataset.loaded) {
+            pageFrame.addEventListener("load", () => {
+              pageFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+            }, { once: true });
+            pageFrame.src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&pageCode=${encodeURIComponent(pageFrame.dataset.pageKey)}`;
+            pageFrame.dataset.loaded = "true";
+          } else {
+            pageFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+          }
         }
       }
       updatePageContext(name);
@@ -3368,6 +3466,7 @@
         loadCollectionOperationsHealth().catch((e) => toast(e.message, true));
         loadCollectionJobHealth().catch((e) => toast(e.message, true));
       }
+      if (name === "alarms" && state.token) loadAlarmPage().catch((e) => toast(e.message, true));
       if (name === "device-pages" && state.token) {
         fillPageDevicePageSelect();
         if (state.pageDeviceLoadedCode === $("pdPage").value) renderPageDeviceCandidates();
@@ -3378,6 +3477,31 @@
       if (name === "lora-model-mapping" && state.token) loadLoraModels().catch((e) => toast(e.message, true));
       if (name === "lora-collection-status" && state.token) loadLoraCollectionStatus().catch((e) => toast(e.message, true));
     }
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== location.origin || event.source !== $("widgetBoardFrame")?.contentWindow) return;
+      if (event.data?.type === "dcim:dashboard:add-widget") {
+        openWidgetEditorForPage(event.data.pageCode);
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:edit-widget") {
+        if (state.role === "ADMIN" && Number.isSafeInteger(Number(event.data.widgetId))) {
+          startEditWidget(Number(event.data.widgetId));
+        }
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:calculated-metrics") {
+        openCalculatedMetrics();
+        return;
+      }
+      if (!["dcim:dashboard:layout-saved", "dcim:dashboard:widgets-changed"].includes(event.data?.type)) return;
+      const pageCode = String(event.data.pageCode || "").toLowerCase();
+      document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
+        if (frame.dataset.loaded && frame.dataset.pageKey.toLowerCase() === pageCode) {
+          frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+        }
+      });
+    });
 
     function showCollectionPane(name) {
       $("tab-collection-status").querySelectorAll("[data-collection-tab]").forEach((button) => {
@@ -5797,6 +5921,8 @@
         ? `${state.pageDeviceIds.size}대 선택 · 전체 ${state.pageDeviceCatalog.length}대${dirty ? " · 저장 전 변경 사항 있음" : ""}`
         : "페이지를 선택하세요.";
       $("pdSave").disabled = state.role !== "ADMIN" || !ready || !dirty;
+      $("pdSelectAll").disabled = state.role !== "ADMIN" || !ready || !state.pageDeviceCatalog.length;
+      $("pdClearAll").disabled = state.role !== "ADMIN" || !ready || !state.pageDeviceIds.size;
     }
 
     function renderPageDeviceCandidates() {
@@ -5893,6 +6019,16 @@
     };
     $("pdSearch").addEventListener("input", renderPageDeviceCandidates);
     $("pdOnlySelected").addEventListener("change", renderPageDeviceCandidates);
+    $("pdSelectAll").onclick = () => {
+      if (state.role !== "ADMIN" || state.pageDeviceLoadedCode !== $("pdPage").value) return;
+      state.pageDeviceIds = new Set(state.pageDeviceCatalog.map((device) => Number(device.id)));
+      renderPageDeviceCandidates();
+    };
+    $("pdClearAll").onclick = () => {
+      if (state.role !== "ADMIN" || state.pageDeviceLoadedCode !== $("pdPage").value) return;
+      state.pageDeviceIds.clear();
+      renderPageDeviceCandidates();
+    };
     $("pdSave").onclick = async () => {
       const code = state.pageDeviceLoadedCode;
       if (state.role !== "ADMIN" || !code || code !== $("pdPage").value || !hasUnsavedPageDeviceSelection()) return;
@@ -6014,11 +6150,48 @@
       $("wKind").focus();
     }
 
+    function openWidgetEditorForPage(pageCode) {
+      if (state.role !== "ADMIN") return toast("위젯 등록은 관리자만 할 수 있습니다.", true);
+      const page = (state.codes.DEVICE_PAGE || []).find((item) =>
+        String(item.code).toLowerCase() === String(pageCode || "").toLowerCase());
+      if (!page) return toast("선택한 페이지를 찾을 수 없습니다. 페이지 목록을 새로고침해 주세요.", true);
+      $("wPage").value = page.code;
+      $("wCreatePage").value = page.code;
+      openWidgetEditor();
+    }
+
+    function openCalculatedMetrics() {
+      closeWidgetEditor();
+      $("metricBackdrop").classList.add("open");
+      $("calculatedMetricCard").classList.add("open");
+      $("calculatedMetricCard").setAttribute("aria-hidden", "false");
+      $("metricClose").focus();
+    }
+
+    function closeCalculatedMetrics() {
+      $("metricBackdrop").classList.remove("open");
+      $("calculatedMetricCard").classList.remove("open");
+      $("calculatedMetricCard").setAttribute("aria-hidden", "true");
+    }
+
+    function refreshWidgetPages(pageCode) {
+      const code = String(pageCode || "").toLowerCase();
+      const boardFrame = $("widgetBoardFrame");
+      if (boardFrame?.dataset.loaded) {
+        boardFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+      }
+      document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
+        if (frame.dataset.loaded && frame.dataset.pageKey.toLowerCase() === code) {
+          frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+        }
+      });
+    }
+
     function closeWidgetEditor() {
       $("wEditorBackdrop").classList.remove("open");
       $("wEditorCard").classList.remove("open");
       $("wEditorCard").setAttribute("aria-hidden", "true");
-      $("wOpenEditor").focus();
+      if ($("tab-widget-board")?.classList.contains("active")) $("widgetBoardFrame")?.focus();
     }
 
     function validateWidgetEditorStep(step) {
@@ -7937,7 +8110,7 @@
             <td></td>
             <td class="mono">${esc(code.code)}</td>
             <td>${esc(code.name)}</td>
-            <td>${code.sortOrder ?? "–"}</td>
+            <td>${code.sortOrder ?? "–"}${code.thresholdSupported ? ' <span class="chip ok">임계값 허용</span>' : ""}</td>
             <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
               <button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>
               <button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>
@@ -8002,6 +8175,8 @@
           $("ccCode").value = code.code || "";
           $("ccName").value = code.name || "";
           $("ccSort").value = code.sortOrder ?? 0;
+          $("ccThresholdSupported").checked = code.thresholdSupported === true;
+          syncThresholdCodeFlag();
           $("ccFormTitle").textContent = `코드 수정 — ${code.group.groupKey}`;
           $("ccSave").textContent = "저장";
           $("ccDialog").showModal();
@@ -8032,6 +8207,8 @@
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
+      $("ccThresholdSupported").checked = false;
+      syncThresholdCodeFlag();
       $("ccFormTitle").textContent = `코드 추가 — ${group.groupKey}`;
       $("ccSave").textContent = "등록";
       $("ccDialog").showModal();
@@ -8049,6 +8226,17 @@
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
+      $("ccThresholdSupported").checked = false;
+      syncThresholdCodeFlag();
+    }
+
+    function syncThresholdCodeFlag() {
+      const groupId = Number($("ccGroup").value);
+      const group = (state.codeGroups || []).find((item) => Number(item.id) === groupId);
+      const supportedGroup = group?.groupKey === "DATA_POINT_TYPE";
+      $("ccThresholdSupportedWrap").hidden = !supportedGroup;
+      $("ccThresholdSupported").disabled = !supportedGroup;
+      if (!supportedGroup) $("ccThresholdSupported").checked = false;
     }
 
     function clearCodeGroupEdit() {
@@ -8148,6 +8336,256 @@
       $("statDev").textContent = state.devices.length;
       $("statTask").textContent = state.tasks.length;
     }
+
+    const alarmUi = { page: 1, last: true, rules: [], devices: [], models: [], sources: [], editId: null, editingRule: null };
+
+    function alarmTime(value) {
+      return value ? new Date(value).toLocaleString("ko-KR") : "—";
+    }
+
+    async function loadAlarmPage() {
+      const jobs = [loadAlarmEvents()];
+      if (state.role === "ADMIN") jobs.push(loadAlarmRules());
+      await Promise.all(jobs);
+    }
+
+    function closeAlarmRule() {
+      $("alarmRuleModal").classList.remove("open");
+      $("alarmRuleModal").setAttribute("aria-hidden", "true");
+      alarmUi.editingRule = null;
+    }
+
+    $("alarmReload").onclick = () => loadAlarmPage().catch((e) => toast(e.message, true));
+    $("alarmPrev").onclick = () => { if (alarmUi.page > 1) { alarmUi.page--; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
+    $("alarmNext").onclick = () => { if (!alarmUi.last) { alarmUi.page++; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
+    $("alarmRuleOpen").onclick = () => openAlarmRule().catch((e) => toast(e.message, true));
+    $("alarmRuleClose").onclick = closeAlarmRule;
+    $("alarmRuleCancel").onclick = closeAlarmRule;
+    $("alarmRuleModal").addEventListener("click", (event) => { if (event.target === $("alarmRuleModal")) closeAlarmRule(); });
+    // Threshold page: one device, one point, one threshold per row.
+    async function loadAlarmEvents() {
+      const result = await api(`/api/manager/alarms?page=${alarmUi.page}&size=20`);
+      alarmUi.last = result.last;
+      $("alarmPageInfo").textContent = `${result.page} / ${Math.max(result.totalPages, 1)} · 전체 ${result.totalElements}건`;
+      $("alarmPrev").disabled = result.first;
+      $("alarmNext").disabled = result.last;
+      $("alarmList").innerHTML = (result.content || []).map((event) => {
+        const detail = event.details;
+        const status = event.clearedDt ? `복구 ${alarmTime(event.clearedDt)}` : "진행 중";
+        const title = detail ? `${detail.deviceName} · ${detail.pointName}` : `${event.alarmType} · ${event.subjectKey}`;
+        const summary = detail
+          ? `${detail.measuredValue} ${detail.unit} · ${detail.operator === "ABOVE" ? "초과" : "미만"} 기준 ${detail.thresholdValue} ${detail.unit}`
+          : "상세 측정정보 없음";
+        return `<article class="alarm-row"><div class="alarm-row-head"><strong>${esc(title)}</strong><span class="chip ${event.clearedDt ? "ok" : "bad"}">${esc(status)}</span></div>
+          <p>${esc(event.severity)} · ${esc(summary)} · 발생 ${esc(alarmTime(event.raisedDt))}</p></article>`;
+      }).join("") || '<div class="empty">표시할 알람이 없습니다.</div>';
+    }
+
+    async function loadAlarmRules() {
+      alarmUi.rules = await api("/api/manager/threshold-rules") || [];
+      $("alarmRuleList").innerHTML = alarmUi.rules.map((rule) => `<article class="alarm-row">
+        <div class="alarm-row-head"><strong>${esc(rule.deviceName)} · ${esc(rule.pointName)}</strong><span class="chip ${rule.enabled ? "ok" : ""}">${rule.enabled ? "사용" : "중지"}</span></div>
+        <p>${esc(rule.dataPointType)} · ${esc(rule.protocol.toUpperCase())} · ${esc(rule.operator === "ABOVE" ? "초과" : "미만")} ${esc(rule.thresholdValue)} ${esc(rule.unit)} · ${esc(rule.severity)}</p>
+        <div class="row" style="margin-top:9px"><button type="button" class="ghost" data-alarm-edit="${rule.id}">수정</button>${rule.enabled ? `<button type="button" class="ghost" data-alarm-disable="${rule.id}">중지</button>` : ""}</div></article>`
+      ).join("") || '<div class="empty">등록된 임계값이 없습니다.</div>';
+    }
+
+    async function loadAlarmCatalog() {
+      const [sources, allDevices] = await Promise.all([
+        api("/api/manager/threshold-rules/sources"),
+        (async () => {
+          const items = [];
+          for (let page = 1; ; page++) {
+            const response = await api(`/api/manager/devices?enabled=true&page=${page}&size=100`);
+            items.push(...(response.content || []));
+            if (response.last || !(response.content || []).length) return items;
+          }
+        })(),
+      ]);
+      alarmUi.sources = (sources || []).filter((source) => source.thresholdSupported && source.unit);
+      // 모델과 장비는 전체 활성 장비에서 구성한다. 허용 측정항목이 아직 없는 모델도
+      // 선택 목록에는 보여줘야 공통코드 설정 누락을 사용자가 알아차릴 수 있다.
+      alarmUi.devices = allDevices;
+      const modelMap = new Map();
+      alarmUi.devices.forEach((device) => {
+        const modelId = Number(device.modelId);
+        if (!modelMap.has(modelId)) modelMap.set(modelId, { id: modelId, name: device.modelName || "모델 미지정", devices: new Set() });
+        modelMap.get(modelId).devices.add(Number(device.id));
+      });
+      alarmUi.models = [...modelMap.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+      $("alarmModel").innerHTML = '<option value="">모델 선택</option>' + alarmUi.models.map((model) => {
+        const pointCount = new Set(alarmUi.sources.filter((source) => Number(source.modelId) === model.id)
+          .map((source) => `${source.protocol}:${source.pointName}`)).size;
+        return `<option value="${model.id}">${esc(model.name)} · 장비 ${model.devices.size}대 · 허용 항목 ${pointCount}개</option>`;
+      }).join("");
+      renderAlarmDeviceChoices();
+    }
+
+    function renderAlarmDeviceChoices(selectedDeviceId = null) {
+      const modelId = Number($("alarmModel").value);
+      const devices = alarmUi.devices.filter((device) => Number(device.modelId) === modelId);
+      const selectedIds = selectedDeviceId == null ? [] : [Number(selectedDeviceId)];
+      $("alarmDeviceList").innerHTML = !modelId
+        ? '<span class="muted">모델을 먼저 선택하세요.</span>'
+        : devices.length
+          ? devices.map((device) => `<label class="alarm-device-pick"><input type="checkbox" value="${Number(device.id)}" ${selectedIds.includes(Number(device.id)) ? "checked" : ""} /><span>${esc(device.name)} · #${Number(device.id)}</span></label>`).join("")
+          : '<span class="muted">선택한 모델에 활성 장비가 없습니다.</span>';
+      $("alarmDeviceSelectAll").disabled = !devices.length || Boolean(alarmUi.editingRule);
+      if (alarmUi.editingRule) $("alarmDeviceList").querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.disabled = selectedDeviceId != null && Number(checkbox.value) !== Number(selectedDeviceId);
+      });
+      updateAlarmDeviceCount();
+      renderAlarmPointChoices();
+    }
+
+    function selectedAlarmDeviceIds() {
+      return [...$("alarmDeviceList").querySelectorAll('input[type="checkbox"]:checked')].map((checkbox) => Number(checkbox.value));
+    }
+
+    function updateAlarmDeviceCount() {
+      const count = selectedAlarmDeviceIds().length;
+      $("alarmDeviceCount").textContent = `${count}대 선택`;
+      $("alarmDeviceClear").disabled = !count || Boolean(alarmUi.editingRule);
+    }
+
+    function renderAlarmPointChoices(selectedSource = null) {
+      const deviceIds = selectedAlarmDeviceIds();
+      const sourcesByDevice = deviceIds.map((deviceId) => alarmUi.sources.filter((source) => Number(source.deviceId) === deviceId));
+      const signature = (source) => `${source.protocol}:${source.pointName}:${source.dataPointType}:${source.unit}`;
+      const firstSources = sourcesByDevice[0] || [];
+      const choiceSources = [...new Map(firstSources
+        .filter((source) => sourcesByDevice.every((sources) => sources.some((item) => signature(item) === signature(source))))
+        .map((source) => [signature(source), source])).values()];
+      $("alarmSource").disabled = !deviceIds.length || !choiceSources.length;
+      $("alarmSource").innerHTML = '<option value="">측정항목 선택</option>' + choiceSources.map((source, index) =>
+        `<option value="${index}" ${selectedSource && source.protocol === selectedSource.protocol && source.pointName === selectedSource.pointName ? "selected" : ""}>${esc(source.pointName)} · ${esc(source.dataPointType)} · ${esc(source.unit)} · ${esc(source.protocol.toUpperCase())}</option>`).join("");
+      $("alarmSource").dataset.sourceChoices = JSON.stringify(choiceSources.map((source) => ({
+        protocol: source.protocol, pointName: source.pointName, dataPointType: source.dataPointType, unit: source.unit,
+      })));
+      $("alarmUnitHint").textContent = !$("alarmModel").value
+        ? "먼저 장비 모델을 선택하세요."
+        : !deviceIds.length
+          ? "장비를 한 대 이상 선택하세요. 여러 장비에 같은 임계값을 일괄 등록할 수 있습니다."
+          : choiceSources.length
+            ? "선택한 모든 장비에 같은 조건으로 등록합니다. 장비·측정항목 조합당 임계값 하나만 허용됩니다."
+            : "선택한 장비들에 공통 측정항목이 없습니다. 장비 선택을 줄이거나 DATA_POINT_TYPE 공통코드 설정을 확인하세요.";
+      if (selectedSource) {
+        const chosen = choiceSources.find((source) => source.protocol === selectedSource.protocol && source.pointName === selectedSource.pointName);
+        if (chosen) $("alarmUnitHint").textContent = `기준값 단위: ${chosen.unit} · 유형: ${chosen.dataPointType}`;
+      }
+    }
+
+    function selectedAlarmSource() {
+      if (!$("alarmSource").value) return null;
+      const index = Number($("alarmSource").value);
+      const options = JSON.parse($("alarmSource").dataset.sourceChoices || "[]");
+      return Number.isInteger(index) ? options[index] || null : null;
+    }
+
+    async function openAlarmRule(rule = null) {
+      if (state.role !== "ADMIN") return;
+      alarmUi.editingRule = rule;
+      await loadAlarmRules();
+      await loadAlarmCatalog();
+      $("alarmRuleTitle").textContent = rule ? "임계값 수정" : "임계값 등록";
+      $("alarmRuleSave").textContent = rule ? "변경 저장" : "선택 장비에 일괄 등록";
+      const selectedDevice = rule && alarmUi.devices.find((device) => Number(device.id) === Number(rule.deviceId));
+      $("alarmModel").value = selectedDevice ? String(selectedDevice.modelId) : "";
+      renderAlarmDeviceChoices(rule?.deviceId ?? null);
+      if (rule) renderAlarmPointChoices({ protocol: rule.protocol, pointName: rule.pointName });
+      $("alarmOperator").value = rule?.operator || "ABOVE";
+      $("alarmThresholdValue").value = rule?.thresholdValue ?? "";
+      $("alarmSeverity").value = rule?.severity || "WARNING";
+      $("alarmEnabled").checked = rule?.enabled ?? true;
+      $("alarmRuleModal").classList.add("open");
+      $("alarmRuleModal").setAttribute("aria-hidden", "false");
+      $(rule ? "alarmThresholdValue" : "alarmModel").focus();
+    }
+
+    async function saveAlarmRule() {
+      const source = selectedAlarmSource();
+      const deviceIds = selectedAlarmDeviceIds();
+      if (!deviceIds.length) throw new Error("임계값을 등록할 장비를 한 대 이상 선택하세요.");
+      if (!source) throw new Error("선택한 모든 장비에 공통인 임계값 지원 측정항목을 선택하세요.");
+      const rawValue = $("alarmThresholdValue").value.trim();
+      const thresholdValue = Number(rawValue);
+      if (!rawValue || !Number.isFinite(thresholdValue)) throw new Error("유효한 경보 기준값을 입력하세요.");
+      if (alarmUi.editingRule && deviceIds.length !== 1) throw new Error("기존 규칙 수정은 장비 한 대씩만 가능합니다.");
+      if (!alarmUi.editingRule) {
+        const duplicates = deviceIds.map((deviceId) => ({ deviceId, device: alarmUi.devices.find((item) => Number(item.id) === deviceId) }))
+          .filter(({ deviceId }) => alarmUi.rules.some((rule) => Number(rule.deviceId) === deviceId && rule.pointName === source.pointName));
+        if (duplicates.length) {
+          const names = duplicates.map(({ device }) => device?.name || "장비").join(", ");
+          throw new Error(`이미 해당 측정항목의 임계값이 등록된 장비가 있습니다: ${names}. 기존 규칙을 수정하거나 해당 장비를 선택 해제하세요.`);
+        }
+      }
+      $("alarmRuleSave").disabled = true;
+      try {
+        const id = alarmUi.editingRule?.id;
+        const saved = [];
+        const failed = [];
+        for (const deviceId of deviceIds) {
+          const payload = { deviceId, protocol: source.protocol, pointName: source.pointName,
+            operator: $("alarmOperator").value, thresholdValue, severity: $("alarmSeverity").value,
+            enabled: $("alarmEnabled").checked };
+          try {
+            await api(id ? `/api/manager/threshold-rules/${id}` : "/api/manager/threshold-rules",
+              { method: id ? "PUT" : "POST", body: JSON.stringify(payload) });
+            saved.push(deviceId);
+          } catch (error) {
+            failed.push({ deviceId, message: error.message });
+            if (id) throw error;
+          }
+        }
+        if (!saved.length) throw new Error(failed[0]?.message || "임계값을 저장하지 못했습니다.");
+        closeAlarmRule();
+        await loadAlarmRules();
+        await loadAlarmEvents();
+        if (failed.length) {
+          const names = failed.map(({ deviceId }) => alarmUi.devices.find((device) => Number(device.id) === deviceId)?.name || `#${deviceId}`);
+          toast(`${saved.length}대 저장, ${failed.length}대 실패: ${names.join(", ")}`, true);
+        } else {
+          toast(`${saved.length}대 장비에 임계값을 등록했습니다.`);
+        }
+      } finally { $("alarmRuleSave").disabled = false; }
+    }
+
+    $("alarmModel").onchange = () => renderAlarmDeviceChoices();
+    $("alarmDeviceList").onchange = (event) => {
+      const checkbox = event.target.closest('input[type="checkbox"]');
+      if (!checkbox) return;
+      if (alarmUi.editingRule && checkbox.checked) {
+        $("alarmDeviceList").querySelectorAll('input[type="checkbox"]').forEach((item) => { if (item !== checkbox) item.checked = false; });
+      }
+      updateAlarmDeviceCount();
+      renderAlarmPointChoices();
+    };
+    $("alarmDeviceSelectAll").onclick = () => {
+      $("alarmDeviceList").querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach((checkbox) => { checkbox.checked = true; });
+      updateAlarmDeviceCount();
+      renderAlarmPointChoices();
+    };
+    $("alarmDeviceClear").onclick = () => {
+      $("alarmDeviceList").querySelectorAll('input[type="checkbox"]:not(:disabled)').forEach((checkbox) => { checkbox.checked = false; });
+      updateAlarmDeviceCount();
+      renderAlarmPointChoices();
+    };
+    $("alarmSource").onchange = () => {
+      const source = selectedAlarmSource();
+      if (source) $("alarmUnitHint").textContent = `기준값 단위: ${source.unit} · 유형: ${source.dataPointType}`;
+    };
+    $("alarmRuleSave").onclick = () => saveAlarmRule().catch((e) => toast(e.message, true));
+    $("alarmRuleList").onclick = async (event) => {
+      const edit = event.target.closest("[data-alarm-edit]");
+      if (edit) return openAlarmRule(alarmUi.rules.find((r) => r.id === Number(edit.dataset.alarmEdit))).catch((e) => toast(e.message, true));
+      const disable = event.target.closest("[data-alarm-disable]");
+      if (!disable || !confirm("이 규칙을 중지하고 열린 알람을 종료할까요?")) return;
+      try {
+        await api(`/api/manager/threshold-rules/${disable.dataset.alarmDisable}`, { method: "DELETE" });
+        await loadAlarmPage();
+        toast("규칙을 중지했습니다.");
+      } catch (e) { toast(e.message, true); }
+    };
 
     function setWizProgress(step) {
       [...$("wizProgress").children].forEach((el, i) => {
@@ -8456,18 +8894,20 @@
       const code = $("ccCode").value.trim();
       const name = $("ccName").value.trim();
       const sortOrder = Number($("ccSort").value) || 0;
+      const thresholdSupported = $("ccThresholdSupported").checked &&
+        (state.codeGroups || []).some((group) => Number(group.id) === groupId && group.groupKey === "DATA_POINT_TYPE");
       if (!groupId || !code || !name) return toast("그룹·code·name을 입력하세요", true);
       try {
         if (state.editingCodeId) {
           await api(`/api/manager/common-codes/${state.editingCodeId}`, {
             method: "PUT",
-            body: JSON.stringify({ groupId, code, name, sortOrder }),
+            body: JSON.stringify({ groupId, code, name, sortOrder, thresholdSupported }),
           });
           toast("코드를 수정했습니다");
         } else {
           await api("/api/manager/common-codes", {
             method: "POST",
-            body: JSON.stringify({ groupId, code, name, sortOrder }),
+            body: JSON.stringify({ groupId, code, name, sortOrder, thresholdSupported }),
           });
           toast("코드를 등록했습니다");
         }
@@ -8478,6 +8918,7 @@
     };
 
     $("ccCancelEdit").onclick = () => { closeEntityDialog("ccDialog"); clearCodeEdit(); };
+    $("ccGroup").onchange = syncThresholdCodeFlag;
     $("locExpandAll").onclick = () => {
       Object.keys(state.locByCode).forEach((c) => state.locExpanded.add(c));
       paintLocationTree();
@@ -8905,8 +9346,13 @@
         $("wzResult").classList.add("show");
         $("wzGoDev").onclick = () => { goTab("devices"); selectDevice(device.id, true); };
           $("wzGoWidget").onclick = () => {
-            goTab("widgets");
-            addWidgetDevice(device.id);
+            goTab("widget-board");
+            openWidgetEditorForPage("dashboard");
+            loadWidgetSources().then(() => {
+              fillWidgetDevicePick();
+              $("wPickDevice").value = String(device.id);
+              if ($("wPickDevice").value) loadDevicePointPicker();
+            }).catch((error) => toast(error.message, true));
           };
         toast("장비 등록이 끝났습니다");
         $("wzName").value = "";
@@ -9319,7 +9765,10 @@
         $("wDeleteEdit").style.display = "";
         $("wDeleteEdit").dataset.id = String(w.id);
         $("wDeleteEdit").dataset.name = w.name || "";
-        if (w.pageCode) $("wCreatePage").value = w.pageCode;
+        if (w.pageCode) {
+          $("wCreatePage").value = w.pageCode;
+          $("wPage").value = w.pageCode;
+        }
         $("wName").value = w.name || "";
         $("wKind").value = w.queryKind || "last";
         if (w.countMode) $("wCountMode").value = w.countMode;
@@ -9406,7 +9855,7 @@
       }
       $("wLastOut").innerHTML = "";
       toast(`위젯 #${id} 삭제됨`);
-      await loadWidgets();
+      refreshWidgetPages($("wPage").value);
     }
 
     async function loadWidgets() {
@@ -10093,10 +10542,18 @@
       renderPueGroups();
       fillPueDeviceGroupPicks();
       $("pueResult").innerHTML = "";
-      $("tab-widgets")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      $("calculatedMetricCard")?.scrollTo({ top: 0, behavior: "smooth" });
       toast(`계산 지표 #${definition.id} 수정 모드`);
     }
     renderPueGroups();
+
+    // Keep legacy form state in the DOM, but show its editors directly over the board.
+    document.body.append($("wEditorBackdrop"), $("wEditorCard"), $("metricBackdrop"), $("calculatedMetricCard"));
+    $("metricClose").onclick = closeCalculatedMetrics;
+    $("metricBackdrop").onclick = closeCalculatedMetrics;
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && $("calculatedMetricCard").classList.contains("open")) closeCalculatedMetrics();
+    });
 
     $("wReload").onclick = () => loadWidgets().catch((e) => toast(e.message, true));
     $("wOpenEditor").onclick = () => openWidgetEditor();
@@ -10227,7 +10684,7 @@
           $("wPage").value = powerBody.pageCode;
           clearWidgetForm(false);
           $("wCreatePage").value = powerBody.pageCode;
-          await loadWidgets();
+          refreshWidgetPages(powerBody.pageCode);
           return;
         }
 
@@ -10258,7 +10715,7 @@
           $("wPage").value = psychBody.pageCode;
           clearWidgetForm(false);
           $("wCreatePage").value = psychBody.pageCode;
-          await loadWidgets();
+          refreshWidgetPages(psychBody.pageCode);
           return;
         }
 
@@ -10351,7 +10808,7 @@
         $("wPage").value = body.pageCode;
         clearWidgetForm(false);
         $("wCreatePage").value = body.pageCode;
-        await loadWidgets();
+        refreshWidgetPages(body.pageCode);
       } catch (e) {
         $("wOut").textContent = e.message;
         toast(e.message, true);
