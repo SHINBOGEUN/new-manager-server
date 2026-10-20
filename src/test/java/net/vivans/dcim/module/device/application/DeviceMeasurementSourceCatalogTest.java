@@ -14,6 +14,8 @@ import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelModbusPoint;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
+import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,6 +37,8 @@ class DeviceMeasurementSourceCatalogTest {
     @Mock DeviceProtocolEndpointRepository endpoints;
     @Mock DeviceEndpointModbusRepository modbusEndpoints;
     @Mock DeviceModbusBitFieldRepository bitFields;
+    @Mock DeviceModelMqttPointRepository mqttPoints;
+    @Mock DeviceMqttIdentityRepository mqttIdentities;
     @InjectMocks DeviceMeasurementSourceCatalog catalog;
 
     @Test
