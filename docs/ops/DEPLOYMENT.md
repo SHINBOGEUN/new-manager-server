@@ -25,7 +25,7 @@
 
 `ddl-auto: none`이므로 Manager가 테이블을 만들지 않는다. 빈 `dcim` DB에 아래 순서대로 적용한다.
 
-1. `sql/schema/01_users.sql`부터 `42_device_asset_document.sql`까지 파일명 순서로 실행한다.
+1. 신규 DB는 `sql/schema`의 파일을 파일명 순서로 적용하되, README에 표시된 기존 DB 전용·이관 검증용 파일은 건너뛴다.
 2. `sql/seed/model_catalog.sql`을 **빈 DB에서만 한 번** 실행한다.
 3. Ops Console에서 관리자 계정, `UNASSIGNED` 위치와 현장별 위치를 등록한다.
 4. 현장 장비·Endpoint·수집 작업·PUE 정의·위젯을 등록한다.

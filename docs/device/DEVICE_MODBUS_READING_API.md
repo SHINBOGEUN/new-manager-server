@@ -5,7 +5,7 @@
 > API prefix: `/api/manager/devices/{deviceId}/endpoints/{endpointId}/modbus/readings`  
 > 부모 API: [DEVICE_ENDPOINT_MODBUS_API.md](./DEVICE_ENDPOINT_MODBUS_API.md)  
 > 모델 카탈로그: [DEVICE_MODEL_MODBUS_POINT_API.md](../devicemodel/DEVICE_MODEL_MODBUS_POINT_API.md)  
-> DDL: [`43_device_modbus_reading.sql`](../../sql/schema/43_device_modbus_reading.sql) · 기존 DB용 [`44_alter_modbus_reading_endpoint.sql`](../../sql/schema/44_alter_modbus_reading_endpoint.sql)
+> DDL: [`42_device_modbus_reading.sql`](../../sql/schema/42_device_modbus_reading.sql) · 기존 DB용 [`43_alter_modbus_reading_endpoint.sql`](../../sql/schema/43_alter_modbus_reading_endpoint.sql)
 
 ---
 
@@ -333,7 +333,7 @@ RDC 같은 단순 장비는 카탈로그에 주소가 고정(`requires_instance=
 
 | 구분 | 내용 |
 |------|------|
-| DDL | `43_device_modbus_reading.sql` (신규) · `44_alter_modbus_reading_endpoint.sql` (기존 DB) ✅ |
+| DDL | `42_device_modbus_reading.sql` (신규) · `43_alter_modbus_reading_endpoint.sql` (기존 DB) ✅ |
 | 도메인 | `DeviceModbusReading` — unit/address 범위, point.requiresInstance, 레지스터 범위 검증 ✅ |
 | Repository | 도메인 인터페이스 + JPA/SpringData ✅ |
 | Application | `DeviceModbusReadingQueryService` — CRUD 5개, `validateReadingSource` 공통 검증 ✅ |

@@ -287,7 +287,7 @@ readInputRegisters(host, port, unitId, address, quantity)   → Integer[]  (raw 
 | 모델 포인트 엔티티·Repository·Service·Controller·DTO | 구현 완료 |
 | Modbus 단위의 `UNIT` 공통 코드 참조 | `unit_code_id` 적용 |
 | Modbus 측정 유형의 `DATA_POINT_TYPE` 공통 코드 참조 | `data_point_type_id` 적용 |
-| 기존 DB 측정 유형 기본값 이관 | `55_device_model_modbus_point_data_point_type.sql` 적용 필요 |
+| 기존 DB 측정 유형 기본값 이관 | 기존 DB에만 별도 이관 적용; 신규 설치 DDL `08_device_model_modbus_point.sql`에 포함 |
 | device_endpoint_modbus | 구현 완료 |
 | 수집 스크립트 동기화 | 수집 task 동기화 흐름에서 관리 |
 

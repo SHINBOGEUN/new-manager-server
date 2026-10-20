@@ -722,7 +722,7 @@ erDiagram
 
 > 4층 아키텍처 **④ 프로토콜 확장층** — `device_endpoint_modbus`의 자식. 분전반처럼 한 endpoint에서 여러 unit·주소를 읽어 서로 다른 장비의 필드로 기록할 때 회선마다 1행.
 > API: [DEVICE_MODBUS_READING_API.md](device/DEVICE_MODBUS_READING_API.md)
-> DDL: [`43_device_modbus_reading.sql`](../sql/schema/43_device_modbus_reading.sql) · 기존 DB용 [`44_alter_modbus_reading_endpoint.sql`](../sql/schema/44_alter_modbus_reading_endpoint.sql)
+> DDL: [`42_device_modbus_reading.sql`](../sql/schema/42_device_modbus_reading.sql) · 기존 DB용 [`43_alter_modbus_reading_endpoint.sql`](../sql/schema/43_alter_modbus_reading_endpoint.sql)
 
 | 컬럼 | 타입 | NULL | 키 | 기본값 | 설명 |
 |------|------|------|-----|--------|------|
@@ -811,7 +811,7 @@ erDiagram
 | ~~`device_page`~~ | (삭제, V018) | ❌ |
 | `device_snmp_point` | SRC형 장비별 전체 OID | ⬜ — [BACKLOG](./BACKLOG.md) |
 | `device_endpoint_modbus` | Modbus unit_id (endpoint 1:1 확장) | ✅ `23_device_endpoint_modbus.sql` — [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
-| `device_modbus_reading` | 분전반 회선 → 대상 장비 매핑 (unit_id/address/target_device_id/point_name) | ✅ `43_device_modbus_reading.sql` — [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
+| `device_modbus_reading` | 분전반 회선 → 대상 장비 매핑 (unit_id/address/target_device_id/point_name) | ✅ `42_device_modbus_reading.sql` — [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
 | community / version | 앱 기본값. DB 의도적 제외 | 보류 |
 | `devices.parent_device_id` | 장비 계층 | ⬜ (V011 아님) |
 
