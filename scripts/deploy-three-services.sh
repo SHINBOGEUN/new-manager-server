@@ -15,14 +15,26 @@ command -v curl >/dev/null
 [[ -f docker-compose.yml && -f .env ]] || { echo 'App Compose or .env is missing' >&2; exit 1; }
 docker info >/dev/null
 
-jars=(
-  new-manager-server-1.0.0.jar
-  new-collector-server-1.0.0.jar
-  new-sensor-data-server-1.0.0.jar
-)
 bundled_jars=(manager.jar collector.jar sensor-data.jar)
 services=(manager-server collector-service sensor-data-service)
 containers=(dcim_new_manager_server dcim_new_collector_service dcim_new_sensor_data_service)
+[[ -s .cd-incoming/$release_id/revisions.txt ]] || { echo 'Missing revision manifest' >&2; exit 1; }
+read_version() {
+  local key=$1 value
+  value=$(awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1) }' ".cd-incoming/$release_id/revisions.txt")
+  [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "Missing or invalid $key" >&2; exit 1; }
+  printf '%s' "$value"
+}
+manager_version=$(read_version manager-version)
+collector_version=$(read_version collector-version)
+sensor_data_version=$(read_version sensor-data-version)
+jars=(
+  "new-manager-server-${manager_version}.jar"
+  "new-collector-server-${collector_version}.jar"
+  "new-sensor-data-server-${sensor_data_version}.jar"
+)
+jar_stems=(new-manager-server new-collector-server new-sensor-data-server)
+current_jars=()
 project=
 for index in "${!services[@]}"; do
   running_project=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' "${containers[$index]}")
@@ -34,10 +46,12 @@ for index in "${!services[@]}"; do
   if [[ -z "$project" ]]; then project=$running_project; fi
   [[ "$running_project" == "$project" ]] || { echo 'App containers have different Compose projects' >&2; exit 1; }
   mounted_jar=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/opt/dcim/app.jar"}}{{.Source}}{{end}}{{end}}' "${containers[$index]}")
-  [[ "$mounted_jar" == "$app_dir/${jars[$index]}" ]] || {
+  current_jar=${mounted_jar##*/}
+  [[ "$mounted_jar" == "$app_dir/$current_jar" && "$current_jar" =~ ^${jar_stems[$index]}-[A-Za-z0-9][A-Za-z0-9._-]*\.jar$ && -f "$mounted_jar" ]] || {
     echo "Unexpected JAR mount for ${containers[$index]}" >&2
     exit 1
   }
+  current_jars+=("$current_jar")
 done
 [[ "$project" == dcim-new-backend ]] || { echo "Refusing unexpected Compose project: $project" >&2; exit 1; }
 compose=(docker compose -p "$project" --env-file .env -f docker-compose.yml)
@@ -54,18 +68,17 @@ incoming="$app_dir/.cd-incoming/$release_id"
 release="$app_dir/.cd-releases/$release_id"
 [[ -d "$incoming" && ! -e "$release" ]] || { echo 'Release is missing or already deployed' >&2; exit 1; }
 for index in "${!jars[@]}"; do
-  [[ -s "$incoming/${bundled_jars[$index]}" && -f "$app_dir/${jars[$index]}" ]] || {
-    echo "Missing JAR: ${jars[$index]}" >&2
+  [[ -s "$incoming/${bundled_jars[$index]}" ]] || {
+    echo "Missing bundle JAR: ${bundled_jars[$index]}" >&2
     exit 1
   }
 done
-[[ -s "$incoming/revisions.txt" ]] || { echo 'Missing revision manifest' >&2; exit 1; }
-grep -Fxq 'version=1.0.1' "$incoming/revisions.txt" || { echo 'Unexpected bundle version' >&2; exit 1; }
 
 mkdir -p "$app_dir/.cd-releases"
 mv "$incoming" "$release"
 mkdir "$release/previous"
-for jar in "${jars[@]}"; do
+cp -p docker-compose.yml "$release/previous/docker-compose.yml"
+for jar in "${current_jars[@]}"; do
   cp -p "$app_dir/$jar" "$release/previous/$jar"
 done
 
@@ -75,8 +88,12 @@ rollback() {
   trap - ERR HUP INT TERM
   (( original_status != 0 )) || original_status=1
   if (( updated )); then
-    echo 'Deployment failed; restoring the previous three JARs' >&2
-    for jar in "${jars[@]}"; do
+    echo 'Deployment failed; restoring the previous Compose file and JARs' >&2
+    if ! { cp -p "$release/previous/docker-compose.yml" "$app_dir/.docker-compose.yml.rollback" &&
+           mv -f "$app_dir/.docker-compose.yml.rollback" "$app_dir/docker-compose.yml"; }; then
+      echo 'Compose rollback failed' >&2
+    fi
+    for jar in "${current_jars[@]}"; do
       if ! { install -m 0644 "$release/previous/$jar" "$app_dir/.$jar.rollback" &&
              mv -f "$app_dir/.$jar.rollback" "$app_dir/$jar"; }; then
         echo "Rollback copy failed for $jar" >&2
@@ -96,6 +113,16 @@ updated=1
 for index in "${!jars[@]}"; do
   install -m 0644 "$release/${bundled_jars[$index]}" "$app_dir/.${jars[$index]}.deploy"
   mv -f "$app_dir/.${jars[$index]}.deploy" "$app_dir/${jars[$index]}"
+  compose_tmp="$app_dir/.docker-compose.yml.deploy"
+  sed -E "s#(\\./${jar_stems[$index]}-)[^/:]+\\.jar(:/opt/dcim/app\\.jar)#\\1${jars[$index]#${jar_stems[$index]}-}\\2#" \
+    "$app_dir/docker-compose.yml" > "$compose_tmp"
+  mount_count=$(grep -Fc "./${jars[$index]}:/opt/dcim/app.jar" "$compose_tmp" || true)
+  [[ "$mount_count" == 1 ]] || {
+    rm -f "$compose_tmp"
+    echo "Could not update Compose JAR mount for ${services[$index]}" >&2
+    exit 1
+  }
+  mv -f "$compose_tmp" "$app_dir/docker-compose.yml"
 done
 
 # Recreate is necessary: bind mounts may still point at the old inode after atomic rename.
@@ -121,4 +148,12 @@ wait_http sensor-data http://127.0.0.1:21082/api/health
 
 printf '%s\n' "$release_id" > "$app_dir/.cd-current-release.tmp"
 mv -f "$app_dir/.cd-current-release.tmp" "$app_dir/.cd-current-release"
-echo "Deployed release $release_id; MQTT, database, InfluxDB, and legacy services were untouched"
+for index in "${!jars[@]}"; do
+  if [[ "${current_jars[$index]}" != "${jars[$index]}" ]]; then
+    if ! rm -f -- "$app_dir/${current_jars[$index]}"; then
+      echo "Could not remove obsolete JAR ${current_jars[$index]}; a copy is preserved in $release/previous" >&2
+    fi
+  fi
+done
+echo "Deployed release $release_id: manager=$manager_version collector=$collector_version sensor-data=$sensor_data_version"
+echo 'MQTT, database, InfluxDB, and legacy services were untouched'

@@ -1,7 +1,7 @@
 -- 21_page_widget_model.sql — dcim_new schema snapshot (FK order)
 
 CREATE TABLE IF NOT EXISTS `page_widget_model` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '위젯 모델 연결 ID',
   `widget_id` int(11) NOT NULL COMMENT 'page_widget.id',
   `model_id` int(11) NOT NULL COMMENT 'device_model.id',
   PRIMARY KEY (`id`),

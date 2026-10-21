@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `device_model_modbus_point` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Modbus point ID',
   `model_protocol_id` int(11) NOT NULL COMMENT 'device_model_protocol.id (FK)',
   `name` varchar(255) NOT NULL COMMENT '식별자·표시명 (TOTAL_WT, ONTO-TEMP 등)',
-  `data_point_type_id` int(11) NOT NULL COMMENT 'common_code.id (code_group=DATA_POINT_TYPE)',
+  `data_point_type_id` int(11) DEFAULT NULL COMMENT 'common_code.id (code_group=DATA_POINT_TYPE, 미분류 시 NULL)',
   `category_code_id` int(11) DEFAULT NULL COMMENT 'common_code.id (code_group=CATEGORY, 측정 항목 분류)',
   `unit_code_id` int(11) DEFAULT NULL COMMENT 'common_code.id (code_group=UNIT, 단위가 없으면 NULL)',
   `register_type` varchar(30) NOT NULL COMMENT '레지스터 종류 (COIL/DISCRETE/HOLDING/INPUT)',

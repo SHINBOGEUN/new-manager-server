@@ -24,7 +24,7 @@
 | device_protocol_endpoint | V009 | CRUD | [DEVICE_ENDPOINT_API.md](./device/DEVICE_ENDPOINT_API.md) |
 | device_snmp_instance | **V011** | **CRUD 완료** | [DEVICE_SNMP_INSTANCE_API.md](./device/DEVICE_SNMP_INSTANCE_API.md) |
 | device_endpoint_modbus | `23_device_endpoint_modbus.sql` | **CRUD 완료** | [DEVICE_ENDPOINT_MODBUS_API.md](./device/DEVICE_ENDPOINT_MODBUS_API.md) |
-| device_modbus_reading | `43_device_modbus_reading.sql` (+44 ALTER) | **CRUD 완료** | [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
+| device_modbus_reading | `42_device_modbus_reading.sql` (+43 ALTER) | **CRUD 완료** | [DEVICE_MODBUS_READING_API.md](./device/DEVICE_MODBUS_READING_API.md) |
 
 **의도적 보류:** SNMP community/version은 DB에 두지 않음 (앱 기본값). SRC `device_snmp_point`는 나중에.
 

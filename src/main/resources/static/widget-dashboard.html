@@ -417,10 +417,42 @@
     body.embedded .dashboard-brand, body.embedded .dashboard-context,
     body.embedded .dashboard-actions > a[href="/ops-console.html"] { display:none; }
     body.embedded .dashboard-topbar { justify-content:flex-end; min-height:48px; }
+    /* Fixed monitoring pages are display canvases; editing remains in Widget Board. */
+    body.display-only { grid-template-rows:minmax(0,1fr); }
+    body.display-only header.dashboard-header { display:none !important; }
+    body.display-only main { display:block; min-width:0; }
+    body.display-only main > aside,
+    body.display-only .board-toolbar,
+    body.display-only #dashboardPageTitle,
+    body.display-only #boardPageTitle,
+    body.display-only .log { display:none !important; }
+    body.display-only .board-wrap { width:100%; height:100%; padding:0; overflow:auto; }
+    body.display-only .board { min-width:0; min-height:100%; padding:0; background:none; }
+    body.display-only .placeholder { min-height:calc(100vh - 24px); grid-column:1 / -1; border:1px dashed #334861; background:rgba(18,26,41,.45); text-align:center; }
+    body.display-only #snapGuide,
+    body.display-only #ghost { display:none !important; }
+    body.display-only .card { user-select:text; }
+    /* The editor previews the same full-width grid as the fixed display pages. */
+    body.embedded-board .board-toolbar { display:none !important; }
+    body.embedded-board .board-wrap { width:100%; height:100%; padding:0; overflow:auto; }
+    body.embedded-board .board { min-width:0; min-height:100%; padding:0; background:none; }
+    body.embedded-board aside { display:none; }
+    body.embedded-board.drawer-open aside { display:block; top:48px; width:min(340px,90vw); }
+    body.embedded-board .board-wrap { margin-left:0; }
+    body.embedded-board.edit-mode .board { background-image:linear-gradient(to right,rgba(42,53,68,.42) 1px,transparent 1px),linear-gradient(to bottom,rgba(42,53,68,.42) 1px,transparent 1px); }
+    @media (max-width:760px) {
+      body.display-only .board-wrap, body.embedded-board .board-wrap { padding:0; }
+      body.display-only .board, body.embedded-board .board { min-width:0; }
+    }
   </style>
 </head>
 <body>
-  <script>if (new URLSearchParams(location.search).has("embedded")) document.body.classList.add("embedded");</script>
+  <script>
+    const initialDashboardParams = new URLSearchParams(location.search);
+    if (initialDashboardParams.has("embedded")) document.body.classList.add("embedded");
+    if (initialDashboardParams.get("displayOnly") === "1") document.body.classList.add("display-only");
+    if (initialDashboardParams.get("boardView") === "1") document.body.classList.add("embedded-board");
+  </script>
   <header class="dashboard-header">
     <div class="dashboard-topbar">
       <div class="dashboard-brand"><span class="dashboard-mark">D</span><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div>
@@ -428,9 +460,12 @@
       <div class="dashboard-actions">
         <span id="authStatus" class="chip">미로그인</span>
         <label class="page-switcher" for="pageCode"><span>페이지</span><select id="pageCode" disabled><option value="">페이지 불러오는 중...</option></select></label>
+        <button id="addWidgetBtn" type="button" style="display:none" disabled>＋ 위젯 추가</button>
+        <button id="metricsBtn" class="ghost" type="button" style="display:none">계산 지표</button>
         <button id="reloadBtn" class="ghost" type="button">↻ 새로고침</button>
         <button id="editBtn" type="button" title="클릭 후 이동·리사이즈">배치 편집</button>
         <button id="cancelEditBtn" class="ghost" type="button" style="display:none">편집 취소</button>
+        <button id="drawerBtn" class="ghost" type="button" style="display:none" aria-expanded="false" aria-controls="widgetList">위젯 목록</button>
         <button id="controlsBtn" class="ghost" type="button">설정</button>
         <button id="logBtn" class="ghost" type="button">로그</button>
         <a href="/ops-console.html">운영 콘솔 ↗</a>
@@ -454,8 +489,8 @@
   </header>
   <main>
     <aside>
-      <div class="edit-drawer-head"><div><p class="panel-title">대시보드 편집</p><p class="hint">표시할 위젯과 배치를 관리합니다.</p></div><span class="chip">EDIT</span></div>
-      <p class="edit-help">카드 상단을 끌어 이동하고, 가장자리 또는 모서리를 끌어 크기를 조절하세요. 배치는 변경 저장을 누를 때 저장되며, 편집 취소를 누르면 원래 배치로 돌아갑니다.</p>
+      <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div></div>
+      <p class="edit-help">배치 편집 중에는 카드 상단을 끌어 이동하고 가장자리를 끌어 크기를 조절하세요. 변경 저장 전까지 서버에 반영되지 않습니다.</p>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -560,8 +595,12 @@
     }
 
     const embeddedInConsole = new URLSearchParams(location.search).has("embedded");
-    const requestedPageCode = new URLSearchParams(location.search).get("pageCode");
+    const dashboardParams = new URLSearchParams(location.search);
+    const requestedPageCode = dashboardParams.get("pageCode");
     const fixedAnalysisPage = embeddedInConsole && requestedPageCode?.toUpperCase() === "ANALYSIS";
+    const fixedPageView = embeddedInConsole && dashboardParams.get("fixedPage") === "1";
+    const displayOnlyPage = embeddedInConsole && dashboardParams.get("displayOnly") === "1";
+    const boardView = embeddedInConsole && dashboardParams.get("boardView") === "1";
     if (fixedAnalysisPage) document.body.classList.add("embedded-analysis");
     $("managerUrl").value = embeddedInConsole ? location.origin : storedManagerUrl("widgetDashManagerUrl");
     if (embeddedInConsole) $("managerUrl").disabled = true;
@@ -862,15 +901,20 @@
         `<option value="${escapeHtml(page.code)}">${escapeHtml(page.name)}</option>`
       ).join("");
 
-      const defaultPage = sortedPages.find((page) => page.code === "dashboard") || sortedPages[0];
+      const findPage = (code) => sortedPages.find((page) => String(page.code).toLowerCase() === String(code || "").toLowerCase());
+      const defaultPage = findPage("dashboard") || sortedPages[0];
       const savedPageCode = localStorage.getItem("widgetDashPageCode");
-      const initialPageCode = sortedPages.some((page) => page.code === requestedPageCode)
-        ? requestedPageCode
-        : savedPageCode;
-      pageSelect.value = sortedPages.some((page) => page.code === initialPageCode)
-        ? initialPageCode
-        : defaultPage.code;
-      pageSelect.disabled = fixedAnalysisPage;
+      const requestedPage = findPage(requestedPageCode);
+      if (fixedPageView && requestedPageCode && !requestedPage) {
+        throw new Error(`DEVICE_PAGE 공통코드에 '${requestedPageCode}' 페이지가 없습니다.`);
+      }
+      const initialPage = requestedPage || findPage(savedPageCode) || defaultPage;
+      pageSelect.value = initialPage.code;
+      pageSelect.disabled = fixedAnalysisPage || fixedPageView;
+      $("addWidgetBtn").style.display = boardView && consoleAuth()?.getRole?.() === "ADMIN" ? "inline-flex" : "none";
+      $("metricsBtn").style.display = boardView ? "inline-flex" : "none";
+      $("drawerBtn").style.display = boardView ? "inline-flex" : "none";
+      $("addWidgetBtn").disabled = state.editMode;
       updateDashboardTitle();
     }
 
@@ -945,6 +989,11 @@
       state.powerDistributionByWidget.delete(id);
       log(`위젯 #${id} 삭제됨`);
       await loadWidgets();
+      notifyWidgetChange();
+    }
+
+    function notifyWidgetChange() {
+      if (boardView) window.parent.postMessage({ type: "dcim:dashboard:widgets-changed", pageCode: $("pageCode").value }, location.origin);
     }
 
     async function loadWidgets() {
@@ -952,7 +1001,7 @@
       if (!new URLSearchParams(location.search).has("pageCode")) localStorage.setItem("widgetDashPageCode", pageCode);
       if (!embeddedInConsole) localStorage.setItem("widgetDashManagerUrl", $("managerUrl").value);
       const [widgets, devicePage, models] = await Promise.all([
-        api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`),
+        api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`, { cache: "no-store" }),
         api("/api/manager/devices?page=1&size=500"),
         api("/api/manager/device-models"),
       ]);
@@ -971,6 +1020,7 @@
 
     function renderWidgetList() {
       const enabledCount = state.widgets.filter((widget) => widget.enabled).length;
+      const canManage = !boardView || consoleAuth()?.getRole?.() === "ADMIN";
       $("boardWidgetCount").textContent = `${enabledCount} widgets`;
       if (!state.widgets.length) {
         $("widgetList").innerHTML = '<p class="empty">위젯이 없습니다.</p>';
@@ -992,14 +1042,15 @@
           <h3>
             <span>${escapeHtml(w.name)}</span>
             <label class="switch" title="UI 표시">
-              <input type="checkbox" data-toggle="${w.id}" ${w.enabled ? "checked" : ""} ${state.editMode ? "disabled" : ""} />
+              <input type="checkbox" data-toggle="${w.id}" ${w.enabled ? "checked" : ""} ${state.editMode || !canManage ? "disabled" : ""} />
               <span class="slider"></span>
             </label>
           </h3>
           <div class="meta">#${w.id} · ${escapeHtml(w.queryKind)}${countMeta}${chartMeta} · ${pos}</div>
           <div class="widget-actions">
             <button type="button" class="ghost" data-edit-scroll="${w.id}">선택</button>
-            <button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}" ${state.editMode ? "disabled" : ""}>삭제</button>
+            ${boardView && canManage ? `<button type="button" class="ghost" data-edit-widget="${w.id}" ${state.editMode ? "disabled" : ""}>수정</button>` : ""}
+            ${canManage ? `<button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}" ${state.editMode ? "disabled" : ""}>삭제</button>` : ""}
           </div>
         </article>`;
       }).join("");
@@ -1020,6 +1071,7 @@
             }
             renderWidgetList();
             await refreshBoard(true);
+            notifyWidgetChange();
             log(`위젯 #${id} ${enabled ? "ON" : "OFF"}`);
           } catch (err) {
             e.target.checked = !enabled;
@@ -1030,6 +1082,11 @@
       $("widgetList").querySelectorAll("[data-delete]").forEach((btn) => {
         btn.addEventListener("click", () => {
           deleteWidget(Number(btn.dataset.delete), btn.dataset.name).catch((err) => log("삭제 실패: " + err.message));
+        });
+      });
+      $("widgetList").querySelectorAll("[data-edit-widget]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          window.parent.postMessage({ type: "dcim:dashboard:edit-widget", widgetId: Number(btn.dataset.editWidget) }, location.origin);
         });
       });
       $("widgetList").querySelectorAll("[data-edit-scroll]").forEach((btn) => {
@@ -1692,7 +1749,10 @@
       const enabled = state.widgets.filter((w) => w.enabled);
       if (!enabled.length) {
         destroyChartInstances();
-        $("board").innerHTML = '<div class="placeholder">표시할 enabled 위젯이 없습니다.</div><div id="ghost" class="ghost"></div>';
+        const emptyMessage = displayOnlyPage
+          ? "표시할 위젯이 없습니다. 위젯 추가에서 이 페이지에 표시할 위젯을 등록하세요."
+          : "표시할 enabled 위젯이 없습니다.";
+        $("board").innerHTML = `<div class="placeholder">${emptyMessage}</div><div id="ghost" class="ghost"></div>`;
         return;
       }
 
@@ -2103,6 +2163,9 @@
         }
         log(`배치 변경 ${savedCount}개 저장 완료`);
         setEditMode(false);
+        if (embeddedInConsole && window.parent !== window) {
+          window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
+        }
       } catch (error) {
         renderWidgetList();
         await refreshBoard(false);
@@ -2128,6 +2191,12 @@
         $("controlsBtn").classList.remove("active");
       }
       document.body.classList.toggle("edit-mode", on);
+      if (!on) document.body.classList.remove("drawer-open");
+      $("drawerBtn").style.display = boardView ? "" : "none";
+      $("drawerBtn").setAttribute("aria-expanded", String(document.body.classList.contains("drawer-open")));
+      $("drawerBtn").classList.toggle("active", document.body.classList.contains("drawer-open"));
+      $("addWidgetBtn").disabled = on;
+      $("metricsBtn").disabled = on;
       $("editBtn").classList.toggle("active", on);
       $("editBtn").textContent = on ? "변경 저장" : "배치 편집";
       $("cancelEditBtn").style.display = on ? "" : "none";
@@ -2293,7 +2362,19 @@
       if (state.editMode) saveLayoutEdits().catch((error) => log("배치 저장 실패: " + error.message));
       else setEditMode(true);
     });
+    $("addWidgetBtn").addEventListener("click", () => {
+      if (!boardView || !$("pageCode").value || state.editMode) return;
+      window.parent.postMessage({ type: "dcim:dashboard:add-widget", pageCode: $("pageCode").value }, location.origin);
+    });
+    $("metricsBtn").addEventListener("click", () => {
+      if (boardView && !state.editMode) window.parent.postMessage({ type: "dcim:dashboard:calculated-metrics" }, location.origin);
+    });
     $("cancelEditBtn").addEventListener("click", () => setEditMode(false));
+    $("drawerBtn").addEventListener("click", () => {
+      const open = document.body.classList.toggle("drawer-open");
+      $("drawerBtn").setAttribute("aria-expanded", String(open));
+      $("drawerBtn").classList.toggle("active", open);
+    });
     $("controlsBtn").addEventListener("click", () => {
       document.body.classList.toggle("controls-open");
       $("controlsBtn").classList.toggle("active", document.body.classList.contains("controls-open"));
@@ -2301,6 +2382,11 @@
     $("logBtn").addEventListener("click", () => {
       document.body.classList.toggle("log-open");
       $("logBtn").classList.toggle("active", document.body.classList.contains("log-open"));
+    });
+    window.addEventListener("message", (event) => {
+      if ((!displayOnlyPage && !boardView) || state.editMode || event.origin !== location.origin
+          || event.source !== window.parent || event.data?.type !== "dcim:dashboard:reload") return;
+      reload().catch((error) => log("페이지 새로고침 실패: " + error.message));
     });
     window.addEventListener("resize", () => drawPsychrometricCanvases());
 

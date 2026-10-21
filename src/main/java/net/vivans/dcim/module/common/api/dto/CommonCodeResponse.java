@@ -7,7 +7,8 @@ public record CommonCodeResponse(
         Integer groupId,
         String code,
         String name,
-        Integer sortOrder
+        Integer sortOrder,
+        boolean thresholdSupported
 ) {
 
     public static CommonCodeResponse from(CommonCode commonCode) {
@@ -16,6 +17,7 @@ public record CommonCodeResponse(
                 commonCode.getCodeGroup().getId(),
                 commonCode.getCode(),
                 commonCode.getName(),
-                commonCode.getSortOrder());
+                commonCode.getSortOrder(),
+                commonCode.isThresholdSupported());
     }
 }

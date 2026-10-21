@@ -31,11 +31,15 @@ public class CommonCode extends BaseEntity {
     @Column(name = "sort_order")
     private Integer sortOrder;
 
-    private CommonCode(CodeGroup codeGroup, String code, String name, Integer sortOrder) {
+    @Column(name = "threshold_supported", nullable = false)
+    private boolean thresholdSupported;
+
+    private CommonCode(CodeGroup codeGroup, String code, String name, Integer sortOrder, boolean thresholdSupported) {
         this.codeGroup = codeGroup;
         this.code = code;
         this.name = name;
         this.sortOrder = sortOrder;
+        this.thresholdSupported = thresholdSupported;
     }
 
     private static void validate(CodeGroup codeGroup, String code, String name){
@@ -51,15 +55,32 @@ public class CommonCode extends BaseEntity {
     }
 
     public static CommonCode createCommonCode(CodeGroup codeGroup, String code, String name, Integer sortOrder) {
+        return createCommonCode(codeGroup, code, name, sortOrder, false);
+    }
+
+    public static CommonCode createCommonCode(CodeGroup codeGroup, String code, String name, Integer sortOrder,
+                                               boolean thresholdSupported) {
         validate(codeGroup, code, name);
-        return new CommonCode(codeGroup, code, name, sortOrder);
+        if (thresholdSupported && !"DATA_POINT_TYPE".equals(codeGroup.getGroupKey())) {
+            throw new IllegalArgumentException("임계값 지원은 DATA_POINT_TYPE 코드에서만 설정할 수 있습니다");
+        }
+        return new CommonCode(codeGroup, code, name, sortOrder, thresholdSupported);
     }
 
     public void update(CodeGroup codeGroup, String code, String name, Integer sortOrder){
+        update(codeGroup, code, name, sortOrder,
+                codeGroup != null && "DATA_POINT_TYPE".equals(codeGroup.getGroupKey()) && thresholdSupported);
+    }
+
+    public void update(CodeGroup codeGroup, String code, String name, Integer sortOrder, boolean thresholdSupported){
         validate(codeGroup, code, name);
+        if (thresholdSupported && !"DATA_POINT_TYPE".equals(codeGroup.getGroupKey())) {
+            throw new IllegalArgumentException("임계값 지원은 DATA_POINT_TYPE 코드에서만 설정할 수 있습니다");
+        }
         this.codeGroup = codeGroup;
         this.code = code;
         this.name = name;
         this.sortOrder = sortOrder;
+        this.thresholdSupported = thresholdSupported;
     }
 }

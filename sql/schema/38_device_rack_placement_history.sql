@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `device_rack_placement_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Rack 배치 이력 ID',
+  `device_id` int(11) NOT NULL COMMENT '이력이 기록된 장비 ID',
+  `action` varchar(20) NOT NULL COMMENT 'PLACED/MOVED/REMOVED',
+  `previous_mount_type` varchar(30) DEFAULT NULL COMMENT '변경 전 장착 방식',
+  `previous_rack_location_code` char(10) DEFAULT NULL COMMENT '변경 전 Rack 위치 코드',
+  `previous_rack_side` varchar(20) DEFAULT NULL COMMENT '변경 전 Rack 방향',
+  `previous_u_position` int(11) DEFAULT NULL COMMENT '변경 전 Rack U 시작 위치',
+  `previous_u_height` int(11) DEFAULT NULL COMMENT '변경 전 점유 U 높이',
+  `current_mount_type` varchar(30) DEFAULT NULL COMMENT '변경 후 장착 방식',
+  `current_rack_location_code` char(10) DEFAULT NULL COMMENT '변경 후 Rack 위치 코드',
+  `current_rack_side` varchar(20) DEFAULT NULL COMMENT '변경 후 Rack 방향',
+  `current_u_position` int(11) DEFAULT NULL COMMENT '변경 후 Rack U 시작 위치',
+  `current_u_height` int(11) DEFAULT NULL COMMENT '변경 후 점유 U 높이',
+  `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '이력 생성 시각',
+  `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '이력 수정 시각',
+  PRIMARY KEY (`id`),
+  KEY `idx_device_rack_placement_history_device_dt` (`device_id`, `created_dt`),
+  CONSTRAINT `fk_device_rack_placement_history_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='장비 Rack 배치 변경 이력';

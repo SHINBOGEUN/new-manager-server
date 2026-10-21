@@ -17,12 +17,18 @@ test('embedded widget board includes Analysis while dedicated analysis stays fix
   const to = html.indexOf('\n    }', from) + 6;
   assert.ok(from >= 0 && to > from);
   for (const fixed of [false, true]) {
-    const select = { value: '', innerHTML: '', disabled: false };
+    const controls = new Map();
+    const select = { value: '', innerHTML: '', disabled: false, style: {} };
+    controls.set('pageCode', select);
     const context = vm.createContext({
       api: async () => [{ code: 'dashboard', name: 'Dashboard' }, { code: 'ANALYSIS', name: 'Analysis' }],
-      embeddedInConsole: true, fixedAnalysisPage: fixed,
+      embeddedInConsole: true, fixedAnalysisPage: fixed, fixedPageView: false,
+      boardView: !fixed, state: { editMode: false }, consoleAuth: () => ({ getRole: () => 'ADMIN' }),
       requestedPageCode: fixed ? 'ANALYSIS' : 'dashboard',
-      localStorage: { getItem: () => null }, $: () => select,
+      localStorage: { getItem: () => null }, $: id => {
+        if (!controls.has(id)) controls.set(id, { style: {}, disabled: false });
+        return controls.get(id);
+      },
       escapeHtml: s => s, updateDashboardTitle() {},
     });
     vm.runInContext(html.slice(from, to), context);
@@ -31,6 +37,8 @@ test('embedded widget board includes Analysis while dedicated analysis stays fix
     assert.equal(select.disabled, fixed);
     if (fixed) assert.doesNotMatch(select.innerHTML, /dashboard/);
     else assert.match(select.innerHTML, /dashboard/);
+    assert.equal(controls.get('addWidgetBtn').style.display, fixed ? 'none' : 'inline-flex');
+    assert.equal(controls.get('drawerBtn').style.display, fixed ? 'none' : 'inline-flex');
   }
 });
 

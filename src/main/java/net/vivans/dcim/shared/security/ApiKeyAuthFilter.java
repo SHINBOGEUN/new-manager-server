@@ -24,10 +24,23 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     @Value("${external-data.api-key:}")
     private String externalDataApiKey;
 
+    @Value("${sensor-data.service.api-key:sensor-data-server}")
+    private String sensorDataApiKey;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String apiKey = request.getHeader("X-Api-Key");
         String path = request.getRequestURI();
+
+        if (path.equals("/api/internal/alarms/measurements")) {
+            if (!matchesKey(sensorDataApiKey, apiKey)) {
+                reject(response);
+                return;
+            }
+            authenticateApiKey("sensor-data-service");
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (requiresExternalDataApiKey(path, apiKey)) {
             if (!matchesExternalDataApiKey(apiKey)) {
@@ -63,11 +76,15 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     }
 
     private boolean matchesExternalDataApiKey(String providedApiKey) {
-        if (externalDataApiKey == null || externalDataApiKey.isBlank() || providedApiKey == null) {
+        return matchesKey(externalDataApiKey, providedApiKey);
+    }
+
+    private static boolean matchesKey(String expected, String providedApiKey) {
+        if (expected == null || expected.isBlank() || providedApiKey == null) {
             return false;
         }
         return MessageDigest.isEqual(
-                externalDataApiKey.getBytes(StandardCharsets.UTF_8),
+                expected.getBytes(StandardCharsets.UTF_8),
                 providedApiKey.getBytes(StandardCharsets.UTF_8));
     }
 
