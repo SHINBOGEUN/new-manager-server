@@ -15,25 +15,72 @@ command -v curl >/dev/null
 [[ -f docker-compose.yml && -f .env ]] || { echo 'App Compose or .env is missing' >&2; exit 1; }
 docker info >/dev/null
 
-bundled_jars=(manager.jar collector.jar sensor-data.jar)
-services=(manager-server collector-service sensor-data-service)
-containers=(dcim_new_manager_server dcim_new_collector_service dcim_new_sensor_data_service)
-[[ -s .cd-incoming/$release_id/revisions.txt ]] || { echo 'Missing revision manifest' >&2; exit 1; }
-read_version() {
+manifest=.cd-incoming/$release_id/revisions.txt
+[[ -s "$manifest" ]] || { echo 'Missing revision manifest' >&2; exit 1; }
+read_value() {
   local key=$1 value
-  value=$(awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1) }' ".cd-incoming/$release_id/revisions.txt")
-  [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "Missing or invalid $key" >&2; exit 1; }
+  value=$(awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1) }' "$manifest")
+  [[ -n "$value" ]] || { echo "Missing $key in revision manifest" >&2; exit 1; }
   printf '%s' "$value"
 }
+read_version() {
+  local value
+  value=$(read_value "$1")
+  [[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || { echo "Invalid $1" >&2; exit 1; }
+  printf '%s' "$value"
+}
+
 manager_version=$(read_version manager-version)
 collector_version=$(read_version collector-version)
 sensor_data_version=$(read_version sensor-data-version)
-jars=(
-  "new-manager-server-${manager_version}.jar"
-  "new-collector-server-${collector_version}.jar"
-  "new-sensor-data-server-${sensor_data_version}.jar"
-)
-jar_stems=(new-manager-server new-collector-server new-sensor-data-server)
+manager_commit=$(read_value manager)
+collector_commit=$(read_value collector)
+sensor_data_commit=$(read_value sensor-data)
+targets=$(read_value services)
+IFS=, read -r -a requested_services <<< "$targets"
+(( ${#requested_services[@]} > 0 )) || { echo 'No services selected' >&2; exit 1; }
+
+declare -A seen=()
+services=()
+containers=()
+bundled_jars=()
+jars=()
+jar_stems=()
+health_urls=()
+versions=()
+for service in "${requested_services[@]}"; do
+  [[ -z "${seen[$service]+x}" ]] || { echo "Duplicate service: $service" >&2; exit 1; }
+  seen[$service]=1
+  case "$service" in
+    manager-server)
+      containers+=(dcim_new_manager_server)
+      bundled_jars+=(manager.jar)
+      jars+=("new-manager-server-${manager_version}.jar")
+      jar_stems+=(new-manager-server)
+      health_urls+=(http://127.0.0.1:21080/ops-console.html)
+      versions+=("manager=$manager_version")
+      ;;
+    collector-service)
+      containers+=(dcim_new_collector_service)
+      bundled_jars+=(collector.jar)
+      jars+=("new-collector-server-${collector_version}.jar")
+      jar_stems+=(new-collector-server)
+      health_urls+=(http://127.0.0.1:21081/api/health)
+      versions+=("collector=$collector_version")
+      ;;
+    sensor-data-service)
+      containers+=(dcim_new_sensor_data_service)
+      bundled_jars+=(sensor-data.jar)
+      jars+=("new-sensor-data-server-${sensor_data_version}.jar")
+      jar_stems+=(new-sensor-data-server)
+      health_urls+=(http://127.0.0.1:21082/api/health)
+      versions+=("sensor-data=$sensor_data_version")
+      ;;
+    *) echo "Unsupported service: $service" >&2; exit 1 ;;
+  esac
+  services+=("$service")
+done
+
 current_jars=()
 project=
 for index in "${!services[@]}"; do
@@ -44,7 +91,7 @@ for index in "${!services[@]}"; do
     exit 1
   }
   if [[ -z "$project" ]]; then project=$running_project; fi
-  [[ "$running_project" == "$project" ]] || { echo 'App containers have different Compose projects' >&2; exit 1; }
+  [[ "$running_project" == "$project" ]] || { echo 'Selected app containers have different Compose projects' >&2; exit 1; }
   mounted_jar=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/opt/dcim/app.jar"}}{{.Source}}{{end}}{{end}}' "${containers[$index]}")
   current_jar=${mounted_jar##*/}
   [[ "$mounted_jar" == "$app_dir/$current_jar" && "$current_jar" =~ ^${jar_stems[$index]}-[A-Za-z0-9][A-Za-z0-9._-]*\.jar$ && -f "$mounted_jar" ]] || {
@@ -88,7 +135,7 @@ rollback() {
   trap - ERR HUP INT TERM
   (( original_status != 0 )) || original_status=1
   if (( updated )); then
-    echo 'Deployment failed; restoring the previous Compose file and JARs' >&2
+    echo 'Deployment failed; restoring the previous Compose file and selected JARs' >&2
     if ! { cp -p "$release/previous/docker-compose.yml" "$app_dir/.docker-compose.yml.rollback" &&
            mv -f "$app_dir/.docker-compose.yml.rollback" "$app_dir/docker-compose.yml"; }; then
       echo 'Compose rollback failed' >&2
@@ -99,8 +146,7 @@ rollback() {
         echo "Rollback copy failed for $jar" >&2
       fi
     done
-    if ! "${compose[@]}" up -d --no-deps --force-recreate \
-      manager-server collector-service sensor-data-service; then
+    if ! "${compose[@]}" up -d --no-deps --force-recreate "${services[@]}"; then
       echo 'Rollback container recreation failed; manual intervention required' >&2
     fi
   fi
@@ -125,9 +171,8 @@ for index in "${!jars[@]}"; do
   mv -f "$compose_tmp" "$app_dir/docker-compose.yml"
 done
 
-# Recreate is necessary: bind mounts may still point at the old inode after atomic rename.
-"${compose[@]}" up -d --no-deps --force-recreate \
-  manager-server collector-service sensor-data-service
+# Recreate only selected services: unselected app containers and their JARs stay untouched.
+"${compose[@]}" up -d --no-deps --force-recreate "${services[@]}"
 
 wait_http() {
   local name=$1 url=$2 attempt
@@ -142,9 +187,9 @@ wait_http() {
   return 1
 }
 
-wait_http manager http://127.0.0.1:21080/ops-console.html
-wait_http collector http://127.0.0.1:21081/api/health
-wait_http sensor-data http://127.0.0.1:21082/api/health
+for index in "${!services[@]}"; do
+  wait_http "${services[$index]}" "${health_urls[$index]}"
+done
 
 printf '%s\n' "$release_id" > "$app_dir/.cd-current-release.tmp"
 mv -f "$app_dir/.cd-current-release.tmp" "$app_dir/.cd-current-release"
@@ -155,5 +200,6 @@ for index in "${!jars[@]}"; do
     fi
   fi
 done
-echo "Deployed release $release_id: manager=$manager_version collector=$collector_version sensor-data=$sensor_data_version"
-echo 'MQTT, database, InfluxDB, and legacy services were untouched'
+printf 'Deployed release %s: services=%s versions=%s commits=%s,%s,%s\n' \
+  "$release_id" "${services[*]}" "${versions[*]}" "$manager_commit" "$collector_commit" "$sensor_data_commit"
+echo 'Unselected app services, MQTT, databases, InfluxDB, and legacy services were untouched'

@@ -1,7 +1,23 @@
-name: Deploy three services
+name: Deploy selected services
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy_manager:
+        description: Deploy Manager
+        required: false
+        type: boolean
+        default: false
+      deploy_collector:
+        description: Deploy Collector
+        required: false
+        type: boolean
+        default: false
+      deploy_sensor_data:
+        description: Deploy Sensor Data
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,8 +30,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Require main branch
-        run: test "$GITHUB_REF" = refs/heads/main
+      - name: Require main branch and a selected service
+        env:
+          DEPLOY_MANAGER: ${{ inputs.deploy_manager }}
+          DEPLOY_COLLECTOR: ${{ inputs.deploy_collector }}
+          DEPLOY_SENSOR_DATA: ${{ inputs.deploy_sensor_data }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          if [[ "$DEPLOY_MANAGER" != true && "$DEPLOY_COLLECTOR" != true && "$DEPLOY_SENSOR_DATA" != true ]]; then
+            echo 'Select at least one service to deploy.' >&2
+            exit 1
+          fi
 
       - name: Checkout Manager
         uses: actions/checkout@v4
@@ -58,6 +84,7 @@ jobs:
           PY
 
       - name: Set up JDK 17
+        if: ${{ inputs.deploy_manager || inputs.deploy_collector || inputs.deploy_sensor_data }}
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -69,41 +96,59 @@ jobs:
             sensor-data/pom.xml
 
       - name: Build and test Manager
+        if: ${{ inputs.deploy_manager }}
         working-directory: manager
         run: chmod +x mvnw && ./mvnw -B verify
 
       - name: Build and test Collector
+        if: ${{ inputs.deploy_collector }}
         working-directory: collector
         run: chmod +x mvnw && ./mvnw -B verify
 
       - name: Build and test Sensor Data
+        if: ${{ inputs.deploy_sensor_data }}
         working-directory: sensor-data
         run: chmod +x mvnw && ./mvnw -B verify
 
-      - name: Assemble versioned bundle
+      - name: Assemble selected versioned bundle
         env:
+          DEPLOY_MANAGER: ${{ inputs.deploy_manager }}
+          DEPLOY_COLLECTOR: ${{ inputs.deploy_collector }}
+          DEPLOY_SENSOR_DATA: ${{ inputs.deploy_sensor_data }}
           MANAGER_VERSION: ${{ steps.versions.outputs.manager }}
           COLLECTOR_VERSION: ${{ steps.versions.outputs.collector }}
           SENSOR_DATA_VERSION: ${{ steps.versions.outputs.sensor_data }}
         run: |
+          set -euo pipefail
           mkdir -p bundle
-          cp "manager/target/new-manager-server-${MANAGER_VERSION}.jar" bundle/manager.jar
-          cp "collector/target/new-collector-server-${COLLECTOR_VERSION}.jar" bundle/collector.jar
-          cp "sensor-data/target/new-sensor-data-server-${SENSOR_DATA_VERSION}.jar" bundle/sensor-data.jar
+          services=()
+          if [[ "$DEPLOY_MANAGER" == true ]]; then
+            cp "manager/target/new-manager-server-${MANAGER_VERSION}.jar" bundle/manager.jar
+            services+=(manager-server)
+          fi
+          if [[ "$DEPLOY_COLLECTOR" == true ]]; then
+            cp "collector/target/new-collector-server-${COLLECTOR_VERSION}.jar" bundle/collector.jar
+            services+=(collector-service)
+          fi
+          if [[ "$DEPLOY_SENSOR_DATA" == true ]]; then
+            cp "sensor-data/target/new-sensor-data-server-${SENSOR_DATA_VERSION}.jar" bundle/sensor-data.jar
+            services+=(sensor-data-service)
+          fi
           cp manager/scripts/deploy-three-services.sh bundle/
           {
             printf 'manager-version=%s\n' "$MANAGER_VERSION"
             printf 'collector-version=%s\n' "$COLLECTOR_VERSION"
             printf 'sensor-data-version=%s\n' "$SENSOR_DATA_VERSION"
+            printf 'services=%s\n' "$(IFS=,; printf '%s' "${services[*]}")"
             printf 'manager=%s\n' "$(git -C manager rev-parse HEAD)"
             printf 'collector=%s\n' "$(git -C collector rev-parse HEAD)"
             printf 'sensor-data=%s\n' "$(git -C sensor-data rev-parse HEAD)"
           } > bundle/revisions.txt
 
-      - name: Upload deployment bundle
+      - name: Upload selected deployment bundle
         uses: actions/upload-artifact@v4
         with:
-          name: dcim-three-services-${{ github.run_id }}
+          name: dcim-selected-services-${{ github.run_id }}
           path: bundle/
           if-no-files-found: error
           retention-days: 14
@@ -117,7 +162,7 @@ jobs:
       - name: Download verified bundle
         uses: actions/download-artifact@v4
         with:
-          name: dcim-three-services-${{ github.run_id }}
+          name: dcim-selected-services-${{ github.run_id }}
           path: bundle
 
       - name: Configure pinned SSH access
@@ -132,7 +177,7 @@ jobs:
           printf '%s\n' "$CD_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
 
-      - name: Transfer and deploy app JARs only
+      - name: Transfer and deploy selected app JARs only
         env:
           CD_HOST: ${{ vars.CD_HOST }}
           CD_PORT: ${{ vars.CD_PORT }}
@@ -147,9 +192,7 @@ jobs:
           target="$CD_USER@$CD_HOST"
           ssh "${ssh_options[@]}" "$target" "mkdir -p /dcim_new/backend/.cd-incoming/$RELEASE_ID"
           scp -i "$HOME/.ssh/id_ed25519" -P "$CD_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            bundle/manager.jar \
-            bundle/collector.jar \
-            bundle/sensor-data.jar \
+            bundle/*.jar \
             bundle/revisions.txt \
             "$target:/dcim_new/backend/.cd-incoming/$RELEASE_ID/"
           ssh "${ssh_options[@]}" "$target" "bash -s -- '$RELEASE_ID'" < bundle/deploy-three-services.sh
