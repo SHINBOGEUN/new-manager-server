@@ -339,7 +339,6 @@
               <input type="checkbox" data-key="${escapeHtml(pointKey(device.deviceId, point))}" />
               <span>${escapeHtml(point.name)}</span>
               <span class="chip">${escapeHtml((point.protocol || "snmp").toUpperCase())}</span>
-              ${point.protocol === "modbus" ? `<span class="meta">읽기: ${escapeHtml(point.sourceDeviceName || ("#" + point.sourceDeviceId))}</span>` : ""}
               <span class="chip">${escapeHtml(point.unit || "")}</span>
             </label>
           `).join("")}
