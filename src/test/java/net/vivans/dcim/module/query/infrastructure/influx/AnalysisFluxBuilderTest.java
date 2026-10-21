@@ -35,4 +35,16 @@ class AnalysisFluxBuilderTest {
         assertThat(flux).contains("pivot(rowKey: [\"_time\", \"device_id\", \"point_name\", \"component_type\", \"component_index\"]");
         assertThat(flux).doesNotContain("component_uuid");
     }
+
+    @Test
+    void buildsLatestPerPointQueryForDeviceAndProtocolWithoutPointNameFilter() {
+        String flux = BoundaryFluxBuilder.buildLastQuery("dcim", "dcim_sensor", List.of(17), List.of(),
+                START, END, "modbus");
+
+        assertThat(flux).contains("r[\"device_id\"] == \"17\"");
+        assertThat(flux).contains("r[\"protocol\"] == \"modbus\"");
+        assertThat(flux).contains("|> filter(fn: (r) => true)");
+        assertThat(flux).contains("|> group(columns: [\"device_id\", \"point_name\"])");
+        assertThat(flux).contains("|> last()");
+    }
 }
