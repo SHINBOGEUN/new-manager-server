@@ -299,7 +299,7 @@ class PageWidgetTest {
     void queryKindFrom_rejectsUnknown() {
         assertThatThrownBy(() -> PageWidgetQueryKind.from("unknown"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("queryKind must be last, aggregate, count, chart, calculated, psychrometric, or power_distribution");
+                .hasMessage("queryKind must be last, aggregate, count, chart, calculated, psychrometric, power_distribution, or cctv");
     }
 
     private static PageWidget lastWidget(String name, List<String> points, List<Device> devices) {
