@@ -542,6 +542,7 @@
       animation: in .18s ease-out;
     }
     .toast.err { background: #7f1d1d; }
+    .toast.alarm { background: #92400e; border: 1px solid #f59e0b; cursor: pointer; }
     @keyframes in { from { opacity: 0; transform: translateY(6px); } }
 
     .log-bar {
@@ -946,6 +947,33 @@
     .register-dialog input { min-height:43px; color:#edf6ff; border-color:#304761; background:#0a1421; }
     .register-dialog input:focus { border-color:#35bdf4; box-shadow:0 0 0 3px rgba(53,189,244,.11); }
     .alarm-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(290px,38%); gap:14px; align-items:start; }
+    .alarm-filter-fields { grid-template-columns:repeat(4,minmax(0,1fr)); align-items:end; }
+    .alarm-date-range { position:relative; grid-column:span 2; }
+    .alarm-range-trigger { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:38px; padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--text); text-align:left; cursor:pointer; }
+    .alarm-range-trigger:hover { border-color:var(--accent); }
+    .alarm-range-trigger .muted { font-weight:400; }
+    .alarm-date-popover { position:absolute; z-index:40; top:calc(100% + 7px); left:0; width:min(680px,calc(100vw - 48px)); padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); box-shadow:0 16px 36px rgba(0,0,0,.38); }
+    .alarm-date-popover[hidden] { display:none; }
+    .alarm-date-picker { display:grid; grid-template-columns:116px minmax(0,1fr); min-height:300px; }
+    .alarm-date-presets { display:flex; flex-direction:column; gap:4px; padding-right:10px; border-right:1px solid var(--line); }
+    .alarm-date-presets button { padding:8px 9px; border:0; background:transparent; text-align:left; font-size:12px; }
+    .alarm-date-presets button:hover { background:var(--surface2); }
+    .alarm-date-calendar-area { min-width:0; padding-left:10px; }
+    .alarm-calendar-nav { display:flex; align-items:center; justify-content:space-between; min-height:34px; margin-bottom:5px; }
+    .alarm-calendar-nav button { padding:4px 9px; }
+    .alarm-calendar-month-labels { display:grid; grid-template-columns:1fr 1fr; flex:1; text-align:center; font-size:13px; font-weight:700; }
+    .alarm-calendar-months { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .alarm-calendar-week,.alarm-calendar-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); text-align:center; }
+    .alarm-calendar-week { color:var(--muted); font-size:10px; padding:5px 0; }
+    .alarm-calendar-days button { min-width:0; aspect-ratio:1.25; margin:1px; padding:2px; border:1px solid transparent; border-radius:5px; background:transparent; font-size:11px; }
+    .alarm-calendar-days button:hover { border-color:var(--accent); }
+    .alarm-calendar-days button.outside { color:var(--muted); opacity:.5; }
+    .alarm-calendar-days button.today { border-color:var(--accent); }
+    .alarm-calendar-days button.in-range { border-radius:0; background:var(--accent-soft); }
+    .alarm-calendar-days button.range-start,.alarm-calendar-days button.range-end { border-color:var(--accent); border-radius:5px; background:var(--accent); color:#fff; }
+    .alarm-date-popover-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; padding-top:9px; border-top:1px solid var(--line); }
+    .alarm-date-popover-foot .muted { font-size:11px; }
+    .alarm-date-popover-actions { display:flex; justify-content:flex-end; }
     .alarm-list { display:grid; gap:9px; margin-top:12px; }
     .alarm-row { padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
     .alarm-row-head { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
@@ -970,7 +998,8 @@
     .alarm-source-row { display:grid; grid-template-columns:minmax(130px,1fr) minmax(200px,2fr); gap:12px; align-items:center; margin:8px 0; }
     .alarm-condition { margin:10px 0; padding:12px; border:1px solid var(--line); border-radius:10px; }
     .alarm-condition .fields { margin-top:10px; }
-    @media (max-width:800px) { .alarm-layout,.alarm-device-list,.alarm-source-row,.alarm-model-devices { grid-template-columns:1fr; } .alarm-dialog { padding:14px; } }
+    @media (max-width:1000px) { .alarm-filter-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:800px) { .alarm-layout,.alarm-device-list,.alarm-source-row,.alarm-model-devices { grid-template-columns:1fr; } .alarm-filter-fields { grid-template-columns:1fr; } .alarm-date-range { grid-column:auto; } .alarm-dialog { padding:14px; } }
     @media (max-width:900px) { .login-experience { grid-template-columns:1fr; min-height:auto; } .login-promo { padding:32px; min-height:280px; } .login-copy h1 { font-size:34px; } .login-features,.login-foot { display:none; } .login-card { width:min(430px,calc(100% - 32px)); margin:24px auto 32px; } }
     @media (max-width:540px) { body:not(.is-authed) .content { padding:0; } .login-experience { min-height:100vh; border:0; border-radius:0; } .login-promo { min-height:220px; padding:26px 22px; } .login-copy h1 { font-size:28px; margin-bottom:10px; } .login-copy p { font-size:13px; } .login-card { margin:18px auto 26px; padding:24px 20px; } }
 
@@ -1824,10 +1853,51 @@
     <!-- DEVICES -->
     <section class="panel" id="tab-alarms">
       <h1 class="page-title">알람 · 임계값</h1>
-      <p class="page-desc">Manager가 기본 60초 간격으로 최신 저장값을 확인합니다. 장비 한 대의 측정항목 하나마다 임계값 하나를 설정하며, 해당 측정 유형의 사용 여부는 공통코드에서 관리합니다.</p>
+      <p class="page-desc">수집값 저장 직후 임계값을 검사하고, 기본 60초 간격으로 누락을 다시 확인합니다. 장비 한 대의 측정항목 하나마다 임계값 하나를 설정합니다.</p>
       <div class="alarm-layout">
         <div class="card">
           <div class="row" style="justify-content:space-between"><h2 style="margin:0">알람 이력</h2><button type="button" class="ghost" id="alarmReload">새로고침</button></div>
+          <div class="alarm-history-filters" style="margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)">
+            <div class="fields alarm-filter-fields">
+            <div class="alarm-date-range">
+                <label class="field" for="alarmDateRangeToggle">조회 기간</label>
+                <button type="button" class="alarm-range-trigger" id="alarmDateRangeToggle" aria-expanded="false" aria-controls="alarmDateRangePopover"><span id="alarmDateRangeLabel">최근 7일</span><span aria-hidden="true">▦</span></button>
+                <div class="alarm-date-popover" id="alarmDateRangePopover" hidden>
+                  <div class="alarm-date-picker">
+                    <div class="alarm-date-presets">
+                      <button type="button" data-alarm-range="today">오늘</button>
+                      <button type="button" data-alarm-range="7">최근 7일</button>
+                      <button type="button" data-alarm-range="30">최근 30일</button>
+                      <button type="button" data-alarm-range="3m">최근 3개월</button>
+                    </div>
+                    <div class="alarm-date-calendar-area">
+                      <div class="alarm-calendar-nav">
+                        <button type="button" class="ghost" id="alarmCalendarPrev" aria-label="이전 달">‹</button>
+                        <div class="alarm-calendar-month-labels" id="alarmCalendarMonthLabels"></div>
+                        <button type="button" class="ghost" id="alarmCalendarNext" aria-label="다음 달">›</button>
+                      </div>
+                      <div class="alarm-calendar-months" id="alarmCalendarMonths"></div>
+                    </div>
+                  </div>
+                  <div class="alarm-date-popover-foot">
+                    <span class="muted" id="alarmDateSelectionHint">달력에서 시작일과 종료일을 선택하세요.</span>
+                    <div class="alarm-date-popover-actions"><button type="button" class="primary" id="alarmDateRangeDone">확인</button></div>
+                  </div>
+                  <input id="alarmFilterFrom" type="hidden">
+                  <input id="alarmFilterTo" type="hidden">
+                </div>
+              </div>
+              <label class="field">위치<select id="alarmFilterLocation"><option value="">모든 위치</option></select></label>
+              <label class="field">모델<select id="alarmFilterModel"><option value="">모든 모델</option></select></label>
+              <label class="field">장비<select id="alarmFilterDevice"><option value="">모든 장비</option></select></label>
+              <label class="field">심각도<select id="alarmFilterSeverity"><option value="">모든 심각도</option><option value="CRITICAL">위험</option><option value="WARNING">주의</option><option value="INFO">정보</option></select></label>
+            </div>
+            <div class="row" style="justify-content:flex-end;margin-top:10px">
+              <span class="muted" style="margin-right:auto">위치 선택 시 하위 위치를 포함합니다 · 날짜는 한국 시간 기준입니다</span>
+              <button type="button" class="ghost" id="alarmFilterReset">초기화</button>
+              <button type="button" class="primary" id="alarmFilterApply">검색</button>
+            </div>
+          </div>
           <div class="alarm-list" id="alarmList"><div class="muted">조회 중…</div></div>
           <div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="ghost" id="alarmPrev">이전</button><span class="muted" id="alarmPageInfo">1 / 1</span><button type="button" class="ghost" id="alarmNext">다음</button></div>
         </div>
@@ -3268,12 +3338,13 @@
       return "";
     }
 
-    function toast(msg, isErr) {
+    function toast(msg, isErr, onClick) {
       const el = document.createElement("div");
-      el.className = "toast" + (isErr ? " err" : "");
+      el.className = "toast" + (isErr ? " err" : "") + (onClick ? " alarm" : "");
       el.textContent = msg;
+      if (onClick) { el.setAttribute("role", "button"); el.tabIndex = 0; el.onclick = onClick; el.onkeydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick(); } }; }
       $("toasts").appendChild(el);
-      setTimeout(() => el.remove(), 3500);
+      setTimeout(() => el.remove(), onClick ? 6000 : 3500);
     }
 
     function log(msg) {
@@ -3306,9 +3377,11 @@
       document.body.classList.toggle("is-authed", ok);
       if ($("loginError")) $("loginError").style.display = "none";
       applyRolePermissions();
+      if (ok && (state.role === "ADMIN" || state.role === "USER")) startAlarmStream();
     }
 
     function clearAuth() {
+      stopAlarmStream();
       closeWidgetEditor();
       closeCalculatedMetrics();
       state.token = "";
@@ -8337,16 +8410,275 @@
       $("statTask").textContent = state.tasks.length;
     }
 
-    const alarmUi = { page: 1, last: true, rules: [], devices: [], models: [], sources: [], editId: null, editingRule: null };
+    const alarmUi = { page: 1, last: true, rules: [], devices: [], models: [], sources: [], editId: null, editingRule: null,
+      filtersLoaded: false, filterDevices: [], filterModels: [], filterLocations: [], locationByCode: new Map() };
+    const alarmStream = { socket: null, timer: null, user: null, cursor: 0, starting: false,
+      syncing: false, queued: [], generation: 0 };
+
+    function stopAlarmStream() {
+      alarmStream.generation++;
+      clearTimeout(alarmStream.timer);
+      alarmStream.timer = null;
+      const socket = alarmStream.socket;
+      alarmStream.socket = null;
+      alarmStream.user = null;
+      alarmStream.starting = false;
+      alarmStream.queued = [];
+      if (socket) socket.close();
+    }
+
+    function alarmCursorKey() { return `dcimAlarmCursor:${alarmStream.user}`; }
+
+    function acceptAlarm(event, quiet = false) {
+      const id = Number(event?.id);
+      if (!Number.isSafeInteger(id) || id <= alarmStream.cursor) return;
+      alarmStream.cursor = id;
+      localStorage.setItem(alarmCursorKey(), String(id));
+      const detail = event.details;
+      const title = detail ? `${detail.deviceName} · ${detail.pointName}` : (event.alarmType || "새 알람");
+      if (!quiet) toast(`알람 발생: ${title}`, false, () => {
+          alarmUi.page = 1;
+          goTab("alarms");
+        });
+      if ($("tab-alarms")?.classList.contains("active")) loadAlarmEvents().catch(() => {});
+    }
+
+    async function replayAlarms(generation) {
+      let pages = 0;
+      let received = 0;
+      while (generation === alarmStream.generation && pages++ < 100) {
+        const events = await api(`/api/manager/alarms/updates?afterId=${alarmStream.cursor}&limit=100`);
+        if (generation !== alarmStream.generation) return;
+        (events || []).forEach((event) => acceptAlarm(event, received++ >= 3));
+        if (!events || events.length < 100) break;
+      }
+      if (received > 3) toast(`새 알람 ${received}건이 있습니다. 알람 이력을 확인하세요.`, false,
+        () => { alarmUi.page = 1; goTab("alarms"); });
+    }
+
+    function retryAlarmStream(generation) {
+      if (generation !== alarmStream.generation || !state.token) return;
+      clearTimeout(alarmStream.timer);
+      alarmStream.timer = setTimeout(() => connectAlarmSocket(generation), 3000);
+    }
+
+    async function connectAlarmSocket(generation) {
+      if (generation !== alarmStream.generation || !state.token) return;
+      try {
+        const { ticket } = await api("/api/manager/alarms/socket-ticket", { method: "POST" });
+        if (generation !== alarmStream.generation) return;
+        const scheme = location.protocol === "https:" ? "wss" : "ws";
+        const socket = new WebSocket(`${scheme}://${location.host}/ws/alarms?ticket=${encodeURIComponent(ticket)}`);
+        alarmStream.socket = socket;
+        socket.onopen = async () => {
+          if (generation !== alarmStream.generation || alarmStream.socket !== socket) return socket.close();
+          alarmStream.syncing = true;
+          alarmStream.queued = [];
+          try {
+            await replayAlarms(generation);
+            if (generation === alarmStream.generation) {
+              alarmStream.queued.sort((a, b) => Number(a.id) - Number(b.id)).forEach(acceptAlarm);
+              alarmStream.queued = [];
+            }
+          } catch (error) {
+            console.warn("알람 재연결 이력 확인 실패", error);
+            socket.close();
+          }
+          finally { alarmStream.syncing = false; }
+        };
+        socket.onmessage = (message) => {
+          if (generation !== alarmStream.generation) return;
+          try {
+            const packet = JSON.parse(message.data);
+            if (packet.type !== "alarm" || !packet.data) return;
+            if (alarmStream.syncing) alarmStream.queued.push(packet.data);
+            else acceptAlarm(packet.data);
+          } catch (error) { console.warn("알람 메시지 해석 실패", error); }
+        };
+        socket.onclose = () => {
+          if (alarmStream.socket === socket) alarmStream.socket = null;
+          retryAlarmStream(generation);
+        };
+      } catch (error) {
+        console.warn("알람 연결 실패", error);
+        retryAlarmStream(generation);
+      }
+    }
+
+    async function startAlarmStream() {
+      if (alarmStream.starting || alarmStream.user || !state.token) return;
+      const generation = ++alarmStream.generation;
+      alarmStream.starting = true;
+      try {
+        const user = localStorage.getItem("opsUser") || "current";
+        const latest = await api("/api/manager/alarms/latest-id");
+        if (generation !== alarmStream.generation) return;
+        alarmStream.user = user;
+        const saved = Number(localStorage.getItem(alarmCursorKey()));
+        alarmStream.cursor = Number.isSafeInteger(saved) && saved > 0 && saved <= Number(latest.id)
+          ? saved : Number(latest.id) || 0;
+        localStorage.setItem(alarmCursorKey(), String(alarmStream.cursor));
+        await connectAlarmSocket(generation);
+      } catch (error) {
+        console.warn("알람 알림 시작 실패", error);
+        if (generation === alarmStream.generation) {
+          alarmStream.timer = setTimeout(startAlarmStream, 3000);
+        }
+      } finally { alarmStream.starting = false; }
+    }
 
     function alarmTime(value) {
       return value ? new Date(value).toLocaleString("ko-KR") : "—";
     }
 
     async function loadAlarmPage() {
+      await loadAlarmFilterOptions();
       const jobs = [loadAlarmEvents()];
       if (state.role === "ADMIN") jobs.push(loadAlarmRules());
       await Promise.all(jobs);
+    }
+
+    function setAlarmDefaultDateRange() {
+      const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const start = new Date(`${today}T00:00:00Z`);
+      start.setUTCDate(start.getUTCDate() - 6);
+      $("alarmFilterFrom").value = start.toISOString().slice(0, 10);
+      $("alarmFilterTo").value = today;
+      updateAlarmDateRangeLabel();
+      alarmUi.calendarMonth = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
+      renderAlarmCalendar();
+    }
+
+    function updateAlarmDateRangeLabel() {
+      const from = $("alarmFilterFrom").value;
+      const to = $("alarmFilterTo").value;
+      const format = (value) => value ? value.replaceAll("-", ".") : "날짜 선택";
+      $("alarmDateRangeLabel").textContent = from && to
+        ? `${format(from)} — ${format(to)}`
+        : from ? `${format(from)} — 종료일 선택` : "조회 기간 선택";
+      $("alarmDateSelectionHint").textContent = from && to
+        ? `${format(from)} — ${format(to)}`
+        : from ? `${format(from)} 선택됨 · 종료일을 선택하세요` : "달력에서 시작일과 종료일을 선택하세요.";
+      renderAlarmCalendar();
+    }
+
+    function setAlarmDatePreset(preset) {
+      const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const start = new Date(`${today}T00:00:00Z`);
+      if (preset === "today") {
+        $("alarmFilterFrom").value = today;
+      } else if (preset === "3m") {
+        start.setUTCMonth(start.getUTCMonth() - 3);
+        $("alarmFilterFrom").value = start.toISOString().slice(0, 10);
+      } else {
+        start.setUTCDate(start.getUTCDate() - (Number(preset) - 1));
+        $("alarmFilterFrom").value = start.toISOString().slice(0, 10);
+      }
+      $("alarmFilterTo").value = today;
+      alarmUi.calendarMonth = new Date(`${$("alarmFilterFrom").value.slice(0, 7)}-01T00:00:00Z`);
+      updateAlarmDateRangeLabel();
+    }
+
+    function renderAlarmCalendar() {
+      const firstMonth = alarmUi.calendarMonth || new Date(`${new Date().toISOString().slice(0, 7)}-01T00:00:00Z`);
+      alarmUi.calendarMonth = new Date(Date.UTC(firstMonth.getUTCFullYear(), firstMonth.getUTCMonth(), 1));
+      const from = $("alarmFilterFrom").value;
+      const to = $("alarmFilterTo").value;
+      const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const monthLabels = [];
+      const months = [];
+      for (let offset = 0; offset < 2; offset++) {
+        const month = new Date(Date.UTC(alarmUi.calendarMonth.getUTCFullYear(), alarmUi.calendarMonth.getUTCMonth() + offset, 1));
+        monthLabels.push(new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", timeZone: "UTC" }).format(month));
+        const year = month.getUTCFullYear();
+        const monthIndex = month.getUTCMonth();
+        const firstWeekday = month.getUTCDay();
+        const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+        const cells = [];
+        for (let index = 0; index < 42; index++) {
+          const day = new Date(Date.UTC(year, monthIndex, index - firstWeekday + 1));
+          const value = day.toISOString().slice(0, 10);
+          const classes = [
+            day.getUTCMonth() !== monthIndex ? "outside" : "",
+            value === today ? "today" : "",
+            from && to && value >= from && value <= to ? "in-range" : "",
+            value === from ? "range-start" : "",
+            value === to ? "range-end" : "",
+          ].filter(Boolean).join(" ");
+          cells.push(`<button type="button" class="${classes}" data-alarm-date="${value}" aria-label="${value}" aria-pressed="${value === from || value === to}">${day.getUTCDate()}</button>`);
+        }
+        months.push(`<div class="alarm-calendar-month"><div class="alarm-calendar-week">${["일", "월", "화", "수", "목", "금", "토"].map((day) => `<span>${day}</span>`).join("")}</div><div class="alarm-calendar-days">${cells.join("")}</div></div>`);
+      }
+      $("alarmCalendarMonthLabels").innerHTML = monthLabels.map((label) => `<span>${esc(label)}</span>`).join("");
+      $("alarmCalendarMonths").innerHTML = months.join("");
+    }
+
+    function closeAlarmDateRange() {
+      $("alarmDateRangePopover").hidden = true;
+      $("alarmDateRangeToggle").setAttribute("aria-expanded", "false");
+    }
+
+    function flattenAlarmLocations(nodes, parentCode = null, depth = 0, result = []) {
+      for (const node of nodes || []) {
+        result.push({ code: node.code, name: node.name, parentCode, depth });
+        flattenAlarmLocations(node.children, node.code, depth + 1, result);
+      }
+      return result;
+    }
+
+    function alarmLocationContains(locationCode, candidateCode) {
+      let current = alarmUi.locationByCode.get(candidateCode);
+      while (current) {
+        if (current.code === locationCode) return true;
+        current = current.parentCode ? alarmUi.locationByCode.get(current.parentCode) : null;
+      }
+      return false;
+    }
+
+    async function loadAlarmFilterOptions() {
+      if (alarmUi.filtersLoaded) return;
+      if (!(state.models || []).length) await loadModels();
+      const [locationTree, firstPage] = await Promise.all([
+        api("/api/manager/location-node"),
+        api("/api/manager/devices?page=1&size=100"),
+      ]);
+      alarmUi.filterLocations = flattenAlarmLocations(locationTree || []);
+      alarmUi.locationByCode = new Map(alarmUi.filterLocations.map((location) => [location.code, location]));
+      alarmUi.filterModels = Array.isArray(state.models) ? state.models : [];
+      alarmUi.filterDevices = [...(firstPage.content || [])];
+      for (let page = 2; page <= Number(firstPage.totalPages || 1); page++) {
+        const result = await api(`/api/manager/devices?page=${page}&size=100`);
+        alarmUi.filterDevices.push(...(result.content || []));
+      }
+      if (!$("alarmFilterFrom").value || !$("alarmFilterTo").value) setAlarmDefaultDateRange();
+      renderAlarmFilterChoices();
+      alarmUi.filtersLoaded = true;
+    }
+
+    function renderAlarmFilterChoices() {
+      const locationSelect = $("alarmFilterLocation");
+      const modelSelect = $("alarmFilterModel");
+      const deviceSelect = $("alarmFilterDevice");
+      const locationCode = locationSelect.value;
+      const previousModelId = modelSelect.value;
+      const previousDeviceId = deviceSelect.value;
+      locationSelect.innerHTML = '<option value="">모든 위치</option>' + alarmUi.filterLocations.map((location) =>
+        `<option value="${esc(location.code)}">${esc(`${"· ".repeat(location.depth)}${location.name}`)}</option>`).join("");
+      locationSelect.value = locationCode;
+
+      const inLocation = (device) => !locationCode || alarmLocationContains(locationCode, device.locationNodeCode);
+      const scopedDevices = alarmUi.filterDevices.filter(inLocation);
+      const modelIds = new Set(scopedDevices.map((device) => Number(device.modelId)));
+      const models = alarmUi.filterModels.filter((model) => modelIds.has(Number(model.id)));
+      modelSelect.innerHTML = '<option value="">모든 모델</option>' + models.map((model) =>
+        `<option value="${Number(model.id)}">${esc(model.name)}</option>`).join("");
+      if (models.some((model) => String(model.id) === previousModelId)) modelSelect.value = previousModelId;
+
+      const modelId = modelSelect.value;
+      const devices = scopedDevices.filter((device) => !modelId || Number(device.modelId) === Number(modelId));
+      deviceSelect.innerHTML = '<option value="">모든 장비</option>' + devices.map((device) =>
+        `<option value="${Number(device.id)}">${esc(device.name)} · #${Number(device.id)}</option>`).join("");
+      if (devices.some((device) => String(device.id) === previousDeviceId)) deviceSelect.value = previousDeviceId;
     }
 
     function closeAlarmRule() {
@@ -8356,6 +8688,64 @@
     }
 
     $("alarmReload").onclick = () => loadAlarmPage().catch((e) => toast(e.message, true));
+    $("alarmFilterApply").onclick = () => { alarmUi.page = 1; loadAlarmEvents().catch((e) => toast(e.message, true)); };
+    $("alarmFilterReset").onclick = () => {
+      setAlarmDefaultDateRange();
+      $("alarmFilterLocation").value = "";
+      $("alarmFilterModel").value = "";
+      $("alarmFilterDevice").value = "";
+      $("alarmFilterSeverity").value = "";
+      closeAlarmDateRange();
+      renderAlarmFilterChoices();
+      alarmUi.page = 1;
+      loadAlarmEvents().catch((e) => toast(e.message, true));
+    };
+    $("alarmDateRangeToggle").onclick = () => {
+      const popover = $("alarmDateRangePopover");
+      popover.hidden = !popover.hidden;
+      $("alarmDateRangeToggle").setAttribute("aria-expanded", String(!popover.hidden));
+      if (!popover.hidden) renderAlarmCalendar();
+    };
+    $("alarmDateRangePopover").querySelectorAll("[data-alarm-range]").forEach((button) => {
+      button.onclick = () => setAlarmDatePreset(button.dataset.alarmRange);
+    });
+    $("alarmCalendarPrev").onclick = () => {
+      alarmUi.calendarMonth.setUTCMonth(alarmUi.calendarMonth.getUTCMonth() - 1);
+      renderAlarmCalendar();
+    };
+    $("alarmCalendarNext").onclick = () => {
+      alarmUi.calendarMonth.setUTCMonth(alarmUi.calendarMonth.getUTCMonth() + 1);
+      renderAlarmCalendar();
+    };
+    $("alarmCalendarMonths").onclick = (event) => {
+      const dayButton = event.target.closest("[data-alarm-date]");
+      if (!dayButton) return;
+      const picked = dayButton.dataset.alarmDate;
+      const from = $("alarmFilterFrom").value;
+      const to = $("alarmFilterTo").value;
+      if (!from || to) {
+        $("alarmFilterFrom").value = picked;
+        $("alarmFilterTo").value = "";
+      } else if (picked < from) {
+        $("alarmFilterFrom").value = picked;
+        $("alarmFilterTo").value = from;
+      } else {
+        $("alarmFilterTo").value = picked;
+      }
+      updateAlarmDateRangeLabel();
+    };
+    $("alarmDateRangeDone").onclick = () => {
+      if ($("alarmFilterFrom").value === "" || $("alarmFilterTo").value === "") {
+        toast("시작 날짜와 종료 날짜를 모두 선택해 주세요.", true);
+        return;
+      }
+      closeAlarmDateRange();
+    };
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".alarm-date-range")) closeAlarmDateRange();
+    });
+    $("alarmFilterLocation").onchange = () => renderAlarmFilterChoices();
+    $("alarmFilterModel").onchange = () => renderAlarmFilterChoices();
     $("alarmPrev").onclick = () => { if (alarmUi.page > 1) { alarmUi.page--; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
     $("alarmNext").onclick = () => { if (!alarmUi.last) { alarmUi.page++; loadAlarmEvents().catch((e) => toast(e.message, true)); } };
     $("alarmRuleOpen").onclick = () => openAlarmRule().catch((e) => toast(e.message, true));
@@ -8364,15 +8754,25 @@
     $("alarmRuleModal").addEventListener("click", (event) => { if (event.target === $("alarmRuleModal")) closeAlarmRule(); });
     // Threshold page: one device, one point, one threshold per row.
     async function loadAlarmEvents() {
-      const result = await api(`/api/manager/alarms?page=${alarmUi.page}&size=20`);
+      const params = new URLSearchParams({ page: String(alarmUi.page), size: "20" });
+      const filters = {
+        from: $("alarmFilterFrom").value,
+        to: $("alarmFilterTo").value,
+        locationCode: $("alarmFilterLocation").value,
+        modelId: $("alarmFilterModel").value,
+        deviceId: $("alarmFilterDevice").value,
+        severity: $("alarmFilterSeverity").value,
+      };
+      Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+      const result = await api(`/api/manager/alarms?${params.toString()}`);
       alarmUi.last = result.last;
       $("alarmPageInfo").textContent = `${result.page} / ${Math.max(result.totalPages, 1)} · 전체 ${result.totalElements}건`;
       $("alarmPrev").disabled = result.first;
       $("alarmNext").disabled = result.last;
       $("alarmList").innerHTML = (result.content || []).map((event) => {
         const detail = event.details;
+        const title = detail ? `${detail.deviceName} · ${detail.pointName}` : event.alarmType;
         const status = event.clearedDt ? `복구 ${alarmTime(event.clearedDt)}` : "진행 중";
-        const title = detail ? `${detail.deviceName} · ${detail.pointName}` : `${event.alarmType} · ${event.subjectKey}`;
         const summary = detail
           ? `${detail.measuredValue} ${detail.unit} · ${detail.operator === "ABOVE" ? "초과" : "미만"} 기준 ${detail.thresholdValue} ${detail.unit}`
           : "상세 측정정보 없음";
