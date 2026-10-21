@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                 .requestMatchers("/", "/index.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html").permitAll()
                 .requestMatchers("/ws/mqtt-monitor").permitAll()
+                .requestMatchers("/ws/alarms").permitAll()
                 .anyRequest()
                 .authenticated()
             );

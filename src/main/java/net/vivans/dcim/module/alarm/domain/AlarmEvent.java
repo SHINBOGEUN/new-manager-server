@@ -18,10 +18,6 @@ public class AlarmEvent {
     private String severity;
     @Column(nullable = false, length = 20)
     private String visibility;
-    @Column(name = "source_key", nullable = false, length = 120)
-    private String sourceKey;
-    @Column(name = "subject_key", nullable = false, length = 120)
-    private String subjectKey;
     @Column(name = "raised_dt", nullable = false)
     private Instant raisedDt;
     @Column(name = "cleared_dt")
@@ -30,13 +26,10 @@ public class AlarmEvent {
     @OneToOne(mappedBy = "event", fetch = FetchType.LAZY)
     private ThresholdAlarmEventDetail thresholdDetail;
 
-    public AlarmEvent(String alarmType, String severity, String visibility, String sourceKey,
-                      String subjectKey, Instant raisedDt) {
+    public AlarmEvent(String alarmType, String severity, String visibility, Instant raisedDt) {
         this.alarmType = alarmType;
         this.severity = severity;
         this.visibility = visibility;
-        this.sourceKey = sourceKey;
-        this.subjectKey = subjectKey;
         this.raisedDt = raisedDt;
     }
 

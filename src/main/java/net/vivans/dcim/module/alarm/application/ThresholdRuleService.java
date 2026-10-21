@@ -113,7 +113,7 @@ public class ThresholdRuleService {
     }
 
     private void closeOpenEvents(long id) {
-        events.findAllBySourceKeyAndClearedDtIsNull("threshold:" + id)
+        events.findOpenThresholdEvents(id)
                 .forEach(event -> event.clear(Instant.now()));
     }
 
