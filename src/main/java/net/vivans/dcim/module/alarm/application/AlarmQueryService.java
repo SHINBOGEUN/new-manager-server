@@ -57,6 +57,9 @@ public class AlarmQueryService {
         Set<String> locationCodes = locationCode == null || locationCode.isBlank()
                 ? Set.of() : resolveLocationSubtree(locationCode.trim());
         String normalizedSeverity = blankToNull(severity);
+        if (normalizedSeverity != null && !Set.of("WARNING", "CRITICAL").contains(normalizedSeverity)) {
+            throw new IllegalArgumentException("심각도는 WARNING 또는 CRITICAL만 조회할 수 있습니다");
+        }
         String normalizedPoint = blankToNull(pointName);
         String visibleToUser = isAdmin(auth) ? null : "USER_VISIBLE";
 

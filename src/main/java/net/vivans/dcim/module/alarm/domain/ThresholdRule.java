@@ -33,11 +33,11 @@ public class ThresholdRule {
     @Column(name = "operator", nullable = false, length = 10)
     private String operator;
 
-    @Column(name = "threshold_value", nullable = false, precision = 24, scale = 8)
-    private BigDecimal thresholdValue;
+    @Column(name = "warning_threshold_value", precision = 24, scale = 8)
+    private BigDecimal warningThresholdValue;
 
-    @Column(name = "severity", nullable = false, length = 20)
-    private String severity;
+    @Column(name = "critical_threshold_value", precision = 24, scale = 8)
+    private BigDecimal criticalThresholdValue;
 
     @Column(nullable = false)
     private boolean enabled;
@@ -50,13 +50,13 @@ public class ThresholdRule {
 
     public ThresholdRule(Device device, CommonCode protocolType, String pointName,
                          String operator,
-                         BigDecimal thresholdValue, String severity, boolean enabled) {
+                         BigDecimal warningThresholdValue, BigDecimal criticalThresholdValue, boolean enabled) {
         this.device = device;
         this.protocolType = protocolType;
         this.pointName = pointName;
         this.operator = operator;
-        this.thresholdValue = thresholdValue;
-        this.severity = severity;
+        this.warningThresholdValue = warningThresholdValue;
+        this.criticalThresholdValue = criticalThresholdValue;
         this.enabled = enabled;
         this.createdDt = Instant.now();
         this.updatedDt = this.createdDt;
@@ -64,13 +64,13 @@ public class ThresholdRule {
 
     public void change(Device device, CommonCode protocolType, String pointName,
                        String operator,
-                       BigDecimal thresholdValue, String severity, boolean enabled) {
+                       BigDecimal warningThresholdValue, BigDecimal criticalThresholdValue, boolean enabled) {
         this.device = device;
         this.protocolType = protocolType;
         this.pointName = pointName;
         this.operator = operator;
-        this.thresholdValue = thresholdValue;
-        this.severity = severity;
+        this.warningThresholdValue = warningThresholdValue;
+        this.criticalThresholdValue = criticalThresholdValue;
         this.enabled = enabled;
         this.updatedDt = Instant.now();
     }

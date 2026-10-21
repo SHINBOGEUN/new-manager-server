@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS `threshold_rule` (
   `protocol_type_id` int(11) NOT NULL COMMENT '측정값을 수집한 프로토콜 공통코드 ID',
   `point_name` varchar(120) NOT NULL COMMENT '장비의 측정 포인트 이름',
   `operator` varchar(10) NOT NULL COMMENT '경보 비교 연산자: ABOVE(초과), BELOW(미만)',
-  `threshold_value` decimal(24,8) NOT NULL COMMENT '경보를 발생시킬 기준값',
-  `severity` varchar(20) NOT NULL COMMENT '경보 심각도: WARNING 또는 CRITICAL',
+  `warning_threshold_value` decimal(24,8) NULL COMMENT '주의 경보 기준값 (미사용 시 NULL)',
+  `critical_threshold_value` decimal(24,8) NULL COMMENT '위험 경보 기준값 (미사용 시 NULL)',
   `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '규칙 활성 여부',
   `created_dt` timestamp(6) NOT NULL DEFAULT current_timestamp(6) COMMENT '규칙 생성 시각',
   `updated_dt` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '규칙 최종 수정 시각',
@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `threshold_rule` (
   CONSTRAINT `fk_threshold_rule_device` FOREIGN KEY (`device_id`) REFERENCES `devices` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_threshold_rule_protocol_type` FOREIGN KEY (`protocol_type_id`) REFERENCES `common_code` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `chk_threshold_rule_operator` CHECK (`operator` IN ('ABOVE','BELOW')),
-  CONSTRAINT `chk_threshold_rule_severity` CHECK (`severity` IN ('WARNING','CRITICAL')),
+  CONSTRAINT `chk_threshold_rule_has_level` CHECK (`warning_threshold_value` IS NOT NULL OR `critical_threshold_value` IS NOT NULL),
+  CONSTRAINT `chk_threshold_rule_level_order` CHECK (`warning_threshold_value` IS NULL OR `critical_threshold_value` IS NULL OR (`operator` = 'ABOVE' AND `critical_threshold_value` > `warning_threshold_value`) OR (`operator` = 'BELOW' AND `critical_threshold_value` < `warning_threshold_value`)),
   CONSTRAINT `chk_threshold_rule_enabled` CHECK (`enabled` IN (0,1))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='장비·측정항목별 단일 임계값 규칙';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='장비·측정항목별 주의·위험 임계값 규칙';

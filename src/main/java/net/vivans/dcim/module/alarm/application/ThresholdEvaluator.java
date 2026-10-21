@@ -82,17 +82,31 @@ public class ThresholdEvaluator {
     private void apply(ThresholdRule rule, DeviceMeasurementSourceCatalog.Source source,
                        BigDecimal measured, Instant now) {
         int deviceId = rule.getDevice().getId();
-        boolean breached = "ABOVE".equals(rule.getOperator())
-                ? measured.compareTo(rule.getThresholdValue()) > 0
-                : measured.compareTo(rule.getThresholdValue()) < 0;
+        Breach breach = currentBreach(rule, measured);
         var open = events.findOpenThresholdEvent(rule.getId(), deviceId);
-        if (breached && open.isEmpty()) {
-            AlarmEvent event = events.save(new AlarmEvent("THRESHOLD", rule.getSeverity(), "USER_VISIBLE", now));
+        if (breach != null && (open.isEmpty() || !open.get().getSeverity().equals(breach.severity()))) {
+            open.ifPresent(event -> event.clear(now));
+            AlarmEvent event = events.save(new AlarmEvent("THRESHOLD", breach.severity(), "USER_VISIBLE", now));
             details.save(new ThresholdAlarmEventDetail(event, rule, rule.getDevice(), rule.getPointName(),
-                    source.unit(), rule.getOperator(), rule.getThresholdValue(), measured));
+                    source.unit(), rule.getOperator(), breach.thresholdValue(), measured));
             publisher.publishEvent(new AlarmCreated(event.getId()));
-        } else if (!breached) {
+        } else if (breach == null) {
             open.ifPresent(event -> event.clear(now));
         }
     }
+
+    private static Breach currentBreach(ThresholdRule rule, BigDecimal measured) {
+        boolean above = "ABOVE".equals(rule.getOperator());
+        BigDecimal critical = rule.getCriticalThresholdValue();
+        if (critical != null && crossed(measured, critical, above)) return new Breach("CRITICAL", critical);
+        BigDecimal warning = rule.getWarningThresholdValue();
+        if (warning != null && crossed(measured, warning, above)) return new Breach("WARNING", warning);
+        return null;
+    }
+
+    private static boolean crossed(BigDecimal measured, BigDecimal threshold, boolean above) {
+        return above ? measured.compareTo(threshold) > 0 : measured.compareTo(threshold) < 0;
+    }
+
+    private record Breach(String severity, BigDecimal thresholdValue) {}
 }

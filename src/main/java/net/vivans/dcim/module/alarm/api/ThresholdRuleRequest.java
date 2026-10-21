@@ -14,7 +14,7 @@ public record ThresholdRuleRequest(
         @NotBlank @Size(max = 100) String protocol,
         @NotBlank @Size(max = 120) String pointName,
         @NotBlank @Pattern(regexp = "ABOVE|BELOW") String operator,
-        @NotNull @Digits(integer = 16, fraction = 8) BigDecimal thresholdValue,
-        @NotBlank @Pattern(regexp = "WARNING|CRITICAL") String severity,
+        @Digits(integer = 16, fraction = 8) BigDecimal warningThresholdValue,
+        @Digits(integer = 16, fraction = 8) BigDecimal criticalThresholdValue,
         Boolean enabled
 ) {}

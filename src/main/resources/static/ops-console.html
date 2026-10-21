@@ -1890,7 +1890,7 @@
               <label class="field">위치<select id="alarmFilterLocation"><option value="">모든 위치</option></select></label>
               <label class="field">모델<select id="alarmFilterModel"><option value="">모든 모델</option></select></label>
               <label class="field">장비<select id="alarmFilterDevice"><option value="">모든 장비</option></select></label>
-              <label class="field">심각도<select id="alarmFilterSeverity"><option value="">모든 심각도</option><option value="CRITICAL">위험</option><option value="WARNING">주의</option><option value="INFO">정보</option></select></label>
+              <label class="field">심각도<select id="alarmFilterSeverity"><option value="">모든 심각도</option><option value="CRITICAL">위험</option><option value="WARNING">주의</option></select></label>
             </div>
             <div class="row" style="justify-content:flex-end;margin-top:10px">
               <span class="muted" style="margin-right:auto">위치 선택 시 하위 위치를 포함합니다 · 날짜는 한국 시간 기준입니다</span>
@@ -1903,7 +1903,7 @@
         </div>
         <div class="card" data-role-gate="admin">
           <div class="row" style="justify-content:space-between"><h2 style="margin:0">임계값 규칙</h2><button type="button" class="primary" id="alarmRuleOpen">＋ 규칙 등록</button></div>
-          <p class="muted">임계값 지원으로 지정된 측정 유형만 등록할 수 있습니다. 한 장비의 한 측정항목에는 임계값 하나만 허용하며, 수정 시 열린 알람은 종료됩니다.</p>
+          <p class="muted">임계값 지원 측정항목만 등록할 수 있습니다. 장비·측정항목마다 규칙 하나를 만들고, 그 안에 주의·위험 기준값을 각각 설정합니다. 수정 시 열린 알람은 종료됩니다.</p>
           <div class="alarm-list" id="alarmRuleList"><div class="muted">조회 중…</div></div>
         </div>
       </div>
@@ -1923,10 +1923,10 @@
         </div>
         <div class="alarm-step"><h3>2. 임계값</h3>
           <div class="fields"><label class="field">조건<select id="alarmOperator"><option value="ABOVE">초과 시 알람</option><option value="BELOW">미만 시 알람</option></select></label>
-            <label class="field">기준값<input id="alarmThresholdValue" type="number" step="any" placeholder="경보 기준값" /></label>
-            <label class="field">심각도<select id="alarmSeverity"><option value="WARNING">주의</option><option value="CRITICAL">위험</option></select></label>
+            <label class="field">주의 경보 기준값<input id="alarmWarningThresholdValue" type="number" step="any" placeholder="선택 입력" /></label>
+            <label class="field">위험 경보 기준값<input id="alarmCriticalThresholdValue" type="number" step="any" placeholder="선택 입력" /></label>
             <label class="row"><input type="checkbox" id="alarmEnabled" checked /> 임계값 활성화</label></div>
-          <p class="muted" id="alarmUnitHint"></p>
+          <p class="muted" id="alarmUnitHint">주의 또는 위험 기준값 중 하나 이상 입력하면 저장할 수 있습니다. 둘 다 입력하면 위험 기준은 주의 기준보다 더 엄격하게 설정하세요.</p>
         </div>
         <div class="row" style="justify-content:flex-end"><button type="button" class="ghost" id="alarmRuleCancel">취소</button><button type="button" class="primary" id="alarmRuleSave">선택 장비에 일괄 등록</button></div>
       </div>
@@ -8785,7 +8785,10 @@
       alarmUi.rules = await api("/api/manager/threshold-rules") || [];
       $("alarmRuleList").innerHTML = alarmUi.rules.map((rule) => `<article class="alarm-row">
         <div class="alarm-row-head"><strong>${esc(rule.deviceName)} · ${esc(rule.pointName)}</strong><span class="chip ${rule.enabled ? "ok" : ""}">${rule.enabled ? "사용" : "중지"}</span></div>
-        <p>${esc(rule.dataPointType)} · ${esc(rule.protocol.toUpperCase())} · ${esc(rule.operator === "ABOVE" ? "초과" : "미만")} ${esc(rule.thresholdValue)} ${esc(rule.unit)} · ${esc(rule.severity)}</p>
+        <p>${esc(rule.dataPointType)} · ${esc(rule.protocol.toUpperCase())} · ${[
+          rule.warningThresholdValue != null ? `주의 ${rule.operator === "ABOVE" ? ">" : "<"} ${rule.warningThresholdValue} ${rule.unit}` : "",
+          rule.criticalThresholdValue != null ? `위험 ${rule.operator === "ABOVE" ? ">" : "<"} ${rule.criticalThresholdValue} ${rule.unit}` : "",
+        ].filter(Boolean).map(esc).join(" · ")}</p>
         <div class="row" style="margin-top:9px"><button type="button" class="ghost" data-alarm-edit="${rule.id}">수정</button>${rule.enabled ? `<button type="button" class="ghost" data-alarm-disable="${rule.id}">중지</button>` : ""}</div></article>`
       ).join("") || '<div class="empty">등록된 임계값이 없습니다.</div>';
     }
@@ -8863,15 +8866,15 @@
         protocol: source.protocol, pointName: source.pointName, dataPointType: source.dataPointType, unit: source.unit,
       })));
       $("alarmUnitHint").textContent = !$("alarmModel").value
-        ? "먼저 장비 모델을 선택하세요."
+          ? "먼저 장비 모델을 선택하세요. 주의 또는 위험 기준값 중 하나 이상 입력하면 저장할 수 있습니다."
         : !deviceIds.length
-          ? "장비를 한 대 이상 선택하세요. 여러 장비에 같은 임계값을 일괄 등록할 수 있습니다."
+          ? "장비를 한 대 이상 선택하세요. 여러 장비에 같은 기준을 일괄 등록할 수 있습니다. 주의·위험 기준값 중 하나 이상 필요합니다."
           : choiceSources.length
-            ? "선택한 모든 장비에 같은 조건으로 등록합니다. 장비·측정항목 조합당 임계값 하나만 허용됩니다."
+            ? `선택한 모든 장비에 같은 조건으로 등록합니다. 주의·위험 기준값 중 하나 이상 입력하세요. 둘 다 입력하면 위험 기준은 주의 기준보다 ${$("alarmOperator").value === "ABOVE" ? "커야" : "작아야"} 합니다.`
             : "선택한 장비들에 공통 측정항목이 없습니다. 장비 선택을 줄이거나 DATA_POINT_TYPE 공통코드 설정을 확인하세요.";
       if (selectedSource) {
         const chosen = choiceSources.find((source) => source.protocol === selectedSource.protocol && source.pointName === selectedSource.pointName);
-        if (chosen) $("alarmUnitHint").textContent = `기준값 단위: ${chosen.unit} · 유형: ${chosen.dataPointType}`;
+        if (chosen) $("alarmUnitHint").textContent = `단위: ${chosen.unit} · 유형: ${chosen.dataPointType}. 주의·위험 기준값 중 하나 이상 입력하세요. 둘 다 입력하면 위험 기준은 주의 기준보다 ${$("alarmOperator").value === "ABOVE" ? "커야" : "작아야"} 합니다.`;
       }
     }
 
@@ -8891,15 +8894,17 @@
       $("alarmRuleSave").textContent = rule ? "변경 저장" : "선택 장비에 일괄 등록";
       const selectedDevice = rule && alarmUi.devices.find((device) => Number(device.id) === Number(rule.deviceId));
       $("alarmModel").value = selectedDevice ? String(selectedDevice.modelId) : "";
+      $("alarmOperator").value = rule?.operator || "ABOVE";
       renderAlarmDeviceChoices(rule?.deviceId ?? null);
       if (rule) renderAlarmPointChoices({ protocol: rule.protocol, pointName: rule.pointName });
-      $("alarmOperator").value = rule?.operator || "ABOVE";
-      $("alarmThresholdValue").value = rule?.thresholdValue ?? "";
-      $("alarmSeverity").value = rule?.severity || "WARNING";
+      $("alarmWarningThresholdValue").value = rule?.warningThresholdValue ?? "";
+      $("alarmCriticalThresholdValue").value = rule?.criticalThresholdValue ?? "";
       $("alarmEnabled").checked = rule?.enabled ?? true;
       $("alarmRuleModal").classList.add("open");
       $("alarmRuleModal").setAttribute("aria-hidden", "false");
-      $(rule ? "alarmThresholdValue" : "alarmModel").focus();
+      $(rule
+        ? (rule.warningThresholdValue == null ? "alarmCriticalThresholdValue" : "alarmWarningThresholdValue")
+        : "alarmModel").focus();
     }
 
     async function saveAlarmRule() {
@@ -8907,9 +8912,19 @@
       const deviceIds = selectedAlarmDeviceIds();
       if (!deviceIds.length) throw new Error("임계값을 등록할 장비를 한 대 이상 선택하세요.");
       if (!source) throw new Error("선택한 모든 장비에 공통인 임계값 지원 측정항목을 선택하세요.");
-      const rawValue = $("alarmThresholdValue").value.trim();
-      const thresholdValue = Number(rawValue);
-      if (!rawValue || !Number.isFinite(thresholdValue)) throw new Error("유효한 경보 기준값을 입력하세요.");
+      const rawWarningValue = $("alarmWarningThresholdValue").value.trim();
+      const rawCriticalValue = $("alarmCriticalThresholdValue").value.trim();
+      const warningThresholdValue = rawWarningValue ? Number(rawWarningValue) : null;
+      const criticalThresholdValue = rawCriticalValue ? Number(rawCriticalValue) : null;
+      if (warningThresholdValue === null && criticalThresholdValue === null) throw new Error("주의 또는 위험 기준값을 하나 이상 입력하세요.");
+      if ((warningThresholdValue !== null && !Number.isFinite(warningThresholdValue)) ||
+          (criticalThresholdValue !== null && !Number.isFinite(criticalThresholdValue))) throw new Error("기준값은 유효한 숫자로 입력하세요.");
+      const operator = $("alarmOperator").value;
+      if (warningThresholdValue !== null && criticalThresholdValue !== null &&
+          ((operator === "ABOVE" && criticalThresholdValue <= warningThresholdValue) ||
+           (operator === "BELOW" && criticalThresholdValue >= warningThresholdValue))) {
+        throw new Error(operator === "ABOVE" ? "초과 조건에서는 위험 기준값이 주의 기준값보다 커야 합니다." : "미만 조건에서는 위험 기준값이 주의 기준값보다 작아야 합니다.");
+      }
       if (alarmUi.editingRule && deviceIds.length !== 1) throw new Error("기존 규칙 수정은 장비 한 대씩만 가능합니다.");
       if (!alarmUi.editingRule) {
         const duplicates = deviceIds.map((deviceId) => ({ deviceId, device: alarmUi.devices.find((item) => Number(item.id) === deviceId) }))
@@ -8926,7 +8941,7 @@
         const failed = [];
         for (const deviceId of deviceIds) {
           const payload = { deviceId, protocol: source.protocol, pointName: source.pointName,
-            operator: $("alarmOperator").value, thresholdValue, severity: $("alarmSeverity").value,
+            operator, warningThresholdValue, criticalThresholdValue,
             enabled: $("alarmEnabled").checked };
           try {
             await api(id ? `/api/manager/threshold-rules/${id}` : "/api/manager/threshold-rules",
@@ -8972,8 +8987,10 @@
     };
     $("alarmSource").onchange = () => {
       const source = selectedAlarmSource();
-      if (source) $("alarmUnitHint").textContent = `기준값 단위: ${source.unit} · 유형: ${source.dataPointType}`;
+      const severityOrder = $("alarmOperator").value === "ABOVE" ? "커야" : "작아야";
+      if (source) $("alarmUnitHint").textContent = `단위: ${source.unit} · 유형: ${source.dataPointType}. 주의·위험 기준값 중 하나 이상 입력하세요. 둘 다 입력하면 위험 기준은 주의 기준보다 ${severityOrder} 합니다.`;
     };
+    $("alarmOperator").onchange = () => renderAlarmPointChoices(selectedAlarmSource());
     $("alarmRuleSave").onclick = () => saveAlarmRule().catch((e) => toast(e.message, true));
     $("alarmRuleList").onclick = async (event) => {
       const edit = event.target.closest("[data-alarm-edit]");
