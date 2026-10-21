@@ -42,18 +42,20 @@ public class ThresholdRuleService {
 
     @Transactional
     public ThresholdRuleResponse create(ThresholdRuleRequest request) {
+        validateThresholdLevels(request);
         Resolved resolved = resolve(request);
         if (rules.existsByDevice_IdAndPointName(resolved.device().getId(), resolved.source().pointName())) {
             throw new IllegalArgumentException("이 장비의 측정항목에는 이미 임계값이 등록되어 있습니다. 기존 설정을 수정하세요.");
         }
         ThresholdRule saved = rules.save(new ThresholdRule(resolved.device(), resolved.protocolType(),
-                resolved.source().pointName(), request.operator(), request.thresholdValue(),
-                request.severity(), enabled(request)));
+                resolved.source().pointName(), request.operator(), request.warningThresholdValue(),
+                request.criticalThresholdValue(), enabled(request)));
         return view(saved, List.of(resolved.source()));
     }
 
     @Transactional
     public ThresholdRuleResponse update(long id, ThresholdRuleRequest request) {
+        validateThresholdLevels(request);
         ThresholdRule rule = requireRule(id);
         Resolved resolved = resolve(request);
         if (rules.existsByDevice_IdAndPointNameAndIdNot(resolved.device().getId(),
@@ -61,7 +63,7 @@ public class ThresholdRuleService {
             throw new IllegalArgumentException("이 장비의 측정항목에는 이미 임계값이 등록되어 있습니다.");
         }
         rule.change(resolved.device(), resolved.protocolType(), resolved.source().pointName(),
-                request.operator(), request.thresholdValue(), request.severity(), enabled(request));
+                request.operator(), request.warningThresholdValue(), request.criticalThresholdValue(), enabled(request));
         closeOpenEvents(id);
         return view(rule, List.of(resolved.source()));
     }
@@ -108,8 +110,25 @@ public class ThresholdRuleService {
         return new ThresholdRuleResponse(rule.getId(), rule.getDevice().getId(), rule.getDevice().getName(),
                 rule.getDevice().getDeviceModel().getName(), rule.getProtocolType().getCode(), rule.getPointName(),
                 source == null ? null : source.dataPointType(), source == null ? null : source.unit(),
-                rule.getOperator(), rule.getThresholdValue(),
-                rule.getSeverity(), rule.isEnabled(), rule.getCreatedDt(), rule.getUpdatedDt());
+                rule.getOperator(), rule.getWarningThresholdValue(), rule.getCriticalThresholdValue(),
+                rule.isEnabled(), rule.getCreatedDt(), rule.getUpdatedDt());
+    }
+
+    private static void validateThresholdLevels(ThresholdRuleRequest request) {
+        var warning = request.warningThresholdValue();
+        var critical = request.criticalThresholdValue();
+        if (warning == null && critical == null) {
+            throw new IllegalArgumentException("주의 또는 위험 기준값을 하나 이상 입력하세요.");
+        }
+        if (warning != null && critical != null) {
+            int comparison = critical.compareTo(warning);
+            if ("ABOVE".equals(request.operator()) && comparison <= 0) {
+                throw new IllegalArgumentException("초과 조건에서는 위험 기준값이 주의 기준값보다 커야 합니다.");
+            }
+            if ("BELOW".equals(request.operator()) && comparison >= 0) {
+                throw new IllegalArgumentException("미만 조건에서는 위험 기준값이 주의 기준값보다 작아야 합니다.");
+            }
+        }
     }
 
     private void closeOpenEvents(long id) {
