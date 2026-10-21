@@ -66,7 +66,7 @@ final class PageWidgetPolicy {
             int modelCount
     ) {
         if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.calculated
-                || queryKind == PageWidgetQueryKind.psychrometric
+                || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.cctv
                 || queryKind == PageWidgetQueryKind.power_distribution) {
             return;
         }

@@ -29,6 +29,7 @@ public record PageWidgetResponse(
         List<PageWidgetLastSourceResponse> lastSources,
         List<PageWidgetPsychrometricSourceResponse> psychrometricSources,
         List<PageWidgetPowerDistributionGroupResponse> powerDistributionGroups,
+        List<CctvCameraResponse> cctvCameras,
         List<Integer> deviceIds,
         List<Integer> deviceGroupIds,
         List<Integer> modelIds,
@@ -77,6 +78,7 @@ public record PageWidgetResponse(
                         : widget.getPowerDistribution().getGroups().stream()
                         .map(PageWidgetPowerDistributionGroupResponse::from)
                         .toList(),
+                widget.cctvCameraDefinitions().stream().map(CctvCameraResponse::from).toList(),
                 widget.deviceIds(),
                 widget.deviceGroupIds(),
                 widget.modelIds(),

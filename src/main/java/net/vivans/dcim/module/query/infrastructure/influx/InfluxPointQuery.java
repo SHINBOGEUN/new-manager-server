@@ -179,6 +179,19 @@ public class InfluxPointQuery implements PointQuery {
     }
 
     @Override
+    public List<LastPoint> findLastInRange(List<Integer> deviceIds, List<String> pointNames,
+                                           Instant start, Instant end, String protocol) {
+        String flux = BoundaryFluxBuilder.buildLastQuery(properties.getBucket(), properties.getMeasurement(),
+                deviceIds, pointNames, start, end, protocol);
+        try {
+            return mapLast(query(flux));
+        } catch (RuntimeException exception) {
+            log.error("Query protocol last-in-range failed: {}", exception.getMessage(), exception);
+            throw new QueryException("InfluxDB query failed");
+        }
+    }
+
+    @Override
     public Optional<CalculatedMetricLastPoint> findLastCalculated(Integer definitionId, Integer configVersion, Duration lookback) {
         String flux = LastFluxBuilder.buildCalculatedLastQuery(properties.getBucket(),
                 properties.getMeasurement(), definitionId, configVersion, lookback);

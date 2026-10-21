@@ -53,6 +53,7 @@ public class WidgetTrendQueryService {
             case chart -> throw new IllegalArgumentException("chart widget must use /query/chart");
             case calculated -> throw new IllegalArgumentException("calculated widget must use /query/calculated");
             case count -> throw new IllegalArgumentException("count widget has no time-series data");
+            case cctv -> throw new IllegalArgumentException("CCTV widget has no time-series data");
         };
     }
 

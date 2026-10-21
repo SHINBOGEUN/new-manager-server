@@ -61,6 +61,16 @@ public interface PointQuery {
             Instant end
     );
 
+    default List<LastPoint> findLastInRange(
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end,
+            String protocol
+    ) {
+        return findLastInRange(deviceIds, pointNames, start, end);
+    }
+
     Optional<CalculatedMetricLastPoint> findLastCalculated(Integer definitionId, Integer configVersion, Duration lookback);
 
     Optional<CalculatedMetricLastPoint> findLastCalculatedPreviousVersion(Integer definitionId, Integer currentConfigVersion,

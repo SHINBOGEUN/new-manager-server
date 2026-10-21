@@ -31,6 +31,11 @@ final class BoundaryFluxBuilder {
         return buildBoundaryQuery(bucket, measurement, deviceIds, pointNames, start, end, "last");
     }
 
+    static String buildLastQuery(String bucket, String measurement, List<Integer> deviceIds,
+                                 List<String> pointNames, Instant start, Instant end, String protocol) {
+        return buildBoundaryQuery(bucket, measurement, deviceIds, pointNames, start, end, "last", protocol);
+    }
+
     private static String buildBoundaryQuery(
             String bucket,
             String measurement,
@@ -40,6 +45,19 @@ final class BoundaryFluxBuilder {
             Instant end,
             String selector
     ) {
+        return buildBoundaryQuery(bucket, measurement, deviceIds, pointNames, start, end, selector, null);
+    }
+
+    private static String buildBoundaryQuery(
+            String bucket,
+            String measurement,
+            List<Integer> deviceIds,
+            List<String> pointNames,
+            Instant start,
+            Instant end,
+            String selector,
+            String protocol
+    ) {
         return """
                 from(bucket: %s)
                   |> range(start: time(v: %s), stop: time(v: %s))
@@ -47,6 +65,7 @@ final class BoundaryFluxBuilder {
                   |> filter(fn: (r) => r["_field"] == "value")
                   |> filter(fn: (r) => %s)
                   |> filter(fn: (r) => %s)
+                  %s
                   |> group(columns: ["device_id", "point_name"])
                   |> %s()
                   |> keep(columns: ["device_id", "point_name", "_value", "_time"])
@@ -57,11 +76,13 @@ final class BoundaryFluxBuilder {
                 LastFluxBuilder.quote(measurement),
                 orEquals("device_id", deviceIds.stream().map(String::valueOf).toList()),
                 orEquals("point_name", pointNames),
+                protocol == null || protocol.isBlank() ? "" : "|> filter(fn: (r) => r[\"protocol\"] == " + LastFluxBuilder.quote(protocol) + ")",
                 selector
         );
     }
 
     private static String orEquals(String tag, List<String> values) {
+        if (values == null || values.isEmpty()) return "true";
         return values.stream()
                 .map(value -> "r[%s] == %s".formatted(LastFluxBuilder.quote(tag), LastFluxBuilder.quote(value)))
                 .collect(Collectors.joining(" or "));

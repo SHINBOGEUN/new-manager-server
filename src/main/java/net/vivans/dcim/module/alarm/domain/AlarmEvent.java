@@ -26,6 +26,9 @@ public class AlarmEvent {
     @OneToOne(mappedBy = "event", fetch = FetchType.LAZY)
     private ThresholdAlarmEventDetail thresholdDetail;
 
+    @OneToOne(mappedBy = "event", fetch = FetchType.LAZY)
+    private CollectionGapAlarmDetail collectionGapDetail;
+
     public AlarmEvent(String alarmType, String severity, String visibility, Instant raisedDt) {
         this.alarmType = alarmType;
         this.severity = severity;

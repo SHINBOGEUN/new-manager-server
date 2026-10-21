@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.alarm.api.AlarmEventResponse;
 import net.vivans.dcim.module.alarm.domain.AlarmEvent;
+import net.vivans.dcim.module.alarm.domain.CollectionGapAlarmDetail;
 import net.vivans.dcim.module.alarm.domain.ThresholdAlarmEventDetail;
 import net.vivans.dcim.module.alarm.infrastructure.AlarmEventRepository;
 import net.vivans.dcim.module.alarm.infrastructure.ThresholdAlarmEventDetailRepository;
@@ -66,13 +67,20 @@ public class AlarmQueryService {
         return (root, query, builder) -> {
             var detail = root.join("thresholdDetail", JoinType.LEFT);
             var device = detail.join("device", JoinType.LEFT);
+            var gapDetail = root.join("collectionGapDetail", JoinType.LEFT);
+            var gapDevice = gapDetail.join("device", JoinType.LEFT);
             var predicates = new ArrayList<jakarta.persistence.criteria.Predicate>();
             if (visibleToUser != null) predicates.add(builder.equal(root.get("visibility"), visibleToUser));
             if (fromInstant != null) predicates.add(builder.greaterThanOrEqualTo(root.get("raisedDt"), fromInstant));
             if (toExclusive != null) predicates.add(builder.lessThan(root.get("raisedDt"), toExclusive));
-            if (!locationCodes.isEmpty()) predicates.add(device.get("locationNode").get("code").in(locationCodes));
-            if (modelId != null) predicates.add(builder.equal(device.get("deviceModel").get("id"), modelId));
-            if (deviceId != null) predicates.add(builder.equal(device.get("id"), deviceId));
+            if (!locationCodes.isEmpty()) predicates.add(builder.or(
+                    device.get("locationNode").get("code").in(locationCodes),
+                    gapDevice.get("locationNode").get("code").in(locationCodes)));
+            if (modelId != null) predicates.add(builder.or(
+                    builder.equal(device.get("deviceModel").get("id"), modelId),
+                    builder.equal(gapDevice.get("deviceModel").get("id"), modelId)));
+            if (deviceId != null) predicates.add(builder.or(
+                    builder.equal(device.get("id"), deviceId), builder.equal(gapDevice.get("id"), deviceId)));
             if (normalizedSeverity != null) predicates.add(builder.equal(root.get("severity"), normalizedSeverity));
             if (normalizedPoint != null) predicates.add(builder.like(builder.lower(detail.get("pointName")),
                     "%" + normalizedPoint.toLowerCase(java.util.Locale.ROOT) + "%"));
@@ -145,13 +153,20 @@ public class AlarmQueryService {
 
     private AlarmEventResponse view(AlarmEvent event) {
         var details = thresholdDetails.findById(event.getId()).map(AlarmQueryService::thresholdDetails).orElse(null);
+        var collectionGapDetails = event.getCollectionGapDetail() == null ? null
+                : collectionGapDetails(event.getCollectionGapDetail());
         return new AlarmEventResponse(event.getId(), event.getAlarmType(), event.getSeverity(),
-                event.getVisibility(), details, event.getRaisedDt(), event.getClearedDt());
+                event.getVisibility(), details, collectionGapDetails, event.getRaisedDt(), event.getClearedDt());
     }
 
     private static AlarmEventResponse.ThresholdDetails thresholdDetails(ThresholdAlarmEventDetail details) {
         return new AlarmEventResponse.ThresholdDetails(details.getThresholdRule().getId(), details.getDevice().getId(),
                 details.getDevice().getName(), details.getPointName(), details.getUnit(), details.getOperator(),
                 details.getThresholdValue(), details.getMeasuredValue());
+    }
+
+    private static AlarmEventResponse.CollectionGapDetails collectionGapDetails(CollectionGapAlarmDetail details) {
+        return new AlarmEventResponse.CollectionGapDetails(details.getDevice().getId(), details.getDevice().getName(),
+                details.getProtocol());
     }
 }
