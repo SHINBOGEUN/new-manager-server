@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.CctvCameraResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLastSourceRequest;
@@ -16,6 +17,7 @@ import net.vivans.dcim.module.device.api.dto.PageWidgetPowerDistributionUpdateRe
 import net.vivans.dcim.module.device.api.dto.PageWidgetResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetUpdateRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.CctvCamera;
 import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
 import net.vivans.dcim.module.device.domain.model.PageWidget;
 import net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset;
@@ -26,6 +28,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetGroupBy;
 import net.vivans.dcim.module.device.domain.model.PageWidgetOp;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
+import net.vivans.dcim.module.device.domain.repository.CctvCameraRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.devicegroup.domain.model.DeviceGroup;
 import net.vivans.dcim.module.devicegroup.domain.repository.DeviceGroupRepository;
@@ -50,6 +53,7 @@ public class PageWidgetQueryService {
     private final PageWidgetRepository pageWidgetRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
+    private final CctvCameraRepository cctvCameraRepository;
     private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
@@ -72,6 +76,10 @@ public class PageWidgetQueryService {
                 })
                 .map(PageWidgetPageResponse::from)
                 .toList();
+    }
+
+    public List<CctvCameraResponse> getCctvCameras() {
+        return cctvCameraRepository.findEnabled().stream().map(CctvCameraResponse::from).toList();
     }
 
     public List<PageWidgetResponse> getWidgets(String pageCode, Boolean enabled) {
@@ -99,6 +107,13 @@ public class PageWidgetQueryService {
         }
 
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
+        if (kind == PageWidgetQueryKind.cctv) {
+            List<CctvCamera> cameras = resolveEnabledCameras(request.cctvCameraIds());
+            PageWidget widget = PageWidget.createCctv(pageCode, request.name(),
+                    request.enabled() == null || request.enabled(), cameras);
+            widgetSupport.applyLayout(widget, request.layout());
+            return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+        }
         if (kind == PageWidgetQueryKind.calculated) {
             return calculatedMetricWidgetHandler.createLinked(pageCode, request);
         }
@@ -186,6 +201,12 @@ public class PageWidgetQueryService {
         widgetSupport.updatePage(widget, request.pageCode(), name);
 
         PageWidgetQueryKind kind = PageWidgetQueryKind.from(request.queryKind());
+        if (kind == PageWidgetQueryKind.cctv) {
+            List<CctvCamera> cameras = resolveEnabledCameras(request.cctvCameraIds());
+            widget.updateCctv(name, request.enabled() == null ? widget.isEnabled() : request.enabled(), cameras);
+            if (request.layout() != null) widgetSupport.applyLayout(widget, request.layout());
+            return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+        }
         if (kind == PageWidgetQueryKind.calculated) {
             return calculatedMetricWidgetHandler.updateLinked(widget, request);
         }
@@ -300,6 +321,20 @@ public class PageWidgetQueryService {
             throw new IllegalArgumentException("deviceIds is required");
         }
         return loadDevices(deviceIds);
+    }
+
+    private List<CctvCamera> resolveEnabledCameras(List<Integer> cameraIds) {
+        if (cameraIds == null || cameraIds.isEmpty()) throw new IllegalArgumentException("cctvCameraIds is required");
+        Set<Integer> uniqueIds = new LinkedHashSet<>(cameraIds);
+        if (uniqueIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new IllegalArgumentException("cctvCameraIds must contain positive integers");
+        }
+        List<CctvCamera> cameras = new ArrayList<>();
+        for (Integer id : uniqueIds) {
+            cameras.add(cctvCameraRepository.findEnabledById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("활성화된 CCTV 카메라를 찾을 수 없습니다: " + id)));
+        }
+        return cameras;
     }
 
     private List<DeviceGroup> resolveDeviceGroups(

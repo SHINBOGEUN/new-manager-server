@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.PageWidgetCreateRequest;
+import net.vivans.dcim.module.device.api.dto.CctvCameraResponse;
 import net.vivans.dcim.module.device.api.dto.PageWidgetEnabledRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetLayoutRequest;
 import net.vivans.dcim.module.device.api.dto.PageWidgetPageResponse;
@@ -44,6 +45,12 @@ public class PageWidgetController {
     @Operation(summary = "위젯 페이지 목록")
     public ResponseEntity<ApiResponse<List<PageWidgetPageResponse>>> getPages() {
         return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getPages()));
+    }
+
+    @GetMapping("/cctv-cameras")
+    @Operation(summary = "활성 CCTV 카메라 목록")
+    public ResponseEntity<ApiResponse<List<CctvCameraResponse>>> getCctvCameras() {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.getCctvCameras()));
     }
 
     @GetMapping

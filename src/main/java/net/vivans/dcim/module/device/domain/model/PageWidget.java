@@ -87,6 +87,10 @@ public class PageWidget extends BaseEntity {
     private PageWidgetPowerDistribution powerDistribution;
 
     @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC, id ASC")
+    private final Set<PageWidgetCctv> cctvCameras = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "widget", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private final List<PageWidgetPoint> points = new ArrayList<>();
 
@@ -213,6 +217,12 @@ public class PageWidget extends BaseEntity {
     ) {
         PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.power_distribution, null);
         widget.powerDistribution = PageWidgetPowerDistribution.create(widget, groups);
+        return widget;
+    }
+
+    public static PageWidget createCctv(CommonCode pageCode, String name, boolean enabled, List<CctvCamera> cameras) {
+        PageWidget widget = new PageWidget(pageCode, name, enabled, PageWidgetQueryKind.cctv, null);
+        widget.replaceCctvCameras(cameras);
         return widget;
     }
 
@@ -364,6 +374,52 @@ public class PageWidget extends BaseEntity {
         powerDistribution.update(groups);
     }
 
+    public void updateCctv(String name, boolean enabled, CctvCamera camera) {
+        PageWidgetPolicy.validateName(name);
+        updateCctv(name, enabled, List.of(camera));
+    }
+
+    public void updateCctv(String name, boolean enabled, List<CctvCamera> cameras) {
+        PageWidgetPolicy.validateName(name);
+        this.name = name.trim();
+        this.enabled = enabled;
+        this.queryKind = PageWidgetQueryKind.cctv;
+        this.groupBy = null;
+        this.aggregate = null;
+        this.count = null;
+        this.chart = null;
+        this.calculated = null;
+        this.psychrometric = null;
+        this.powerDistribution = null;
+        this.points.clear();
+        this.devices.clear();
+        this.deviceGroups.clear();
+        this.lastSources.clear();
+        this.models.clear();
+        replaceCctvCameras(cameras);
+    }
+
+    public List<CctvCamera> cctvCameraDefinitions() {
+        return cctvCameras.stream().sorted(java.util.Comparator.comparingInt(PageWidgetCctv::getSortOrder)
+                .thenComparing(PageWidgetCctv::getId, java.util.Comparator.nullsLast(Integer::compareTo)))
+                .map(PageWidgetCctv::getCamera).toList();
+    }
+
+    private void replaceCctvCameras(List<CctvCamera> cameras) {
+        if (cameras == null || cameras.isEmpty()) throw new IllegalArgumentException("cctvCameraIds is required");
+        Set<Integer> unique = new LinkedHashSet<>();
+        List<CctvCamera> selected = new ArrayList<>();
+        for (CctvCamera camera : cameras) {
+            if (camera == null || camera.getId() == null) throw new IllegalArgumentException("cameraId is required");
+            if (unique.add(camera.getId())) selected.add(camera);
+        }
+        if (selected.isEmpty()) throw new IllegalArgumentException("cctvCameraIds is required");
+        cctvCameras.clear();
+        for (int index = 0; index < selected.size(); index++) {
+            cctvCameras.add(PageWidgetCctv.create(this, selected.get(index), index));
+        }
+    }
+
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
@@ -494,6 +550,9 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.power_distribution) {
             this.powerDistribution = null;
         }
+        if (queryKind != PageWidgetQueryKind.cctv) {
+            this.cctvCameras.clear();
+        }
         if (queryKind != PageWidgetQueryKind.last) {
             this.lastSources.clear();
         }
@@ -536,6 +595,11 @@ public class PageWidget extends BaseEntity {
     ) {
         if (queryKind == PageWidgetQueryKind.count || queryKind == PageWidgetQueryKind.calculated
                 || queryKind == PageWidgetQueryKind.psychrometric || queryKind == PageWidgetQueryKind.power_distribution) {
+            replacePoints(List.of());
+            replaceDevices(List.of(), List.of());
+            replaceDeviceGroups(List.of());
+            replaceModels(List.of());
+        } else if (queryKind == PageWidgetQueryKind.cctv) {
             replacePoints(List.of());
             replaceDevices(List.of(), List.of());
             replaceDeviceGroups(List.of());

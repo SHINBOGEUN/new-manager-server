@@ -23,7 +23,7 @@ public record PageWidgetCreateRequest(
         @Schema(description = "원천 데이터 최신으로 판단할 허용 경과 분 (기본 15, 1~1440)", example = "15")
         Integer dataFreshnessMinutes,
 
-        @Schema(description = "조회 종류: last | aggregate | count | chart", example = "last")
+        @Schema(description = "조회 종류: last | aggregate | count | chart | cctv", example = "last")
         @NotBlank(message = "queryKind is required")
         String queryKind,
 
@@ -78,6 +78,9 @@ public record PageWidgetCreateRequest(
         @Schema(description = "last만: 장비별 측정항목 선택. 지정하면 deviceIds/pointNames 대신 사용")
         @Valid
         List<PageWidgetLastSourceRequest> lastSources,
+
+        @Schema(description = "cctv만: 위젯에서 전환 표시할 CCTV 카메라 ID 목록")
+        List<Integer> cctvCameraIds,
 
         @Schema(description = "2D 그리드 배치 (선택)")
         @Valid

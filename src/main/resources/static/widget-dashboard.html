@@ -205,6 +205,13 @@
     .card.psychrometric-card .card-body {
       display: flex; flex-direction: column; padding-bottom: 8px;
     }
+    .card.cctv-card .card-body { display:flex; flex-direction:column; gap:6px; padding:6px; overflow:hidden; }
+    .cctv-camera-tabs { display:flex; justify-content:flex-end; gap:4px; flex:0 0 auto; }
+    .cctv-camera-tab { padding:3px 9px; font-size:11px; line-height:1.4; }
+    .cctv-camera-tab.active { border-color:var(--accent); color:#dff2ff; background:rgba(61,156,240,.16); }
+    .cctv-viewer { position:relative; flex:1; min-height:0; overflow:hidden; border-radius:8px; background:#303030; }
+    .cctv-viewer iframe { display:block; width:100%; height:100%; min-height:100%; border:0; background:#303030; }
+    .cctv-empty { display:grid; place-items:center; height:100%; color:var(--muted); font-size:12px; }
     .psychrometric-wrap { position: relative; flex: 1; min-height: 220px; width: 100%; }
     .psychrometric-wrap canvas { width: 100%; height: 100%; display: block; }
     .psychrometric-tooltip {
@@ -562,6 +569,7 @@
         pueByWidget: new Map(),
       psychrometricByWidget: new Map(),
       powerDistributionByWidget: new Map(),
+      activeCctvByWidget: new Map(),
       chartSeriesModeByWidget: new Map(),
       chartInstances: new Map(),
       trendModalChart: null,
@@ -1259,6 +1267,96 @@
         + (!data.complete ? '<div class="meta">누락된 소스가 있어 전체 전력·비율은 계산하지 않습니다.</div>' : "");
     }
 
+    function renderCctvBody(widget) {
+      const cameras = widget.cctvCameras || [];
+      if (!cameras.length) return '<div class="cctv-empty">등록된 CCTV가 없습니다</div>';
+      let activeId = state.activeCctvByWidget.get(Number(widget.id));
+      if (!cameras.some((camera) => Number(camera.id) === Number(activeId))) {
+        activeId = Number(cameras[0].id);
+        state.activeCctvByWidget.set(Number(widget.id), activeId);
+      }
+      const tabs = cameras.length > 1
+        ? `<div class="cctv-camera-tabs" role="tablist" aria-label="CCTV 카메라">${cameras.map((camera) =>
+          `<button type="button" class="ghost cctv-camera-tab${Number(camera.id) === Number(activeId) ? " active" : ""}" data-cctv-tab="${Number(camera.id)}" role="tab" aria-selected="${Number(camera.id) === Number(activeId)}">${escapeHtml(camera.name)}</button>`
+        ).join("")}</div>`
+        : "";
+      return `${tabs}<div class="cctv-viewer" data-cctv-viewer="${Number(widget.id)}" data-active-camera="${Number(activeId)}"></div>`;
+    }
+
+    function mountCctvWidgets(previousFrames = new Map()) {
+      document.querySelectorAll(".cctv-card[data-widget-id]").forEach((card) => {
+        const widgetId = Number(card.dataset.widgetId);
+        const widget = state.widgets.find((item) => Number(item.id) === widgetId);
+        const viewer = card.querySelector("[data-cctv-viewer]");
+        const cameras = widget?.cctvCameras || [];
+        const activeId = Number(viewer?.dataset.activeCamera);
+        const camera = cameras.find((item) => Number(item.id) === activeId);
+        if (!viewer || !camera) return;
+        const key = `${widgetId}:${activeId}`;
+        let frame = viewer.querySelector("iframe[data-cctv-widget][data-cctv-camera-id]") || previousFrames.get(key);
+        if (!frame) {
+          frame = document.createElement("iframe");
+          frame.src = camera.streamUrl;
+          frame.title = camera.name;
+          frame.loading = "lazy";
+          frame.allow = "autoplay; fullscreen; picture-in-picture";
+          frame.referrerPolicy = "no-referrer";
+          frame.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
+        }
+        frame.dataset.cctvWidget = String(widgetId);
+        frame.dataset.cctvCameraId = String(activeId);
+        frame.dataset.cctvStreamUrl = camera.streamUrl;
+        viewer.replaceChildren(frame);
+        card.querySelectorAll("[data-cctv-tab]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const nextId = Number(button.dataset.cctvTab);
+            const nextCamera = cameras.find((item) => Number(item.id) === nextId);
+            if (!nextCamera) return;
+            state.activeCctvByWidget.set(widgetId, nextId);
+            card.querySelectorAll("[data-cctv-tab]").forEach((tab) => {
+              const active = Number(tab.dataset.cctvTab) === nextId;
+              tab.classList.toggle("active", active);
+              tab.setAttribute("aria-selected", String(active));
+            });
+            frame.src = nextCamera.streamUrl;
+            frame.title = nextCamera.name;
+            frame.dataset.cctvCameraId = String(nextId);
+            frame.dataset.cctvStreamUrl = nextCamera.streamUrl;
+            viewer.dataset.activeCamera = String(nextId);
+          });
+        });
+      });
+    }
+
+    function updateExistingCctvCard(current, fresh, widget) {
+      current.className = fresh.className;
+      current.setAttribute("style", fresh.getAttribute("style") || "");
+      current.querySelector(".card-head")?.replaceWith(fresh.querySelector(".card-head").cloneNode(true));
+      const currentBody = current.querySelector(".card-body");
+      const freshBody = fresh.querySelector(".card-body");
+      const currentViewer = currentBody?.querySelector("[data-cctv-viewer]");
+      const freshViewer = freshBody?.querySelector("[data-cctv-viewer]");
+      if (!currentBody || !currentViewer || !freshViewer) {
+        if (currentBody && freshBody) currentBody.replaceWith(freshBody.cloneNode(true));
+        return;
+      }
+      const oldTabs = currentBody.querySelector(".cctv-camera-tabs");
+      oldTabs?.remove();
+      const newTabs = freshBody.querySelector(".cctv-camera-tabs");
+      if (newTabs) currentBody.insertBefore(newTabs.cloneNode(true), currentViewer);
+      const activeId = Number(freshViewer.dataset.activeCamera);
+      currentViewer.dataset.activeCamera = String(activeId);
+      const camera = (widget.cctvCameras || []).find((item) => Number(item.id) === activeId);
+      const frame = currentViewer.querySelector("iframe");
+      if (frame && camera && (Number(frame.dataset.cctvCameraId) !== activeId
+          || frame.dataset.cctvStreamUrl !== camera.streamUrl)) {
+        frame.src = camera.streamUrl;
+        frame.title = camera.name;
+        frame.dataset.cctvCameraId = String(activeId);
+        frame.dataset.cctvStreamUrl = camera.streamUrl;
+      }
+    }
+
     function renderPueBody(pue) {
       if (!pue || pue.error) return `<div class="empty" style="padding:12px">${escapeHtml(pue?.error || "데이터 없음")}</div>`;
       const previous = pue.calculationStatus === "PREVIOUS_VERSION";
@@ -1850,6 +1948,10 @@
           dataStatus = distribution?.dataStatus;
           body = renderPowerDistributionBody(distribution);
           subExtra = " · W 단위 최신값 분배";
+        } else if (w.queryKind === "cctv") {
+          body = renderCctvBody(w);
+          subExtra = ` · ${(w.cctvCameras || []).length}대`;
+          cardClass = "card cctv-card";
         } else {
           body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
         }
@@ -1876,11 +1978,31 @@
           </article>`;
       }).join("");
 
-      $("board").innerHTML = cardsHtml
+      const board = $("board");
+      const freshBoard = document.createElement("div");
+      freshBoard.innerHTML = cardsHtml
         + '<div id="snapGuide" class="snap-guide"></div>'
         + '<div id="ghost" class="ghost"><span class="ghost-label" id="ghostLabel"></span></div>';
+      const existingCctvCards = new Map([...board.querySelectorAll(".cctv-card[data-widget-id]")]
+        .map((card) => [Number(card.dataset.widgetId), card]));
+      const desiredCards = [...freshBoard.children].filter((node) => node.matches("article[data-widget-id]"))
+        .map((freshCard) => {
+          if (!freshCard.classList.contains("cctv-card")) return freshCard;
+          const widgetId = Number(freshCard.dataset.widgetId);
+          const currentCard = existingCctvCards.get(widgetId);
+          const widget = enabled.find((item) => Number(item.id) === widgetId);
+          if (!currentCard || !widget) return freshCard;
+          updateExistingCctvCard(currentCard, freshCard, widget);
+          return currentCard;
+        });
+      const boardOverlays = [...freshBoard.children].filter((node) => !node.matches("article[data-widget-id]"));
+      const retained = new Set([...desiredCards, ...boardOverlays]);
+      [...board.children].forEach((node) => { if (!retained.has(node)) node.remove(); });
+      desiredCards.forEach((card) => board.appendChild(card));
+      boardOverlays.forEach((overlay) => board.appendChild(overlay));
       bindEditHandlers();
       bindChartCardHandlers();
+      mountCctvWidgets();
       mountChartInstances();
       drawPsychrometricCanvases();
     }

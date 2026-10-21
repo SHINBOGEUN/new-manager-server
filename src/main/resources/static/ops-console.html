@@ -2251,9 +2251,17 @@
                 <option value="calculated">계산 지표</option>
                 <option value="psychrometric">사이코메트릭 (psychrometric)</option>
                 <option value="power_distribution">전력 분배 (power distribution)</option>
+                <option value="cctv">CCTV</option>
               </select>
             </label>
             <p class="muted full" id="wKindHint" style="margin:0;font-size:13px;line-height:1.5"></p>
+          </div>
+
+          <div id="wCctvBlock" data-widget-stage="2" style="margin-top:14px;display:none">
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">
+              표시할 CCTV 선택 <span class="muted">(여러 대를 고르면 위젯에서 전환할 수 있습니다)</span>
+            </div>
+            <div id="wCctvCameraChoices" class="pick-list"><div class="muted">CCTV 목록을 불러오는 중…</div></div>
           </div>
 
           <div id="wCountBlock" data-widget-stage="2" style="margin-top:14px;display:none">
@@ -3291,6 +3299,9 @@
       psychrometricTemperatureSources: [],
       psychrometricHumiditySources: [],
       powerDistributionGroups: [],
+      cctvCameras: [],
+      cctvCamerasLoaded: false,
+      cctvCameraIds: [],
       pueDefinitions: [],
       selectedCalculatedMetricId: null,
       calculatedSources: [],
@@ -6155,6 +6166,41 @@
       return state.widgetSources;
     }
 
+    async function loadCctvCameras() {
+      if (state.cctvCamerasLoaded) return state.cctvCameras;
+      state.cctvCameras = await api("/api/manager/widgets/cctv-cameras") || [];
+      state.cctvCamerasLoaded = true;
+      return state.cctvCameras;
+    }
+
+    function renderCctvCameraChoices() {
+      const box = $("wCctvCameraChoices");
+      if (!box) return;
+      if (!state.cctvCamerasLoaded) {
+        box.innerHTML = '<div class="muted">CCTV 목록을 불러오는 중…</div>';
+        return;
+      }
+      if (!state.cctvCameras.length) {
+        box.innerHTML = '<div class="empty">등록된 활성 CCTV가 없습니다. DB의 cctv_camera에 카메라를 등록하세요.</div>';
+        return;
+      }
+      const selected = new Set(state.cctvCameraIds.map(Number));
+      box.innerHTML = state.cctvCameras.map((camera) =>
+        '<label class="pick-item" style="display:flex;align-items:center;gap:10px;cursor:pointer">'
+        + '<input type="checkbox" data-cctv-camera="' + camera.id + '" '
+        + (selected.has(Number(camera.id)) ? 'checked ' : '')
+        + '/><span><b>' + esc(camera.name) + '</b><span class="muted" style="display:block">'
+        + esc(camera.cameraKey) + '</span></span></label>').join("");
+      box.querySelectorAll("[data-cctv-camera]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const id = Number(input.dataset.cctvCamera);
+          const ids = new Set(state.cctvCameraIds.map(Number));
+          if (input.checked) ids.add(id); else ids.delete(id);
+          state.cctvCameraIds = [...ids];
+        });
+      });
+    }
+
     function widgetDeviceOptions() {
       const devices = new Map();
       for (const source of state.widgetSources) {
@@ -6295,6 +6341,9 @@
       if (kind === "count" && $("wCountMode").value === "model" && !$("wCountModel").value) {
         throw new Error("집계할 모델을 선택하세요");
       }
+      if (kind === "cctv" && !state.cctvCameraIds.length) {
+        throw new Error("표시할 CCTV를 한 대 이상 선택하세요");
+      }
     }
 
     async function renderWidgetReview() {
@@ -6316,8 +6365,10 @@
               ? state.powerDistributionGroups.flatMap((group) => group.sources)
               : [];
       const kindLabel = { last: "최신값", chart: "차트", aggregate: "집계", count: "장비 수",
-        calculated: "계산 지표", psychrometric: "온습도", power_distribution: "전력 분배" }[kind] || kind;
-      box.innerHTML = `<b>${esc($("wName").value || "이름 없음")}</b> · ${esc(kindLabel)}<div class="muted">${sourcePairs.length ? `선택한 장비·항목 ${sourcePairs.length}개` : "별도 측정항목 선택 없음"} · 최근 값은 최대 6개까지 표시합니다.</div><div id="wReviewValues" class="pick-list"></div>`;
+        calculated: "계산 지표", psychrometric: "온습도", power_distribution: "전력 분배", cctv: "CCTV" }[kind] || kind;
+      const cctvNames = state.cctvCameras.filter((camera) => state.cctvCameraIds.includes(Number(camera.id)))
+        .map((camera) => camera.name).join(", ");
+      box.innerHTML = `<b>${esc($("wName").value || "이름 없음")}</b> · ${esc(kindLabel)}<div class="muted">${kind === "cctv" ? "표시 카메라: " + esc(cctvNames || "선택 필요") : sourcePairs.length ? `선택한 장비·항목 ${sourcePairs.length}개` : "별도 측정항목 선택 없음"} · 최근 값은 최대 6개까지 표시합니다.</div><div id="wReviewValues" class="pick-list"></div>`;
       const values = $("wReviewValues");
       if (!sourcePairs.length) return;
       values.innerHTML = '<div class="muted">최근 저장값 확인 중…</div>';
@@ -6662,6 +6713,7 @@
         calculated: "별도로 수집 중인 사용자 계산 지표의 저장값을 보여줍니다.",
         psychrometric: "온도와 상대습도 측정값으로 공기 상태를 보여줍니다.",
         power_distribution: "그룹별 전력(W) 비중을 비교합니다. 서로 다른 전력원을 그룹에 묶으세요.",
+        cctv: "등록된 카메라를 한 대 이상 선택하세요. 여러 대를 선택하면 위젯에서 카메라를 전환해 볼 수 있습니다.",
       };
       $("wKindHint").textContent = kindHints[kind] || "";
       const previousChartPoints = kind === "chart" ? new Set(selectedWidgetPoints()) : new Set();
@@ -6686,7 +6738,8 @@
       $("wPueBlock").style.display = kind === "calculated" ? "block" : "none";
       $("wPsychrometricBlock").style.display = kind === "psychrometric" ? "block" : "none";
       $("wPowerDistributionBlock").style.display = kind === "power_distribution" ? "block" : "none";
-      $("wDataFreshnessBlock").style.display = kind !== "count" && kind !== "calculated" ? "grid" : "none";
+      $("wCctvBlock").style.display = kind === "cctv" ? "block" : "none";
+      $("wDataFreshnessBlock").style.display = kind !== "count" && kind !== "calculated" && kind !== "cctv" ? "grid" : "none";
       arrangeWidgetForm(kind);
       const pointStepLabel = $("wPointsBlock")?.querySelector(":scope > .muted");
       if (pointStepLabel) pointStepLabel.textContent = kind === "aggregate"
@@ -6712,6 +6765,15 @@
         state.widgetPointNamesByModel = new Map();
         renderPowerDistributionGroups();
         fillPowerDistributionPicks();
+        return;
+      }
+
+      if (kind === "cctv") {
+        state.widgetPointCatalog = [];
+        state.widgetPointNamesByModel = new Map();
+        loadCctvCameras().then(renderCctvCameraChoices).catch((error) => {
+          $("wCctvCameraChoices").innerHTML = '<div class="empty">CCTV 목록 조회 실패: ' + esc(error.message) + '</div>';
+        });
         return;
       }
 
@@ -10136,6 +10198,7 @@
       state.psychrometricTemperatureSources = [];
       state.psychrometricHumiditySources = [];
       state.powerDistributionGroups = [];
+      state.cctvCameraIds = [];
       $("wFormTitle").textContent = "위젯 만들기";
       $("wCreate").textContent = "만들기";
       $("wCancelEdit").style.display = "none";
@@ -10170,6 +10233,7 @@
       fillPsychrometricDevicePicks();
       renderPowerDistributionGroups();
       fillPowerDistributionPicks();
+      renderCctvCameraChoices();
       refreshWidgetPoints();
       closeWidgetEditor();
     }
@@ -10193,6 +10257,8 @@
         }
         $("wName").value = w.name || "";
         $("wKind").value = w.queryKind || "last";
+        state.cctvCameraIds = (w.cctvCameras || []).map((camera) => Number(camera.id)).filter(Number.isFinite);
+        if (w.queryKind === "cctv") await loadCctvCameras();
         if (w.countMode) $("wCountMode").value = w.countMode;
         if (w.chartScope) $("wChartScope").value = w.chartScope;
         if (w.chartSeriesMode) $("wChartSeriesMode").value = w.chartSeriesMode;
@@ -10233,6 +10299,7 @@
         fillPsychrometricDevicePicks();
         renderPowerDistributionGroups();
         fillPowerDistributionPicks();
+        renderCctvCameraChoices();
         await refreshWidgetPoints();
         if (w.countMode === "model" && w.countModelId != null) {
           refreshCountModelPick();
@@ -10325,6 +10392,8 @@
               : "";
         const targetCell = w.queryKind === "count"
           ? '<span class="muted">전체 enabled</span>'
+          : w.queryKind === "cctv"
+            ? (w.cctvCameras || []).map((camera) => esc(camera.name)).join(", ") || "–"
           : w.queryKind === "last"
             ? (w.lastSources || []).map((source) =>
               `#${esc(source.deviceId)}: ${esc((source.pointNames || []).join(", "))}`).join("<br>") || "–"
@@ -11053,6 +11122,7 @@
       state.psychrometricTemperatureSources = [];
       state.psychrometricHumiditySources = [];
       state.powerDistributionGroups = [];
+      state.cctvCameraIds = [];
       renderWidgetDevices();
       renderWidgetDeviceGroups();
       renderWidgetItDevices();
@@ -11075,6 +11145,29 @@
         const kind = $("wKind").value;
         const name = $("wName").value.trim();
         if (!name) throw new Error("표시 이름을 입력하세요");
+
+        if (kind === "cctv") {
+          if (!state.cctvCameraIds.length) throw new Error("표시할 CCTV를 한 대 이상 선택하세요");
+          const cctvBody = {
+            pageCode: $("wCreatePage").value,
+            name,
+            enabled: state.editingWidgetId ? state.editingEnabled : true,
+            queryKind: "cctv",
+            cctvCameraIds: [...state.cctvCameraIds],
+            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 16 },
+          };
+          const saved = await api(
+            state.editingWidgetId ? `/api/manager/widgets/${state.editingWidgetId}` : "/api/manager/widgets",
+            { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(cctvBody) }
+          );
+          $("wOut").textContent = JSON.stringify(saved, null, 2);
+          toast(state.editingWidgetId ? "CCTV 위젯을 저장했습니다" : "CCTV 위젯을 만들었습니다");
+          $("wPage").value = cctvBody.pageCode;
+          clearWidgetForm(false);
+          $("wCreatePage").value = cctvBody.pageCode;
+          refreshWidgetPages(cctvBody.pageCode);
+          return;
+        }
 
         if (kind === "power_distribution") {
           if (state.powerDistributionGroups.length < 2) {
