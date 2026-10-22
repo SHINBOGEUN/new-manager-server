@@ -25,6 +25,11 @@ public class AlarmController {
         return ApiResponse.ok(Map.of("id", service.latestId(auth)));
     }
 
+    @GetMapping("/summary")
+    public ApiResponse<AlarmSummaryResponse> summary(Authentication auth) {
+        return ApiResponse.ok(service.summary(auth));
+    }
+
     @GetMapping("/updates")
     public ApiResponse<List<AlarmEventResponse>> updates(Authentication auth,
             @RequestParam(defaultValue = "0") long afterId, @RequestParam(defaultValue = "100") int limit) {

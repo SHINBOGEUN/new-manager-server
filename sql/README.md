@@ -21,7 +21,8 @@ sql/
     ├── 56_mqtt_source_status.sql
     ├── 57_threshold_rule.sql
     ├── 58_alarm_event.sql
-    └── 59_threshold_alarm_event.sql
+    ├── 59_threshold_alarm_event.sql
+    └── 63_device_monitoring_policy.sql
 ```
 
 스키마 파일은 FK 의존성과 신규 설치 순서대로 `01`부터 연속 번호를 사용합니다. 파일을 제거하거나 합칠 때는 뒤 파일을 함께 재번호화하고, SQL 테스트·문서의 참조도 같은 변경에서 갱신합니다. 기존 DB에 이미 적용된 DDL은 파일명 변경만으로 재실행하지 않습니다.
@@ -32,7 +33,7 @@ sql/
 
 1. **스키마** — 아래 제외 목록을 적용해 `schema/01`부터 최신 번호까지 순서대로 실행
 2. **기준 카탈로그** — 빈 DB에서만 `seed/model_catalog.sql` 실행
-3. **공통코드·위치** — Ops Console(`/ops-console.html`)에서 현장별 위치·`UNASSIGNED` 노드 등록
+3. **공통코드·위치** — `seed/device_monitoring_mode.sql` 실행 후 Ops Console(`/ops-console.html`)에서 현장별 위치·`UNASSIGNED` 노드 등록
 4. **로그인 계정** — Ops Console 또는 API로 `users` 생성
 5. **현장 데이터** — 실제 장비·Endpoint·수집 작업·계산 지표·위젯·자산을 등록
 
@@ -142,6 +143,10 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/41_device_asset_document.sql
 | 57 | `57_threshold_rule.sql` | 임계값 규칙 |
 | 58 | `58_alarm_event.sql` | 통합 알람 이력 |
 | 59 | `59_threshold_alarm_event.sql` | 발생 당시 임계값·측정값 상세 |
+| 60 | `60_collection_gap_alarm_event.sql` | 수집 누락 알람 상세 |
+| 61 | `61_cctv_camera.sql` | CCTV 카메라 정보 |
+| 62 | `62_page_widget_cctv.sql` | CCTV 위젯 카메라 연결 |
+| 63 | `63_device_monitoring_policy.sql` | 장비별 주기/상태 변경 데이터 감시 방식 |
 
 ## LoRa → 공통 MQTT 이관 (2026-10-14)
 
@@ -173,6 +178,20 @@ GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 
 `lora_mqtt_source`와 `lora_mqtt_source_status`를 `mqtt_source`와 `mqtt_source_status`로 전환합니다.
 소스 ID·상태·브로커·토픽·자격증명 키·설정 버전을 보존합니다.
 메시지 형식은 기존 `CHIRPSTACK_LORA`와 GPU/공통 에이전트용 `AGENT`를 지원합니다.
+
+## 장비별 데이터 감시 방식
+
+기존 DB에는 `migration/20261021_device_monitoring_policy.sql`을 1회 적용합니다. 신규 DB에는
+`schema/63_device_monitoring_policy.sql`을 적용한 뒤 `seed/device_monitoring_mode.sql`을 실행합니다.
+기존 DB 마이그레이션은 `DEVICE_MONITORING_MODE` 공통코드 그룹과 `PERIODIC`(주기 수집),
+`ON_CHANGE`(상태 변경 수집) 코드를 생성합니다.
+장비 상세 화면의 「운영 감시」에서 `주기 수집` 또는 `상태 변경 수집`만 지정합니다.
+주기 수집은 기존 수집 작업 주기와 공통 누락 판정 기준을 따릅니다. 상태 변경형은 무수신 자체를
+이상으로 판정하지 않고 수집 상태 화면에 별도 상태로 표시합니다.
+기존 장비는 정책 행이 없으면 기존 주기 감시 동작을 유지합니다.
+
+기존 DB에서 장비별 예상 수집 주기 컬럼을 제거하려면
+`migration/20261021_remove_device_monitoring_expected_interval.sql`을 적용합니다.
 
 신규 DB에서는 구 `schema/46`, `schema/47`을 건너뛰고 `schema/55`, `schema/56`을 사용합니다.
 이관 SQL과 신규 생성 SQL을 같은 기존 DB에 혼용하지 않습니다. 자세한 API와 배포 순서는

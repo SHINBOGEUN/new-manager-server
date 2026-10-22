@@ -21,6 +21,8 @@ import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskDevice;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceMonitoringPolicy;
+import net.vivans.dcim.module.device.domain.repository.DeviceMonitoringPolicyRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelPointCatalog;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
@@ -54,6 +56,7 @@ public class CollectionStatusQueryService {
     private static final String UNSUPPORTED_MARKER = "not supported yet";
 
     private final DeviceRepository deviceRepository;
+    private final DeviceMonitoringPolicyRepository monitoringPolicyRepository;
     private final CollectionTaskRepository collectionTaskRepository;
     private final CollectionGroupSpecService collectionGroupSpecService;
     private final DeviceModelPointCatalog deviceModelPointCatalog;
@@ -63,8 +66,12 @@ public class CollectionStatusQueryService {
     public CollectionStatusResponse getStatus(Integer lookbackHours) {
         Instant now = Instant.now();
         int resolvedLookbackHours = resolveLookbackHours(lookbackHours);
+        Map<Integer, DeviceMonitoringPolicy> policiesByDevice = new HashMap<>();
+        for (DeviceMonitoringPolicy policy : monitoringPolicyRepository.findAll()) {
+            policiesByDevice.put(policy.getDeviceId(), policy);
+        }
         Map<Integer, Registration> registrationByDeviceId = registrations();
-        List<Device> devices = collectorStatusDevices(registrationByDeviceId);
+        List<Device> devices = collectorStatusDevices(registrationByDeviceId, policiesByDevice);
         Map<Integer, CollectionGroupPlan> specByGroupId = specsByGroup(registrationByDeviceId);
         Map<Integer, Map<String, String>> unitsByModelId = deviceModelPointCatalog.unitsByModelId(modelIds(devices));
         Map<Integer, List<LastPoint>> lastPointsByDeviceId = latestPoints(devices, registrationByDeviceId,
@@ -82,14 +89,15 @@ public class CollectionStatusQueryService {
                 units.putAll(spec.unitsForSource(device.getId()));
             }
             rows.add(toResponse(device, registration, spec, latestPoints, units,
-                    deviceNamesById, now, resolvedLookbackHours));
+                    deviceNamesById, now, resolvedLookbackHours, policiesByDevice.get(device.getId())));
         }
         rows.sort(Comparator.comparing(CollectionDeviceStatusResponse::status)
                 .thenComparing(CollectionDeviceStatusResponse::deviceName));
         return new CollectionStatusResponse(now, summarize(rows), rows);
     }
 
-    private List<Device> collectorStatusDevices(Map<Integer, Registration> registrations) {
+    private List<Device> collectorStatusDevices(Map<Integer, Registration> registrations,
+                                                Map<Integer, DeviceMonitoringPolicy> policies) {
         List<Device> selected = new ArrayList<>();
         Map<Integer, Boolean> mqttOnlyByModelId = new HashMap<>();
         for (int pageIndex = 0; selected.size() < MAX_DEVICES; pageIndex++) {
@@ -98,7 +106,9 @@ public class CollectionStatusQueryService {
             for (Device device : page.getContent()) {
                 boolean mqttOnly = mqttOnlyByModelId.computeIfAbsent(device.getDeviceModel().getId(),
                         ignored -> isMqttOnlyModel(device));
-                if (mqttOnly && !hasCollectorRegistration(registrations.get(device.getId()))) {
+                boolean stateDriven = policies.containsKey(device.getId())
+                        && "ON_CHANGE".equals(policies.get(device.getId()).getMonitoringMode().getCode());
+                if (mqttOnly && !hasCollectorRegistration(registrations.get(device.getId())) && !stateDriven) {
                     continue;
                 }
                 selected.add(device);
@@ -214,7 +224,8 @@ public class CollectionStatusQueryService {
             Map<String, String> unitByPointName,
             Map<Integer, String> deviceNamesById,
             Instant now,
-            int lookbackHours
+            int lookbackHours,
+            DeviceMonitoringPolicy monitoringPolicy
     ) {
         List<CollectionGroupPlan.PointSource> expectedSources = spec == null
                 ? List.of() : spec.pointsForSource(device.getId());
@@ -264,6 +275,10 @@ public class CollectionStatusQueryService {
             status = "DISABLED";
             message = "비활성화됨";
             technicalDetail = "장비가 비활성 상태입니다.";
+        } else if (monitoringPolicy != null && "ON_CHANGE".equals(monitoringPolicy.getMonitoringMode().getCode())) {
+            status = "ON_CHANGE";
+            message = "상태 변경 수집";
+            technicalDetail = "상태가 변경되어 데이터가 수신될 때 갱신됩니다. 무수신 시간만으로는 수집 이상으로 판정하지 않습니다.";
         } else if (registration == null) {
             status = "UNREGISTERED";
             message = "필수 설정 누락";
@@ -396,7 +411,7 @@ public class CollectionStatusQueryService {
     }
 
     private static CollectionStatusResponse.CollectionStatusSummary summarize(List<CollectionDeviceStatusResponse> rows) {
-        int normal = 0, partial = 0, stale = 0, missing = 0, stopped = 0, unregistered = 0, disabled = 0;
+        int normal = 0, partial = 0, stale = 0, missing = 0, stopped = 0, unregistered = 0, disabled = 0, onChange = 0;
         for (CollectionDeviceStatusResponse row : rows) {
             switch (row.status()) {
                 case "NORMAL" -> normal++;
@@ -406,10 +421,11 @@ public class CollectionStatusQueryService {
                 case "STOPPED" -> stopped++;
                 case "UNREGISTERED" -> unregistered++;
                 case "DISABLED" -> disabled++;
+                case "ON_CHANGE" -> onChange++;
                 default -> { }
             }
         }
-        return new CollectionStatusResponse.CollectionStatusSummary(rows.size(), normal, partial, stale, missing, stopped, unregistered, disabled);
+        return new CollectionStatusResponse.CollectionStatusSummary(rows.size(), normal, partial, stale, missing, stopped, unregistered, disabled, onChange);
     }
 
     private record PointKey(Integer deviceId, String pointName) {

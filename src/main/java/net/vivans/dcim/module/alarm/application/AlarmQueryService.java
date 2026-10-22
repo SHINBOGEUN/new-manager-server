@@ -3,6 +3,7 @@ package net.vivans.dcim.module.alarm.application;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.alarm.api.AlarmEventResponse;
+import net.vivans.dcim.module.alarm.api.AlarmSummaryResponse;
 import net.vivans.dcim.module.alarm.domain.AlarmEvent;
 import net.vivans.dcim.module.alarm.domain.CollectionGapAlarmDetail;
 import net.vivans.dcim.module.alarm.domain.ThresholdAlarmEventDetail;
@@ -125,6 +126,22 @@ public class AlarmQueryService {
     public long latestId(Authentication auth) {
         requireReader(auth);
         return isAdmin(auth) ? events.findLatestId() : events.findLatestVisibleId();
+    }
+
+    public AlarmSummaryResponse summary(Authentication auth) {
+        requireReader(auth);
+        boolean includeAdmin = isAdmin(auth);
+        long warningCount = 0;
+        long criticalCount = 0;
+        for (Object[] row : events.countOpenBySeverityForSummary(includeAdmin)) {
+            String severity = String.valueOf(row[0]);
+            long count = ((Number) row[1]).longValue();
+            if ("WARNING".equals(severity)) warningCount = count;
+            if ("CRITICAL".equals(severity)) criticalCount = count;
+        }
+        List<AlarmEventResponse> latestOpen = events.findLatestOpenForSummary(
+                includeAdmin, PageRequest.of(0, 5)).stream().map(this::view).toList();
+        return new AlarmSummaryResponse(events.countOpenForSummary(includeAdmin), warningCount, criticalCount, latestOpen);
     }
 
     public List<AlarmEventResponse> updates(Authentication auth, long afterId, int limit) {

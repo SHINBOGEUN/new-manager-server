@@ -10,6 +10,6 @@ public record CollectionStatusResponse(
 ) {
     public record CollectionStatusSummary(
             int totalCount, int normalCount, int partialCount, int staleCount, int missingCount,
-            int stoppedCount, int unregisteredCount, int disabledCount
+            int stoppedCount, int unregisteredCount, int disabledCount, int onChangeCount
     ) {}
 }

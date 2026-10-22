@@ -13,6 +13,8 @@ import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskDevice;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceMonitoringPolicy;
+import net.vivans.dcim.module.device.domain.repository.DeviceMonitoringPolicyRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
@@ -36,6 +38,7 @@ public class CollectionGapEvaluator {
     private final CollectionTaskRepository collectionTasks;
     private final CollectionGroupSpecService collectionGroupSpecService;
     private final DeviceRepository devices;
+    private final DeviceMonitoringPolicyRepository monitoringPolicies;
     private final DeviceMqttIdentityRepository mqttIdentities;
     private final PointQuery pointQuery;
     private final AlarmEventRepository events;
@@ -44,8 +47,12 @@ public class CollectionGapEvaluator {
 
     @Transactional
     public void evaluate(Instant now, Duration staleAfter) {
+        Map<Integer, DeviceMonitoringPolicy> policiesByDevice = new HashMap<>();
+        for (DeviceMonitoringPolicy policy : monitoringPolicies.findAll()) {
+            policiesByDevice.put(policy.getDeviceId(), policy);
+        }
+        Map<TargetKey, Target> targets = resolveTargets(policiesByDevice);
         Instant cutoff = now.minus(staleAfter);
-        Map<TargetKey, Target> targets = resolveTargets();
         Map<TargetKey, Instant> latestByTarget = findLatestSamples(targets, cutoff, now);
         Map<TargetKey, CollectionGapAlarmDetail> openByTarget = new HashMap<>();
 
@@ -83,14 +90,15 @@ public class CollectionGapEvaluator {
             List<Integer> deviceIds = entry.getValue().stream().distinct().toList();
             for (LastPoint point : pointQuery.findLastInRange(deviceIds, List.of(), cutoff, now, entry.getKey())) {
                 TargetKey key = new TargetKey(point.deviceId(), entry.getKey());
-                if (point.time() != null) latest.merge(key, point.time(),
+                Target target = targets.get(key);
+                if (point.time() != null && target != null && !point.time().isBefore(cutoff)) latest.merge(key, point.time(),
                         (first, second) -> first.isAfter(second) ? first : second);
             }
         }
         return latest;
     }
 
-    private Map<TargetKey, Target> resolveTargets() {
+    private Map<TargetKey, Target> resolveTargets(Map<Integer, DeviceMonitoringPolicy> policies) {
         Map<TargetKey, Target> targets = new HashMap<>();
         for (CollectionTask task : collectionTasks.findAll(null, null, true)) {
             String protocol = task.getScriptType().getCode();
@@ -108,7 +116,8 @@ public class CollectionGapEvaluator {
                             .filter(java.util.Objects::nonNull).distinct()
                             .forEach(storageDeviceId -> devices.findById(storageDeviceId)
                                     .filter(Device::isEnabled)
-                                    .ifPresent(device -> addTarget(targets, device, protocol, monitoringSince)));
+                                    .ifPresent(device -> addTarget(targets, device, protocol, monitoringSince,
+                                            policies.get(device.getId()))));
                 });
             }
         }
@@ -116,13 +125,15 @@ public class CollectionGapEvaluator {
         for (DeviceMqttIdentity identity : mqttIdentities.findAllOrderByIdAsc()) {
             Device device = identity.getDevice();
             if (identity.isEnabled() && device != null && device.isEnabled()) {
-                addTarget(targets, device, "mqtt", identity.getCreatedDt());
+                addTarget(targets, device, "mqtt", identity.getCreatedDt(), policies.get(device.getId()));
             }
         }
         return targets;
     }
 
-    private static void addTarget(Map<TargetKey, Target> targets, Device device, String protocol, Instant since) {
+    private static void addTarget(Map<TargetKey, Target> targets, Device device, String protocol, Instant since,
+                                  DeviceMonitoringPolicy policy) {
+        if (policy != null && "ON_CHANGE".equals(policy.getMonitoringMode().getCode())) return;
         TargetKey key = new TargetKey(device.getId(), normalizeProtocol(protocol));
         targets.merge(key, new Target(device, since), (first, second) -> {
             Instant earliest = first.monitoringSince() == null ? second.monitoringSince()
