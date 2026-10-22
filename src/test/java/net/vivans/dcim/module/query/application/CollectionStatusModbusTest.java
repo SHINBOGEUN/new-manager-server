@@ -8,6 +8,7 @@ import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.repository.DeviceMonitoringPolicyRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelPointCatalog;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
@@ -42,7 +43,8 @@ class CollectionStatusModbusTest {
         DeviceModelPointCatalog catalog = mock(DeviceModelPointCatalog.class);
         PointQuery points = mock(PointQuery.class);
         CollectionStatusQueryService service = new CollectionStatusQueryService(
-                devices, tasks, specs, catalog, new CollectionStatusProperties(), points);
+                devices, mock(DeviceMonitoringPolicyRepository.class), tasks, specs, catalog,
+                new CollectionStatusProperties(), points);
 
         DeviceModel model = mock(DeviceModel.class);
         when(model.getId()).thenReturn(10);

@@ -6,7 +6,11 @@ import net.vivans.dcim.module.alarm.infrastructure.AlarmEventRepository;
 import net.vivans.dcim.module.alarm.infrastructure.CollectionGapAlarmDetailRepository;
 import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecService;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
+import net.vivans.dcim.module.common.domain.model.CodeGroup;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.model.DeviceMonitoringPolicy;
+import net.vivans.dcim.module.device.domain.repository.DeviceMonitoringPolicyRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.mqtt.domain.model.DeviceMqttIdentity;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepository;
@@ -31,13 +35,14 @@ class CollectionGapEvaluatorTest {
     private final CollectionTaskRepository collectionTasks = mock(CollectionTaskRepository.class);
     private final CollectionGroupSpecService groupSpecService = mock(CollectionGroupSpecService.class);
     private final DeviceRepository devices = mock(DeviceRepository.class);
+    private final DeviceMonitoringPolicyRepository monitoringPolicies = mock(DeviceMonitoringPolicyRepository.class);
     private final DeviceMqttIdentityRepository mqttIdentities = mock(DeviceMqttIdentityRepository.class);
     private final PointQuery pointQuery = mock(PointQuery.class);
     private final AlarmEventRepository events = mock(AlarmEventRepository.class);
     private final CollectionGapAlarmDetailRepository gapDetails = mock(CollectionGapAlarmDetailRepository.class);
     private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
     private final CollectionGapEvaluator evaluator = new CollectionGapEvaluator(collectionTasks, groupSpecService,
-            devices, mqttIdentities, pointQuery, events, gapDetails, publisher);
+            devices, monitoringPolicies, mqttIdentities, pointQuery, events, gapDetails, publisher);
 
     private final Device device = mock(Device.class);
     private final DeviceMqttIdentity identity = mock(DeviceMqttIdentity.class);
@@ -46,6 +51,7 @@ class CollectionGapEvaluatorTest {
     @BeforeEach
     void setUp() {
         when(collectionTasks.findAll(null, null, true)).thenReturn(List.of());
+        when(monitoringPolicies.findAll()).thenReturn(List.of());
         when(mqttIdentities.findAllOrderByIdAsc()).thenReturn(List.of(identity));
         when(identity.isEnabled()).thenReturn(true);
         when(identity.getDevice()).thenReturn(device);
@@ -95,5 +101,17 @@ class CollectionGapEvaluatorTest {
 
         assertThat(event.getClearedDt()).isEqualTo(now);
         verify(events, never()).save(any(AlarmEvent.class));
+    }
+
+    @Test
+    void doesNotTreatStateChangeDeviceSilenceAsCollectionGap() {
+        CodeGroup group = CodeGroup.createCodeGroup("DEVICE_MONITORING_MODE", "장비 데이터 감시 방식");
+        CommonCode mode = CommonCode.createCommonCode(group, "ON_CHANGE", "상태 변경 수집", 2);
+        when(monitoringPolicies.findAll()).thenReturn(List.of(DeviceMonitoringPolicy.create(42, mode)));
+
+        evaluator.evaluate(now, Duration.ofHours(1));
+
+        verify(events, never()).save(any(AlarmEvent.class));
+        verify(pointQuery, never()).findLastInRange(anyList(), anyList(), any(), any(), anyString());
     }
 }

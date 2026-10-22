@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 
 public interface AlarmEventRepository extends JpaRepository<AlarmEvent, Long>, JpaSpecificationExecutor<AlarmEvent> {
     Page<AlarmEvent> findAllByVisibility(String visibility, Pageable pageable);
@@ -29,4 +30,14 @@ public interface AlarmEventRepository extends JpaRepository<AlarmEvent, Long>, J
 
     @Query("select coalesce(max(e.id), 0) from AlarmEvent e where e.visibility = 'USER_VISIBLE'")
     Long findLatestVisibleId();
+
+    @Query("select count(e) from AlarmEvent e where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE')")
+    long countOpenForSummary(@Param("includeAdmin") boolean includeAdmin);
+
+    @Query("select e.severity, count(e) from AlarmEvent e where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE') group by e.severity")
+    List<Object[]> countOpenBySeverityForSummary(@Param("includeAdmin") boolean includeAdmin);
+
+    @Query("select e from AlarmEvent e where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE') order by e.raisedDt desc, e.id desc")
+    List<AlarmEvent> findLatestOpenForSummary(@Param("includeAdmin") boolean includeAdmin, Pageable pageable);
+
 }

@@ -4,6 +4,7 @@ import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecServi
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.device.domain.model.Device;
+import net.vivans.dcim.module.device.domain.repository.DeviceMonitoringPolicyRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.devicemodel.application.DeviceModelPointCatalog;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
@@ -32,7 +33,8 @@ class CollectionStatusProtocolScopeTest {
         DeviceRepository devices = mock(DeviceRepository.class);
         CollectionTaskRepository tasks = mock(CollectionTaskRepository.class);
         DeviceModelPointCatalog catalog = mock(DeviceModelPointCatalog.class);
-        CollectionStatusQueryService service = new CollectionStatusQueryService(devices, tasks,
+        CollectionStatusQueryService service = new CollectionStatusQueryService(devices,
+                mock(DeviceMonitoringPolicyRepository.class), tasks,
                 mock(CollectionGroupSpecService.class), catalog, new CollectionStatusProperties(), mock(PointQuery.class));
 
         DeviceModel loraModel = model(1, "mqtt");

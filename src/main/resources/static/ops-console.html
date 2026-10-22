@@ -804,6 +804,13 @@
     .home-stats .v { margin:3px 0 0; line-height:1; }
     .home-stats .v small { color:#6f849f; font-size:10px; font-weight:600; }
     .home-stats p { margin:7px 0 0; color:#6e829c; font-size:10px; }
+    .home-live-stats { grid-template-columns:repeat(3,minmax(0,1fr)); margin:0 0 12px; }
+    .home-live-stats .stat { min-height:94px; padding:13px 16px; }
+    .home-live-stats .stat-icon { width:36px; height:36px; flex-basis:36px; font-size:17px; }
+    .home-live-stats .v { font-size:23px; }
+    .home-live-stats .ops-detail { max-width:100%; margin-top:6px; overflow:hidden; color:#8297b1; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .home-live-stats .stat[data-state="warning"] .v { color:#ffc968; }
+    .home-live-stats .stat[data-state="bad"] .v { color:#ff7d89; }
     .home-layout { display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(280px,.8fr) minmax(300px,.85fr); gap:14px; }
     .home-layout > * { min-width:0; }
     .quick-actions { display:grid; grid-template-columns:1fr; gap:9px; }
@@ -1513,6 +1520,11 @@
         <div class="stat stat-device"><div class="stat-icon">▣</div><div><div class="k">등록 장비</div><div class="v"><span id="statDev">–</span><small> devices</small></div><p>운영 자산 인스턴스</p></div></div>
         <div class="stat stat-task"><div class="stat-icon">↻</div><div><div class="k">수집 작업</div><div class="v"><span id="statTask">–</span><small> tasks</small></div><p>Collector 스케줄</p></div></div>
       </div>
+      <div class="stats home-stats home-live-stats" aria-label="실시간 운영 요약">
+        <div class="stat" id="homeDeviceHealth" data-state="normal"><div class="stat-icon">▣</div><div><div class="k">장비 운영 상태</div><div class="v"><span id="homeEnabledDevices">–</span><small> 사용 장비</small></div><div class="ops-detail" id="homeDeviceDetail">현황 확인 중…</div></div></div>
+        <div class="stat" id="homeAlarmHealth" data-state="normal"><div class="stat-icon">⚑</div><div><div class="k">미복구 알람</div><div class="v"><span id="homeOpenAlarms">–</span><small> 건</small></div><div class="ops-detail" id="homeAlarmDetail">현황 확인 중…</div></div></div>
+        <div class="stat" id="homeCollectionHealth" data-state="normal"><div class="stat-icon">↻</div><div><div class="k">수집 상태 정상</div><div class="v"><span id="homeCollectionNormal">–</span><small> / <span id="homeCollectionTotal">–</span>대</small></div><div class="ops-detail" id="homeCollectionDetail">현황 확인 중…</div></div></div>
+      </div>
       <div class="home-layout">
         <div class="card home-onboarding">
           <div class="card-heading"><div><span class="eyebrow">GETTING STARTED</span><h2>운영 준비 순서</h2></div><span class="chip">4 STEPS</span></div>
@@ -1829,6 +1841,7 @@
       <div class="stats" data-collection-pane="devices">
         <div class="stat"><div class="k">전체 장비</div><div class="v" id="csTotal">–</div></div>
         <div class="stat"><div class="k">정상</div><div class="v" id="csNormal" style="color:var(--ok)">–</div></div>
+        <div class="stat"><div class="k">상태 변경 수집</div><div class="v" id="csOnChange">–</div></div>
         <div class="stat"><div class="k">일부 누락 / 지연 / 데이터 없음</div><div class="v" id="csIssue" style="color:var(--bad)">–</div></div>
         <div class="stat"><div class="k">중지 / 미등록</div><div class="v" id="csStopped" style="color:var(--warn)">–</div></div>
       </div>
@@ -1836,7 +1849,7 @@
         <div class="row" style="justify-content:space-between">
           <div class="row">
             <input id="csFilterName" placeholder="장비명 · 위치 검색" style="min-width:180px" />
-            <select id="csFilterStatus"><option value="">모든 상태</option><option value="NORMAL">정상</option><option value="PARTIAL">일부 측정항목 누락</option><option value="STALE">지연</option><option value="MISSING">데이터 없음</option><option value="NO_POINTS">설정 누락 · 미지원</option><option value="MODEL_MISMATCH">모델 불일치</option><option value="STOPPED">수집 중지</option><option value="UNREGISTERED">미등록</option><option value="DISABLED">장비 중지</option></select>
+            <select id="csFilterStatus"><option value="">모든 상태</option><option value="NORMAL">정상</option><option value="ON_CHANGE">상태 변경 수집</option><option value="PARTIAL">일부 측정항목 누락</option><option value="STALE">지연</option><option value="MISSING">데이터 없음</option><option value="NO_POINTS">설정 누락 · 미지원</option><option value="MODEL_MISMATCH">모델 불일치</option><option value="STOPPED">수집 중지</option><option value="UNREGISTERED">미등록</option><option value="DISABLED">장비 중지</option></select>
             <select id="csFilterProtocol"><option value="">모든 프로토콜</option></select>
             <select id="csFilterModel"><option value="">모든 모델</option></select>
           </div>
@@ -1977,6 +1990,7 @@
             <button type="button" class="active" data-device-detail-tab="info" role="tab" aria-selected="true">기본 정보</button>
             <button type="button" data-device-detail-tab="endpoint" role="tab" aria-selected="false">통신 설정</button>
             <button type="button" data-device-detail-tab="collection" role="tab" aria-selected="false">수집 연결</button>
+            <button type="button" data-device-detail-tab="monitoring" role="tab" aria-selected="false">운영 감시</button>
           </div>
           <div class="device-detail-content">
           <section class="device-detail-section active" data-device-detail-panel="info" role="tabpanel">
@@ -2069,6 +2083,22 @@
             </div>
             <button type="button" class="primary" style="margin-top:12px" id="attachBtn" data-role-gate="admin">이 장비를 그룹에 추가</button>
             <details class="raw"><summary>응답 상세</summary><pre id="attachOut"></pre></details>
+          </div>
+          </section>
+          <section class="device-detail-section" data-device-detail-panel="monitoring" role="tabpanel">
+          <div class="card">
+            <h2>장비별 데이터 감시</h2>
+            <p class="section-intro">정기적으로 값이 들어오는 장비와 상태가 바뀔 때만 값을 보내는 장비를 구분합니다. 상태 변경형은 오래 수신되지 않아도 수집 누락 알람을 만들지 않습니다.</p>
+            <div class="fields">
+              <label class="field">수집 방식
+                <select id="deviceMonitoringMode"></select>
+              </label>
+              <p class="field full muted" id="deviceMonitoringHint" style="font-size:12px;margin:0">주기 수집은 기존 수집 작업과 공통 누락 판정 기준을 따릅니다.</p>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button type="button" class="primary" id="deviceMonitoringSave" data-role-gate="admin">감시 방식 저장</button>
+              <span class="muted" id="deviceMonitoringSaved"></span>
+            </div>
           </div>
           </section>
           </div>
@@ -3268,6 +3298,7 @@
       users: [],
       rackLayouts: [],
       collectionStatus: null,
+      homeOverviewTimer: null,
       operationsHealth: null,
       collectionJobHealth: null,
       groupDevices: [],
@@ -3541,6 +3572,8 @@
         }
       }
       updatePageContext(name);
+      if (name === "home" && state.token) loadHomeOverview().catch((e) => log("한눈에 보기 갱신 실패: " + e.message));
+      scheduleHomeOverviewRefresh();
       document.body.classList.remove("side-open");
       if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
       if (name === "users" && state.token) loadUsers().catch((e) => toast(e.message, true));
@@ -5600,6 +5633,7 @@
     function collectionStatusChip(status) {
       const labels = {
         NORMAL: ["ok", "정상"],
+        ON_CHANGE: ["", "상태 변경 수집"],
         PARTIAL: ["warn", "일부 측정항목 누락"],
         STALE: ["warn", "지연"],
         MISSING: ["bad", "데이터 없음"],
@@ -5683,6 +5717,7 @@
       const summary = data.summary || {};
       $("csTotal").textContent = summary.totalCount ?? 0;
       $("csNormal").textContent = summary.normalCount ?? 0;
+      $("csOnChange").textContent = summary.onChangeCount ?? 0;
       $("csIssue").textContent = (summary.partialCount || 0) + (summary.staleCount || 0) + (summary.missingCount || 0);
       $("csStopped").textContent = (summary.stoppedCount || 0) + (summary.unregisteredCount || 0) + (summary.disabledCount || 0);
       $("csGeneratedAt").textContent = data.generatedAt ? `조회 시각: ${new Date(data.generatedAt).toLocaleString("ko-KR")}` : "";
@@ -7251,6 +7286,48 @@
       fillEndpointProtocolSelect(d.modelId);
       await reloadEndpoints();
       syncAttachFilters(d.modelId, protocolCode(selectedEndpointProtocol()));
+      await loadDeviceMonitoringPolicy(id);
+    }
+
+    function syncDeviceMonitoringModeUi() {
+      const onChange = $("deviceMonitoringMode").value === "ON_CHANGE";
+      $("deviceMonitoringHint").textContent = onChange
+        ? "상태가 변경되어 값이 수신될 때 갱신합니다. 수신이 없는 시간만으로 수집 누락 알람을 만들지 않습니다."
+        : "기존 수집 작업과 공통 누락 판정 기준에 따라 수집 상태와 누락 알람을 확인합니다.";
+    }
+
+    function fillDeviceMonitoringModes(selectedCode) {
+      const modes = state.codes.DEVICE_MONITORING_MODE || [];
+      fillSelect($("deviceMonitoringMode"), modes,
+        (mode) => `<option value="${esc(mode.code)}">${esc(mode.name)}</option>`, "감시 방식 선택");
+      if (selectedCode) $("deviceMonitoringMode").value = selectedCode;
+      syncDeviceMonitoringModeUi();
+    }
+
+    async function loadDeviceMonitoringPolicy(deviceId) {
+      try {
+        const policy = await api(`/api/manager/devices/${deviceId}/monitoring-policy`);
+        fillDeviceMonitoringModes(policy.modeCode);
+        $("deviceMonitoringSaved").textContent = policy.explicitlyConfigured
+          ? "저장된 장비별 설정" : "기존 기본값 사용 · 필요할 때만 저장하세요";
+      } catch (error) {
+        $("deviceMonitoringSaved").textContent = "설정을 불러오지 못했습니다";
+        toast(error.message, true);
+      }
+    }
+
+    async function saveDeviceMonitoringPolicy() {
+      const deviceId = state.selectedDeviceId;
+      if (!deviceId) return toast("장비를 먼저 선택하세요", true);
+      const modeCode = $("deviceMonitoringMode").value;
+      try {
+        const policy = await api(`/api/manager/devices/${deviceId}/monitoring-policy`, {
+          method: "PUT", body: JSON.stringify({ modeCode }),
+        });
+        $("deviceMonitoringSaved").textContent = `${policy.modeName} 저장됨`;
+        toast("장비 감시 방식을 저장했습니다");
+        if (state.token) await loadCollectionStatus();
+      } catch (error) { toast(error.message, true); }
     }
 
     async function reloadEndpoints() {
@@ -8472,6 +8549,71 @@
       $("statTask").textContent = state.tasks.length;
     }
 
+    function setHomeSummary(cardId, valueId, detailId, value, detail, tone = "normal") {
+      $(cardId).dataset.state = tone;
+      $(valueId).textContent = value;
+      $(detailId).textContent = detail;
+    }
+
+    async function loadHomeOverview() {
+      if (!state.token) return;
+      const results = await Promise.allSettled([
+        Promise.all([
+          api("/api/manager/devices?enabled=true&page=1&size=1", { cache: "no-store" }),
+          api("/api/manager/devices?enabled=false&page=1&size=1", { cache: "no-store" }),
+        ]),
+        api("/api/manager/alarms/summary", { cache: "no-store" }),
+        api("/api/manager/query/collection-status?lookbackHours=168", { cache: "no-store" }),
+      ]);
+
+      if (results[0].status === "fulfilled") {
+        const [enabled, disabled] = results[0].value;
+        const active = Number(enabled?.totalElements || 0);
+        const inactive = Number(disabled?.totalElements || 0);
+        setHomeSummary("homeDeviceHealth", "homeEnabledDevices", "homeDeviceDetail",
+          active.toLocaleString("ko-KR"), "미사용 " + inactive.toLocaleString("ko-KR") + "대 · 전체 " + (active + inactive).toLocaleString("ko-KR") + "대");
+      } else {
+        setHomeSummary("homeDeviceHealth", "homeEnabledDevices", "homeDeviceDetail", "오류", "장비 상태를 불러오지 못했습니다", "bad");
+      }
+
+      if (results[1].status === "fulfilled") {
+        const data = results[1].value;
+        const total = Number(data?.openCount || 0);
+        const latest = data?.latestOpen?.[0];
+        const detail = "주의 " + Number(data?.warningCount || 0) + " · 위험 " + Number(data?.criticalCount || 0)
+          + (latest?.thresholdDetails ? " · 최근 " + latest.thresholdDetails.deviceName + " / " + latest.thresholdDetails.pointName
+            : latest?.collectionGapDetails?.deviceName ? " · 최근 " + latest.collectionGapDetails.deviceName + " 수집 누락" : " · 미복구 알람 없음");
+        setHomeSummary("homeAlarmHealth", "homeOpenAlarms", "homeAlarmDetail", total.toLocaleString("ko-KR"), detail,
+          data?.criticalCount ? "bad" : total ? "warning" : "normal");
+      } else {
+        setHomeSummary("homeAlarmHealth", "homeOpenAlarms", "homeAlarmDetail", "오류", "알람을 불러오지 못했습니다", "bad");
+      }
+
+      if (results[2].status === "fulfilled") {
+        const summary = results[2].value?.summary || {};
+        const normal = Number(summary.normalCount || 0);
+        const total = Number(summary.totalCount || 0);
+        const issues = total - normal;
+        const detail = "지연 " + Number(summary.staleCount || 0) + " · 일부 누락 " + Number(summary.partialCount || 0)
+          + " · 미수집/설정 확인 " + (Number(summary.missingCount || 0) + Number(summary.unregisteredCount || 0));
+        $("homeCollectionNormal").textContent = normal.toLocaleString("ko-KR");
+        $("homeCollectionTotal").textContent = total.toLocaleString("ko-KR");
+        $("homeCollectionHealth").dataset.state = issues > 0 ? "warning" : "normal";
+        $("homeCollectionDetail").textContent = "수집 대상 " + total + "대 조회(최대 200) · 확인 필요 " + Math.max(0, issues) + "대 · " + detail;
+      } else {
+        setHomeSummary("homeCollectionHealth", "homeCollectionNormal", "homeCollectionDetail", "오류", "수집 상태를 불러오지 못했습니다", "bad");
+        $("homeCollectionTotal").textContent = "–";
+      }
+    }
+
+    function scheduleHomeOverviewRefresh() {
+      clearInterval(state.homeOverviewTimer);
+      state.homeOverviewTimer = null;
+      if ($("tab-home").classList.contains("active") && state.token) {
+        state.homeOverviewTimer = setInterval(() => loadHomeOverview().catch((error) => log("한눈에 보기 갱신 실패: " + error.message)), 60000);
+      }
+    }
+
     const alarmUi = { page: 1, last: true, rules: [], devices: [], models: [], sources: [], editId: null, editingRule: null,
       filtersLoaded: false, filterDevices: [], filterModels: [], filterLocations: [], locationByCode: new Map() };
     const alarmStream = { socket: null, timer: null, user: null, cursor: 0, starting: false,
@@ -9099,6 +9241,8 @@
         await loadDevices();
         await loadPueDefinitions();
         await loadTasks();
+        await loadHomeOverview();
+        scheduleHomeOverviewRefresh();
         await loadCommonCodesUi();
         if ($("taskModel").value) await refreshTaskDevicePick();
         if ($("wzModel").value) await loadWizardOptions(Number($("wzModel").value));
@@ -9290,6 +9434,8 @@
     $("deviceDetailModal").querySelectorAll("[data-device-detail-tab]").forEach((button) => {
       button.onclick = () => showDeviceDetailTab(button.dataset.deviceDetailTab);
     });
+    $("deviceMonitoringMode").addEventListener("change", syncDeviceMonitoringModeUi);
+    $("deviceMonitoringSave").onclick = saveDeviceMonitoringPolicy;
     $("assetDetailClose").onclick = closeAssetDetailModal;
     $("assetDetailModal").onclick = (event) => { if (event.target === $("assetDetailModal")) closeAssetDetailModal(); };
     document.addEventListener("keydown", (event) => {
