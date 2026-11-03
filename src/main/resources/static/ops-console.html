@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM 운영 콘솔</title>
+  <script src="/rack-widget-layout.js?v=20261103b"></script>
+  <script src="/rack-widget-chart.js?v=20261103a"></script>
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
     :root {
@@ -25,7 +27,7 @@
       --warn-bg: #fff6e0;
       --shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 16px rgba(16,24,40,.05);
       --radius: 12px;
-      --side: 236px;
+      --side: 210px;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
@@ -198,6 +200,61 @@
     .rack-preview-head p { margin: 3px 0 0; color: #c8d9eb; font-size: 12px; }
     .rack-preview-head button { color: #fff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.28); font-size: 18px; line-height: 1; padding: 6px 10px; }
     .rack-preview-body { padding: 18px; }
+    .rack-preview-modal.open { place-items:center; overflow:hidden; }
+    .rack-preview { width:min(1440px,100%); max-height:calc(100dvh - 56px); display:flex; flex-direction:column; }
+    .rack-preview-head { flex:none; }
+    .rack-preview-body { overflow:auto; min-height:0; }
+    .rack-detail-layout { display:grid; grid-template-columns:minmax(300px, 1fr) minmax(360px, 1fr); gap:16px; align-items:start; }
+    .rack-detail-layout--rack { grid-template-columns:minmax(0, 2fr) minmax(0, 3fr); }
+    .rack-detail-stage { height:clamp(260px, calc(100dvh - 165px), 850px); min-height:0; position:sticky; top:0; background:#0b1724; border:1px solid #29445a; border-radius:10px; overflow:hidden; }
+    .rack-detail-stage canvas { width:100%; height:100%; display:block; }
+    .rack-detail-tools { position:absolute; top:10px; left:10px; z-index:2; display:flex; gap:6px; }
+    .rack-layout-tools { position:absolute; top:52px; left:10px; z-index:3; display:flex; gap:6px; padding:5px; border:1px solid #32566c; border-radius:8px; background:rgba(9,23,37,.92); }
+    .rack-detail-info { padding:12px; border:1px solid #304459; border-radius:8px; margin-bottom:12px; }
+    .rack-selected-editor { border-color:#36bfd7; background:rgba(18,50,65,.5); }
+    .rack-selected-editor .fields { margin-top:10px; }
+    .rack-selected-editor input[type="range"] { width:100%; }
+    .rack-install-entry { cursor:pointer; }
+    .rack-install-entry.is-selected { border-color:#42d9f2; background:#123346; box-shadow:0 0 0 1px rgba(66,217,242,.3); }
+    .rack-install-entry:focus-visible { outline:2px solid #42d9f2; outline-offset:2px; }
+    .rack-selected-title { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    .rack-capacity-badge { position:absolute; right:10px; top:10px; z-index:3; padding:7px 10px; border:1px solid #32566c; border-radius:8px; color:#d6f3ff; background:rgba(9,23,37,.9); font-size:12px; font-weight:700; pointer-events:none; }
+    .rack-widget-editor-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:8px 0 14px; }
+    .rack-widget-editor-head h3 { margin:0; font-size:16px; }
+    .rack-widget-card { border:1px solid #2c4358; background:#101f30; border-radius:10px; padding:16px; margin-bottom:12px; }
+    .rack-widget-card-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+    .rack-widget-card.is-collapsed .rack-widget-card-head { margin-bottom:0; }
+    .rack-widget-toggle { display:flex; align-items:center; gap:8px; flex:1; min-width:0; text-align:left; border:0; padding:4px 0; background:transparent; color:inherit; }
+    .rack-widget-toggle strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rack-widget-toggle small { color:#91a4bd; white-space:nowrap; }
+    .rack-widget-card-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    .rack-widget-field { display:flex; flex-direction:column; gap:6px; color:#aac0d4; font-size:12px; }
+    .rack-widget-field input, .rack-widget-field select { width:100%; }
+    .rack-widget-sources { max-height:220px; overflow:auto; border:1px solid #2c4358; border-radius:8px; padding:6px; background:#0b1929; }
+    .rack-widget-source { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:6px; cursor:pointer; color:#d5e8f4; }
+    .rack-widget-source:hover { background:#17354a; }
+    .rack-widget-source input { flex:none; width:auto; }
+    .rack-widget-layout { display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); grid-auto-rows:36px; gap:4px; align-content:start; min-height:190px; padding:0; background:transparent; border:0; outline:1px dashed #385a70; border-radius:8px; }
+    .rack-widget-layout-slot { border:1px dashed #274559; border-radius:8px; min-width:0; }
+    .rack-widget-layout-slot.drop-valid { background:#164d5b; border-color:#38d8ed; }
+    .rack-widget-layout-slot.drop-invalid { background:#5a2536; border-color:#f1819d; }
+    .rack-widget-layout-card { z-index:1; position:relative; min-width:0; min-height:0; padding:12px; margin:0; border:1px solid #304459; border-radius:8px; background:#101827; overflow:hidden; box-sizing:border-box; }
+    html[data-theme="light"] .rack-widget-layout-card { background:#f8fafc; }
+    .rack-widget-layout-card.is-invalid { border-color:#f1819d; box-shadow:0 0 0 2px #f1819d; }
+    .rack-widget-drag-handle { position:absolute; right:8px; top:8px; z-index:2; cursor:move; user-select:none; touch-action:none; padding:2px 6px; border:1px solid #32566c; border-radius:5px; background:var(--bg2); color:var(--text); }
+    .rack-widget-resize-handle { position:absolute; right:0; bottom:0; width:24px; height:24px; cursor:nwse-resize; touch-action:none; background:linear-gradient(135deg,transparent 48%,#43d5e7 50%,#43d5e7 56%,transparent 58%,transparent 68%,#43d5e7 70%,#43d5e7 76%,transparent 78%); }
+    .rack-widget-resize-handle:focus-visible { outline:2px solid #43d5e7; }
+    .rack-widget-layout-card.drag-target { outline:2px solid #38d8ed; }
+    .rack-widget-layout-card .row { margin-top:12px; }
+    @media (max-width:600px) { .rack-widget-card-grid { grid-template-columns:1fr; } }
+    .rack-model-preview { width:160px;height:105px;object-fit:contain;background:#0d1d2a;border:1px solid #315466;border-radius:8px; }
+    .rack-model-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; max-height:350px; overflow:auto; }
+    .rack-model-grid button { display:flex; flex-direction:column; align-items:center; gap:5px; white-space:normal; }
+    .rack-model-grid img { width:100%; height:72px; object-fit:contain; }
+    .rack-install-entry { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px; margin-top:8px; border:1px solid var(--line); border-radius:8px; }
+    .rack-install-entry > span { flex:1 1 190px; }
+    @media (max-width:900px) { .rack-detail-layout { grid-template-columns:1fr; } .rack-detail-stage { position:relative; height: min(60dvh, 500px); min-height:300px; } }
+    [data-rack-add-form] [hidden] { display: none !important; }
     .rack-preview-visual { display: grid; grid-template-columns: 132px minmax(320px, 1fr) 132px; gap: 14px; align-items: stretch; }
     .rack-preview-side { display: flex; flex-direction: column; gap: 8px; padding-top: 26px; border: 2px dashed transparent; border-radius: 8px; transition: background .12s, border-color .12s; }
     .rack-preview-side.drop-active { border-color: #4e9ad5; background: #dcebfa; }
@@ -284,6 +341,19 @@
     .asset-preview-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
     .asset-detail-modal { display: none; position: fixed; inset: 0; z-index: 150; padding: 24px; background: rgba(15, 28, 46, .72); overflow: auto; }
     .asset-detail-modal.open { display: grid; place-items: start center; }
+    .asset-model-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px; }
+    .asset-model-card { min-width:0; padding:10px; border:1px solid var(--line); border-radius:9px; background:var(--surface2); }
+    .asset-model-card h3 { margin:0 0 6px; font-size:14px; }
+    .asset-model-preview { width:100%; height:210px; overflow:hidden; display:grid; place-items:center; border:1px solid var(--line); border-radius:7px; background:#101b29; }
+    .asset-model-preview img { display:block; max-width:100%; max-height:100%; object-fit:contain; }
+    .asset-model-preview canvas { display:block; width:100%; height:100%; touch-action:none; }
+    .scene-model-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:14px; }
+    .scene-model-card { border:1px solid var(--line); border-radius:9px; background:var(--surface2); padding:10px; min-width:0; }
+    .scene-model-card img { display:block; width:100%; height:130px; object-fit:contain; background:#0c1a29; border-radius:6px; }
+    .scene-model-card .preview-empty { display:grid; place-items:center; height:130px; background:#0c1a29; border-radius:6px; color:var(--muted); }
+    .scene-model-card strong { display:block; margin-top:8px; overflow-wrap:anywhere; }
+    .scene-model-card small { display:block; margin:5px 0 10px; color:var(--muted); overflow-wrap:anywhere; }
+    .asset-model-error { padding:14px; color:#ffb8a8; font-size:12px; }
     .asset-detail { width: min(1080px, 100%); margin: auto; background: #f4f7fb; border: 1px solid #93a9c2; border-radius: 14px; box-shadow: 0 24px 70px rgba(4,16,31,.4); overflow: hidden; }
     .asset-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 18px; background: #142d4b; color: #fff; }
     .asset-detail-head h2 { margin: 0; font-size: 18px; }
@@ -611,7 +681,7 @@
       --warn-bg: #3f3019;
       --shadow: 0 12px 30px rgba(0, 0, 0, .22);
       --radius: 10px;
-      --side: 246px;
+      --side: 210px;
     }
     body {
       color: var(--text);
@@ -727,6 +797,7 @@
     .side button[data-tab="wizard"]::before { content:"＋"; }
     .side button[data-tab="devices"]::before { content:"▣"; }
     .side button[data-tab="assets"]::before { content:"◆"; }
+    .side button[data-tab="scene-models"]::before { content:"▧"; }
     .side button[data-tab="rack-overview"]::before { content:"▤"; }
     .side button[data-tab="device-groups"]::before { content:"◫"; }
     .side button[data-tab="tasks"]::before { content:"↻"; }
@@ -1273,7 +1344,7 @@
     .calculated-ratio-source button.selected { border-color:var(--accent); background:var(--accent-soft); color:var(--text); }
     #wEditorBackdrop { display:none; position:fixed; inset:0; z-index:170; background:rgba(2,8,18,.76); }
     #wEditorBackdrop.open { display:block; }
-    #wEditorCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1050px,calc(100vw - 36px)); max-height:min(92vh,900px); margin:0; padding:0 22px 18px; overflow-y:auto; overflow-x:hidden; box-shadow:0 32px 90px rgba(0,0,0,.55); scrollbar-gutter:stable; }
+    #wEditorCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1320px,calc(100vw - 36px)); max-height:min(92vh,1000px); margin:0; padding:0 22px 18px; overflow-y:auto; overflow-x:hidden; box-shadow:0 32px 90px rgba(0,0,0,.55); scrollbar-gutter:stable; }
     #wEditorCard.open { display:block; }
     #metricBackdrop { display:none; position:fixed; inset:0; z-index:170; background:rgba(2,8,18,.76); }
     #metricBackdrop.open { display:block; }
@@ -1290,6 +1361,10 @@
     #wEditorCard [data-widget-stage].widget-step-hidden { display:none !important; }
     .widget-review { padding:16px; margin-top:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); line-height:1.7; }
     .widget-review .pick-item { margin-top:6px; }
+    .widget-page-preview { margin-top:14px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#090f19; }
+    .widget-page-preview-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--surface2); }
+    .widget-page-preview-head p { margin:3px 0 0; font-size:12px; }
+    .widget-page-preview iframe { display:block; width:100%; height:min(48vh,540px); min-height:300px; border:0; background:#090f19; }
     .widget-editor-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; position:sticky; bottom:-18px; z-index:4; margin:18px -22px -18px; padding:12px 22px; border-top:1px solid var(--line); background:var(--surface); }
     @media (max-width:700px) { #wEditorCard, #calculatedMetricCard { width:100vw; max-height:100vh; height:100vh; border-radius:0; } .widget-editor-footer { flex-wrap:wrap; } }
 
@@ -1302,7 +1377,6 @@
     .side .group { margin-top:15px; padding-top:10px; border-top:1px solid #203149; }
     .side button[data-tab] { min-height:45px; border-radius:9px; }
     .side button.active { background:#123c60; box-shadow:inset 3px 0 0 #38c5fb,inset 0 0 0 1px #2b668b; }
-    .side button[data-tab="widget-board"]::before { content:"▦"; }
     .side button[data-tab="live-telemetry"]::before { content:"⌁"; }
     .side button[data-tab="mqtt-monitor"]::before { content:"◉"; }
     .side button[data-tab="analysis"]::before { content:"⌁"; }
@@ -1380,7 +1454,7 @@
     .embedded-page.panel.active { display:flex; flex-direction:column; min-height:0; padding:0; overflow:hidden !important; }
     .embedded-page iframe { display:block; flex:1 1 auto; width:100%; min-height:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
     .widget-display-page.panel.active { gap:0; }
-    .widget-display-page iframe, #tab-widget-board iframe { border:0; border-radius:8px; background:#090f19; }
+    .widget-display-page iframe { border:0; border-radius:8px; background:#090f19; }
     body.external-view .log-bar { display:none; }
     @media (max-width:1200px) {
       #tab-wizard.panel.active { display:block; overflow:auto; }
@@ -1397,6 +1471,110 @@
       .wizard-inline-field button { width:100%; }
       .embedded-page iframe { border-radius:8px; }
     }
+
+    #rackPreviewModal .rack-connection-state { flex:none; padding:3px 7px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; }
+    #rackPreviewModal .rack-connection-state.is-linked { color:#75e3c2; background:#113c39; }
+    #rackPreviewModal .rack-connection-state.is-unlinked { color:#a3b4c5; background:#243648; }
+    html[data-theme="light"] #rackPreviewModal .rack-connection-state.is-linked { color:#12694f; background:#def5eb; }
+    html[data-theme="light"] #rackPreviewModal .rack-connection-state.is-unlinked { color:#536b7d; background:#e7edf2; }
+    /* Rack detail: a focused workspace for the 3D view and its configuration. */
+    #rackPreviewModal { padding:20px; backdrop-filter:blur(8px); }
+    #rackPreviewModal .rack-preview { width:min(1520px,100%); max-height:calc(100dvh - 40px); border:1px solid #29435b; border-radius:16px; background:#0b1523; box-shadow:0 28px 90px rgba(0,0,0,.55); }
+    #rackPreviewModal .rack-preview-head { padding:17px 22px; background:#101e30; border-bottom:1px solid #253c52; }
+    #rackPreviewModal .rack-preview-head h2 { font-size:18px; letter-spacing:-.02em; }
+    #rackPreviewModal .rack-preview-head p { margin-top:5px; color:#91a9bd; font-size:12px; }
+    #rackPreviewModal .rack-preview-head button { width:36px; height:36px; padding:0; border:1px solid #345068; border-radius:9px; background:#172b3f; }
+    #rackPreviewModal .rack-preview-body { padding:16px 20px 20px; scrollbar-color:#385168 transparent; }
+    #rackPreviewModal .rack-detail-layout--rack { gap:20px; }
+    #rackPreviewModal .rack-preview-body.is-rack-layout-edit { overflow:hidden; }
+    #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal [data-rack-widgets] { min-width:0; }
+    #rackPreviewModal .rack-widget-view-card { overflow:hidden; }
+    #rackPreviewModal [data-rack-fit-content] { min-width:0; height:100%; display:flex; flex-direction:column; }
+    #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { padding:16px; border:1px solid #263e52; border-radius:12px; background:linear-gradient(145deg,#122437 0%,#0d1929 100%); box-shadow:inset 0 1px rgba(255,255,255,.035),0 8px 24px rgba(0,0,0,.12); color:#e7f1f7; }
+    #rackPreviewModal .rack-metric-title { display:flex; align-items:center; gap:8px; margin:0 0 12px; color:#e8f4fb; font-size:13px; font-weight:750; letter-spacing:.01em; }
+    #rackPreviewModal .rack-metric-title::before { content:''; width:4px; height:14px; flex:none; border-radius:5px; background:#4ad9ee; }
+    #rackPreviewModal .rack-metric-value { font-size:30px; font-weight:750; letter-spacing:-.04em; color:#6de0f5; }
+    #rackPreviewModal .rack-metric-caption { color:#8da8bb; font-size:11px; line-height:1.5; }
+    #rackPreviewModal .rack-metric-donuts { display:flex; gap:14px; flex-wrap:wrap; }
+    #rackPreviewModal .rack-metric-donut-group { flex:1 1 145px; min-width:0; }
+    #rackPreviewModal .rack-metric-donut-heading { display:block; color:#a4bed0; font-size:11px; text-align:center; }
+    #rackPreviewModal .rack-metric-donut { width:clamp(86px,9vw,126px); aspect-ratio:1; border-radius:50%; margin:10px auto 14px; display:grid; place-items:center; box-shadow:0 0 22px rgba(72,189,220,.1); }
+    #rackPreviewModal .rack-metric-donut-center { width:62%; height:62%; border-radius:50%; background:#102031; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#e5f5fb; font-size:13px; font-weight:750; }
+    #rackPreviewModal .rack-metric-donut-center small { color:#829caf; font-size:10px; font-weight:500; }
+    #rackPreviewModal .rack-metric-legend { display:grid; gap:6px; margin-top:8px; }
+    #rackPreviewModal .rack-metric-legend-row { display:flex; align-items:center; gap:7px; min-width:0; color:#a8bdcc; font-size:11px; line-height:1.35; }
+    #rackPreviewModal .rack-metric-dot { width:8px; height:8px; flex:none; border-radius:50%; background:var(--series-color); box-shadow:0 0 8px color-mix(in srgb,var(--series-color),transparent 60%); }
+    #rackPreviewModal .rack-metric-legend-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #rackPreviewModal .rack-metric-legend-value { color:#e7f2f8; font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; }
+    #rackPreviewModal .rack-metric-chart { display:block; width:100%; height:150px; overflow:visible; }
+    #rackPreviewModal .rack-metric-chart-grid { stroke:#294054; stroke-width:.7; stroke-dasharray:3 5; }
+    #rackPreviewModal .rack-metric-chart-line { fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+    #rackPreviewModal .rack-chart { position:relative; flex:1 1 auto; min-height:110px; width:100%; }
+    #rackPreviewModal .rack-chart svg { display:block; width:100%; height:100%; overflow:visible; }
+    #rackPreviewModal .rack-chart-grid { stroke:#2b4558; stroke-width:1; stroke-dasharray:3 5; vector-effect:non-scaling-stroke; }
+    #rackPreviewModal .rack-chart-series { fill:none; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+    #rackPreviewModal .rack-chart-crosshair { stroke:#bdd4e2; stroke-width:1; stroke-dasharray:3 4; vector-effect:non-scaling-stroke; pointer-events:none; }
+    #rackPreviewModal .rack-chart-tick, #rackPreviewModal .rack-chart-axis-unit { fill:#a0b9ca; font-size:12px; font-family:inherit; }
+    #rackPreviewModal .rack-chart-axis-unit { font-weight:700; fill:#c2d8e4; }
+    #rackPreviewModal .rack-chart-tooltip { position:absolute; z-index:4; max-width:90%; padding:9px 11px; border:1px solid #4b6f83; border-radius:8px; background:#091523; color:#edf9ff; box-shadow:0 8px 22px #0008; font-size:11px; line-height:1.7; pointer-events:none; white-space:nowrap; }
+    #rackPreviewModal .rack-chart-tooltip strong { display:block; margin-bottom:3px; color:#bdd1de; }
+    #rackPreviewModal .rack-chart-tooltip-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; }
+    #rackPreviewModal .rack-metric-time { display:block; margin-top:7px; color:#819bad; font-size:10px; line-height:1.4; }
+    html[data-theme="light"] #rackPreviewModal .rack-widget-view-card, html[data-theme="light"] #rackPreviewModal .rack-widget-layout-card { background:linear-gradient(145deg,#fff,#f1f7fa); border-color:#d2e2e9; color:#19394a; box-shadow:0 8px 24px rgba(25,67,86,.07); }
+    html[data-theme="light"] #rackPreviewModal .rack-metric-title, html[data-theme="light"] #rackPreviewModal .rack-metric-legend-value { color:#19394a; }
+    html[data-theme="light"] #rackPreviewModal .rack-metric-caption, html[data-theme="light"] #rackPreviewModal .rack-metric-legend-row, html[data-theme="light"] #rackPreviewModal .rack-metric-time, html[data-theme="light"] #rackPreviewModal .rack-metric-donut-heading { color:#527080; }
+    html[data-theme="light"] #rackPreviewModal .rack-metric-donut-center { background:#f7fbfc; color:#19394a; }
+    #rackPreviewModal .rack-detail-stage { height:clamp(300px,calc(100dvh - 145px),880px); border:1px solid #2a4359; border-radius:12px; box-shadow:inset 0 0 0 1px rgba(121,188,220,.04); }
+    #rackPreviewModal .rack-detail-tools { left:14px; top:14px; }
+    #rackPreviewModal .rack-layout-tools { left:14px; top:96px; max-width:calc(100% - 28px); flex-wrap:wrap; }
+    #rackPreviewModal .rack-detail-tools button, #rackPreviewModal .rack-layout-tools button { border-radius:8px; font-size:12px; font-weight:650; }
+    #rackPreviewModal .rack-capacity-badge { right:14px; top:14px; padding:8px 11px; border-radius:8px; background:rgba(10,30,44,.92); color:#c9e8f2; }
+    #rackPreviewModal .rack-door-status { position:absolute; left:14px; top:58px; z-index:3; padding:6px 9px; border:1px solid #2d5262; border-radius:7px; background:rgba(10,30,44,.92); color:#a9c7d2; font-size:11px; font-weight:650; pointer-events:none; }
+    #rackPreviewModal .rack-detail-layout--rack > div:last-child { min-width:0; }
+    #rackPreviewModal .rack-detail-tabs { display:flex; flex-wrap:wrap; gap:5px; width:fit-content; max-width:100%; padding:4px; margin:0 0 20px; border:1px solid #283f53; border-radius:10px; background:#101f30; }
+    #rackPreviewModal .rack-detail-tabs button { min-height:35px; padding:7px 13px; border:1px solid transparent; border-radius:7px; background:transparent; color:#a8bdcd; font-size:12px; font-weight:700; }
+    #rackPreviewModal .rack-detail-tabs button:hover { color:#e8f8ff; background:#1a3043; }
+    #rackPreviewModal .rack-detail-tabs button.primary { color:#dffaff; background:#16465c; border-color:#287088; box-shadow:none; }
+    #rackPreviewModal .rack-placement-section { margin:0 !important; }
+    #rackPreviewModal .rack-placement-section h3 { margin:18px 0 4px; font-size:16px; letter-spacing:-.02em; }
+    #rackPreviewModal .rack-placement-section > p { margin:0 0 16px; color:#8fa9bb; font-size:12px; line-height:1.5; }
+    #rackPreviewModal .rack-capacity-controls { display:flex; gap:9px; width:fit-content; padding:9px 11px; border:1px solid #263f52; border-radius:9px; background:#10202e; }
+    #rackPreviewModal .rack-capacity-controls label { display:flex; align-items:center; gap:7px; color:#a9c1d2; font-size:12px; font-weight:700; }
+    #rackPreviewModal [data-rack-add-form] { padding:16px; border:1px solid #263e52; border-radius:12px; background:#101f2e; gap:14px; }
+    #rackPreviewModal [data-rack-add-form] .field { min-width:0; gap:7px; color:#acc2d1; font-size:12px; }
+    #rackPreviewModal [data-rack-add-form] select, #rackPreviewModal [data-rack-add-form] input[type=number] { min-height:39px; border-radius:8px; }
+    #rackPreviewModal [data-rack-add-form] .field > strong { color:#edf7fb; font-size:13px; }
+    #rackPreviewModal [data-rack-add-form] .field > small { display:block; margin:0 0 4px; color:#839cae; line-height:1.45; }
+    #rackPreviewModal .rack-model-grid { grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:9px; max-height:330px; padding:3px; }
+    #rackPreviewModal .rack-model-grid button { position:relative; min-height:122px; padding:8px; border:1px solid #2b475a; border-radius:9px; background:#0d1b29; color:#c6dbe6; font-size:12px; line-height:1.3; transition:border-color .15s,background .15s,box-shadow .15s; }
+    #rackPreviewModal .rack-model-grid button:hover { border-color:#57b6c9; background:#132b3b; }
+    #rackPreviewModal .rack-model-grid button.is-selected { border-color:#51d5e7; background:#13394a; color:#ecfcff; box-shadow:0 0 0 1px rgba(81,213,231,.35); }
+    #rackPreviewModal .rack-model-grid button.is-selected::after { content:'선택'; position:absolute; top:6px; right:6px; padding:2px 5px; border-radius:4px; background:#17667b; color:#e8fbff; font-size:10px; }
+    #rackPreviewModal .rack-model-grid img { height:72px; }
+    #rackPreviewModal .rack-placement-list { margin-top:20px; }
+    #rackPreviewModal .rack-placement-list > strong { font-size:14px; color:#e8f4f9; }
+    #rackPreviewModal .rack-placement-list > p { margin:5px 0 12px; color:#8fa9bb; font-size:12px; line-height:1.5; }
+    #rackPreviewModal .rack-install-entry { min-width:0; padding:11px 12px; margin-top:7px; border:1px solid #273f52; border-radius:9px; background:#101e2d; transition:border-color .15s,background .15s; }
+    #rackPreviewModal .rack-install-entry:hover { border-color:#476f83; }
+    #rackPreviewModal .rack-install-entry.is-selected { border-color:#44cde0; background:#143849; box-shadow:0 0 0 1px rgba(68,205,224,.25); }
+    #rackPreviewModal .rack-install-entry > span { font-weight:650; font-size:12px; line-height:1.45; }
+    #rackPreviewModal .rack-install-entry button, #rackPreviewModal .rack-install-entry select { min-height:34px; font-size:12px; }
+    #rackPreviewModal .rack-selected-editor, #rackPreviewModal .rack-widget-card { border-radius:11px; }
+    #rackPreviewModal .rack-selected-editor { padding:16px; margin-bottom:14px; border-color:#31798b; background:#102d3c; }
+    #rackPreviewModal .rack-selected-title strong { font-size:13px; }
+    #rackPreviewModal .rack-widget-card { background:#10202e; border-color:#2a4357; }
+    html[data-theme="light"] #rackPreviewModal .rack-preview { background:#f5f8fb; border-color:#c8d9e5; }
+    html[data-theme="light"] #rackPreviewModal .rack-detail-tabs, html[data-theme="light"] #rackPreviewModal [data-rack-add-form], html[data-theme="light"] #rackPreviewModal .rack-capacity-controls, html[data-theme="light"] #rackPreviewModal .rack-widget-card { background:#fff; border-color:#cbdce6; }
+    html[data-theme="light"] #rackPreviewModal .rack-detail-tabs button { color:#415e70; }
+    html[data-theme="light"] #rackPreviewModal .rack-detail-tabs button.primary { color:#07556c; background:#dff4f7; border-color:#92cbd6; }
+    html[data-theme="light"] #rackPreviewModal .rack-placement-section > p, html[data-theme="light"] #rackPreviewModal .rack-placement-list > p, html[data-theme="light"] #rackPreviewModal .rack-capacity-controls label, html[data-theme="light"] #rackPreviewModal [data-rack-add-form] .field { color:#526d7c; }
+    html[data-theme="light"] #rackPreviewModal [data-rack-add-form] .field > strong, html[data-theme="light"] #rackPreviewModal .rack-placement-list > strong { color:#1b3444; }
+    html[data-theme="light"] #rackPreviewModal .rack-model-grid button, html[data-theme="light"] #rackPreviewModal .rack-install-entry { background:#f6fafc; color:#244352; border-color:#c5dbe4; }
+    html[data-theme="light"] #rackPreviewModal .rack-model-grid button.is-selected, html[data-theme="light"] #rackPreviewModal .rack-install-entry.is-selected { background:#e0f4f7; border-color:#2e9eb1; }
+    html[data-theme="light"] #rackPreviewModal .rack-selected-editor { background:#e7f6f8; border-color:#78bbc9; }
+    @media (max-width:900px) { #rackPreviewModal .rack-detail-stage { position:relative; height:min(55dvh,480px); } #rackPreviewModal .rack-preview-body.is-rack-layout-edit { overflow:auto; } }
+    @media (max-width:600px) { #rackPreviewModal { padding:8px; } #rackPreviewModal .rack-preview { max-height:calc(100dvh - 16px); } #rackPreviewModal .rack-preview-head { padding:13px 15px; } #rackPreviewModal .rack-preview-body { padding:12px; } #rackPreviewModal .rack-detail-tabs { width:100%; } #rackPreviewModal .rack-detail-tabs button { flex:1; padding:7px; } }
+
   </style>
 </head>
 <body>
@@ -1437,6 +1615,7 @@
     <button type="button" data-tab="wizard" data-role-gate="admin">장비 추가<small>등록부터 수집까지</small></button>
     <button type="button" data-tab="devices">장비 목록<small>통신 · 수집 연결</small></button>
     <button type="button" data-tab="assets">자산관리<small>Rack · U · 이미지</small></button>
+    <button type="button" data-tab="scene-models" data-role-gate="admin">3D 자산 관리<small>GLB · 건축 · 공장 설비</small></button>
     <button type="button" data-tab="rack-overview">랙 현황<small>점유 U · 설치 장비</small></button>
     <button type="button" data-tab="device-groups">장비 그룹<small>IT · Cooling · 운영 분류</small></button>
     <button type="button" data-tab="tasks">수집 작업<small>Task · 주기 그룹</small></button>
@@ -1444,7 +1623,6 @@
     <button type="button" data-tab="alarms" data-role-gate="admin-user">알람 · 임계값<small>이력 · 경보 기준</small></button>
     <button type="button" data-tab="device-pages" data-role-gate="admin-user">페이지 장비<small>페이지별 표시 대상</small></button>
     <div class="group">모니터링 화면</div>
-    <button type="button" data-tab="widget-board">위젯 보드<small>운영 대시보드 · 배치</small></button>
     <button type="button" data-tab="dashboard-page">Dashboard<small>운영 현황 위젯</small></button>
     <button type="button" data-tab="environment-page">Environment<small>환경 모니터링 위젯</small></button>
     <button type="button" data-tab="cooling-page">Cooling<small>냉각 설비 위젯</small></button>
@@ -1512,7 +1690,7 @@
     <section class="panel active" id="tab-home">
       <div class="home-hero">
         <div><span class="eyebrow">OPERATIONS CENTER</span><h1 class="page-title">데이터센터 운영을 한눈에</h1><p class="page-desc">장비 등록부터 수집 상태, 자산과 Rack, 위젯 구성까지 하나의 흐름으로 관리하세요.</p></div>
-        <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><button type="button" class="hero-link" data-quick-tab="widget-board">위젯 보드 열기 →</button></div>
+        <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><button type="button" class="hero-link" data-quick-tab="dashboard-page">Dashboard 위젯 열기 →</button></div>
       </div>
       <div class="stats home-stats">
         <div class="stat stat-location"><div class="stat-icon">⌖</div><div><div class="k">등록 위치</div><div class="v"><span id="statLoc">–</span><small> locations</small></div><p>Zone · Row · Rack</p></div></div>
@@ -1532,7 +1710,7 @@
             <li><div class="n">1</div><div><strong>위치 확인</strong><span>장비 추가 화면에서도 새 위치를 만들 수 있습니다</span></div></li>
             <li><div class="n">2</div><div><strong>모델 확인</strong><span>새 모델을 만들고 측정항목을 설정하세요</span></div></li>
             <li><div class="n">3</div><div><strong>장비 추가 마법사</strong><span>장비 → IP → 수집 작업까지</span></div></li>
-            <li><div class="n">4</div><div><strong>위젯으로 확인</strong><span>왼쪽 메뉴의 위젯 보드에서 최신값과 배치를 확인</span></div></li>
+            <li><div class="n">4</div><div><strong>위젯으로 확인</strong><span>Dashboard·Environment·Cooling 페이지에서 위젯을 구성</span></div></li>
           </ul>
           <div class="row" style="margin-top:14px">
             <button type="button" class="ghost" id="goDevices">장비 목록 보기</button>
@@ -1546,7 +1724,7 @@
           <button type="button" data-quick-tab="collection-status"><span>◉</span><div><strong>수집 상태</strong><small>지연·누락 장비 확인</small></div><b>→</b></button>
           <button type="button" data-quick-tab="rack-overview"><span>▤</span><div><strong>Rack 현황</strong><small>U 점유와 배치 관리</small></div><b>→</b></button>
           <button type="button" data-quick-tab="assets"><span>◆</span><div><strong>자산 관리</strong><small>상태·문서·이력 관리</small></div><b>→</b></button>
-          <button type="button" data-quick-tab="widget-board"><span>▦</span><div><strong>위젯 보드</strong><small>위젯 등록 · 배치</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="dashboard-page"><span>▦</span><div><strong>Dashboard 위젯</strong><small>페이지 안에서 위젯 등록 · 배치</small></div><b>→</b></button>
         </div>
       </div>
     </section>
@@ -1763,6 +1941,18 @@
               <div id="assetDocumentList" class="pick-list" style="margin-top:12px"></div>
             </div>
           </div>
+          <div class="card" data-asset-pane="files">
+            <h2>2D 도면 · 3D 모델 파일</h2>
+            <p class="muted" style="font-size:12px">현재 선택한 장비 자산에 파일을 저장합니다. 2D는 SVG/PNG/JPG/WEBP, 3D는 OBJ/GLB를 지원합니다. 각 파일은 20MB 이하입니다.</p>
+            <div class="grid2">
+              <label class="field">2D 도면 파일<input id="asset2dFile" type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" /></label>
+              <label class="field">3D 모델 파일 (OBJ/GLB)<input id="asset3dFile" type="file" accept=".obj,.glb,text/plain,model/gltf-binary" /></label>
+            </div>
+            <div class="row" style="margin-top:8px"><button type="button" class="primary" id="asset2dUpload">2D 파일 저장</button><button type="button" class="primary" id="asset3dUpload">3D 파일 저장</button><button type="button" class="ghost" id="assetModelSampleCreate">선택 자산 기준 예시 2D·3D 생성</button></div>
+            <div class="row" style="margin-top:8px"><label class="field">쇼룸 3D 모델<select id="showroomAssetModel"><option value="">모델 선택</option></select></label><button type="button" class="ghost" id="showroomAssetImport">선택 자산에 모델 추가</button></div>
+            <div id="assetModelHint" class="muted" style="margin-top:8px">자산을 선택하면 이 자산의 도면과 모델 파일을 등록·미리보기할 수 있습니다.</div>
+            <div id="assetModelFiles" class="asset-model-grid"></div>
+          </div>
           <div class="card" data-asset-pane="rack">
             <div class="row" style="justify-content:space-between"><h2 style="margin:0">Rack 보기</h2><button type="button" class="ghost" id="assetRackLayoutLoad">조회</button></div>
             <select id="assetRackLayout" style="margin-top:10px;width:100%"></select>
@@ -1771,6 +1961,35 @@
         </div>
       </div>
     </div>
+
+    <!-- SCENE MODEL CATALOG -->
+    <section class="panel" id="tab-scene-models">
+      <h1 class="page-title">3D 자산 관리</h1>
+      <p class="page-desc">도면에 배치할 모델을 등록하고 카테고리, 이름, 기본 크기, 파일을 관리합니다. 카테고리는 도면의 3D 모델 선택 창에도 적용됩니다.</p>
+      <div class="card" data-role-gate="admin">
+        <div class="row" style="justify-content:space-between"><h2 id="sceneModelFormTitle" style="margin:0">새 모델 등록</h2><button type="button" class="ghost" id="sceneModelReset">새 모델</button></div>
+        <div class="fields" style="margin-top:12px">
+          <label class="field">모델 이름<input id="sceneModelName" maxlength="120" placeholder="예: 냉각기" /></label>
+          <label class="field">카테고리<input id="sceneModelCategory" list="sceneModelCategoryOptions" maxlength="50" value="기타" placeholder="예: 랙·서버" /><datalist id="sceneModelCategoryOptions"></datalist></label>
+          <label class="field">너비 (m)<input id="sceneModelWidth" type="number" min="0.01" max="100" step="0.001" value="1" /></label>
+          <label class="field">높이 (m)<input id="sceneModelHeight" type="number" min="0.01" max="100" step="0.001" value="2" /></label>
+          <label class="field">깊이 (m)<input id="sceneModelDepth" type="number" min="0.01" max="100" step="0.001" value="1" /></label>
+          <label class="field">GLB 파일<input id="sceneModelFile" type="file" accept=".glb,model/gltf-binary" /></label>
+          <label class="field">상태<select id="sceneModelEnabled"><option value="true">사용</option><option value="false">선택 목록에서 숨김</option></select></label>
+        </div>
+        <p class="muted" style="font-size:12px">새 모델은 20MB 이하 GLB 파일이 필요합니다. 기존 모델은 파일을 선택하지 않으면 현재 파일을 유지합니다. 크기 변경은 기존 도면에도 반영됩니다.</p>
+        <div class="row"><button type="button" class="primary" id="sceneModelSave">모델 등록</button><span class="muted" id="sceneModelSelected"></span></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">등록된 3D 모델</h2><div class="row"><label class="muted" for="sceneModelCategoryFilter">카테고리</label><select id="sceneModelCategoryFilter"><option value="">전체</option></select><button type="button" class="ghost" id="sceneModelReload">새로고침</button></div></div>
+        <div id="sceneModelList" class="scene-model-list"></div>
+      </div>
+      <div class="card" style="margin-top:14px" data-role-gate="admin">
+        <div class="row" style="justify-content:space-between"><h2 style="margin:0">건축·공간 / 공장 설비</h2><button type="button" class="ghost" id="sceneBuiltinReload">새로고침</button></div>
+        <p class="muted" style="font-size:12px">기본 자산은 형태를 바꾸려면 화면 코드 수정이 필요합니다. 여기서는 이름과 선택 목록 표시 여부를 관리합니다. 새 형태는 위에서 GLB 모델로 등록할 수 있습니다.</p>
+        <div id="sceneBuiltinList" class="scene-model-list"></div>
+      </div>
+    </section>
 
     <!-- RACK OVERVIEW -->
     <section class="panel" id="tab-rack-overview">
@@ -1781,7 +2000,7 @@
         <div class="stat"><div class="k">빈 Rack</div><div class="v" id="rackStatEmpty">–</div></div>
         <div class="stat"><div class="k">전체 Rack U</div><div class="v" id="rackStatCapacity">–</div></div>
         <div class="stat"><div class="k">사용 가능 U</div><div class="v" id="rackStatAvailable">–</div></div>
-        <div class="stat"><div class="k">설치 장비</div><div class="v" id="rackStatDevices">–</div></div>
+        <div class="stat"><div class="k">설치 항목</div><div class="v" id="rackStatDevices">–</div></div>
       </div>
       <div class="card">
         <div class="row" style="justify-content:space-between">
@@ -2229,6 +2448,18 @@
         <p class="muted" style="font-size:11px;margin:-4px 0 10px">전체 선택·해제는 검색 결과가 아닌 이 페이지의 전체 장비에 적용됩니다. 선택 저장을 눌러야 반영됩니다.</p>
         <div id="pdDeviceList" class="page-device-list"><div class="empty">페이지를 선택하면 장비 목록이 나타납니다.</div></div>
       </div>
+      <div class="card" style="margin-top:12px">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div><h2 style="margin:0">페이지 보기 방식</h2><div class="muted" style="font-size:12px;margin-top:5px">도면과 랙·센서 배치는 해당 페이지에서 연필 버튼을 눌러 편집합니다.</div></div>
+          <button type="button" class="primary" id="pdDisplaySave" data-role-gate="admin" disabled>화면 구성 저장</button>
+        </div>
+        <div style="max-width:440px;margin-top:12px">
+          <label class="field">페이지 보기 방식
+            <select id="pdViewMode"><option value="DATA">데이터 목록</option><option value="PLAN_2D">2D 평면도</option><option value="SCENE_3D">3D 장면</option></select>
+          </label>
+        </div>
+        <p id="pdSceneEditorHint" class="muted" style="font-size:11px;margin:8px 0">페이지 보기 방식을 선택하세요.</p>
+      </div>
     </section>
 
     <!-- Widget editor backing fields; the visible workspace is Widget Board. -->
@@ -2503,6 +2734,13 @@
             <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">기준을 넘은 값은 수집 지연으로 표시됩니다.</div>
           </div>
           <div class="widget-review" id="wReview" data-widget-stage="3" aria-live="polite"></div>
+          <section class="widget-page-preview" data-widget-stage="3" aria-label="페이지 화면 미리보기">
+            <div class="widget-page-preview-head">
+              <div><strong id="wPagePreviewTitle">페이지 배경 미리보기</strong><p class="muted">선택한 페이지의 2D·3D 도면과 저장된 위젯 배치를 함께 표시합니다.</p></div>
+              <button type="button" class="ghost" id="wEditPageLayout">페이지에서 위젯 크기·위치 조정</button>
+            </div>
+            <iframe id="wPagePreviewFrame" title="선택한 페이지의 도면과 위젯 미리보기" loading="lazy"></iframe>
+          </section>
           <div class="widget-editor-footer">
             <button type="button" class="ghost" id="wStepBack">이전</button>
             <div class="row" style="gap:8px">
@@ -3128,10 +3366,7 @@
       </div>
     </section>
 
-    <!-- MONITORING PAGES: keep their existing functionality within the console navigation. -->
-    <section class="panel embedded-page" id="tab-widget-board">
-      <iframe id="widgetBoardFrame" title="위젯 보드" data-page-src="/widget-dashboard.html?embedded=1&boardView=1&pageCode=dashboard" loading="lazy"></iframe>
-    </section>
+    <!-- Monitoring pages own their widget editing tools and per-page layout. -->
     <section class="panel embedded-page widget-display-page" id="tab-dashboard-page">
       <iframe title="Dashboard 위젯" data-page-key="dashboard" loading="lazy"></iframe>
     </section>
@@ -3294,6 +3529,8 @@
       pageDeviceIds: new Set(),
       savedPageDeviceIds: new Set(),
       pageDeviceLoadedCode: null,
+      pageDisplay: { viewMode: "DATA", layoutAssetKey: null, devices: [] },
+      pageDisplayDirty: false,
       assets: [],
       users: [],
       rackLayouts: [],
@@ -3352,6 +3589,8 @@
       selectedAssetId: null,
       selectedAsset: null,
       assetImageUrls: [],
+      assetModelUrls: [],
+      assetModelViews: [],
       assetPreviewImageUrl: null,
       returnToLoraModelMapping: false,
     };
@@ -3474,6 +3713,7 @@
       refreshAccessToken: () => refreshAccessToken(),
       expire: () => clearAuth(),
     });
+    window.dcimModelToken = () => state.token;
 
     async function api(path, options = {}) {
       const { retryOnUnauthorized = true, ...requestOptions } = options;
@@ -3525,6 +3765,7 @@
       toast((data.username || username) + "님, 로그인했습니다");
       log("로그인 OK: " + (data.username || username));
       await boot();
+      restoreActiveTab();
     }
 
     function esc(s) {
@@ -3536,13 +3777,187 @@
         .map(Number).filter((n) => Number.isFinite(n));
     }
 
+    let sceneModelEditingKey = null;
+    let sceneModels = [];
+    function resetSceneModelForm() {
+      sceneModelEditingKey = null;
+      $("sceneModelFormTitle").textContent = "새 모델 등록";
+      $("sceneModelSave").textContent = "모델 등록";
+      $("sceneModelSelected").textContent = "";
+      $("sceneModelName").value = "";
+      $("sceneModelCategory").value = "기타";
+      $("sceneModelWidth").value = "1";
+      $("sceneModelHeight").value = "2";
+      $("sceneModelDepth").value = "1";
+      $("sceneModelEnabled").value = "true";
+      $("sceneModelEnabled").disabled = true;
+      $("sceneModelFile").value = "";
+    }
+
+    async function loadSceneModels() {
+      sceneModels = await api("/api/manager/scene-models", { cache: "no-store" });
+      const categories = [...new Set(sceneModels.map((model) => model.category || "기타"))].sort((a, b) => a.localeCompare(b, "ko"));
+      const filter = $("sceneModelCategoryFilter");
+      const previousFilter = filter.value;
+      filter.replaceChildren(new Option("전체", ""), ...categories.map((category) => new Option(category, category)));
+      filter.value = categories.includes(previousFilter) ? previousFilter : "";
+      $("sceneModelCategoryOptions").replaceChildren(...[...new Set([
+        "랙·서버", "프레임·구조물", "냉각 설비", "전력 설비", "건축·공간", "공장 설비", "기타", ...categories,
+      ])].map((category) => {
+        const option = document.createElement("option"); option.value = category; return option;
+      }));
+      const list = $("sceneModelList");
+      list.innerHTML = sceneModels.length ? [...sceneModels].sort((a, b) =>
+        (a.category || "기타").localeCompare(b.category || "기타", "ko") || a.label.localeCompare(b.label, "ko")
+      ).map((model) => `
+        <article class="scene-model-card" data-scene-model="${esc(model.key)}" data-scene-category="${esc(model.category || "기타")}">
+          <div class="preview-empty" data-scene-preview>미리보기 불러오는 중</div>
+          <strong>${esc(model.label)} ${model.enabled ? "" : "(숨김)"}</strong>
+          <small>${esc(model.category || "기타")} · ${esc(model.file)}<br>${model.width} × ${model.height} × ${model.depth} m · ${model.builtin ? "기본 모델" : "업로드 모델"}${model.inUse ? " · 도면에서 사용 중" : ""}</small>
+          <div class="row" style="margin-bottom:8px"><label><input type="checkbox" data-scene-rack-u="${esc(model.key)}" ${model.rackUInstallable ? "checked" : ""}> 랙 U 장착</label><label><input type="checkbox" data-scene-rack-attachment="${esc(model.key)}" ${model.rackAttachmentInstallable ? "checked" : ""}> 랙 부착</label></div>
+          <div class="row"><button type="button" class="ghost" data-scene-edit="${esc(model.key)}">수정</button><button type="button" class="danger" data-scene-delete="${esc(model.key)}" ${model.inUse ? "disabled title=\"도면에서 사용 중\"" : ""}>삭제</button></div>
+        </article>`).join("") : '<div class="empty">등록된 3D 모델이 없습니다.</div>';
+      filter.onchange = () => list.querySelectorAll("[data-scene-model]").forEach((card) => {
+        card.style.display = !filter.value || card.dataset.sceneCategory === filter.value ? "" : "none";
+      });
+      filter.onchange();
+      list.querySelectorAll("[data-scene-rack-u], [data-scene-rack-attachment]").forEach((control) => control.onchange = async () => {
+        const card = control.closest('[data-scene-model]'), key = card.dataset.sceneModel;
+        const u = card.querySelector('[data-scene-rack-u]'), attachment = card.querySelector('[data-scene-rack-attachment]');
+        control.disabled = true;
+        try { const updated = await api(`/api/manager/scene-models/${encodeURIComponent(key)}/rack-mount-options`, {method:'PATCH', body:JSON.stringify({rackUInstallable:u.checked, rackAttachmentInstallable:attachment.checked})});
+          const model = sceneModels.find((entry) => entry.key === key); if (model) Object.assign(model, updated); toast('랙 설치 방식을 저장했습니다.');
+        } catch (error) { control.checked = !control.checked; toast(error.message, true); } finally { control.disabled = false; }
+      });
+      list.querySelectorAll("[data-scene-edit]").forEach((button) => button.onclick = () => {
+        const model = sceneModels.find((entry) => entry.key === button.dataset.sceneEdit);
+        if (!model) return;
+        sceneModelEditingKey = model.key;
+        $("sceneModelFormTitle").textContent = "3D 모델 수정";
+        $("sceneModelSave").textContent = "변경 저장";
+        $("sceneModelSelected").textContent = `${model.key} · ${model.file}`;
+        $("sceneModelName").value = model.label;
+        $("sceneModelCategory").value = model.category || "기타";
+        $("sceneModelWidth").value = model.width;
+        $("sceneModelHeight").value = model.height;
+        $("sceneModelDepth").value = model.depth;
+        $("sceneModelEnabled").value = String(model.enabled);
+        $("sceneModelEnabled").disabled = false;
+        $("sceneModelFile").value = "";
+        $("tab-scene-models").scrollTo({ top: 0, behavior: "smooth" });
+      });
+      list.querySelectorAll("[data-scene-delete]").forEach((button) => button.onclick = async () => {
+        const model = sceneModels.find((entry) => entry.key === button.dataset.sceneDelete);
+        if (!model || model.inUse || !confirm(`${model.label} 모델을 삭제할까요?`)) return;
+        try {
+          await api(`/api/manager/scene-models/${encodeURIComponent(model.key)}`, { method: "DELETE" });
+          if (sceneModelEditingKey === model.key) resetSceneModelForm();
+          await loadSceneModels(); toast("3D 모델을 삭제했습니다.");
+        } catch (error) { toast(error.message, true); }
+      });
+      try {
+        await import("/page-scene-3d.js?v=20261103o");
+        window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
+          const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
+          const preview = card?.querySelector("[data-scene-preview]");
+          if (!preview) return;
+          if (!data) { preview.textContent = "미리보기 없음"; return; }
+          const img = document.createElement("img"); img.src = data; img.alt = ""; preview.replaceWith(img);
+        }, () => document.querySelector("#tab-scene-models.active") != null && list.isConnected);
+      } catch (error) { console.warn("3D 모델 미리보기 실패", error); }
+    }
+
+    async function loadSceneBuiltins() {
+      const assets = await api("/api/manager/scene-builtin-assets", { cache: "no-store" });
+      const list = $("sceneBuiltinList");
+      list.innerHTML = assets.length ? assets.map((asset) => `
+        <article class="scene-model-card" data-builtin-asset="${esc(asset.key)}">
+          <div class="preview-empty" data-builtin-preview>미리보기 불러오는 중</div>
+          <small>${asset.category === "ARCHITECTURE" ? "건축·공간" : "공장 설비"} · ${esc(asset.key)}</small>
+          <label class="field">이름<input data-builtin-label maxlength="120" value="${esc(asset.label)}" /></label>
+          <label class="field">상태<select data-builtin-enabled><option value="true" ${asset.enabled ? "selected" : ""}>사용</option><option value="false" ${asset.enabled ? "" : "selected"}>선택 목록에서 숨김</option></select></label>
+          <div class="row"><button type="button" class="primary" data-builtin-save="${esc(asset.key)}">변경 저장</button></div>
+        </article>`).join("") : '<div class="empty">기본 3D 자산이 없습니다.</div>';
+      list.querySelectorAll("[data-builtin-save]").forEach((button) => button.onclick = async () => {
+        const card = button.closest("[data-builtin-asset]");
+        const label = card.querySelector("[data-builtin-label]").value.trim();
+        if (!label || label.length > 120) { toast("자산 이름은 1~120자여야 합니다.", true); return; }
+        button.disabled = true;
+        try {
+          await api(`/api/manager/scene-builtin-assets/${encodeURIComponent(button.dataset.builtinSave)}`, {
+            method: "PUT", body: JSON.stringify({ label, enabled: card.querySelector("[data-builtin-enabled]").value === "true" }),
+          });
+          toast("기본 3D 자산을 수정했습니다.");
+        } catch (error) { toast(error.message, true); }
+        finally { button.disabled = false; }
+      });
+      try {
+        await import("/page-scene-3d.js?v=20261103o");
+        await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
+          const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
+          const preview = card?.querySelector("[data-builtin-preview]");
+          if (!preview) return;
+          if (!data) { preview.textContent = "미리보기 없음"; return; }
+          const img = document.createElement("img"); img.src = data; img.alt = ""; preview.replaceWith(img);
+        }, () => document.querySelector("#tab-scene-models.active") != null && list.isConnected);
+      } catch (error) { console.warn("기본 3D 자산 미리보기 실패", error); }
+    }
+
+    async function sceneModelFormRequest(path, method, form) {
+      const send = () => fetch(base() + path, {
+        method, headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+        body: form, credentials: "same-origin",
+      });
+      let res = await send();
+      if (res.status === 401 && await refreshAccessToken()) res = await send();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+      return json.data;
+    }
+
+    async function saveSceneModel() {
+      const name = $("sceneModelName").value.trim();
+      const category = $("sceneModelCategory").value.trim();
+      const width = Number($("sceneModelWidth").value), height = Number($("sceneModelHeight").value), depth = Number($("sceneModelDepth").value);
+      const file = $("sceneModelFile").files[0];
+      if (!name || !category || category.length > 50 || ![width, height, depth].every((value) => value >= .1 && value <= 100) || (!sceneModelEditingKey && !file)) {
+        throw new Error("이름, 카테고리(1~50자), 크기(각 축 0.1~100m), 새 모델의 GLB 파일을 확인하세요.");
+      }
+      const form = new FormData();
+      form.set("name", name); form.set("category", category); form.set("width", String(width)); form.set("height", String(height)); form.set("depth", String(depth));
+      if (file) form.set("file", file);
+      if (sceneModelEditingKey) form.set("enabled", $("sceneModelEnabled").value);
+      const editing = sceneModelEditingKey;
+      const path = editing ? `/api/manager/scene-models/${encodeURIComponent(editing)}` : "/api/manager/scene-models";
+      await sceneModelFormRequest(path, editing ? "PUT" : "POST", form);
+      resetSceneModelForm(); await loadSceneModels();
+      $("sceneModelCategoryFilter").value = category;
+      $("sceneModelCategoryFilter").onchange();
+      toast(editing ? "3D 모델을 수정했습니다." : "3D 모델을 등록했습니다.");
+    }
+
+    window.addEventListener("beforeunload", (event) => {
+      const dirty = [...document.querySelectorAll("iframe[data-page-key]")]
+        .some((frame) => frame.contentWindow?.dcimSceneHasUnsavedChanges?.());
+      if (dirty) { event.preventDefault(); event.returnValue = ""; }
+    });
+
     function goTab(name) {
-      if (name === "widgets") name = "widget-board";
+      if (name === "widgets" || name === "widget-board") name = "dashboard-page";
+      const activePage = document.querySelector(".embedded-page:not([hidden])");
+      if (activePage && activePage.id !== `tab-${name}`) {
+        const frame = activePage.querySelector("iframe[data-page-key]");
+        if (frame?.contentWindow?.dcimSceneHasUnsavedChanges?.()
+          && !confirm("도면에 저장하지 않은 변경이 있습니다. 다른 페이지로 이동할까요?")) return;
+      }
       if (!canAccessTab(name)) {
         toast("이 메뉴에 접근할 권한이 없습니다", true);
         name = "home";
       }
-      const embedded = new Set(["widget-board", "dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor"]);
+      if (state.token) {
+        try { sessionStorage.setItem("opsConsoleActiveTab", name); } catch (_) { /* Storage may be unavailable. */ }
+      }
+      const embedded = new Set(["dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor"]);
       if (name !== "devices") closeDeviceDetail(false);
       document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
@@ -3555,8 +3970,6 @@
         if (frame && !frame.dataset.loaded) {
           frame.src = frame.dataset.pageSrc;
           frame.dataset.loaded = "true";
-        } else if (frame && name === "widget-board") {
-          frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
         }
         const pageFrame = document.querySelector(`#tab-${name} iframe[data-page-key]`);
         if (pageFrame) {
@@ -3564,7 +3977,7 @@
             pageFrame.addEventListener("load", () => {
               pageFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
             }, { once: true });
-            pageFrame.src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&pageCode=${encodeURIComponent(pageFrame.dataset.pageKey)}`;
+            pageFrame.src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&boardView=1&pageCode=${encodeURIComponent(pageFrame.dataset.pageKey)}`;
             pageFrame.dataset.loaded = "true";
           } else {
             pageFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
@@ -3575,7 +3988,14 @@
       if (name === "home" && state.token) loadHomeOverview().catch((e) => log("한눈에 보기 갱신 실패: " + e.message));
       scheduleHomeOverviewRefresh();
       document.body.classList.remove("side-open");
-      if (name === "assets" && state.token) loadAssets().catch((e) => toast(e.message, true));
+      if (name === "assets" && state.token) {
+        loadAssets().catch((e) => toast(e.message, true));
+        loadSceneModelAssetOptions().catch((e) => toast(e.message, true));
+      }
+      if (name === "scene-models" && state.token) {
+        loadSceneModels().catch((e) => toast(e.message, true));
+        loadSceneBuiltins().catch((e) => toast(e.message, true));
+      }
       if (name === "users" && state.token) loadUsers().catch((e) => toast(e.message, true));
       if (name === "rack-overview" && state.token) loadRackOverview().catch((e) => toast(e.message, true));
       if (name === "collection-status" && state.token) {
@@ -3595,10 +4015,72 @@
       if (name === "lora-collection-status" && state.token) loadLoraCollectionStatus().catch((e) => toast(e.message, true));
     }
 
+    function restoreActiveTab() {
+      let saved = "";
+      try { saved = sessionStorage.getItem("opsConsoleActiveTab") || ""; } catch (_) { /* Use the default page. */ }
+      const menuExists = [...document.querySelectorAll("#tabs button[data-tab]")].some((button) => button.dataset.tab === saved);
+      const valid = menuExists && !!document.getElementById(`tab-${saved}`) && canAccessTab(saved);
+      goTab(valid ? saved : "home");
+    }
+
     window.addEventListener("message", (event) => {
-      if (event.origin !== location.origin || event.source !== $("widgetBoardFrame")?.contentWindow) return;
+      const sourceFrame = [...document.querySelectorAll(".widget-display-page iframe[data-page-key]")]
+        .find((frame) => frame.contentWindow === event.source);
+      if (event.origin !== location.origin || !sourceFrame) return;
+      if (event.data?.type === "dcim:dashboard:rack-locked") {
+        toast("잠긴 랙입니다. 편집에서 랙을 선택하고 잠금 해제한 뒤 설정하세요."); return;
+      }
+      if (event.data?.type === "dcim:dashboard:open-panel") {
+        const label = String(event.data.label || "분전반").slice(0, 120);
+        const ids = Array.isArray(event.data.deviceIds) ? event.data.deviceIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0).slice(0, 100) : [];
+        openPanelFromScene(label, sourceFrame.dataset.pageKey || "", ids);
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:rack-link-required") {
+        toast("편집에서 랙을 더블클릭해 실제 랙과 연결하고 도면을 저장하세요."); return;
+      }
+      if (event.data?.type === "dcim:dashboard:choose-rack") {
+        if (state.role !== "ADMIN") return;
+        const itemKey = String(event.data.itemKey || "");
+        if (!itemKey || itemKey.length > 160) return;
+        const racks = assetRacks();
+        if (!racks.length) { toast("연결할 랙 위치가 없습니다. 위치 관리에서 랙을 등록하세요.", true); return; }
+        const dialog = document.createElement("dialog");
+        dialog.style.cssText = "max-width:480px;width:90%;padding:24px;border:1px solid #47728b;border-radius:12px;background:#102131;color:#e5f7ff";
+        const title = document.createElement("h3"); title.textContent = "실제 랙 연결";
+        const note = document.createElement("p"); note.textContent = "위치 관리에 등록된 랙을 선택하세요. 연결은 도면 저장 후 유지됩니다.";
+        const currentCode = String(event.data.currentRackCode || "").trim();
+        const usedCodes = new Set((Array.isArray(event.data.rackLinks) ? event.data.rackLinks : [])
+          .filter((link) => link && String(link.itemKey || "") !== itemKey)
+          .map((link) => String(link.rackLocationCode || "").trim()).filter(Boolean));
+        note.textContent = "현재 페이지에서 이미 연결된 랙은 선택할 수 없습니다. 연결은 도면 저장 후 유지됩니다.";
+        const select = document.createElement("select"); select.style.width = "100%";
+        const placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = "연결할 랙을 선택하세요"; placeholder.disabled = true; select.append(placeholder);
+        for (const rack of racks) {
+          const option = document.createElement("option"); option.value = rack.code;
+          const used = usedCodes.has(String(rack.code)); option.disabled = used;
+          option.textContent = `${rack.name} (${rack.code})${used ? " · 연결됨" : rack.code === currentCode ? " · 현재 연결" : ""}`;
+          select.append(option);
+        }
+        select.value = currentCode && !usedCodes.has(currentCode) ? currentCode : "";
+        const actions = document.createElement("div"); actions.style.cssText = "display:flex;gap:8px;justify-content:flex-end;margin-top:16px";
+        const cancel = document.createElement("button"); cancel.type = "button"; cancel.textContent = "취소"; cancel.onclick = () => dialog.close();
+        const apply = document.createElement("button"); apply.type = "button"; apply.textContent = "연결";
+        apply.onclick = () => { if (!select.value || usedCodes.has(select.value)) { toast("연결할 수 있는 랙을 선택하세요.", true); return; } sourceFrame.contentWindow.postMessage({ type: "dcim:dashboard:rack-selected", itemKey, rackLocationCode: select.value }, location.origin); dialog.close(); };
+        actions.append(cancel, apply); dialog.append(title, note, select, actions); document.body.append(dialog);
+        dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal(); return;
+      }
+      if (event.data?.type === "dcim:dashboard:open-rack") {
+        rackDetailPageCode = sourceFrame.dataset.pageKey || "";
+        rackDetailModelKey = String(event.data.rackModelKey || "RACK");
+        rackDetailEditing = event.data.editing === true && state.role === "ADMIN";
+        const code = String(event.data.rackLocationCode || "").trim();
+        if (!code) return;
+        openRackFromScene(code).catch((error) => toast(`랙 상세 조회 실패: ${error.message}`, true));
+        return;
+      }
       if (event.data?.type === "dcim:dashboard:add-widget") {
-        openWidgetEditorForPage(event.data.pageCode);
+        openWidgetEditorForPage(event.data.pageCode || sourceFrame.dataset.pageKey);
         return;
       }
       if (event.data?.type === "dcim:dashboard:edit-widget") {
@@ -3609,6 +4091,20 @@
       }
       if (event.data?.type === "dcim:dashboard:calculated-metrics") {
         openCalculatedMetrics();
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:open-layout-editor") {
+        if (state.role !== "ADMIN") return;
+        const pageCode = String(event.data.pageCode || sourceFrame.dataset.pageKey || "");
+        sourceFrame.dataset.layoutEditing = "true";
+        sourceFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&layoutEdit=1&pageCode=${encodeURIComponent(pageCode)}`;
+        return;
+      }
+      if (["dcim:dashboard:layout-saved", "dcim:dashboard:layout-cancelled"].includes(event.data?.type)
+          && sourceFrame.dataset.layoutEditing === "true") {
+        const pageCode = String(event.data.pageCode || sourceFrame.dataset.pageKey || "");
+        sourceFrame.dataset.layoutEditing = "false";
+        sourceFrame.src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&boardView=1&pageCode=${encodeURIComponent(pageCode)}`;
         return;
       }
       if (!["dcim:dashboard:layout-saved", "dcim:dashboard:widgets-changed"].includes(event.data?.type)) return;
@@ -3783,6 +4279,7 @@
       } catch (_) {
         // 서버 연결이 끊겨도 이 브라우저의 Access Token은 즉시 폐기한다.
       } finally {
+        try { sessionStorage.removeItem("opsConsoleActiveTab"); } catch (_) { /* Storage may be unavailable. */ }
         clearAuth();
         toast("로그아웃했습니다");
       }
@@ -5084,6 +5581,7 @@
       updateAssetMountFields();
       await renderAssetImages(detail.images || []);
       renderAssetDocuments(detail.documents || []);
+      await renderAssetModelFiles(detail.documents || []);
       await loadAssetHistory(deviceId);
       await loadAssetRackHistory(deviceId);
     }
@@ -5194,9 +5692,134 @@
       return `${(size / (1024 * 1024)).toFixed(1)} MB`;
     }
 
+    function assetModelKind(device) {
+      const words = `${device?.name || ""} ${device?.modelName || ""} ${device?.manufacturer || ""}`.toLowerCase();
+      if (/rack|랙/.test(words)) return "RACK";
+      if (/pdu/.test(words)) return "PDU";
+      if (/crac|공조|항온항습|cooling/.test(words)) return "CRAC";
+      if (/ups/.test(words)) return "UPS";
+      if (/server|서버/.test(words)) return "SERVER";
+      return "EQUIPMENT";
+    }
+
+    function sampleAssetSvg(device, kind) {
+      const label = esc(device?.name || "장비 자산");
+      const model = esc(device?.modelName || kind);
+      let shape = "<rect x='220' y='95' width='200' height='235' rx='8' fill='#314757' stroke='#6bd5e5' stroke-width='6'/><rect x='244' y='118' width='152' height='185' fill='#172632' stroke='#90a8b0' stroke-width='3'/><circle cx='380' cy='135' r='6' fill='#53e391'/>";
+      if (kind === "RACK" || kind === "SERVER") shape = `<rect x='236' y='52' width='168' height='288' rx='5' fill='#263b4a' stroke='#73dcec' stroke-width='6'/>${[0,1,2,3,4,5].map((i)=>`<rect x='256' y='${72+i*42}' width='128' height='32' rx='3' fill='#101b26' stroke='#537887' stroke-width='2'/><circle cx='370' cy='${88+i*42}' r='4' fill='#53e391'/>`).join("")}`;
+      if (kind === "PDU") shape = `<rect x='275' y='44' width='90' height='300' rx='12' fill='#263b4a' stroke='#73dcec' stroke-width='6'/>${[0,1,2,3,4,5].map((i)=>`<rect x='295' y='${78+i*39}' width='50' height='18' rx='8' fill='#0b141e' stroke='#a8c1c6' stroke-width='2'/>`).join("")}<circle cx='320' cy='62' r='6' fill='#53e391'/>`;
+      if (kind === "CRAC") shape = `<rect x='220' y='75' width='200' height='265' rx='8' fill='#d6e0dc' stroke='#73dcec' stroke-width='6'/><circle cx='320' cy='170' r='58' fill='#263b4a' stroke='#8eb4bb' stroke-width='8'/><circle cx='320' cy='170' r='12' fill='#65c6d5'/><rect x='252' y='260' width='136' height='42' fill='#263b4a'/>`;
+      if (kind === "UPS") shape = `<rect x='226' y='60' width='188' height='280' rx='8' fill='#52666d' stroke='#73dcec' stroke-width='6'/><rect x='250' y='92' width='140' height='72' rx='5' fill='#15232d'/><rect x='266' y='110' width='108' height='32' fill='#55d6b2'/><rect x='250' y='190' width='140' height='112' rx='4' fill='#30444c'/>`;
+      return `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 400'><defs><linearGradient id='bg' x2='0' y2='1'><stop stop-color='#172638'/><stop offset='1' stop-color='#0c1724'/></linearGradient></defs><rect width='640' height='400' fill='url(#bg)'/><path d='M70 340H570M110 350V370M530 350V370' stroke='#456271' stroke-width='3'/>${shape}<text x='320' y='28' fill='#c8f6ff' font-size='18' text-anchor='middle' font-family='sans-serif'>${label}</text><text x='320' y='385' fill='#91acbb' font-size='14' text-anchor='middle' font-family='sans-serif'>${model} · 2D 자산 예시</text></svg>`;
+    }
+
+    function sampleAssetObj(device, kind) {
+      const lines = [`# DCIM 3D asset sample for ${device?.name || "asset"}`, `o ${kind}`];
+      let vertex = 1;
+      const box = (name, cx, cy, cz, sx, sy, sz) => {
+        lines.push(`o ${name}`);
+        const x0=cx-sx/2, x1=cx+sx/2, y0=cy-sy/2, y1=cy+sy/2, z0=cz-sz/2, z1=cz+sz/2;
+        lines.push(`v ${x0} ${y0} ${z0}`,`v ${x1} ${y0} ${z0}`,`v ${x1} ${y1} ${z0}`,`v ${x0} ${y1} ${z0}`,`v ${x0} ${y0} ${z1}`,`v ${x1} ${y0} ${z1}`,`v ${x1} ${y1} ${z1}`,`v ${x0} ${y1} ${z1}`);
+        const f=[[1,4,3,2],[5,6,7,8],[1,2,6,5],[2,3,7,6],[3,4,8,7],[4,1,5,8]];
+        for (const face of f) lines.push(`f ${face.map((index)=>index+vertex-1).join(" ")}`);
+        vertex += 8;
+      };
+      if (kind === "RACK") {
+        box("rack_frame",0,1.05,0,.9,2.1,.9); box("rack_front",0,1.05,.47,.78,1.92,.035);
+        for (let i=0;i<8;i++) box(`server_${i+1}`,0,.2+i*.23,.51,.68,.16,.09);
+      } else if (kind === "PDU") {
+        box("pdu_body",0,1.1,0,.25,2.2,.22);
+        for (let i=0;i<6;i++) box(`socket_${i+1}`,0,.35+i*.3,.13,.12,.12,.035);
+      } else if (kind === "CRAC") {
+        box("crac_cabinet",0,.95,0,1.2,1.9,.8); box("fan_grill",0,1.15,.42,.74,.66,.04); box("base",0,.08,0,1.24,.16,.84);
+      } else if (kind === "UPS") {
+        box("ups_cabinet",0,.85,0,1.05,1.7,.82); box("display",0,1.35,.43,.5,.22,.035); box("battery_panel",0,.65,.43,.72,.52,.035);
+      } else {
+        box("equipment_body",0,.75,0,1.15,1.5,.82); box("front_panel",0,.85,.43,.72,.78,.035); box("base",0,.08,0,1.2,.16,.86);
+      }
+      return `${lines.join("\n")}\n`;
+    }
+
+    async function renderAssetModelFiles(documents) {
+      state.assetModelViews.forEach((view) => view.dispose()); state.assetModelViews = [];
+      state.assetModelUrls.forEach((url) => URL.revokeObjectURL(url)); state.assetModelUrls = [];
+      const box = $("assetModelFiles"); box.replaceChildren();
+      const models = documents.filter((item) => ["ASSET_2D", "ASSET_3D"].includes(item.kind));
+      $("assetModelHint").textContent = models.length ? `등록된 2D/3D 파일 ${models.length}개 · 선택한 자산에 저장됨` : "아직 등록한 도면/3D 모델이 없습니다. 샘플 생성 버튼으로 현재 자산에 테스트 파일을 등록할 수 있습니다.";
+      for (const model of models) {
+        const card = document.createElement("article"); card.className = "asset-model-card";
+        const is2d = model.kind === "ASSET_2D";
+        card.innerHTML = `<h3>${is2d ? "2D 도면" : "3D 모델"}</h3><div class="asset-model-preview" data-model-preview></div><div class="muted" style="margin:7px 0;font-size:12px">${esc(model.originalName)} · ${esc(formatAssetDocumentSize(model.fileSize))}</div><div class="row"><button type="button" class="ghost" data-model-download>다운로드</button><button type="button" class="danger" data-model-delete>삭제</button></div>`;
+        box.append(card);
+        try {
+          const response = await fetch(base() + model.contentUrl, { headers: state.token ? { Authorization: "Bearer " + state.token } : {}, credentials: "same-origin" });
+          if (!response.ok) throw new Error("파일을 불러오지 못했습니다.");
+          const blob = await response.blob(); const url = URL.createObjectURL(blob); state.assetModelUrls.push(url);
+          const preview = card.querySelector("[data-model-preview]");
+          if (is2d) {
+            const image = document.createElement("img"); image.src = url; image.alt = model.originalName; preview.append(image);
+          } else {
+            const viewer = await import("/asset-model-preview.js?v=20261027glb");
+            state.assetModelViews.push(viewer.mount(preview, url, model.originalName));
+          }
+        } catch (error) { card.querySelector("[data-model-preview]").innerHTML = `<div class="asset-model-error">${esc(error.message)}</div>`; }
+        card.querySelector("[data-model-download]").onclick = () => downloadAssetDocument(model.id);
+        card.querySelector("[data-model-delete]").onclick = () => deleteAssetDocument(model.id);
+      }
+    }
+
+    async function uploadAssetModelFile(file, kind) {
+      if (!state.selectedAssetId || !file) return toast("자산과 파일을 선택하세요", true);
+      try {
+        const form = new FormData(); form.append("file", file);
+        await apiForm(`/api/manager/assets/${state.selectedAssetId}/documents?kind=${kind}`, form);
+        await selectAsset(state.selectedAssetId);
+        toast(kind === "ASSET_2D" ? "2D 도면 파일을 저장했습니다" : "3D 모델 파일을 저장했습니다");
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function importShowroomModelToAsset() {
+      if (!state.selectedAssetId) return toast("먼저 자산을 선택하세요", true);
+      const { showroomModelUrl } = await import("/showroom-models.js?v=20261103b");
+      const models = await api("/api/manager/scene-models");
+      const model = models.find((entry) => entry.key === $("showroomAssetModel").value);
+      if (!model) return toast("쇼룸 3D 모델을 선택하세요", true);
+      try {
+        const response = await fetch(showroomModelUrl(model), { credentials: "same-origin", headers: state.token ? { Authorization: `Bearer ${state.token}` } : {} });
+        if (!response.ok) throw new Error("쇼룸 모델을 불러오지 못했습니다.");
+        const file = new File([await response.blob()], model.file, { type: "model/gltf-binary" });
+        await uploadAssetModelFile(file, "ASSET_3D");
+      } catch (error) { toast(error.message, true); }
+    }
+
+    async function loadSceneModelAssetOptions() {
+      const models = await api("/api/manager/scene-models", { cache: "no-store" });
+      const select = $("showroomAssetModel");
+      const previous = select.value;
+      select.replaceChildren(new Option("모델 선택", ""));
+      for (const model of models.filter((entry) => entry.enabled)) select.add(new Option(model.label, model.key));
+      if (models.some((model) => model.key === previous && model.enabled)) select.value = previous;
+      $("showroomAssetImport").disabled = false;
+    }
+
+    async function createAssetModelSamples() {
+      const device = state.selectedAsset?.device;
+      if (!device || !state.selectedAssetId) return toast("먼저 자산을 선택하세요", true);
+      const kind = assetModelKind(device);
+      const safeName = (device.assetCode || device.name || `asset-${device.id}`).replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 64);
+      try {
+        const svg = new File([sampleAssetSvg(device, kind)], `${safeName}_2d.svg`, { type: "image/svg+xml" });
+        const obj = new File([sampleAssetObj(device, kind)], `${safeName}_3d.obj`, { type: "text/plain" });
+        await uploadAssetModelFile(svg, "ASSET_2D");
+        await uploadAssetModelFile(obj, "ASSET_3D");
+        toast(`${device.name} 기준 2D/3D 예시를 자산에 등록했습니다`);
+      } catch (error) { toast(error.message, true); }
+    }
+
     function renderAssetDocuments(documents) {
       const box = $("assetDocumentList");
-      box.innerHTML = documents.length ? documents.map((document) => {
+      const regularDocuments = documents.filter((document) => !document.kind || document.kind === "DOCUMENT");
+      box.innerHTML = regularDocuments.length ? regularDocuments.map((document) => {
         const uploaded = document.uploadedAt ? new Date(document.uploadedAt).toLocaleString("ko-KR") : "";
         return `<div class="pick-item"><span><b>${esc(document.originalName)}</b><div class="muted" style="font-size:12px">${esc(formatAssetDocumentSize(document.fileSize))}${uploaded ? ` · ${esc(uploaded)}` : ""}</div></span><span class="row"><button type="button" class="ghost" data-asset-document-download="${document.id}">다운로드</button><button type="button" class="danger" data-asset-document-delete="${document.id}">삭제</button></span></div>`;
       }).join("") : '<span class="muted">등록된 문서가 없습니다.</span>';
@@ -5261,12 +5884,12 @@
 
     function rackSideDevices(items, side, rackLocationCode) {
       return (items || []).filter(Boolean).filter((item) => item.mountType === "RACK_SIDE" && item.rackSide === side).map((item) =>
-        `<div class="rack-side-device" draggable="true" data-rack-device-id="${item.deviceId}" data-rack-side-device-id="${item.deviceId}" data-rack-origin-code="${esc(rackLocationCode)}" style="background:${rackColor(item)}" title="${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>${esc(item.assetCode || item.modelName || "측면 장착")}</span></div>`).join("");
+        `<div class="rack-side-device" ${item.deviceId ? `draggable="true" data-rack-device-id="${Number(item.deviceId)}" data-rack-side-device-id="${Number(item.deviceId)}" data-rack-origin-code="${esc(rackLocationCode)}"` : ''} style="background:${rackColor(item)}" title="${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>${item.modelPlacementId ? '장비 미연결' : esc(item.assetCode || item.modelName || "측면 장착")}</span></div>`).join("");
     }
 
     function rackRearDevices(items) {
       return (items || []).filter(Boolean).filter((item) => item.mountType === "RACK_REAR").map((item) =>
-        `<span data-rack-device-id="${item.deviceId}" style="background:${rackColor(item)}" title="${esc(item.deviceName)}">${esc(item.deviceName)}</span>`).join("");
+        `<span ${item.deviceId ? `data-rack-device-id="${Number(item.deviceId)}"` : ''} style="background:${rackColor(item)}" title="${esc(item.deviceName)}">${esc(item.deviceName)}${item.modelPlacementId ? ' · 미연결' : ''}</span>`).join("");
     }
 
     function placementLabel(placement) {
@@ -5412,6 +6035,159 @@
 
     function bindRackPreviewInteractions(layout, unitItems, capacity) {
       const body = $("rackPreviewBody");
+      const form = body.querySelector("[data-rack-add-form]");
+      if (form) {
+        const mount = form.querySelector('[name="mountType"]');
+        const syncFields = () => {
+          form.querySelectorAll("[data-rack-u-field]").forEach((field) => { field.hidden = mount.value !== "RACK_U"; });
+          form.querySelector("[data-rack-position]").hidden = mount.value === "RACK_U";
+        };
+        mount.addEventListener("change", syncFields); syncFields();
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const deviceId = Number(form.elements.deviceId.value);
+          if (form.elements.deviceId.value && (!Number.isSafeInteger(deviceId) || deviceId < 1)) return toast("장비를 선택하세요", true);
+          if (!deviceId && !form.elements.sceneModelKey.value) return toast("설치할 3D 모델을 선택하세요", true);
+          const chosen = form._assets?.find((asset) => Number(asset.device.id) === deviceId);
+          if (chosen?.rackPlacement && chosen.rackPlacement.rackLocationCode !== layout.rackLocationCode && !confirm(`이 장비는 이미 ${chosen.rackPlacement.rackLocationName || "다른 위치"}에 배치되어 있습니다. 현재 랙으로 이동할까요?`)) return;
+          const type = mount.value.startsWith("RACK_SIDE_") ? "RACK_SIDE" : mount.value;
+          const selectedModel = form._rackModels?.find((model) => model.key === form.elements.sceneModelKey.value);
+          if (selectedModel && !(type === 'RACK_U' ? selectedModel.rackUInstallable : selectedModel.rackAttachmentInstallable)) return toast('선택한 모델은 이 설치 방식을 지원하지 않습니다.', true);
+          const uPosition = Number(form.elements.uPosition.value), uHeight = Number(form.elements.uHeight.value);
+          if (type === "RACK_U" && (!capacity || !Number.isInteger(uPosition) || !Number.isInteger(uHeight) || uPosition < 1 || uHeight < 1 || uPosition + uHeight - 1 > capacity)) {
+            return toast("랙 용량 안에서 시작 U와 사용 U를 입력하세요.", true);
+          }
+          const button = form.querySelector('button[type="submit"]'); button.disabled = true;
+          try {
+            if (!deviceId && type === "RACK_U") {
+              const overlaps = unitItems.filter((item) => Number(item.uPosition) <= uPosition + uHeight - 1 && Number(item.lastU) >= uPosition);
+              if (overlaps.length > 1) { button.disabled = false; return toast("여러 배치와 겹칩니다. 아래 목록에서 3D 모델을 변경할 항목을 선택하세요.", true); }
+              if (overlaps.length === 1) {
+                const existing = overlaps[0];
+                if (!confirm(`U${existing.uPosition}–${existing.lastU}의 ${existing.deviceName} 3D 모델만 교체할까요? 장비 연결과 U 위치는 유지됩니다.`)) { button.disabled = false; return; }
+                await replaceRackPlacementModel(layout.rackLocationCode, existing, form.elements.sceneModelKey.value);
+                await openRackFromScene(layout.rackLocationCode); toast("기존 배치의 3D 모델을 변경했습니다."); return;
+              }
+            }
+            const custom = type !== "RACK_U" && form.elements.customPosition.checked;
+            const coords = custom ? ["positionX", "positionY", "positionZ"].map((name) => Number(form.elements[name].value)) : [];
+            if (custom && coords.some((v) => !Number.isFinite(v) || v < 0 || v > 100)) { button.disabled = false; return toast("부착 위치는 0~100%로 입력하세요.", true); }
+            const payload = {
+              mountType: type, rackLocationCode: layout.rackLocationCode,
+              rackSide: type === "RACK_SIDE" ? mount.value.slice("RACK_SIDE_".length) : type === "RACK_REAR" ? "REAR" : null,
+              uPosition: type === "RACK_U" ? uPosition : null, uHeight: type === "RACK_U" ? uHeight : null, formFactor: null,
+              positionX: custom ? coords[0] / 100 : null, positionY: custom ? coords[1] / 100 : null, positionZ: custom ? coords[2] / 100 : null,
+              clearPosition: !custom,
+              sceneModelKey: form.elements.sceneModelKey.value || null, updateSceneModel: true,
+            };
+            const endpoint = deviceId ? `/api/manager/assets/${deviceId}/rack-placement` : `/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/models`;
+            await api(endpoint, { method: deviceId ? "PUT" : "POST", body: JSON.stringify(payload) });
+            toast(deviceId ? "랙 배치와 자산 위치를 저장했습니다." : "3D 모델을 설치했습니다. 나중에 장비를 연결할 수 있습니다.");
+            await openRackFromScene(layout.rackLocationCode);
+            if (chosen?.rackPlacement?.rackLocationCode && chosen.rackPlacement.rackLocationCode !== layout.rackLocationCode) {
+              document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => frame.contentWindow?.postMessage({ type: "dcim:dashboard:rack-changed", rackLocationCode: chosen.rackPlacement.rackLocationCode }, location.origin));
+            }
+          } catch (error) { toast(error.message, true); button.disabled = false; }
+        });
+        (async () => {
+          const assets = []; let page = 1, result;
+          do { result = await api(`/api/manager/assets?page=${page++}&size=100`); assets.push(...(result.content || [])); } while (!result.last && page <= Number(result.totalPages || 1));
+          if (!form.isConnected) return;
+          form._assets = assets;
+          const select = form.elements.deviceId;
+          select.innerHTML = '<option value="">모델만 먼저 설치</option>' + assets.filter((a) => a.device?.id).map((a) => `<option value="${Number(a.device.id)}">${esc(a.device.name)}${a.rackPlacement ? ` · ${esc(a.rackPlacement.rackLocationName || "배치됨")}` : ""}</option>`).join("");
+          const pageLinkedIds = new Set((layout.placements || []).map((item) => Number(item.deviceId)).filter(Boolean));
+          const deviceOptions = (currentId) => {
+            const entries = assets.filter((asset) => asset.device?.id).map((asset) => {
+              const id = Number(asset.device.id);
+              return { id, name:asset.device.name, current:id === currentId,
+                connected:Boolean(asset.rackPlacement) || pageLinkedIds.has(id), rack:asset.rackPlacement?.rackLocationName || '' };
+            }).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+            const current = entries.filter((entry) => entry.current);
+            const free = entries.filter((entry) => !entry.current && !entry.connected);
+            const connected = entries.filter((entry) => !entry.current && entry.connected);
+            const group = (label, options) => options.length ? `<optgroup label="${label}">${options.join('')}</optgroup>` : '';
+            return group('현재 연결된 장비', current.map((entry) => `<option value="${entry.id}" selected>● ${esc(entry.name)} [현재 연결]</option>`))
+              + group('연결 가능한 장비', free.map((entry) => `<option value="${entry.id}">${esc(entry.name)}</option>`))
+              + group('이미 연결됨 · 선택 불가', connected.map((entry) => `<option value="${entry.id}" disabled>${esc(entry.name)} [연결됨${entry.rack ? ` · ${esc(entry.rack)}` : ''}]</option>`));
+          };
+          body.querySelectorAll("[data-model-bind-select]").forEach((target) => {
+            target.innerHTML = '<option value="">연결할 장비 선택</option>' + deviceOptions(null);
+          });
+          body.querySelectorAll("[data-device-rebind-select]").forEach((target) => {
+            const id = Number(target.dataset.deviceRebindSelect);
+            target.innerHTML = '<option value="">변경할 장비 선택</option>' + deviceOptions(id);
+          });
+          select.addEventListener("change", () => {
+            const placement = assets.find((asset) => Number(asset.device?.id) === Number(select.value))?.rackPlacement;
+            if (!placement || placement.rackLocationCode !== layout.rackLocationCode) return;
+            mount.value = placement.mountType === "RACK_SIDE" ? `RACK_SIDE_${placement.rackSide}` : placement.mountType; syncFields();
+            if (placement.uPosition) form.elements.uPosition.value = placement.uPosition;
+            form.elements.sceneModelKey.dataset.pendingValue = placement.sceneModelKey || "";
+            if (placement.sceneModelKey && ![...form.elements.sceneModelKey.options].some((option) => option.value === placement.sceneModelKey)) {
+              form.elements.sceneModelKey.add(new Option(`${placement.modelName || placement.sceneModelKey} (기존 배치)`, placement.sceneModelKey));
+            }
+            form.elements.sceneModelKey.value = placement.sceneModelKey || "";
+            form.elements.sceneModelKey.dispatchEvent(new Event("change"));
+            if (placement.uHeight) form.elements.uHeight.value = placement.uHeight;
+            form.elements.customPosition.checked = [placement.positionX, placement.positionY, placement.positionZ].every((v) => v != null);
+            for (const name of ["positionX", "positionY", "positionZ"]) if (placement[name] != null) form.elements[name].value = Math.round(Number(placement[name]) * 1000) / 10;
+          });
+        })().catch((error) => { if (form.isConnected) toast(`장비 목록 조회 실패: ${error.message}`, true); });
+      }
+      body.querySelectorAll("[data-model-bind]").forEach((button) => {
+        button.onclick = async () => {
+          const id = Number(button.dataset.modelBind), select = body.querySelector(`[data-model-bind-select="${id}"]`);
+          const deviceId = Number(select?.value); if (!deviceId) return toast("연결할 장비를 선택하세요", true);
+          button.disabled = true;
+          try { await api(`/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/models/${id}/device`, { method: "PUT", body: JSON.stringify({ deviceId }) }); await openRackFromScene(layout.rackLocationCode); toast("모델에 장비를 연결했습니다."); }
+          catch (error) { button.disabled = false; toast(error.message, true); }
+        };
+      });
+      body.querySelectorAll("[data-device-rebind]").forEach((button) => {
+        button.onclick = async () => {
+          const oldId = Number(button.dataset.deviceRebind), select = body.querySelector(`[data-device-rebind-select="${oldId}"]`);
+          const deviceId = Number(select?.value);
+          if (!deviceId) return toast("변경할 장비를 선택하세요", true);
+          if (deviceId === oldId) return toast("이미 연결된 장비입니다.");
+          if (!confirm("연결된 장비를 변경할까요? 3D 모델과 배치 위치는 유지됩니다.")) return;
+          button.disabled = true;
+          try {
+            await api(`/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/placements/${oldId}/device`, {method:"PUT", body:JSON.stringify({deviceId})});
+            document.querySelectorAll('.widget-display-page iframe[data-page-key]').forEach((frame) => frame.contentWindow?.postMessage({type:'dcim:dashboard:rack-changed', rackLocationCode:layout.rackLocationCode}, location.origin));
+            await openRackFromScene(layout.rackLocationCode); toast("연결된 장비를 변경했습니다.");
+          } catch (error) { button.disabled = false; toast(error.message, true); }
+        };
+      });
+      body.querySelectorAll("[data-rack-replace-model]").forEach((button) => {
+        button.onclick = async () => {
+          const item = (layout.placements || []).find((entry) =>
+            button.dataset.rackReplaceModel === (entry.modelPlacementId ? `model:${entry.modelPlacementId}` : `device:${entry.deviceId}`));
+          const key = form?.elements.sceneModelKey.value;
+          if (!item || !key) return toast("위에서 적용할 3D 모델을 먼저 선택하세요.", true);
+          const name = form.elements.sceneModelKey.selectedOptions[0]?.textContent || key;
+          if (!confirm(`${item.deviceName}의 3D 모델을 ${name}(으)로 변경할까요? 장비 연결과 설치 위치는 유지됩니다.`)) return;
+          button.disabled = true;
+          try { await replaceRackPlacementModel(layout.rackLocationCode, item, key); await openRackFromScene(layout.rackLocationCode); toast("기존 배치의 3D 모델을 변경했습니다."); }
+          catch (error) { button.disabled = false; toast(error.message, true); }
+        };
+      });
+      body.querySelectorAll("[data-model-remove]").forEach((button) => {
+        button.onclick = async () => {
+          if (!confirm("연결되지 않은 모델 배치를 삭제할까요?")) return;
+          button.disabled = true;
+          try { await api(`/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/models/${Number(button.dataset.modelRemove)}`, { method: "DELETE" }); await openRackFromScene(layout.rackLocationCode); }
+          catch (error) { button.disabled = false; toast(error.message, true); }
+        };
+      });
+      body.querySelectorAll("[data-rack-remove-placement]").forEach((button) => {
+        button.onclick = async () => {
+          if (!confirm("이 장비의 랙 배치를 해제할까요? 장비 자체는 삭제되지 않습니다.")) return;
+          button.disabled = true;
+          try { await api(`/api/manager/assets/${Number(button.dataset.rackRemovePlacement)}/rack-placement`, { method: "DELETE" }); await openRackFromScene(layout.rackLocationCode); toast("랙 배치를 해제했습니다."); }
+          catch (error) { button.disabled = false; toast(error.message, true); }
+        };
+      });
       body.querySelectorAll("[data-rack-device-id]:not([data-rack-side-device-id])").forEach((element) => {
         element.onclick = () => openAssetPreview(Number(element.dataset.rackDeviceId));
       });
@@ -5470,34 +6246,618 @@
       });
     }
 
+    async function openRackFromScene(rackLocationCode) {
+      const layout = await api(`/api/manager/assets/racks/${encodeURIComponent(rackLocationCode)}/layout`);
+      const index = state.rackLayouts.findIndex((entry) => entry.rackLocationCode === rackLocationCode);
+      if (index < 0) state.rackLayouts.push(layout); else state.rackLayouts[index] = layout;
+      document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
+        frame.contentWindow?.postMessage({ type: "dcim:dashboard:rack-changed", rackLocationCode }, location.origin);
+      });
+      openRackPreview(rackLocationCode);
+    }
+
+    async function replaceRackPlacementModel(code, item, sceneModelKey) {
+      const rack = encodeURIComponent(code);
+      const endpoint = item.modelPlacementId
+        ? `/api/manager/assets/racks/${rack}/models/${Number(item.modelPlacementId)}/model`
+        : `/api/manager/assets/racks/${rack}/placements/${Number(item.deviceId)}/model`;
+      return api(endpoint, { method: "PATCH", body: JSON.stringify({ sceneModelKey }) });
+    }
+
+    function rackWidgetDuplicateMessage(widgets) {
+      const names = new Map(), definitions = new Map();
+      for (const w of widgets) {
+        const name = w.title.trim(), normalized = name.toLowerCase();
+        if (names.has(normalized)) return `이미 존재하는 위젯 이름입니다: ${names.get(normalized)}`;
+        names.set(normalized, name);
+        const sources = w.sources.map((s) => JSON.stringify([s.deviceId, s.protocol.toLowerCase(), s.pointName]));
+        if (!['POWER_TREND','PATH_BALANCE'].includes(w.type)) sources.sort();
+        const key = JSON.stringify([w.type, sources, w.type === 'POWER_TREND' ? (w.rangeHours ?? 24) : null, w.type === 'POWER_TREND' ? (w.intervalMinutes ?? 15) : null]);
+        if (definitions.has(key)) return `이미 존재하는 위젯입니다: ${definitions.get(key)} (동일한 종류와 측정 항목)`;
+        definitions.set(key, name);
+      }
+      return '';
+    }
+    let rackDetailViewer = null, rackDetailPageCode = "", rackDetailModelKey = "RACK", rackDetailEditing = false;
+    async function setupRackWidgets(code, body, editing) {
+      const panel = body.querySelector('[data-rack-widgets]');
+      if (!panel) return;
+      try {
+        const base = `/api/manager/assets/racks/${encodeURIComponent(code)}`;
+        let [widgets, sources, devices] = await Promise.all([api(`${base}/widgets`), api(`${base}/widget-sources`), api(`${base}/widgets/devices`)]);
+        if (!panel.isConnected) return;
+        sources = sources.filter((source) => !source.ambiguous);
+        const sourceKey = (s) => s ? `${s.deviceId}|${s.protocol}|${s.pointName}` : '';
+        const sourceLabel = (s) => `${s.deviceName || `장비 ${s.deviceId}`} · ${s.pointName}${s.unit ? ` (${s.unit})` : ''}`;
+        const sourceFor = (s) => sources.find((item) => sourceKey(item) === sourceKey(s));
+        const pdus = devices.filter((d) => String(d.deviceType || '').toUpperCase() === 'PDU');
+        const phasePdus = pdus.filter((d) => d.threePhaseMeasurements);
+        const sourceValue = (s) => s ? {deviceId:s.deviceId, pointName:s.pointName, protocol:s.protocol} : null;
+        const powerForPath = (path) => {
+          const matching = pdus.filter((d) => String(d.pathCode || '').toUpperCase() === path);
+          if (matching.length !== 1) return null;
+          const candidates = sources.filter((s) => s.deviceId === matching[0].deviceId && ['W','KW','MW'].includes(String(s.unit || '').toUpperCase()));
+          for (const name of ['TOTAL_WT','TOTAL_POWER','ACTIVE_POWER','WATT']) { const found = candidates.filter((s) => s.pointName.toUpperCase() === name); if (found.length === 1) return sourceValue(found[0]); if (found.length > 1) return null; }
+          return candidates.length === 1 ? sourceValue(candidates[0]) : null;
+        };
+        const phasesFor = (id) => {
+          const group = sources.filter((s) => s.deviceId === id && String(s.unit || '').toUpperCase() === 'A');
+          for (const protocol of [...new Set(group.map((s) => s.protocol))]) { const values = ['L1_AMP','L2_AMP','L3_AMP'].map((name) => group.find((s) => s.protocol === protocol && s.pointName.toUpperCase() === name)); if (values.every(Boolean)) return values.map(sourceValue); }
+          return null;
+        };
+        const defaultPhases = () => {
+          if (phasePdus.length === 1) return phasesFor(phasePdus[0].deviceId) || [];
+          const a = phasePdus.filter((d) => String(d.pathCode || '').toUpperCase() === 'A'), b = phasePdus.filter((d) => String(d.pathCode || '').toUpperCase() === 'B');
+          return a.length === 1 && b.length === 1 ? [...phasesFor(a[0].deviceId), ...phasesFor(b[0].deviceId)] : [];
+        };
+        const assignWidgetPositions = () => {
+          if (!window.RackWidgetLayout) throw new Error('위젯 배치 모듈을 불러오지 못했습니다.');
+          window.RackWidgetLayout.normalize(widgets);
+        };
+        const colors = ['#40d6ff','#a478ff','#52ca61','#ff9e44','#f2688b','#ded462','#65d1b0','#afb8c9'];
+        const renderRackWidget = (w, storedEntries) => {
+            const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(pdus.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
+            const label = (entry) => sourceLabel(sourceFor(entry.source) || entry.source);
+            const value = (entry) => entry.value == null ? '—' : Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
+            const legendRow = (color, name, reading = '') => `<div class="rack-metric-legend-row"><span class="rack-metric-dot" style="--series-color:${color}"></span><span class="rack-metric-legend-label" title="${esc(name)}">${esc(name)}</span>${reading ? `<span class="rack-metric-legend-value">${esc(reading)}</span>` : ''}</div>`;
+            const chartMarkup = (series, gapMs = 0) => `<div class="rack-chart" data-rack-chart="${esc(JSON.stringify({series,gapMs}))}"></div>`;
+            let content = '';
+            if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(sourceFor(entry.source)?.unit || '')}</small></div><div class="rack-metric-caption">${esc(label(entry))}</div>` : '—'; }
+            else if (w.type === 'PATH_BALANCE' || w.type === 'PHASE_BALANCE') {
+              const donut = (group, heading, names, center) => {
+                const complete = group.every((e) => e && e.value != null && Number.isFinite(e.value) && e.value >= 0);
+                const sum = complete ? group.reduce((n,e) => n + e.value, 0) : 0; let offset = 0;
+                const stops = group.map((e,j) => { const start = offset; offset += sum ? e.value / sum * 100 : 0; return `${colors[j % colors.length]} ${start}% ${offset}%`; });
+                const graph = complete && sum > 0 ? `<div class="rack-metric-donut" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${center ? `${(sum/group.length).toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>평균</small>` : `${sum.toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>합계</small>`}</div></div>` : '<p class="rack-metric-caption">데이터 없음 또는 합계 0</p>';
+                const legend = group.map((e,j) => legendRow(colors[j % colors.length], names[j], `${complete && sum > 0 ? `${(e.value/sum*100).toFixed(1)}%` : '—'}  ·  ${e ? value(e) : '—'} ${e ? sourceFor(e.source)?.unit || '' : ''}`)).join('');
+                return `<div class="rack-metric-donut-group">${heading ? `<strong class="rack-metric-donut-heading">${heading}</strong>` : ''}${graph}<div class="rack-metric-legend">${legend}</div></div>`;
+              };
+              const phaseHeading = (group) => { const d = pdus.find((item) => item.deviceId === group[0]?.source?.deviceId); return esc(d ? `${d.deviceName}${d.pathCode ? ` · ${d.pathCode} 경로` : ''}` : 'PDU'); };
+              const first = entries.slice(0,3), second = entries.slice(3,6);
+              content = w.type === 'PATH_BALANCE' ? donut(entries.slice(0,2), '', ['A 경로','B 경로'], false) : `<div class="rack-metric-donuts">${donut(first,phaseHeading(first),['L1','L2','L3'],true)}${second.length ? donut(second,phaseHeading(second),['L1','L2','L3'],true) : ''}</div>`;
+            } else if (w.type === 'POWER_TREND') {
+              const unit = sourceFor(entries[0]?.source)?.unit || '';
+              const series = entries.slice(0, 2).map((e,j) => ({name:j ? 'B 경로' : 'A 경로', unit:sourceFor(e.source)?.unit || unit, color:colors[j], samples:e.samples || []}));
+              if (entries[2]) series.push({name:'전체 전력', unit:sourceFor(entries[2].source)?.unit || unit, color:colors[2], samples:entries[2].samples || []});
+              else { const b = new Map((entries[1]?.samples || []).map((p) => [p.time,p.value])); series.push({name:'전체 전력 (A+B)', unit, color:colors[2], samples:(entries[0]?.samples || []).filter((p) => b.has(p.time) && p.value != null && b.get(p.time) != null).map((p) => ({time:p.time,value:Number(p.value)+Number(b.get(p.time))}))}); }
+              const points = series.flatMap((s) => s.samples), vals = points.map((p) => p.value), times = points.map((p) => Date.parse(p.time));
+              if (!points.length) content = '<p class="muted">선택한 기간에 수집된 데이터가 없습니다.</p>';
+              else {
+                const start = Math.min(...times), end = Math.max(...times), gap = (w.intervalMinutes || 15) * 60 * 1000 * 1.5;
+                content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · ${w.intervalMinutes || 15}분 평균</small>`;
+              }
+              content += `<div class="rack-metric-legend">${series.map((s,j) => legendRow(colors[j],s.name)).join('')}</div>`;
+            } else if (w.type === 'PIE') {
+              const total = entries.reduce((n, e) => n + (e.value != null && e.value > 0 ? e.value : 0), 0); let offset = 0;
+              const stops = entries.map((e, j) => { const start = offset; offset += total ? Math.max(0, e.value || 0) / total * 100 : 0; return `${colors[j % colors.length]} ${start}% ${offset}%`; });
+              content = `${total ? `<div class="rack-metric-donut" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${total.toLocaleString('ko-KR',{maximumFractionDigits:2})}<small>합계</small></div></div>` : '<p class="rack-metric-caption">표시할 양수 데이터가 없습니다.</p>'}<div class="rack-metric-legend">${entries.map((e,j) => legendRow(colors[j % colors.length],label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
+            } else {
+              const samples = entries.flatMap((e) => e.samples || []);
+              const series = entries.map((e,j) => ({name:label(e),unit:sourceFor(e.source)?.unit || '',color:colors[j % colors.length],samples:e.samples || []}));
+              content = samples.length ? chartMarkup(series) : '<p class="rack-metric-caption">최근 24시간 측정 이력이 없습니다.</p>';
+              content += `<div class="rack-metric-legend">${entries.map((e,j) => legendRow(colors[j % colors.length],label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
+            }
+            return `<div class="rack-metric-title">${esc(w.title)}</div>${content}`;
+        };
+        const viewportGrid = () => window.RackWidgetLayout.viewportGrid(widgets, body.querySelector('[data-rack-3d]')?.clientHeight || 720);
+        const fitWidgetContent = (card) => {
+          const content = card.querySelector('[data-rack-fit-content]'); if (!content || !card.isConnected) return;
+          content.style.zoom = '1';
+          const style = getComputedStyle(card), available = card.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+          if (available > 0 && content.scrollHeight > available) content.style.zoom = String(Math.max(.1, Math.min(1, available / content.scrollHeight)));
+        };
+        const mountRackCharts = (root) => {
+          for (const chart of root.querySelectorAll('[data-rack-chart]')) {
+            try {
+              const config = JSON.parse(chart.dataset.rackChart);
+              if (!window.RackWidgetChart) throw new Error('차트 모듈을 불러오지 못했습니다.');
+              window.RackWidgetChart.mount(chart, config.series, {gapMs:config.gapMs});
+            } catch (error) { chart.textContent = `그래프를 표시하지 못했습니다: ${error.message}`; }
+          }
+        };
+        if (editing) {
+          for (const widget of widgets) if (['PATH_BALANCE','POWER_TREND'].includes(widget.type)) {
+            const old = widget.sources || [];
+            const matchPath = (path) => { const matches = old.slice(0,2).filter((s) => s && String(pdus.find((d) => d.deviceId === s.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : powerForPath(path); };
+            widget.sources = [matchPath('A'), matchPath('B'), ...old.slice(2)];
+          }
+          const layoutPanel = body.querySelector('[data-rack-widget-layout]');
+          const layoutTools = body.querySelector('[data-rack-layout-tools]');
+          const collapsedWidgets = new Set();
+          const widgetTypeLabel = (type) => ({VALUE:'최신값',PIE:'비율',TREND:'24시간 추이',PATH_BALANCE:'경로 밸런스',PHASE_BALANCE:'PDU 상 밸런스',POWER_TREND:'전력 추이'})[type] || '위젯';
+          const previewCache = new Map(); let previewSequence = 0, previewRunning = false, previewRepeat = false;
+          const previewKey = (w) => JSON.stringify([w.type, w.sources, w.rangeHours, w.intervalMinutes]);
+          const widgetReady = (w) => w && w.title?.trim() && Array.isArray(w.sources) && w.sources.length > 0 && !Array.from(w.sources).some((s) => !s) && w.sources.length <= 8 && (w.type !== 'VALUE' || w.sources.length === 1) && (w.type !== 'PATH_BALANCE' || w.sources.length === 2) && (w.type !== 'PHASE_BALANCE' || [3,6].includes(w.sources.length)) && (w.type !== 'POWER_TREND' || [2,3].includes(w.sources.length));
+          const save = async (event) => {
+            if (widgets.some((w) => !widgetReady(w))) return toast('위젯 제목과 측정 항목을 모두 확인하세요.', true);
+            const duplicate = rackWidgetDuplicateMessage(widgets); if (duplicate) return toast(duplicate, true);
+            const button = event.currentTarget; button.disabled = true;
+            try { const collapsedState = widgets.map((widget) => collapsedWidgets.has(widget)); widgets = await api(`${base}/widgets`, {method:'PUT', body:JSON.stringify(widgets)}); collapsedWidgets.clear(); widgets.forEach((widget, index) => { if (collapsedState[index]) collapsedWidgets.add(widget); }); draw(); drawLayout(); if (!layoutPanel.hidden) refreshPreview(); toast('랙 위젯 설정과 위치를 저장했습니다.'); }
+            catch (error) { toast(error.message, true); } finally { if (button.isConnected) button.disabled = false; }
+          };
+          const draw = () => {
+            panel.innerHTML = `<div class="rack-widget-editor-head"><div><h3>위젯 설정</h3><span class="muted">이 랙에 연결된 장비의 측정 항목을 선택하세요.</span></div><button type="button" data-widget-add>+ 위젯 추가</button></div><div data-widget-rows></div><button type="button" class="primary" data-widget-save>위젯 설정 저장</button>`;
+            const rows = panel.querySelector('[data-widget-rows]');
+            if (!widgets.length) rows.innerHTML = '<div class="rack-widget-card muted">위젯을 추가해 랙의 데이터를 표시하세요.</div>';
+            widgets.forEach((widget, index) => {
+              const row = document.createElement('div'); row.className = 'rack-widget-card';
+              const isCollapsed = collapsedWidgets.has(widget);
+              row.classList.toggle('is-collapsed', isCollapsed);
+              row.innerHTML = `<div class="rack-widget-card-head"><button type="button" class="rack-widget-toggle" data-collapse aria-expanded="${!isCollapsed}"><span data-chevron>${isCollapsed ? '▸' : '▾'}</span><strong data-widget-name>${esc(widget.title || `위젯 ${index + 1}`)}</strong><small>${esc(widgetTypeLabel(widget.type))}</small></button><button type="button" data-remove>삭제</button></div><div data-widget-body ${isCollapsed ? 'hidden' : ''}><div class="rack-widget-card-grid"><label class="rack-widget-field">위젯 이름<input data-title maxlength="80" value="${esc(widget.title)}"></label><label class="rack-widget-field">표시 방식<select data-type><option value="VALUE">최신값</option><option value="PIE">비율</option><option value="TREND">24시간 추이</option><option value="PATH_BALANCE">경로 밸런스</option><option value="PHASE_BALANCE">PDU 상 밸런스</option><option value="POWER_TREND">A/B/합계 전력 추이</option></select></label></div><div data-special></div><div class="rack-widget-field" style="margin-top:14px" data-generic><span>측정 항목 · <span data-count></span></span><input data-search type="search" placeholder="장비 또는 측정 항목 검색"><div class="rack-widget-sources" data-sources></div></div></div>`;
+              row.querySelector('[data-collapse]').onclick = (event) => { const hidden = !row.querySelector('[data-widget-body]').hidden; row.querySelector('[data-widget-body]').hidden = hidden; row.classList.toggle('is-collapsed', hidden); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); row.querySelector('[data-chevron]').textContent = hidden ? '▸' : '▾'; if (hidden) collapsedWidgets.add(widget); else collapsedWidgets.delete(widget); };
+              row.querySelector('[data-type]').value = widget.type;
+              const phaseTypeOption = row.querySelector('[data-type] option[value="PHASE_BALANCE"]');
+              if (!phasePdus.length && widget.type !== 'PHASE_BALANCE') { phaseTypeOption.disabled = true; phaseTypeOption.textContent += ' (3상 전류 항목 없음)'; }
+              row.querySelector('[data-title]').oninput = (e) => { widget.title = e.target.value; row.querySelector('[data-widget-name]').textContent = widget.title || `위젯 ${index + 1}`; };
+              const showSources = () => {
+                const list = row.querySelector('[data-sources]'), filter = row.querySelector('[data-search]').value.trim().toLowerCase();
+                const matches = sources.filter((s) => sourceLabel(s).toLowerCase().includes(filter));
+                list.innerHTML = matches.length ? matches.map((s) => `<label class="rack-widget-source"><input type="${widget.type === 'VALUE' ? 'radio' : 'checkbox'}" name="rack-source-${index}" value="${esc(sourceKey(s))}" ${(widget.sources || []).some((selected) => sourceKey(selected) === sourceKey(s)) ? 'checked' : ''}><span>${esc(sourceLabel(s))}</span></label>`).join('') : '<span class="muted">선택할 측정 항목이 없습니다.</span>';
+                row.querySelector('[data-count]').textContent = `${widget.sources.length}개 선택${widget.type === 'VALUE' ? ' (1개)' : ' (최대 8개)'}`;
+                list.querySelectorAll('input').forEach((input) => input.onchange = () => {
+                  const selected = sources.find((s) => sourceKey(s) === input.value); if (!selected) return;
+                  if (widget.type === 'VALUE') widget.sources = [];
+                  widget.sources = widget.sources.filter((s) => sourceKey(s) !== input.value);
+                  if (input.checked) widget.sources.push({ deviceId:selected.deviceId, pointName:selected.pointName, protocol:selected.protocol });
+                  if (widget.sources.length > 8) { widget.sources.pop(); toast('측정 항목은 최대 8개입니다.', true); }
+                  showSources();
+                });
+              };
+              const showSpecial = () => {
+                const advanced = ['PATH_BALANCE','PHASE_BALANCE','POWER_TREND'].includes(widget.type);
+                row.querySelector('[data-generic]').hidden = advanced;
+                const section = row.querySelector('[data-special]');
+                if (!advanced) { section.innerHTML = ''; return; }
+                if (widget.type === 'PHASE_BALANCE') {
+                  const selected = [widget.sources[0]?.deviceId, widget.sources[3]?.deviceId];
+                  section.innerHTML = `<p class="muted">L1_AMP·L2_AMP·L3_AMP가 모두 등록된 PDU만 표시하며, 상별 항목을 자동 선택합니다. 단상 PDU는 대상이 아닙니다.</p><div class="rack-widget-card-grid">${[0,1].map((slot) => `<label class="rack-widget-field">${slot ? '두 번째 PDU (선택)' : '첫 번째 PDU'}<select data-phase-device="${slot}"><option value="">${slot ? '선택 안 함' : 'PDU 선택'}</option>${phasePdus.map((d) => `<option value="${d.deviceId}" ${selected[slot] === d.deviceId ? 'selected' : ''}>${esc(d.deviceName)} · ${esc(d.pathName || d.pathCode || 'Path 미설정')}</option>`).join('')}</select></label>`).join('')}</div>`;
+                  section.querySelectorAll('[data-phase-device]').forEach((select) => select.onchange = () => {
+                    const first = Number(section.querySelector('[data-phase-device="0"]').value), second = Number(section.querySelector('[data-phase-device="1"]').value);
+                    if (first && first === second) { toast('서로 다른 PDU를 선택하세요.', true); showSpecial(); return; }
+                    widget.sources = first ? [...(phasesFor(first) || []), ...(second ? phasesFor(second) || [] : [])] : [];
+                    showSpecial();
+                  });
+                  return;
+                }
+                const labels = widget.type === 'POWER_TREND' ? ['A 경로 전력','B 경로 전력','전체 전력 (선택)'] : ['A 경로 전력','B 경로 전력'];
+                section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 PDU마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range><option value="1">최근 1시간</option><option value="6">최근 6시간</option><option value="24">최근 24시간</option><option value="72">최근 3일</option><option value="168">최근 7일</option></select></label><label class="rack-widget-field">평균 집계 간격<select data-interval><option value="1">1분</option><option value="5">5분</option><option value="15">15분</option><option value="60">1시간</option></select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
+                section.querySelectorAll('[data-slot]').forEach((select) => {
+                  const slot = Number(select.dataset.slot);
+                  if (slot < 2) [...select.options].slice(1).forEach((option) => { const source = sources.find((s) => sourceKey(s) === option.value), device = pdus.find((d) => d.deviceId === source?.deviceId); if (!device || String(device.pathCode || '').toUpperCase() !== (slot === 0 ? 'A' : 'B') || !['W','KW','MW'].includes(String(source.unit || '').toUpperCase())) option.remove(); });
+                  select.onchange = () => {
+                  const slot = Number(select.dataset.slot), selected = sources.find((s) => sourceKey(s) === select.value);
+                  if (!selected && widget.type === 'POWER_TREND' && slot === 2) widget.sources.splice(2, 1);
+                  else widget.sources[slot] = selected ? { deviceId:selected.deviceId, pointName:selected.pointName, protocol:selected.protocol } : null;
+                  };
+                });
+                if (widget.type === 'POWER_TREND') { const range = section.querySelector('[data-range]'), interval = section.querySelector('[data-interval]'); range.value = String(widget.rangeHours || 24); interval.value = String(widget.intervalMinutes || 15); range.onchange = () => widget.rangeHours = Number(range.value); interval.onchange = () => widget.intervalMinutes = Number(interval.value); }
+              };
+              row.querySelector('[data-search]').oninput = showSources;
+              row.querySelector('[data-type]').onchange = (e) => { widget.type = e.target.value; widget.sources = widget.type === 'PHASE_BALANCE' ? defaultPhases() : ['PATH_BALANCE','POWER_TREND'].includes(widget.type) ? [powerForPath('A'),powerForPath('B')] : []; draw(); };
+              row.querySelector('[data-remove]').onclick = () => { collapsedWidgets.delete(widget); widgets.splice(index, 1); draw(); drawLayout(); };
+              showSources(); showSpecial(); rows.append(row);
+            });
+            panel.querySelector('[data-widget-add]').onclick = () => { if (widgets.length >= 24) return toast('위젯은 최대 24개입니다.', true); widgets.forEach((widget) => collapsedWidgets.add(widget)); widgets.push({title:'새 위젯', type:'VALUE', width:1, sources:[]}); draw(); drawLayout(); };
+            panel.querySelector('[data-widget-save]').onclick = save;
+          };
+          const drawLayout = () => {
+            if (!layoutPanel) return;
+            assignWidgetPositions();
+            layoutPanel.innerHTML = `<div class="rack-widget-layout" data-layout-grid aria-label="위젯 위치 편집 영역"></div>`;
+            const grid = layoutPanel.querySelector('[data-layout-grid]');
+            const {rows:rowCount, rowHeight, gap} = viewportGrid();
+            grid.style.gridTemplateRows = `repeat(${rowCount}, ${rowHeight}px)`;
+            grid.style.gap = `${gap}px`;
+            for (let y=0;y<rowCount;y++) for (let x=0;x<12;x++) { const slot = document.createElement('div'); slot.className='rack-widget-layout-slot'; slot.style.gridColumn=String(x+1); slot.style.gridRow=String(y+1); grid.append(slot); }
+            if (!widgets.length) { const hint = document.createElement('span'); hint.className='muted'; hint.style.gridColumn='1 / span 12'; hint.style.gridRow='1'; hint.style.zIndex='1'; hint.textContent='위젯 설정에서 먼저 위젯을 추가하세요.'; grid.append(hint); }
+            widgets.forEach((widget) => {
+              const card = document.createElement('div'); card.className = 'rack-widget-layout-card';
+              const showRect = (rect) => { card.style.gridColumn = `${rect.x + 1} / span ${rect.w}`; card.style.gridRow = `${rect.y + 1} / span ${rect.h}`; };
+              showRect(window.RackWidgetLayout.rect(widget));
+              const preview = previewCache.get(previewKey(widget));
+              let previewHtml = `<strong>${esc(widget.title || '이름 없는 위젯')}</strong><p class="muted">${widgetReady(widget) ? '실제 데이터를 불러오는 중입니다.' : '위젯 설정에서 측정 항목을 선택하세요.'}</p>`;
+              if (widgetReady(widget) && preview?.error) previewHtml = `<strong>${esc(widget.title)}</strong><p class="muted">미리보기 실패: ${esc(preview.error)}</p>`;
+              else if (widgetReady(widget) && preview?.values) { try { previewHtml = renderRackWidget(widget, preview.values); } catch (error) { previewHtml = `<strong>${esc(widget.title)}</strong><p class="muted">미리보기를 표시할 수 없습니다.</p>`; } }
+              card.innerHTML = `<div data-preview-content data-rack-fit-content>${previewHtml}</div><button type="button" class="rack-widget-drag-handle" data-move aria-label="위젯 이동" title="드래그하여 이동">⠿</button><span class="rack-widget-resize-handle" data-resize role="button" tabindex="0" aria-label="위젯 크기 조절" title="드래그하여 크기 조절"></span>`;
+              mountRackCharts(card);
+              const start = (event, resizing) => {
+                if (event.button !== 0) return;
+                event.preventDefault(); event.stopPropagation();
+                layoutPanel.dataset.dragging = 'true';
+                const handle = event.currentTarget, initial = window.RackWidgetLayout.rect(widget);
+                const style = getComputedStyle(grid), gap = parseFloat(style.columnGap) || 0;
+                const columnStep = (grid.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - gap * 11) / 12 + gap;
+                const rowStep = rowHeight + (parseFloat(style.rowGap) || 0), originX=event.clientX, originY=event.clientY;
+                let candidate = {...initial}, allowed = true;
+                handle.setPointerCapture(event.pointerId);
+                const move = (e) => {
+                  const dx = Math.round((e.clientX-originX)/columnStep), dy = Math.round((e.clientY-originY)/rowStep);
+                  candidate = resizing ? {...initial, w:Math.max(2,Math.min(12-initial.x,initial.w+dx)), h:Math.max(2,Math.min(rowCount-initial.y,initial.h+dy))} : {...initial, x:Math.max(0,Math.min(12-initial.w,initial.x+dx)), y:Math.max(0,Math.min(rowCount-initial.h,initial.y+dy))};
+                  allowed = window.RackWidgetLayout.canPlace(candidate, widgets, widget);
+                  card.classList.toggle('is-invalid', !allowed); showRect(candidate);
+                };
+                const finish = (e) => {
+                  handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', finish); handle.removeEventListener('pointercancel', finish);
+                  if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+                  if (e.type !== 'pointercancel' && allowed) Object.assign(widget,{layoutX:candidate.x,layoutY:candidate.y,layoutW:candidate.w,layoutH:candidate.h});
+                  else if (e.type !== 'pointercancel' && !allowed) toast('다른 위젯과 겹치는 위치에는 배치할 수 없습니다.', true);
+                  delete layoutPanel.dataset.dragging;
+                  drawLayout();
+                };
+                handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', finish); handle.addEventListener('pointercancel', finish);
+              };
+              card.querySelector('[data-move]').onpointerdown = (event) => start(event, false);
+              card.querySelector('[data-resize]').onpointerdown = (event) => start(event, true);
+              card.querySelector('[data-resize]').onkeydown = (event) => {
+                const delta = {ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[event.key]; if (!delta) return;
+                event.preventDefault(); const candidate = {...window.RackWidgetLayout.rect(widget), w:widget.layoutW+delta[0], h:widget.layoutH+delta[1]};
+                if (candidate.y + candidate.h > rowCount || !window.RackWidgetLayout.canPlace(candidate, widgets, widget)) return toast('크기를 조절할 공간이 없습니다.', true);
+                widget.layoutW=candidate.w; widget.layoutH=candidate.h; drawLayout();
+              };
+              grid.append(card); requestAnimationFrame(() => fitWidgetContent(card));
+            });
+            const layoutSave = layoutTools?.querySelector('[data-layout-save]');
+            if (layoutSave) { layoutSave.onclick = save; layoutSave.disabled = false; }
+          };
+          const refreshPreview = async () => {
+            if (previewRunning) { previewRepeat = true; return; }
+            previewRunning = true;
+            const sequence = ++previewSequence, ready = widgets.filter(widgetReady).map((w) => ({key:previewKey(w), body:JSON.stringify([w])}));
+            let next = 0;
+            await Promise.all(Array.from({length:Math.min(4, ready.length)}, async () => {
+              while (next < ready.length) {
+                const item = ready[next++];
+                try { const data = await api(`${base}/widgets/preview`, {method:'POST',body:item.body}); if (sequence === previewSequence) previewCache.set(item.key, {values:data[0] || []}); }
+                catch (error) { if (sequence === previewSequence) previewCache.set(item.key, {error:error.message}); }
+              }
+            }));
+            if (sequence === previewSequence && layoutPanel?.isConnected && !layoutPanel.hidden && !layoutPanel.dataset.dragging) drawLayout();
+            previewRunning = false;
+            if (previewRepeat) { previewRepeat = false; if (layoutPanel?.isConnected && !layoutPanel.hidden) refreshPreview(); }
+          };
+          layoutPanel?.addEventListener('rack-layout-open', () => { drawLayout(); refreshPreview(); });
+          const stage = body.querySelector('[data-rack-3d]');
+          if (stage && window.ResizeObserver) {
+            const observer = new ResizeObserver(() => { if (!stage.isConnected) return observer.disconnect(); if (!layoutPanel.hidden && !layoutPanel.dataset.dragging) drawLayout(); });
+            observer.observe(stage);
+          }
+          const previewRefresh = setInterval(() => { if (!layoutPanel?.isConnected) return clearInterval(previewRefresh); if (!layoutPanel.hidden && !layoutPanel.dataset.dragging) refreshPreview(); }, 30000);
+          draw(); drawLayout(); return;
+        }
+        assignWidgetPositions();
+        let latestViewValues = null;
+        const renderWidgetView = (values) => {
+          if (!panel.isConnected) return;
+          const {rows:rowCount, rowHeight, gap} = viewportGrid();
+          panel.innerHTML = `<div data-rack-widget-view-grid style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(${rowCount},${rowHeight}px);gap:${gap}px">${widgets.map((w, i) => `<div class="rack-detail-info rack-widget-view-card" style="grid-column:${w.layoutX + 1} / span ${w.layoutW};grid-row:${w.layoutY + 1} / span ${w.layoutH};margin:0;min-width:0;min-height:0;box-sizing:border-box"><div data-rack-fit-content>${renderRackWidget(w, values[i] || [])}</div></div>`).join('')}</div>`;
+          mountRackCharts(panel);
+          panel.querySelectorAll('.rack-widget-view-card').forEach((card) => requestAnimationFrame(() => fitWidgetContent(card)));
+        };
+        const update = async () => {
+          if (!panel.isConnected) return;
+          if (!widgets.length) { panel.innerHTML = '<p class="muted">설정된 랙 위젯이 없습니다. 편집 모드의 위젯 설정에서 추가하세요.</p>'; return; }
+          latestViewValues = await api(`${base}/widgets/values`); if (panel.isConnected) renderWidgetView(latestViewValues);
+        };
+        const stage = body.querySelector('[data-rack-3d]');
+        if (stage && window.ResizeObserver) {
+          const observer = new ResizeObserver(() => { if (!stage.isConnected) return observer.disconnect(); if (latestViewValues) renderWidgetView(latestViewValues); });
+          observer.observe(stage);
+        }
+        await update();
+        const refresh = setInterval(() => { if (!panel.isConnected) return clearInterval(refresh); update().catch((error) => { if (panel.isConnected) panel.textContent = `위젯 조회 실패: ${error.message}`; }); }, 30000);
+      } catch (error) { if (panel.isConnected) { panel.textContent = `랙 위젯을 불러오지 못했습니다: ${error.message}`; const layout = body.querySelector('[data-rack-widget-layout]'); if (layout) layout.textContent = `랙 위젯을 불러오지 못했습니다: ${error.message}`; } }
+    }
+    function openPanelFromScene(label, pageCode, deviceIds) {
+      rackDetailViewer?.dispose(); rackDetailViewer = null;
+      $("rackPreviewTitle").textContent = label;
+      $("rackPreviewMeta").textContent = "분전반 내부 예시 · 실제 설비 상태를 나타내는 조작 화면이 아닙니다.";
+      $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout"><div class="rack-detail-stage"><div class="rack-detail-tools"><button type="button" data-panel-door>문 닫기</button></div><div data-panel-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div class="rack-detail-info"><b>연결 장비 최신 측정값</b><div data-panel-values class="muted">${deviceIds.length ? "측정값을 불러오는 중입니다." : "도면에서 분전반에 장비를 연결하면 이곳에 측정값이 표시됩니다."}</div></div></div>`;
+      $("rackPreviewModal").classList.add("open"); $("rackPreviewModal").setAttribute("aria-hidden", "false");
+      const canvas = $("rackPreviewBody").querySelector("[data-panel-canvas]"), values = $("rackPreviewBody").querySelector("[data-panel-values]");
+      import("/page-scene-3d.js?v=20261103o").then(() => {
+        if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
+        rackDetailViewer = window.DcimRoomScene3D.mountPanelDetail(canvas);
+        $("rackPreviewBody").querySelector("[data-panel-door]").onclick = (event) => { event.currentTarget.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
+      }).catch((error) => { if (canvas.isConnected) canvas.textContent = `분전반을 불러오지 못했습니다: ${error.message}`; });
+      if (pageCode && deviceIds.length) api(`/api/manager/device-pages/${encodeURIComponent(pageCode)}/measurements?lookbackHours=24`).then((result) => {
+        if (!values.isConnected) return;
+        const devices = (result.devices || []).filter((device) => deviceIds.includes(Number(device.deviceId)));
+        values.innerHTML = devices.map((device) => `<p><strong>${esc(device.deviceName)}</strong><br>${(device.points || []).filter((point) => point.value != null).slice(0, 8).map((point) => `${esc(point.pointName)}: ${esc(point.value)} ${esc(point.unit || "")}`).join(" · ") || "측정값 없음"}</p>`).join("") || "연결된 장비의 측정값이 없습니다.";
+      }).catch((error) => { if (values.isConnected) values.textContent = `측정값 조회 실패: ${error.message}`; });
+    }
+    async function setupRackSceneDisplay(code, panel) {
+      const base = `/api/manager/assets/racks/${encodeURIComponent(code)}`;
+      panel.innerHTML = '<p class="muted">도면 표시 설정을 불러오는 중입니다.</p>';
+      try {
+        const [config, sources] = await Promise.all([api(`${base}/scene-display`), api(`${base}/widget-sources`)]);
+        if (!panel.isConnected) return;
+        const available = sources.filter((source) => !source.ambiguous);
+        const key = (source) => JSON.stringify([Number(source.deviceId), String(source.protocol || '').toLowerCase(), source.pointName]);
+        const selected = new Set((config.labels || []).map(key));
+        const sourceLabel = (source) => `${source.deviceName} · ${source.pointName}${source.unit ? ` (${source.unit})` : ''}`;
+        const tempSources = available.filter((source) => String(source.dataPointType || '').toUpperCase() === 'TEMPERATURE' && ['C','°C','℃','CELSIUS'].includes(String(source.unit || '').trim().toUpperCase()));
+        const powerSources = available.filter((source) => ['W','KW','MW'].includes(String(source.unit || '').trim().toUpperCase()));
+        const sumSelected = new Set((config.sum?.sources || []).map(key));
+        panel.innerHTML = `<div class="rack-widget-editor-head"><div><h3>도면 표시</h3><span class="muted">이 랙에 연결된 장비의 항목만 선택할 수 있습니다.</span></div></div>
+          <div class="rack-widget-card"><strong>랙 상단 측정값</strong><p class="muted">전체 3D 도면에 표시할 항목을 최대 6개 선택하세요. 선택하지 않으면 표시되지 않습니다.</p><div class="rack-widget-sources">${available.length ? available.map((source,i) => `<label class="rack-widget-source"><input type="checkbox" data-scene-label="${i}" ${selected.has(key(source)) ? 'checked' : ''}>${esc(sourceLabel(source))}</label>`).join('') : '<span class="muted">랙에 연결된 측정 항목이 없습니다.</span>'}</div></div>
+          <div class="rack-widget-card"><strong>전력 합계 표시</strong><p class="muted">합산할 전력 항목을 2~8개 선택하세요. kW·MW는 W로 변환합니다. 선택을 모두 해제하면 합계가 표시되지 않습니다.</p><label class="rack-widget-field">표시 이름<input type="text" maxlength="40" data-scene-sum-title value="${esc(config.sum?.title || '전력 합계')}"></label><div class="rack-widget-sources" style="margin-top:10px">${powerSources.length ? powerSources.map((source,i) => `<label class="rack-widget-source"><input type="checkbox" data-scene-sum="${i}" ${sumSelected.has(key(source)) ? 'checked' : ''}>${esc(sourceLabel(source))}</label>`).join('') : '<span class="muted">랙에 연결된 전력 측정 항목이 없습니다.</span>'}</div><p class="muted">일부 측정값이 없으면 합계는 —로 표시됩니다.</p></div>
+          <div class="rack-widget-card"><strong>바닥 온도 표시</strong><p class="muted">온도 센서 값을 기준으로 랙 주변 바닥에 색상을 표시합니다. 측정값이 없으면 표시하지 않습니다.</p><label class="rack-widget-field">온도 측정 항목<select data-scene-temperature><option value="">표시 안 함</option>${tempSources.map((source,i) => `<option value="${i}" ${config.temperature && key(config.temperature) === key(source) ? 'selected' : ''}>${esc(sourceLabel(source))}</option>`).join('')}</select></label><div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">노랑 시작 기준 (°C)<input type="number" step="0.1" min="-100" max="150" data-scene-warning value="${Number(config.warningC ?? 25)}"></label><label class="rack-widget-field">빨강 시작 기준 (°C)<input type="number" step="0.1" min="-100" max="150" data-scene-danger value="${Number(config.dangerC ?? 30)}"></label></div><p class="muted">기준 이하 초록 · 첫 기준 초과 노랑 · 두 번째 기준 이상 빨강</p></div><button type="button" class="primary" data-scene-display-save>도면 표시 저장</button>`;
+        const button=panel.querySelector('[data-scene-display-save]');
+        button.onclick=async () => {
+          const labels=[...panel.querySelectorAll('[data-scene-label]:checked')].map((el)=>available[Number(el.dataset.sceneLabel)]);
+          if (labels.length>6) return toast('상단 측정값은 최대 6개까지 선택하세요.',true);
+          const sumSources = [...panel.querySelectorAll('[data-scene-sum]:checked')].map((el) => powerSources[Number(el.dataset.sceneSum)]);
+          const sumTitle = panel.querySelector('[data-scene-sum-title]').value.trim();
+          if (sumSources.length && (sumSources.length < 2 || sumSources.length > 8 || !sumTitle)) return toast('합계 이름과 전력 항목 2~8개를 선택하세요.',true);
+          const temp=panel.querySelector('[data-scene-temperature]').value, warningInput=panel.querySelector('[data-scene-warning]'), dangerInput=panel.querySelector('[data-scene-danger]');
+          if (!warningInput.value.trim() || !dangerInput.value.trim()) return toast('온도 색상 기준을 입력하세요.',true);
+          const warningC=Number(warningInput.value), dangerC=Number(dangerInput.value);
+          if (!Number.isFinite(warningC) || !Number.isFinite(dangerC) || warningC < -100 || dangerC > 150 || warningC>=dangerC) return toast('온도 기준을 확인하세요.',true);
+          const source = (v) => v ? {deviceId:v.deviceId,pointName:v.pointName,protocol:v.protocol} : null;
+          button.disabled=true;
+          try {
+            await api(`${base}/scene-display`, {method:'PUT',body:JSON.stringify({labels:labels.map(source),temperature:temp === '' ? null : source(tempSources[Number(temp)]),warningC,dangerC, sum:sumSources.length ? {title:sumTitle,sources:sumSources.map(source)} : null})});
+            document.querySelectorAll('.widget-display-page iframe[data-page-key]').forEach((frame) => frame.contentWindow?.postMessage({type:'dcim:dashboard:rack-changed', rackLocationCode:code},location.origin));
+            toast('랙 도면 표시 설정을 저장했습니다.');
+          } catch(error) { toast(error.message,true); } finally { if(button.isConnected) button.disabled=false; }
+        };
+      } catch(error) { if(panel.isConnected) panel.textContent=`도면 표시 설정을 불러오지 못했습니다: ${error.message}`; }
+    }
+
     function openRackPreview(rackLocationCode) {
       const layout = state.rackLayouts.find((item) => item.rackLocationCode === rackLocationCode);
       if (!layout) return;
+      rackDetailViewer?.dispose(); rackDetailViewer = null;
       const placements = (layout.placements || []).filter(Boolean);
       const capacity = Number(layout.rackUCapacity) || 0;
       const unitItems = placements.filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight && capacity);
       const used = unitItems.reduce((sum, item) => sum + Number(item.uHeight), 0);
-      const frameHeight = Math.max(720, capacity * 18);
-      const unitBlocks = unitItems.map((item) => {
-        const height = Math.min(Number(item.uHeight), capacity) / capacity * 100;
-        const bottom = Math.max(Number(item.uPosition) - 1, 0) / capacity * 100;
-        return `<div class="rack-unit-device" draggable="true" data-rack-device-id="${item.deviceId}" data-rack-u-device-id="${item.deviceId}" style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${esc(item.assetCode || item.modelName || "")}</span></div>`;
-      }).join("") || '<div class="rack-empty">U 장착 장비 없음</div>';
-      const unitNumbers = capacity ? Array.from({ length: capacity }, (_, index) => `<span>${capacity - index}</span>`).join("") : "";
-      const rearDevices = rackRearDevices(placements);
       $("rackPreviewTitle").textContent = layout.rackLocationName;
-      $("rackPreviewMeta").textContent = `${layout.rackLocationCode} · ${capacity ? `${used}/${capacity}U 사용 · ${Math.max(capacity - used, 0)}U 여유` : "Rack U 용량 미지정"} · 설치 장비 ${placements.length}대`;
-      $("rackPreviewBody").innerHTML = `<div class="rack-preview-visual">
-        <div class="rack-preview-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="LEFT"><h3>좌측 측면</h3>${rackSideDevices(placements, "LEFT", layout.rackLocationCode) || '<div class="muted" style="text-align:center;font-size:12px">여기로 이동</div>'}</div>
-        <div class="rack-preview-center">${capacity ? `<div class="rack-preview-units" style="grid-template-rows:repeat(${capacity}, 1fr)">${unitNumbers}</div><div class="rack-frame" style="--rack-u:${capacity};height:${frameHeight}px">${unitBlocks}</div><div class="rack-preview-units" style="grid-template-rows:repeat(${capacity}, 1fr)">${unitNumbers}</div>` : '<div class="rack-frame no-capacity" style="grid-column:1/-1">Rack U 용량 미지정</div>'}</div>
-        <div class="rack-preview-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="RIGHT"><h3>우측 측면</h3>${rackSideDevices(placements, "RIGHT", layout.rackLocationCode) || '<div class="muted" style="text-align:center;font-size:12px">여기로 이동</div>'}</div>
-      </div>${rearDevices ? `<div class="rack-rear"><b>후면 장착</b>${rearDevices}</div>` : ""}`;
+      $("rackPreviewMeta").textContent = `${rackDetailEditing ? "랙 배치 편집" : "랙 모니터링"} · ${layout.rackLocationCode} · ${capacity ? `${used}/${capacity}U 사용 · ${Math.max(capacity - used, 0)}U 여유` : "Rack U 용량 미지정"} · 설치 항목 ${placements.length}개`;
+      $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div class="rack-detail-tools"><button type="button" data-rack-door>문 닫기</button></div><div data-rack-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div><div class="rack-detail-info"><b>${capacity ? `${capacity}U · 사용 ${used}U · 여유 ${Math.max(capacity-used,0)}U` : "랙 용량 미설정"}</b><p class="muted">${rackDetailEditing ? "3D 랙을 돌려 보거나 빈 U 위치를 더블클릭하세요." : "3D 랙을 돌려 보며 장비와 측정값을 확인하세요."}</p>${rackDetailEditing ? `<div class="row"><label>랙 용량 <input type="number" data-rack-capacity min="1" max="120" value="${capacity || ""}" style="width:75px"> U</label><button type="button" data-rack-capacity-save>용량 저장</button></div>` : ""}</div><div class="rack-detail-info" data-rack-measurements>측정값을 불러오는 중입니다.</div>
+      ${rackDetailEditing ? `<section class="rack-placement-section"><h3>장비 배치</h3><p class="muted">저장 즉시 자산관리와 랙 현황에 반영됩니다. 기존 배치가 있으면 이 랙으로 이동합니다.</p>
+        <form data-rack-add-form class="fields"><label class="field">실제 장비 (선택)<select name="deviceId"><option value="">모델만 먼저 설치</option></select></label>
+        <label class="field">설치 위치<select name="mountType"><option value="RACK_U">랙 U 장착</option><option value="RACK_SIDE_LEFT">왼쪽 측면</option><option value="RACK_SIDE_RIGHT">오른쪽 측면</option><option value="RACK_REAR">전면·후면 자유 부착</option></select></label>
+        <label class="field">3D 모델<select name="sceneModelKey"><option value="">기본 장비 모양</option></select><img class="rack-model-preview" data-rack-model-preview alt="선택한 3D 모델 미리보기" hidden></label>
+        <div class="field full"><strong>설치할 3D 모델 선택</strong><small class="muted">3D 자산 관리에서 ‘랙에 설치 가능’으로 설정한 모델이 표시됩니다.</small><div class="rack-model-grid" data-rack-model-grid></div></div>
+        <label class="field" data-rack-u-field>시작 U<input type="number" name="uPosition" min="1" value="1"></label><label class="field" data-rack-u-field>사용 U<input type="number" name="uHeight" min="1" value="1"></label>
+        <div class="field full" data-rack-position hidden><label><input type="checkbox" name="customPosition"> 3D 센서 위치 직접 지정</label><small class="muted">랙 기준 0~100% (가로: 왼쪽→오른쪽, 높이: 아래→위, 깊이: 뒤→앞, 100%는 랙 문에 부착)</small>
+          <div class="row"><label>가로 <input name="positionX" type="number" min="0" max="100" value="50" style="width:70px">%</label><label>높이 <input name="positionY" type="number" min="0" max="100" value="85" style="width:70px">%</label><label>깊이 <input name="positionZ" type="number" min="0" max="100" value="100" style="width:70px">%</label></div></div>
+        <div class="field"><button type="submit" class="primary">배치 저장</button></div></form>
+        <div class="rack-placement-list"><strong>현재 배치 · ${placements.length}</strong><p class="muted">위에서 3D 모델을 선택한 후 기존 항목의 ‘3D 변경’을 누르면 위치를 유지합니다.</p>${placements.map((item) => `<div class="rack-install-entry" tabindex="0" data-rack-entry="${item.modelPlacementId ? `model:${Number(item.modelPlacementId)}` : `device:${Number(item.deviceId)}`}"><span>${esc(item.deviceName)} · ${esc(item.mountType === "RACK_U" ? `U${item.uPosition}–${item.lastU}` : item.mountType === "RACK_SIDE" ? rackSideLabel(item.rackSide) : "후면")}</span><small class="rack-connection-state ${item.modelPlacementId ? 'is-unlinked' : 'is-linked'}">${item.modelPlacementId ? '미연결' : '연결됨'}</small><button type="button" data-rack-replace-model="${item.modelPlacementId ? `model:${Number(item.modelPlacementId)}` : `device:${Number(item.deviceId)}`}">3D 변경</button>${item.modelPlacementId ? `<select data-model-bind-select="${Number(item.modelPlacementId)}"><option>장비 불러오는 중</option></select><button type="button" data-model-bind="${Number(item.modelPlacementId)}">장비 연결</button><button type="button" data-model-remove="${Number(item.modelPlacementId)}">모델 삭제</button>` : `<select data-device-rebind-select="${Number(item.deviceId)}"><option>장비 불러오는 중</option></select><button type="button" data-device-rebind="${Number(item.deviceId)}">장비 변경</button><button type="button" data-rack-remove-placement="${Number(item.deviceId)}">배치 해제</button>`}</div>`).join("")}</div></section>` : ""}</div></div>`;
       $("rackPreviewModal").classList.add("open");
       $("rackPreviewModal").setAttribute("aria-hidden", "false");
-      bindRackPreviewInteractions(layout, unitItems, capacity);
+      const stage = $("rackPreviewBody").querySelector('[data-rack-3d]');
+      const capacityBadge = document.createElement('div'); capacityBadge.className = 'rack-capacity-badge';
+      capacityBadge.textContent = capacity ? `${used} / ${capacity}U 사용 · ${Math.max(capacity-used, 0)}U 여유` : '랙 용량 미설정';
+      stage.append(capacityBadge);
+      const rackInfo = $("rackPreviewBody").querySelector('[data-rack-measurements]').parentElement;
+      const capacityInfo = rackInfo.firstElementChild;
+      const capacityControls = capacityInfo.querySelector('[data-rack-capacity]')?.closest('.row');
+      let selectedRackItem = null, selectedEditor = null, selectRackTab = null;
+      capacityInfo.hidden = true;
+      rackInfo.querySelector('[data-rack-measurements]').hidden = true;
+      const widgetPanel = document.createElement('section'); widgetPanel.dataset.rackWidgets = ''; rackInfo.append(widgetPanel);
+      if (rackDetailEditing) {
+        const placementSection = rackInfo.querySelector('[data-rack-add-form]')?.closest('section');
+        if (capacityControls) { capacityControls.classList.add('rack-capacity-controls'); placementSection.prepend(capacityControls); }
+        selectedEditor = document.createElement('div'); selectedEditor.className = 'rack-detail-info rack-selected-editor'; selectedEditor.hidden = true; placementSection.prepend(selectedEditor);
+        const layoutPanel = document.createElement('section'); layoutPanel.dataset.rackWidgetLayout = ''; layoutPanel.hidden = true; rackInfo.append(layoutPanel);
+        const scenePanel = document.createElement('section'); scenePanel.dataset.rackSceneDisplay = ''; scenePanel.hidden = true; rackInfo.append(scenePanel);
+        setupRackSceneDisplay(layout.rackLocationCode, scenePanel);
+        const layoutTools = document.createElement('div'); layoutTools.className = 'rack-layout-tools'; layoutTools.dataset.rackLayoutTools = ''; layoutTools.hidden = true;
+        layoutTools.innerHTML = '<button type="button" data-layout-back>위젯 설정</button><button type="button" class="primary" data-layout-save disabled>위치 저장</button>';
+        stage.append(layoutTools);
+        const tabs = document.createElement('div'); tabs.className = 'rack-detail-tabs'; tabs.setAttribute('aria-label', '랙 상세 메뉴');
+        tabs.innerHTML = '<button type="button" data-rack-tab="placement" class="primary">장비 배치</button><button type="button" data-rack-tab="widgets">위젯 설정</button><button type="button" data-rack-tab="layout">위젯 위치 설정</button><button type="button" data-rack-tab="scene">도면 표시</button>';
+        placementSection.before(tabs); widgetPanel.hidden = true;
+        selectRackTab = (tab) => {
+          placementSection.hidden = tab !== 'placement';
+          widgetPanel.hidden = tab !== 'widgets';
+          scenePanel.hidden = tab !== 'scene';
+          layoutPanel.hidden = tab !== 'layout';
+          tabs.hidden = tab === 'layout';
+          $("rackPreviewBody").classList.toggle('is-rack-layout-edit', tab === 'layout');
+          layoutTools.hidden = tab !== 'layout';
+          if (!layoutPanel.hidden) layoutPanel.dispatchEvent(new Event('rack-layout-open'));
+          tabs.querySelectorAll('button').forEach((button) => button.classList.toggle('primary', button.dataset.rackTab === tab));
+        };
+        tabs.querySelectorAll('button').forEach((button) => button.onclick = () => selectRackTab(button.dataset.rackTab));
+        layoutTools.querySelector('[data-layout-back]').onclick = () => selectRackTab('widgets');
+      }
+      setupRackWidgets(layout.rackLocationCode, $("rackPreviewBody"), rackDetailEditing);
+      if (rackDetailEditing) {
+        bindRackPreviewInteractions(layout, unitItems, capacity);
+      }
+      const placementKey = (item) => item.modelPlacementId ? `model:${Number(item.modelPlacementId)}` : `device:${Number(item.deviceId)}`;
+      const refreshRackSummary = (item) => {
+        const total = placements.filter((p) => p.mountType === 'RACK_U' && p.uPosition && p.uHeight).reduce((sum, p) => sum + Number(p.uHeight), 0);
+        capacityBadge.textContent = capacity ? `${total} / ${capacity}U 사용 · ${Math.max(capacity-total,0)}U 여유` : '랙 용량 미설정';
+        const row = $("rackPreviewBody").querySelector(`[data-rack-entry="${placementKey(item)}"] > span`);
+        if (row) row.textContent = `${item.deviceName || '장비'} · ${item.mountType === 'RACK_U' ? `U${item.uPosition}–${item.lastU}` : item.mountType === 'RACK_SIDE' ? rackSideLabel(item.rackSide) : '후면'}`;
+      };
+      async function saveRackItem(item, changes) {
+        const endpoint = item.modelPlacementId ? `/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/models/${Number(item.modelPlacementId)}/position` : `/api/manager/assets/${Number(item.deviceId)}/rack-placement`;
+        await api(endpoint, {method:item.modelPlacementId ? 'PATCH' : 'PUT', body:JSON.stringify({mountType:item.mountType, rackLocationCode:layout.rackLocationCode, rackSide:item.rackSide, uPosition:item.uPosition, uHeight:item.uHeight, formFactor:item.formFactor, ...changes})});
+        Object.assign(item, changes);
+        if (item.mountType === 'RACK_U') item.lastU = Number(item.uPosition) + Number(item.uHeight) - 1;
+        if ($("rackPreviewModal").classList.contains('open') && selectedEditor?.isConnected) {
+          rackDetailViewer?.applyPlacement(item); refreshRackSummary(item);
+          if (selectedRackItem === item) renderSelectedRackItem();
+        }
+        document.querySelectorAll('.widget-display-page iframe[data-page-key]').forEach((frame) => frame.contentWindow?.postMessage({type:'dcim:dashboard:rack-changed', rackLocationCode:layout.rackLocationCode}, location.origin));
+      }
+      function renderSelectedRackItem() {
+        if (!selectedEditor) return;
+        const item = selectedRackItem;
+        if (!item) { selectedEditor.hidden = true; selectedEditor.innerHTML = ''; return; }
+        selectedEditor.hidden = false;
+        const vertical = item.mountType === 'RACK_SIDE' && item.sceneModelKey === 'SR_PDU_VERTICAL';
+        const sensor = ['SR_DRAGINO_TH', 'SR_DRAGINO_DOOR'].includes(item.sceneModelKey) && item.mountType !== 'RACK_U';
+        const opposite = vertical ? placements.filter((p) => p !== item && p.sceneModelKey === 'SR_PDU_VERTICAL' && p.mountType === 'RACK_SIDE' && p.rackSide !== item.rackSide) : [];
+        selectedEditor.innerHTML = `<div class="rack-selected-title"><strong>선택한 장비 · ${esc(item.deviceName || '3D 모델')}</strong><button type="button" data-selected-close aria-label="선택 해제">×</button></div>${item.mountType === 'RACK_U' ? `<div class="fields"><label class="field">시작 U<input type="number" min="1" max="${capacity || 120}" data-selected-u value="${Number(item.uPosition)}"></label><label class="field">사용 U<input type="number" min="1" max="${capacity || 120}" data-selected-height value="${Number(item.uHeight)}"></label></div><p class="muted">다른 장비와 겹치지 않는 범위에서 변경할 수 있습니다.</p>` : vertical ? `<p class="muted">${esc(rackSideLabel(item.rackSide))} · 랙 높이 기준 길이와 위치</p><div class="fields"><label class="field">PDU 길이 <output data-length-output></output><input type="range" data-selected-length min="10" max="100" step="1" value="${Math.round((item.visualLengthRatio ?? (1.8/2.3))*100)}"></label><label class="field">높이 <output data-height-output></output><input type="range" data-selected-center min="0" max="100" step="1" value="${Math.round((item.positionY ?? (1.18/2.3))*100)}"></label><label class="field">앞뒤 <output data-depth-output></output><input type="range" data-selected-depth min="4" max="96" step="1" value="${Math.round((item.positionZ ?? ((.4+.48)/.96))*100)}"></label>${opposite.length ? `<label class="field">반대편 PDU 기준<select data-align-source><option value="">PDU 선택</option>${opposite.map((other) => `<option value="${placementKey(other)}">${esc(other.deviceName || 'PDU')}</option>`).join('')}</select></label><div class="field"><button type="button" data-align>반대편과 대칭 맞추기</button></div>` : '<p class="field muted">반대편에 세로형 PDU를 설치하면 대칭 정렬할 수 있습니다.</p>'}</div>` : sensor ? `<p class="muted">센서를 드래그하거나 랙 기준 좌표를 조절하세요.</p>${item.mountType === "RACK_REAR" ? `<label><input type="checkbox" data-sensor-door ${Number(item.positionZ) >= .995 ? "checked" : ""}> 랙 문에 부착 (문과 함께 이동)</label>` : ""}<div class="fields">${[['x','가로'],['y','높이'],['z','앞뒤']].map(([axis,label]) => `<label class="field">${label} <output data-sensor-output="${axis}"></output><input type="range" data-sensor-axis="${axis}" min="0" max="100" value="${Math.round((item['position'+axis.toUpperCase()] ?? (axis === 'x' ? (item.mountType === 'RACK_REAR' ? .5 : item.rackSide === 'LEFT' ? .03125 : .96875) : axis === 'y' ? 1.18/2.3 : item.mountType === 'RACK_REAR' ? .052 : .76))*100)}"></label>`).join('')}</div>` : '<p class="muted">이 장비는 목록에서 모델 변경이나 배치 해제를 할 수 있습니다.</p>'}<div class="row" style="margin-top:10px">${item.mountType === 'RACK_U' || vertical || sensor ? '<button type="button" class="primary" data-selected-save>변경 저장</button><button type="button" data-selected-cancel>변경 취소</button>' : ''}<button type="button" data-selected-model>3D 모델 변경</button><button type="button" class="danger" data-selected-remove>${item.modelPlacementId ? "모델 삭제" : "배치 해제"}</button></div>`;
+        selectedEditor.querySelector('[data-selected-close]').onclick = () => { rackDetailViewer?.applyPlacement(item); selectedRackItem = null; rackDetailViewer?.clearSelection(); renderSelectedRackItem(); };
+        selectedEditor.querySelector('[data-selected-model]').onclick = () => { const row = $("rackPreviewBody").querySelector(`[data-rack-entry="${placementKey(item)}"]`); row?.scrollIntoView({behavior:'smooth',block:'center'}); };
+        selectedEditor.querySelector('[data-selected-remove]').onclick = () => {
+          const row = $("rackPreviewBody").querySelector(`[data-rack-entry="${placementKey(item)}"]`);
+          const action = row?.querySelector(item.modelPlacementId ? '[data-model-remove]' : '[data-rack-remove-placement]');
+          if (action) action.click(); else toast('배치 삭제 항목을 찾지 못했습니다. 화면을 다시 열어 주세요.', true);
+        };
+        const cancel = selectedEditor.querySelector('[data-selected-cancel]'); if (cancel) cancel.onclick = () => { rackDetailViewer?.applyPlacement(item); renderSelectedRackItem(); };
+        let alignedChanges = null;
+        if (sensor) { const inputs = [...selectedEditor.querySelectorAll('[data-sensor-axis]')]; const update = () => { const values = {}; const door = selectedEditor.querySelector("[data-sensor-door]"); const zInput = inputs.find((input) => input.dataset.sensorAxis === "z"); if (door && zInput) { if (door.checked) zInput.value = "100"; else if (Number(zInput.value) >= 100) zInput.value = "95"; zInput.disabled = door.checked; } inputs.forEach((input) => { selectedEditor.querySelector(`[data-sensor-output="${input.dataset.sensorAxis}"]`).textContent = `${input.value}%`; values['position'+input.dataset.sensorAxis.toUpperCase()] = Number(input.value)/100; }); rackDetailViewer?.previewPlacement({...item, ...values}); }; inputs.forEach((input) => input.oninput = update); const door = selectedEditor.querySelector("[data-sensor-door]"); if (door) { door.onchange = update; inputs.find((input) => input.dataset.sensorAxis === "z").disabled = door.checked; } inputs.forEach((input) => { selectedEditor.querySelector(`[data-sensor-output="${input.dataset.sensorAxis}"]`).textContent = `${input.value}%`; }); }
+        if (vertical) {
+          const length = selectedEditor.querySelector('[data-selected-length]'), center = selectedEditor.querySelector('[data-selected-center]'), depth = selectedEditor.querySelector('[data-selected-depth]');
+          const updateLabels = () => { selectedEditor.querySelector('[data-length-output]').textContent = `${length.value}%`; selectedEditor.querySelector('[data-height-output]').textContent = `${center.value}%`; selectedEditor.querySelector('[data-depth-output]').textContent = `${depth.value}%`; };
+          const preview = () => { const half = Number(length.value)/2; center.value = String(Math.max(half, Math.min(100-half, Number(center.value)))); updateLabels(); rackDetailViewer?.previewPlacement({...item, positionX:item.positionX ?? (item.rackSide === 'LEFT' ? .03125 : .96875), positionY:Number(center.value)/100, positionZ:Number(depth.value)/100, visualLengthRatio:Number(length.value)/100}); };
+          [length,center,depth].forEach((input) => input.oninput = () => { alignedChanges = null; preview(); });
+          const align = selectedEditor.querySelector('[data-align]'); if (align) align.onclick = () => { const reference = opposite.find((p) => placementKey(p) === selectedEditor.querySelector('[data-align-source]').value); if (!reference) return toast('기준이 될 반대편 PDU를 선택하세요.', true); alignedChanges = {positionX:1 - (reference.positionX ?? (reference.rackSide === 'LEFT' ? .03125 : .96875)), positionY:reference.positionY ?? (1.18/2.3), positionZ:reference.positionZ ?? ((.4+.48)/.96), visualLengthRatio:reference.visualLengthRatio ?? (1.8/2.3)}; length.value = String(Math.round(alignedChanges.visualLengthRatio*100)); center.value = String(Math.round(alignedChanges.positionY*100)); depth.value = String(Math.round(alignedChanges.positionZ*100)); updateLabels(); rackDetailViewer?.previewPlacement({...item, ...alignedChanges}); };
+          updateLabels();
+        }
+        const save = selectedEditor.querySelector('[data-selected-save]'); if (save) save.onclick = async () => {
+          let changes;
+          if (item.mountType === 'RACK_U') {
+            const start = Number(selectedEditor.querySelector('[data-selected-u]').value), height = Number(selectedEditor.querySelector('[data-selected-height]').value);
+            if (!Number.isInteger(start) || !Number.isInteger(height) || start < 1 || height < 1 || !capacity || start + height - 1 > capacity) return toast('랙 용량 안에서 시작 U와 사용 U를 입력하세요.', true);
+            changes = {uPosition:start, uHeight:height};
+          } else if (sensor) { changes = {}; selectedEditor.querySelectorAll('[data-sensor-axis]').forEach((input) => { changes['position'+input.dataset.sensorAxis.toUpperCase()] = Number(input.value)/100; }); }
+          else changes = alignedChanges || {positionX:item.positionX ?? (item.rackSide === 'LEFT' ? .03125 : .96875), positionY:Number(selectedEditor.querySelector('[data-selected-center]').value)/100, positionZ:Number(selectedEditor.querySelector('[data-selected-depth]').value)/100, visualLengthRatio:Number(selectedEditor.querySelector('[data-selected-length]').value)/100};
+          save.disabled = true;
+          try { await saveRackItem(item, changes); toast('선택한 장비의 배치를 저장했습니다.'); }
+          catch (error) { rackDetailViewer?.applyPlacement(item); if (save.isConnected) save.disabled = false; toast(error.message, true); }
+        };
+      }
+      const measurements = $("rackPreviewBody").querySelector("[data-rack-measurements]");
+      if (rackDetailPageCode) {
+        api(`/api/manager/device-pages/${encodeURIComponent(rackDetailPageCode)}/measurements?lookbackHours=24`).then((result) => {
+          if (!measurements.isConnected) return;
+          const ids = new Set(placements.map((item) => Number(item.deviceId)));
+          const devices = (result.devices || []).filter((device) => ids.has(Number(device.deviceId)));
+          measurements.innerHTML = `<b>장착 장비 최신 측정값</b>${devices.map((device) => `<p><strong>${esc(device.deviceName)}</strong> ${((device.points || []).filter((point) => point.value != null).slice(0, 4).map((point) => `${esc(point.pointName)}: ${esc(point.value)} ${esc(point.unit || "")}`).join(" · ")) || "측정값 없음"}</p>`).join("") || '<p class="muted">이 페이지에 등록된 장착 장비의 측정값이 없습니다.</p>'}`;
+        }).catch((error) => { if (measurements.isConnected) measurements.textContent = `측정값 조회 실패: ${error.message}`; });
+      } else measurements.textContent = "3D 페이지에서 랙을 열면 페이지에 등록된 장비의 최신 측정값을 표시합니다.";
+      const capacitySave = $("rackPreviewBody").querySelector("[data-rack-capacity-save]");
+      if (capacitySave) capacitySave.onclick = async () => {
+        const input = $("rackPreviewBody").querySelector("[data-rack-capacity]");
+        const size = Number(input.value), maxUsed = Math.max(0, ...unitItems.map((item) => Number(item.lastU) || 0));
+        if (!Number.isInteger(size) || size < Math.max(1, maxUsed) || size > 120) return toast(`랙 용량은 ${Math.max(1,maxUsed)}~120U로 입력하세요.`, true);
+        const node = state.flatLocations.find((entry) => entry.code === rackLocationCode);
+        if (!node) return toast("위치 정보를 찾지 못했습니다. 위치 목록을 새로고침하세요.", true);
+        capacitySave.disabled = true;
+        try {
+          await api(`/api/manager/location-node/${encodeURIComponent(node.code)}`, { method: "PUT", body: JSON.stringify({ locationTypeId: node.locationTypeId, name: node.name, rackUCapacity: size }) });
+          node.rackUCapacity = size; await openRackFromScene(rackLocationCode); toast("랙 용량을 저장했습니다.");
+        } catch (error) { capacitySave.disabled = false; toast(error.message, true); }
+      };
+      const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
+      const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103o")]).then(([models]) => {
+        if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
+        rackDetailViewer = window.DcimRoomScene3D.mountRackDetail(canvas, layout, models, (u) => {
+          if (!form) return;
+          const existing = unitItems.find((item) => Number(item.uPosition) <= u && Number(item.lastU) >= u);
+          if (existing) {
+            const key = existing.modelPlacementId ? `model:${Number(existing.modelPlacementId)}` : `device:${Number(existing.deviceId)}`;
+            const row = $("rackPreviewBody").querySelector(`[data-rack-entry="${key}"]`);
+            row?.scrollIntoView({ behavior: "smooth", block: "center" });
+            toast(`U${u}에는 ${existing.deviceName}이(가) 있습니다. 3D 모델을 선택한 뒤 ‘3D 변경’을 누르세요.`);
+            return;
+          }
+          form.elements.mountType.value = "RACK_U"; form.elements.mountType.dispatchEvent(new Event("change")); form.elements.uPosition.value = u; form.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, { modelKey: rackDetailModelKey, onError: (message) => toast(message, true), onSelectPlacement: !rackDetailEditing ? null : (item) => {
+          if (selectedRackItem) rackDetailViewer?.applyPlacement(selectedRackItem);
+          selectedRackItem = item;
+          $("rackPreviewBody").querySelectorAll('[data-rack-entry]').forEach((row) => row.classList.toggle('is-selected', !!item && row.dataset.rackEntry === placementKey(item)));
+          if (item) selectRackTab?.('placement');
+          renderSelectedRackItem();
+        }, onPduMove: !rackDetailEditing ? null : async (item, position) => {
+          await saveRackItem(item, position); toast("장비 위치를 저장했습니다.");
+        } });
+        const doorButton = $("rackPreviewBody").querySelector("[data-rack-door]");
+        const doorStatus = document.createElement('span'); doorStatus.className = 'rack-door-status'; doorStatus.textContent = '도어 센서 상태 확인 중'; canvas.parentElement.append(doorStatus);
+        doorButton.onclick = () => { doorButton.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
+        import('/rack-door-attachment.js?v=20261103b').then(({readRackDoorState}) => {
+          let busy = false;
+          const refreshDoor = async () => {
+            if (busy || !canvas.isConnected) return;
+            busy = true;
+            try {
+              const state = await readRackDoorState(layout, (id) => api(`/api/manager/widgets/sources/preview?deviceId=${id}&pointName=DOOR_CONTACT&protocol=mqtt`, {cache:'no-store'}));
+              if (!canvas.isConnected) return;
+              doorStatus.textContent = state === null ? '도어 센서 상태 없음' : state ? '도어 센서 · 열림' : '도어 센서 · 닫힘';
+              doorButton.disabled = !rackDetailEditing && state !== null;
+              if (!rackDetailEditing && state !== null) { rackDetailViewer?.setDoorState(state); doorButton.textContent = state ? '문 닫기' : '문 열기'; }
+            } finally { busy = false; }
+          };
+          refreshDoor(); const timer = setInterval(() => { if (!canvas.isConnected) return clearInterval(timer); refreshDoor(); }, 15000);
+        });
+        if (!form) return;
+        $("rackPreviewBody").querySelectorAll('[data-rack-entry]').forEach((row) => {
+          const choose = () => {
+            const item = placements.find((entry) => placementKey(entry) === row.dataset.rackEntry);
+            if (item && !rackDetailViewer?.selectPlacement(item)) toast('이 장비의 3D 위치를 표시할 수 없습니다.', true);
+          };
+          row.addEventListener('click', (event) => { if (!event.target.closest('button, select, input, a')) choose(); });
+          row.addEventListener('keydown', (event) => { if (event.target === row && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); choose(); } });
+        });
+        const select = form.elements.sceneModelKey, preview = form.querySelector("[data-rack-model-preview]");
+        const availableModels = models.filter((model) => model.enabled && model.rackInstallable);
+        form._rackModels = availableModels;
+        select.innerHTML = '<option value="">기본 장비 모양</option>' + availableModels.map((model) => `<option value="${esc(model.key)}">${esc(model.label)}</option>`).join("");
+        if (select.dataset.pendingValue && !availableModels.some((model) => model.key === select.dataset.pendingValue)) {
+          const existing = models.find((model) => model.key === select.dataset.pendingValue);
+          if (existing) select.add(new Option(`${existing.label} (기존 배치)`, existing.key));
+        }
+        if (select.dataset.pendingValue) select.value = select.dataset.pendingValue;
+        const thumbnails = new Map();
+        const grid = form.querySelector("[data-rack-model-grid]");
+        const cards = new Map();
+        if (!availableModels.length) grid.textContent = "3D 자산 관리에서 랙 설치를 허용한 모델이 없습니다.";
+        for (const model of availableModels) {
+          const button = document.createElement("button"); button.type = "button";
+          const picture = document.createElement("img"); picture.alt = "";
+          const label = document.createElement("span"); label.textContent = model.label;
+          button.append(picture, label); button.onclick = () => { select.value = model.key; select.dispatchEvent(new Event("change")); suggestMount(model.key); };
+          button.setAttribute('aria-pressed', 'false'); cards.set(model.key, {button, picture}); grid.append(button);
+        }
+        const updateMountChoices = () => { const selected = availableModels.find((model) => model.key === select.value); [...form.elements.mountType.options].forEach((option) => { option.disabled = !!selected && !(option.value === 'RACK_U' ? selected.rackUInstallable : selected.rackAttachmentInstallable); }); if (selected && form.elements.mountType.selectedOptions[0]?.disabled) { form.elements.mountType.value = selected.rackUInstallable ? 'RACK_U' : 'RACK_REAR'; form.elements.mountType.dispatchEvent(new Event('change')); } };
+        const update = () => { updateMountChoices(); for (const [key, card] of cards) { const selected = key === select.value; card.button.classList.toggle('is-selected', selected); card.button.setAttribute('aria-pressed', String(selected)); } const src = thumbnails.get(select.value); preview.hidden = !src; if (src) preview.src = src; };
+        const suggestMount = (key) => {
+          if (!["SR_GPU_SERVER", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR"].includes(key)) return;
+          form.elements.mountType.value = ["SR_DRAGINO_TH", "SR_DRAGINO_DOOR"].includes(key) ? "RACK_REAR" : key === "SR_PDU_VERTICAL" ? "RACK_SIDE_LEFT" : "RACK_U";
+          form.elements.mountType.dispatchEvent(new Event("change"));
+          if (["SR_DRAGINO_TH", "SR_DRAGINO_DOOR"].includes(key)) { form.elements.customPosition.checked = true; form.elements.positionX.value = 50; form.elements.positionY.value = 80; form.elements.positionZ.value = 100; }
+          if (key === "SR_GPU_SERVER") form.elements.uHeight.value = 4;
+        };
+        select.addEventListener("change", update);
+        select.addEventListener("change", (event) => { if (event.isTrusted) suggestMount(select.value); });
+        window.DcimRoomScene3D.renderModelThumbnails(availableModels, (key, src) => { if (src) { thumbnails.set(key, src); if (cards.has(key)) cards.get(key).picture.src = src; } update(); }, () => form.isConnected);
+      }).catch((error) => { if (canvas.isConnected) canvas.textContent = `3D 랙을 불러오지 못했습니다: ${error.message}`; });
     }
 
     function closeRackPreview() {
+      rackDetailViewer?.dispose(); rackDetailViewer = null;
+      rackDetailPageCode = ""; rackDetailModelKey = "RACK"; rackDetailEditing = false;
       $("rackPreviewModal").classList.remove("open");
       $("rackPreviewModal").setAttribute("aria-hidden", "true");
     }
@@ -5595,7 +6955,7 @@
         const frame = capacity ? `<div class="rack-frame" data-rack-drop-code="${esc(layout.rackLocationCode)}" style="--rack-u:${capacity}">${unitItems.length ? unitItems.map((item) => {
           const height = Math.min(Number(item.uHeight), capacity) / capacity * 100;
           const bottom = Math.max(Number(item.uPosition) - 1, 0) / capacity * 100;
-          return `<div class="rack-unit-device" draggable="true" data-rack-overview-u-device-id="${item.deviceId}" data-rack-origin-code="${esc(layout.rackLocationCode)}" style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${esc(item.assetCode || item.modelName || "")}</span></div>`;
+          return `<div class="rack-unit-device" ${item.deviceId ? `draggable="true" data-rack-overview-u-device-id="${Number(item.deviceId)}" data-rack-origin-code="${esc(layout.rackLocationCode)}"` : ''} style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${item.modelPlacementId ? '장비 미연결' : esc(item.assetCode || item.modelName || "")}</span></div>`;
         }).join("") : '<div class="rack-empty">U 장착 장비 없음</div>'}</div>` : '<div class="rack-frame no-capacity">Rack U 용량 미지정</div>';
         return `<article class="rack-overview-card" data-rack-preview="${esc(layout.rackLocationCode)}" title="클릭하여 크게 보기">
           <div class="rack-overview-head"><div><b>${esc(layout.rackLocationName)}</b><small>${esc(layout.rackLocationCode)}</small></div><span class="chip">${capacity ? `${used}/${capacity}U` : "용량 미지정"}</span></div>
@@ -5609,7 +6969,7 @@
         </article>`;
       }).join("");
       out.querySelectorAll("[data-rack-preview]").forEach((card) => card.onclick = (event) => {
-        if (!event.target.closest("button")) openRackPreview(card.dataset.rackPreview);
+        if (!event.target.closest("button")) { rackDetailEditing = state.role === "ADMIN"; openRackPreview(card.dataset.rackPreview); }
       });
       out.querySelectorAll("[data-rack-open]").forEach((button) => button.onclick = async () => {
         const code = button.dataset.rackOpen;
@@ -6042,6 +7402,7 @@
       $("pdSave").disabled = state.role !== "ADMIN" || !ready || !dirty;
       $("pdSelectAll").disabled = state.role !== "ADMIN" || !ready || !state.pageDeviceCatalog.length;
       $("pdClearAll").disabled = state.role !== "ADMIN" || !ready || !state.pageDeviceIds.size;
+      $("pdDisplaySave").disabled = state.role !== "ADMIN" || !ready || !state.pageDisplayDirty || hasUnsavedPageDeviceSelection();
     }
 
     function renderPageDeviceCandidates() {
@@ -6073,11 +7434,38 @@
           const id = Number(input.dataset.pdDevice);
           if (input.checked) state.pageDeviceIds.add(id);
           else state.pageDeviceIds.delete(id);
+          renderPageDeviceDisplayEditor();
           if ($("pdOnlySelected").checked) renderPageDeviceCandidates();
           else updatePageDeviceSelectionSummary();
         });
       });
       updatePageDeviceSelectionSummary();
+    }
+
+    // Per-device screen-card positioning has been replaced by a page-owned 3D scene.
+    function renderPageDeviceDisplayEditor() {
+      const mode = state.pageDisplay.viewMode || "DATA";
+      $("pdViewMode").value = mode;
+      $("pdViewMode").disabled = state.role !== "ADMIN";
+      const hint = $("pdSceneEditorHint");
+      hint.textContent = mode === "SCENE_3D"
+        ? "환경 화면에서 연필 버튼을 눌러 랙을 배치하고, 센서 측정값을 랙에 장착하세요."
+        : mode === "PLAN_2D"
+          ? "환경 화면에서 연필 버튼을 눌러 평면도 위젯 배치를 편집하세요."
+          : "페이지 장비 데이터가 카드 목록으로 표시됩니다.";
+      updatePageDeviceSelectionSummary();
+    }
+    function readPageDeviceDisplayForm() {
+      return {
+        viewMode: $("pdViewMode").value,
+        layoutAssetKey: state.pageDisplay.layoutAssetKey || null,
+        items: (state.pageDisplay.items || []).map((item) => ({
+          clientKey: item.id != null ? `db-${item.id}` : item.clientKey,
+          parentClientKey: item.parentId != null ? `db-${item.parentId}` : item.parentClientKey || null,
+          itemType: item.itemType, deviceId: item.deviceId ?? null, pointName: item.pointName || null,
+          label: item.label, modelKey: item.modelKey, x: Number(item.x), y: Number(item.y), z: Number(item.z), rotationY: Number(item.rotationY || 0),
+        })),
+      };
     }
 
     async function fetchPageDeviceCatalog() {
@@ -6097,6 +7485,8 @@
       state.pageDeviceLoadedCode = null;
       state.pageDeviceIds = new Set();
       state.savedPageDeviceIds = new Set();
+      state.pageDisplay = { viewMode: "DATA", layoutAssetKey: null, items: [] };
+      state.pageDisplayDirty = false;
       if (!code) {
         renderPageDeviceCandidates();
         return;
@@ -6105,18 +7495,22 @@
       $("pdSelectionCount").textContent = "장비 목록을 불러오는 중입니다.";
       $("pdDeviceList").innerHTML = '<div class="empty">장비 목록을 불러오는 중입니다.</div>';
       try {
-        const [ids, devices] = await Promise.all([
+        const [ids, devices, display] = await Promise.all([
           api(`/api/manager/device-pages/${encodeURIComponent(code)}/devices`),
           refreshCatalog || !state.pageDeviceCatalogLoaded
             ? fetchPageDeviceCatalog() : Promise.resolve(state.pageDeviceCatalog),
+          api(`/api/manager/device-pages/${encodeURIComponent(code)}/display`),
         ]);
         if (sequence !== pageDeviceLoadSequence) return;
         state.pageDeviceCatalog = devices;
         state.pageDeviceCatalogLoaded = true;
+        state.pageDisplay = display || { viewMode: "DATA", layoutAssetKey: null, items: [] };
+        state.pageDisplayDirty = false;
         state.pageDeviceIds = new Set((ids || []).map(Number));
         state.savedPageDeviceIds = new Set(state.pageDeviceIds);
         state.pageDeviceLoadedCode = code;
         renderPageDeviceCandidates();
+        renderPageDeviceDisplayEditor();
       } catch (e) {
         if (sequence !== pageDeviceLoadSequence) return;
         $("pdSelectionCount").textContent = "장비 목록을 불러오지 못했습니다.";
@@ -6138,15 +7532,22 @@
     };
     $("pdSearch").addEventListener("input", renderPageDeviceCandidates);
     $("pdOnlySelected").addEventListener("change", renderPageDeviceCandidates);
+    $("pdViewMode").addEventListener("change", () => {
+      state.pageDisplay.viewMode = $("pdViewMode").value;
+      state.pageDisplayDirty = true;
+      renderPageDeviceDisplayEditor();
+    });
     $("pdSelectAll").onclick = () => {
       if (state.role !== "ADMIN" || state.pageDeviceLoadedCode !== $("pdPage").value) return;
       state.pageDeviceIds = new Set(state.pageDeviceCatalog.map((device) => Number(device.id)));
       renderPageDeviceCandidates();
+      renderPageDeviceDisplayEditor();
     };
     $("pdClearAll").onclick = () => {
       if (state.role !== "ADMIN" || state.pageDeviceLoadedCode !== $("pdPage").value) return;
       state.pageDeviceIds.clear();
       renderPageDeviceCandidates();
+      renderPageDeviceDisplayEditor();
     };
     $("pdSave").onclick = async () => {
       const code = state.pageDeviceLoadedCode;
@@ -6161,12 +7562,37 @@
         state.pageDeviceIds = new Set((saved || []).map(Number));
         state.savedPageDeviceIds = new Set(state.pageDeviceIds);
         renderPageDeviceCandidates();
+        renderPageDeviceDisplayEditor();
+        document.querySelectorAll('iframe[data-page-key]').forEach((frame) => {
+          if (frame.dataset.pageKey === code && frame.dataset.loaded === "true") {
+            frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+          }
+        });
         toast(`${state.pageDeviceIds.size}대의 페이지 장비 선택을 저장했습니다`);
       } catch (e) { toast(e.message, true); }
       finally {
         $("pdPage").disabled = false;
         updatePageDeviceSelectionSummary();
       }
+    };
+    $("pdDisplaySave").onclick = async () => {
+      const code = state.pageDeviceLoadedCode;
+      if (state.role !== "ADMIN" || !code || code !== $("pdPage").value || !state.pageDisplayDirty || hasUnsavedPageDeviceSelection()) return;
+      const request = readPageDeviceDisplayForm();
+      try {
+        const saved = await api(`/api/manager/device-pages/${encodeURIComponent(code)}/display`, {
+          method: "PUT", body: JSON.stringify(request),
+        });
+        state.pageDisplay = saved;
+        state.pageDisplayDirty = false;
+        renderPageDeviceDisplayEditor();
+        document.querySelectorAll('iframe[data-page-key]').forEach((frame) => {
+          if (frame.dataset.pageKey === code && frame.dataset.loaded === "true") {
+            frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+          }
+        });
+        toast("페이지 보기 방식을 저장했습니다");
+      } catch (e) { toast(e.message, true); }
     };
 
     function editDeviceGroup(id) {
@@ -6287,8 +7713,38 @@
       $("wStepBack").style.visibility = current === 1 ? "hidden" : "visible";
       $("wStepNext").style.display = current === 3 ? "none" : "inline-flex";
       $("wCreate").style.display = current === 3 ? "inline-flex" : "none";
-      if (current === 3) renderWidgetReview();
+      if (current === 3) {
+        renderWidgetReview();
+        updateWidgetPagePreview();
+      }
       editor.scrollTop = 0;
+    }
+
+    function updateWidgetPagePreview() {
+      const pageCode = String($("wCreatePage")?.value || "").trim();
+      const frame = $("wPagePreviewFrame");
+      if (!pageCode || !frame) return;
+      const page = (state.codes.DEVICE_PAGE || []).find((item) => String(item.code).toLowerCase() === pageCode.toLowerCase());
+      $("wPagePreviewTitle").textContent = `${page?.name || pageCode} · 화면 미리보기`;
+      const src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&pageCode=${encodeURIComponent(pageCode)}&widgetEditorPreview=1`;
+      if (frame.dataset.previewSrc !== src) {
+        frame.dataset.previewSrc = src;
+        frame.src = src;
+      } else {
+        frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
+      }
+    }
+
+    function openPageLayoutEditor() {
+      const pageCode = String($("wCreatePage").value || "").trim();
+      const tabName = `${pageCode.toLowerCase()}-page`;
+      const panel = document.querySelector(`#tab-${CSS.escape(tabName)}`);
+      const pageFrame = panel?.querySelector("iframe[data-page-key]");
+      if (!pageFrame) return toast("이 페이지는 배치 편집 화면을 제공하지 않습니다.", true);
+      closeWidgetEditor();
+      goTab(tabName);
+      pageFrame.dataset.loaded = "true";
+      pageFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&layoutEdit=1&pageCode=${encodeURIComponent(pageCode)}`;
     }
 
     function openWidgetEditor(editing = false) {
@@ -6330,10 +7786,6 @@
 
     function refreshWidgetPages(pageCode) {
       const code = String(pageCode || "").toLowerCase();
-      const boardFrame = $("widgetBoardFrame");
-      if (boardFrame?.dataset.loaded) {
-        boardFrame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
-      }
       document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
         if (frame.dataset.loaded && frame.dataset.pageKey.toLowerCase() === code) {
           frame.contentWindow?.postMessage({ type: "dcim:dashboard:reload" }, location.origin);
@@ -6345,7 +7797,9 @@
       $("wEditorBackdrop").classList.remove("open");
       $("wEditorCard").classList.remove("open");
       $("wEditorCard").setAttribute("aria-hidden", "true");
-      if ($("tab-widget-board")?.classList.contains("active")) $("widgetBoardFrame")?.focus();
+      if (["tab-dashboard-page", "tab-environment-page", "tab-cooling-page"].some((id) => $(id)?.classList.contains("active"))) {
+        document.querySelector(".widget-display-page.active iframe")?.focus();
+      }
     }
 
     function validateWidgetEditorStep(step) {
@@ -9267,6 +10721,11 @@
     $("reloadAllBtn").onclick = boot;
     $("locReload").onclick = () => loadLocations().catch((e) => toast(e.message, true));
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
+    $("sceneModelReload").onclick = () => loadSceneModels().catch((e) => toast(e.message, true));
+    $("sceneBuiltinReload").onclick = () => loadSceneBuiltins().catch((e) => toast(e.message, true));
+    $("sceneModelReset").onclick = resetSceneModelForm;
+    $("sceneModelSave").onclick = () => saveSceneModel().catch((e) => toast(e.message, true));
+    resetSceneModelForm();
     $("devReload").onclick = () => loadDevices().catch((e) => toast(e.message, true));
     $("devClearFilters").onclick = () => {
       $("devFilterName").value = "";
@@ -9408,6 +10867,11 @@
         await selectAsset(state.selectedAssetId);
       } catch (error) { toast(error.message, true); }
     };
+    $("asset2dUpload").onclick = () => uploadAssetModelFile($("asset2dFile").files[0], "ASSET_2D");
+    $("asset3dUpload").onclick = () => uploadAssetModelFile($("asset3dFile").files[0], "ASSET_3D");
+    $("showroomAssetImport").onclick = importShowroomModelToAsset;
+    $("showroomAssetImport").disabled = true;
+    $("assetModelSampleCreate").onclick = createAssetModelSamples;
     $("assetRackLayoutLoad").onclick = loadAssetRackLayout;
     $("assetRackLayout").addEventListener("change", loadAssetRackLayout);
     $("assetMountType").addEventListener("change", updateAssetMountFields);
@@ -9976,7 +11440,7 @@
         $("wzResult").classList.add("show");
         $("wzGoDev").onclick = () => { goTab("devices"); selectDevice(device.id, true); };
           $("wzGoWidget").onclick = () => {
-            goTab("widget-board");
+            goTab("dashboard-page");
             openWidgetEditorForPage("dashboard");
             loadWidgetSources().then(() => {
               fillWidgetDevicePick();
@@ -11198,6 +12662,10 @@
     $("wPointSearch").addEventListener("input", () => filterWidgetPointLabels("wPickDevicePoints", "wPointSearch"));
     $("wCatalogSearch").addEventListener("input", () => filterWidgetPointLabels("wPointGrid", "wCatalogSearch"));
     $("wCloseEditor").onclick = () => closeWidgetEditor();
+    $("wEditPageLayout").onclick = openPageLayoutEditor;
+    $("wCreatePage").addEventListener("change", () => {
+      if (Number($("wEditorCard").dataset.step) === 3) updateWidgetPagePreview();
+    });
     $("wEditorBackdrop").onclick = () => closeWidgetEditor();
     $("wStepBack").onclick = () => showWidgetEditorStep(Number($("wEditorCard").dataset.step) - 1);
     $("wStepNext").onclick = () => {
@@ -11485,6 +12953,7 @@
       }
       try {
         await boot();
+        restoreActiveTab();
       } catch (e) {
         clearAuth();
         log("세션 만료: 다시 로그인하세요");

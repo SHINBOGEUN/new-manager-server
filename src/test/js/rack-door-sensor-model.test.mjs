@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import * as THREE from '../../main/resources/static/vendor/three/three.module.js';
+import {GLTFLoader} from '../../main/resources/static/vendor/three/loaders/GLTFLoader.js';
+import {updateDoorAttachmentTransform, prepareDoorSensorParts, setDoorSensorPartsAttached} from '../../main/resources/static/rack-door-attachment.js';
+test('Dragino contact stays fixed while its magnet follows the door', async () => {
+ const bytes=await readFile(new URL('../../main/resources/static/scene-assets/showroom/dragino_door_contact.glb',import.meta.url));
+ const obj=(await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'')).scene;
+ const stationary=obj.clone(true), moving=obj.clone(true), scene=new THREE.Scene(), door=new THREE.Group();
+ prepareDoorSensorParts(stationary); const movingParts = prepareDoorSensorParts(moving); moving.traverse(node => {if(node.isMesh) node.visible=!!node.userData.doorSensorMovingPart;}); setDoorSensorPartsAttached({movingParts:[stationary.getObjectByName('magnet'),stationary.getObjectByName('door_mounting_plate'), ...['mounting_screw_2','mounting_screw_3'].map(n=>stationary.getObjectByName(n))],gap:stationary.getObjectByName('contact_gap')},true);
+ scene.add(stationary,door); door.add(moving); scene.updateMatrixWorld(true);
+ const fixed=stationary.getObjectByName('wired_contact'), magnet=moving.getObjectByName('magnet'), plate=moving.getObjectByName('door_mounting_plate');
+ assert.equal(movingParts.movingParts.length,4); assert.ok(plate.visible); assert.equal(stationary.getObjectByName('door_mounting_plate').visible,false); assert.ok(stationary.getObjectByName('mounting_plate').visible);
+ assert.ok(fixed.visible && magnet.visible); const fixedBefore=fixed.getWorldPosition(new THREE.Vector3()), magnetBefore=magnet.getWorldPosition(new THREE.Vector3()), plateBefore=plate.getWorldPosition(new THREE.Vector3());
+ updateDoorAttachmentTransform(door,new THREE.Vector3(.5,0,.49),1.2); scene.updateMatrixWorld(true);
+ assert.ok(fixed.getWorldPosition(new THREE.Vector3()).distanceTo(fixedBefore)<1e-8);
+ assert.ok(magnet.getWorldPosition(new THREE.Vector3()).distanceTo(magnetBefore)>.1);
+ assert.ok(plate.getWorldPosition(new THREE.Vector3()).distanceTo(plateBefore)>.1);
+});

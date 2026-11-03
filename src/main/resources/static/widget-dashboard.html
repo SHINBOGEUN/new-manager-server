@@ -6,6 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261103o"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -254,11 +255,14 @@
       text-shadow: 0 1px 2px rgba(0,0,0,.6);
     }
     .snap-guide {
-      position: absolute; pointer-events: none; z-index: 15;
-      border: 1px dashed rgba(62,207,142,.75);
+      position: absolute; pointer-events: none; z-index: 22;
+      border: 2px dashed #42e3a1;
       border-radius: 10px;
+      background: rgba(27,190,126,.15);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 0 22px rgba(42,225,158,.42);
       display: none;
     }
+    .snap-guide::before { content:attr(data-label); position:absolute; left:0; top:-29px; max-width:calc(100vw - 32px); padding:5px 9px; border:1px solid #42e3a1; border-radius:6px; color:#eafff5; background:#075638; box-shadow:0 4px 14px #0008; font-size:12px; font-weight:800; white-space:nowrap; }
     .log {
       margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
       border-radius: 8px; padding: 8px; font-family: Consolas, monospace; font-size: 11px;
@@ -424,7 +428,7 @@
     body.embedded .dashboard-brand, body.embedded .dashboard-context,
     body.embedded .dashboard-actions > a[href="/ops-console.html"] { display:none; }
     body.embedded .dashboard-topbar { justify-content:flex-end; min-height:48px; }
-    /* Fixed monitoring pages are display canvases; editing remains in Widget Board. */
+    /* Fixed monitoring pages are display canvases; their page editor tools appear on demand. */
     body.display-only { grid-template-rows:minmax(0,1fr); }
     body.display-only header.dashboard-header { display:none !important; }
     body.display-only main { display:block; min-width:0; }
@@ -436,8 +440,8 @@
     body.display-only .board-wrap { width:100%; height:100%; padding:0; overflow:auto; }
     body.display-only .board { min-width:0; min-height:100%; padding:0; background:none; }
     body.display-only .placeholder { min-height:calc(100vh - 24px); grid-column:1 / -1; border:1px dashed #334861; background:rgba(18,26,41,.45); text-align:center; }
-    body.display-only #snapGuide,
-    body.display-only #ghost { display:none !important; }
+    body.display-only:not(.edit-mode) #snapGuide,
+    body.display-only:not(.edit-mode) #ghost { display:none !important; }
     body.display-only .card { user-select:text; }
     /* The editor previews the same full-width grid as the fixed display pages. */
     body.embedded-board .board-toolbar { display:none !important; }
@@ -447,9 +451,150 @@
     body.embedded-board.drawer-open aside { display:block; top:48px; width:min(340px,90vw); }
     body.embedded-board .board-wrap { margin-left:0; }
     body.embedded-board.edit-mode .board { background-image:linear-gradient(to right,rgba(42,53,68,.42) 1px,transparent 1px),linear-gradient(to bottom,rgba(42,53,68,.42) 1px,transparent 1px); }
+    /* Fixed 2D/3D page editors use the full canvas; the generic widget drawer
+       must not push the mapped drawing sideways when page edit mode is enabled. */
+    body.fixed-page-view.edit-mode aside { display:none !important; }
+    body.fixed-page-view.edit-mode .board-wrap { margin-left:0 !important; }
+    .page-visualization { margin:0 0 14px; border:1px solid #263951; border-radius:12px; overflow:hidden; background:#101a29; }
+    .page-visualization[hidden] { display:none !important; }
+    .page-visualization-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #263951; }
+    .page-visualization-head strong { color:#e4edf8; }
+    .page-visualization-head small { color:#8fa4be; }
+    .page-edit-icon { width:38px; height:38px; padding:0 !important; border:1px solid #79d7ed !important; border-radius:50% !important; color:#e9fbff !important; background:#102d3be8 !important; box-shadow:0 4px 16px #06121c77; font-size:20px !important; line-height:1; }
+    .page-edit-icon:hover { background:#176078ed !important; }
+    .page-device-data-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; padding:12px; }
+    .page-device-data-card { min-width:0; padding:12px; border:1px solid #263951; border-radius:9px; background:#151f30; }
+    .page-device-data-card h3 { margin:0 0 5px; font-size:14px; color:#e4edf8; }
+    .page-device-data-card .page-device-meta { margin-bottom:8px; color:#8fa4be; font-size:11px; }
+    .page-device-data-point { display:flex; justify-content:space-between; gap:12px; padding:5px 0; border-top:1px solid #243247; color:#b9c8db; font-size:12px; }
+    .page-device-data-point b { color:#40c7eb; text-align:right; }
+    .page-layout-stage { position:relative; min-height:min(72vh,760px); overflow:hidden; aspect-ratio:12/7; background:#07111b; }
+    .page-layout-stage.scene-3d { aspect-ratio:auto; min-height:calc(100vh - 64px); background:#07111b; }
+    .page-scene-webgl { position:absolute; inset:0; width:100%; height:100%; overflow:hidden; }
+    .page-scene-webgl canvas { display:block; width:100%; height:100%; touch-action:none; }
+    .page-layout-stage.walk-mode .page-scene-webgl canvas { cursor:grab; }
+    .page-layout-stage.walk-mode .page-scene-webgl canvas:active { cursor:grabbing; }
+    .page-layout-stage.whole-move-mode .page-scene-webgl canvas { cursor:grab; }
+    .page-layout-stage.whole-move-mode .page-scene-webgl canvas:active { cursor:grabbing; }
+    .page-scene-editor { position:absolute; z-index:7; right:12px; top:54px; width:min(280px,calc(100% - 24px)); max-height:calc(100% - 66px); overflow:auto; padding:14px; border:1px solid #304b60; border-radius:12px; background:rgba(10,23,36,.96); box-shadow:0 12px 32px #0008; color:#e5f4fa; backdrop-filter:blur(10px); }
+    .page-scene-editor h3 { margin:0; font-size:14px; font-weight:700; }
+    .page-scene-editor .scene-editor-heading { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+    .page-scene-editor .scene-editor-collapse { width:auto; margin:0; padding:3px 7px; font-size:11px; }
+    .page-scene-editor .scene-save { width:auto; flex:0 0 auto; margin:0; }
+    .page-scene-editor .scene-editor-cancel { width:auto; flex:0 0 auto; margin:0; }
+    .page-scene-editor .scene-editor-content { margin-top:7px; }
+    .page-scene-editor.collapsed .scene-editor-content { display:none; }
+    .page-scene-editor .scene-editor-note { margin:0 0 12px; color:#9db5c8; font-size:11px; line-height:1.55; }
+    .page-scene-editor .scene-section-label { margin:14px 0 5px; color:#7897ab; font-size:10px; font-weight:700; letter-spacing:.04em; }
+    .scene-group-list { display:grid; gap:6px; max-height:220px; overflow:auto; }
+    .scene-group-card { border:1px solid #2c4b5e; border-radius:8px; padding:8px; background:#102433; }
+    .scene-group-card summary { color:#dcf5ff; cursor:pointer; font-size:12px; font-weight:700; overflow-wrap:anywhere; }
+    .scene-group-card p { color:#a6c0d1; font-size:11px; line-height:1.5; margin:7px 0; overflow-wrap:anywhere; }
+    .scene-group-dialog { width:min(440px,calc(100% - 28px)); max-height:min(620px,85vh); padding:18px; border:1px solid #3b6274; border-radius:12px; color:#e5f4fa; background:#0c1b29; }
+    .scene-group-dialog::backdrop { background:#030a12bb; }
+    .scene-group-dialog h3 { margin:0 0 12px; }
+    .scene-group-dialog input[type=text] { width:100%; padding:8px; margin:6px 0 12px; color:#e5f4fa; border:1px solid #35516b; border-radius:6px; background:#132438; }
+    .scene-group-members { display:grid; gap:6px; max-height:300px; overflow:auto; margin:8px 0 14px; }
+    .scene-group-members label { display:flex; align-items:center; gap:8px; padding:6px; color:#d2e7f2; overflow-wrap:anywhere; }
+    .scene-group-members label:has(input:disabled) { opacity:.5; }
+    .scene-group-dialog .scene-editor-actions { display:flex; gap:8px; justify-content:flex-end; }
+    .page-scene-editor .scene-host-picker { margin-top:8px; padding:7px; border:1px solid #2c8196; border-radius:7px; background:#102a38; }
+    .page-scene-editor .scene-host-picker[hidden] { display:none; }
+    .page-scene-editor .scene-host-picker strong { color:#c9f6ff; font-size:10px; }
+    .page-scene-editor label { display:block; margin:6px 0; color:#9db5c8; font-size:10px; }
+    .page-scene-editor select,.page-scene-editor button { width:100%; min-width:0; margin-top:4px; padding:6px 7px; color:#e5f4fa; border:1px solid #35516b; border-radius:7px; background:#132438; font-size:11px; }
+    .page-scene-editor .scene-editor-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px; }
+    .page-scene-editor .scene-editor-actions button { margin:0; padding:8px 7px; text-align:center; }
+    .page-scene-editor .scene-editor-actions button:hover { border-color:#4aabc6; background:#19354a; }
+    .page-scene-editor .scene-save { background:#1296cf; border-color:#31bcea; font-weight:700; }
+    .page-scene-editor .scene-clear-all { border-color:#75404b; color:#ffabb5; background:#311c28; }
+    .page-scene-editor .scene-clear-all:hover { border-color:#ff8292; background:#48212c; }
+    .page-scene-editor .scene-editor-status { min-height:20px; margin-top:12px; padding:8px; border-radius:7px; background:#102b32; color:#8cddc2; font-size:10px; line-height:1.4; }
+    .page-scene-asset-dock { position:absolute; z-index:8; left:50%; bottom:12px; transform:translateX(-50%); display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; width:min(680px,calc(100% - 28px)); padding:8px; border:1px solid #3b6274; border-radius:12px; background:rgba(7,17,27,.9); box-shadow:0 8px 24px #0008; backdrop-filter:blur(10px); }
+    .page-scene-asset-dock[hidden] { display:none; }
+    .page-scene-asset-dock button { display:flex; min-height:48px; flex-direction:column; align-items:center; justify-content:center; gap:4px; margin:0; padding:7px; border:1px solid #29485a; border-radius:8px; color:#d8edf5; background:#112331; cursor:pointer; font-size:12px; font-weight:700; }
+    .page-scene-asset-dock button:hover { border-color:#39c9ed; background:#173b4d; }
+    .page-scene-asset-modal { width:min(1060px,calc(100vw - 32px)); max-width:none; max-height:min(86vh,820px); padding:18px; overflow:hidden; border:1px solid #3b6274; border-radius:14px; color:#e5f4fa; background:#0d1a28; box-shadow:0 20px 70px #000b; }
+    .page-scene-asset-modal::backdrop { background:rgba(2,8,14,.72); backdrop-filter:blur(3px); }
+    .page-scene-asset-modal .scene-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+    .page-scene-asset-modal h3 { margin:0; font-size:16px; }
+    .page-scene-asset-modal .scene-modal-hint { margin:0 0 12px; color:#91aabd; font-size:12px; }
+    .scene-model-category-tabs { display:flex; flex-wrap:wrap; gap:7px; margin:0 0 12px; }
+    .scene-model-category-tabs[hidden] { display:none; }
+    .scene-model-category-tabs button { width:auto; margin:0; padding:7px 12px; border:1px solid #315369; border-radius:18px; color:#c9dce8; background:#102536; cursor:pointer; font-size:12px; }
+    .scene-model-category-tabs button[aria-pressed="true"] { border-color:#4bd4f4; color:#e8fbff; background:#17445a; }
+    .scene-asset-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); grid-template-rows:repeat(5,minmax(76px,1fr)); gap:8px; max-height:calc(86vh - 115px); overflow:auto; padding:2px; }
+    .scene-asset-grid button { display:flex; min-width:0; min-height:76px; flex-direction:column; align-items:center; justify-content:center; gap:6px; border:1px solid #29485a; border-radius:9px; color:#d8edf5; background:#112331; cursor:pointer; }
+    .scene-asset-grid button:hover { border-color:#39c9ed; background:#173b4d; }
+    .scene-asset-grid .scene-asset-icon { display:grid; width:36px; height:28px; place-items:center; border:1px solid #4c8998; border-radius:5px; color:#7ce9f7; background:linear-gradient(145deg,#2d5360,#142a38); font-size:17px; }
+    .scene-asset-grid .scene-asset-caption { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+    .scene-asset-grid.is-model-gallery { grid-template-rows:none; grid-auto-rows:150px; }
+    .scene-asset-grid.is-model-gallery button { justify-content:flex-start; padding:6px; gap:4px; }
+    .scene-asset-grid .scene-model-thumbnail { display:grid; place-items:center; width:100%; height:112px; overflow:hidden; border-radius:6px; background:#0a1824; color:#8197a6; font-size:10px; }
+    .scene-asset-grid .scene-model-thumbnail img { width:100%; height:100%; object-fit:contain; }
+    .scene-asset-grid.is-model-gallery .scene-asset-caption { white-space:normal; text-align:center; line-height:1.2; }
+    @media (max-width:800px) { .scene-asset-grid { grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:none; } }
+    .scene-template-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-height:calc(86vh - 125px); overflow:auto; padding:2px; }
+    .scene-template-card { display:flex; min-height:118px; flex-direction:column; align-items:flex-start; justify-content:center; gap:7px; padding:14px; border:1px solid #29485a; border-radius:10px; color:#d8edf5; background:linear-gradient(145deg,#132b3b,#0f1d2a); text-align:left; cursor:pointer; }
+    .scene-template-card:hover { border-color:#39c9ed; background:linear-gradient(145deg,#173b4d,#102536); }
+    .scene-template-card strong { color:#ecfbff; font-size:14px; }
+    .scene-template-card span { color:#9db5c8; font-size:11px; line-height:1.5; }
+    @media (max-width:800px) { .scene-template-grid { grid-template-columns:1fr; } }
+    .page-scene-nav { display:flex; gap:7px; align-items:center; }
+    .page-scene-nav button { border:1px solid #38506a; border-radius:7px; padding:6px 10px; color:#d8e7f6; background:#172538; cursor:pointer; }
+    .page-scene-nav select { border:1px solid #38506a; border-radius:7px; padding:6px; color:#d8e7f6; background:#172538; font-size:11px; }
+    .page-scene-nav .page-default-view { padding:6px 9px; border-color:#3d7182; color:#bcecf7; font-size:11px; white-space:nowrap; }
+    .page-scene-nav .page-default-view:hover { border-color:#39c9ed; background:#173b4d; }
+    .page-layout-stage .map-overlay-board { position:absolute !important; inset:0; z-index:4; display:grid; width:100%; height:100%; min-height:0; padding:0; overflow:visible; background:none !important; pointer-events:none; }
+    .page-layout-stage .map-overlay-board > .card { pointer-events:auto; }
+    body.page-scene-fullscreen { grid-template-rows:minmax(0,1fr); }
+    body.page-scene-fullscreen > .dashboard-header { display:none !important; }
+    body.page-scene-fullscreen main { display:block; width:100%; height:100%; min-width:0; }
+    body.page-scene-fullscreen .board-wrap { width:100%; height:100%; padding:0; overflow:hidden !important; }
+    body.page-scene-fullscreen #pageVisualization { position:relative; width:100%; height:100%; min-height:0; margin:0; overflow:hidden; border:0; border-radius:0; }
+    body.page-scene-fullscreen .page-visualization-head { position:absolute; z-index:8; top:0; left:0; right:0; min-height:48px; padding:8px 14px; border:0; pointer-events:none; background:linear-gradient(180deg,rgba(8,15,24,.72),transparent); }
+    body.page-scene-fullscreen .page-scene-nav { pointer-events:auto; }
+    body.page-scene-fullscreen .page-layout-stage { width:100%; height:100%; min-height:0; aspect-ratio:auto; }
+    body.page-scene-fullscreen .page-layout-stage .map-overlay-board { overflow:hidden; }
+    body.page-scene-fullscreen .resize-handle { touch-action:none; }
+    body.page-scene-fullscreen .board { min-height:0; }
+    body.fixed-page-view.edit-mode > .dashboard-header {
+      display:block !important; position:fixed; z-index:70; top:8px; right:8px;
+      width:max-content; max-width:calc(100vw - 16px); padding:0; border:0; background:transparent;
+      pointer-events:none;
+    }
+    body.fixed-page-view.edit-mode .dashboard-topbar {
+      min-height:0; justify-content:flex-end; gap:0; padding:0; border:0; background:transparent;
+      box-shadow:none; pointer-events:none;
+    }
+    body.fixed-page-view.edit-mode .dashboard-brand,
+    body.fixed-page-view.edit-mode .dashboard-context { display:none !important; }
+    body.fixed-page-view .page-switcher,
+    body.fixed-page-view #authStatus { display:none !important; }
+    body.fixed-page-view.edit-mode .dashboard-actions {
+      max-width:calc(100vw - 16px); flex-wrap:wrap; justify-content:flex-end; gap:6px;
+      padding:7px; border:1px solid #38506a; border-radius:11px; background:rgba(13,21,34,.96);
+      box-shadow:0 10px 30px #0008; pointer-events:auto;
+    }
+    body.fixed-page-view.edit-mode .dashboard-actions button,
+    body.fixed-page-view.edit-mode .dashboard-actions a { min-height:32px; padding:6px 9px; }
+    body.fixed-page-view.edit-mode .dashboard-controls {
+      position:absolute; top:calc(100% + 8px); right:0; width:min(900px,calc(100vw - 16px));
+      max-height:calc(100vh - 82px); overflow:auto; border:1px solid #38506a; border-radius:10px;
+      box-shadow:0 12px 35px #0009; pointer-events:auto;
+    }
+    body.fixed-page-view.edit-mode.drawer-open aside {
+      display:block !important; position:fixed; z-index:65; top:8px; bottom:8px; left:8px;
+      width:min(340px,90vw); padding:16px; border:1px solid #38506a; border-radius:12px;
+      background:rgba(13,21,34,.97); backdrop-filter:blur(12px);
+    }
+    body.fixed-page-view.edit-mode .card { overflow:hidden; }
+    .page-layout-empty { padding:22px; color:#9bb0c8; text-align:center; }
     @media (max-width:760px) {
       body.display-only .board-wrap, body.embedded-board .board-wrap { padding:0; }
       body.display-only .board, body.embedded-board .board { min-width:0; }
+      .page-layout-stage { min-height:300px; aspect-ratio:auto; }
+      .page-device-data-grid { grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -457,6 +602,7 @@
   <script>
     const initialDashboardParams = new URLSearchParams(location.search);
     if (initialDashboardParams.has("embedded")) document.body.classList.add("embedded");
+    if (initialDashboardParams.get("fixedPage") === "1") document.body.classList.add("fixed-page-view");
     if (initialDashboardParams.get("displayOnly") === "1") document.body.classList.add("display-only");
     if (initialDashboardParams.get("boardView") === "1") document.body.classList.add("embedded-board");
   </script>
@@ -502,6 +648,7 @@
     </aside>
     <section class="board-wrap">
       <div class="board-toolbar"><div class="board-title"><strong id="boardPageTitle">통합 운영 현황</strong><span>15초마다 최신 상태로 자동 갱신됩니다.</span></div><div class="board-status"><button id="analysisShowTrends" type="button" class="ghost" style="display:none">측정 추이 분석 보기</button><span class="live-indicator">LIVE</span><span id="boardWidgetCount" class="chip">0 widgets</span></div></div>
+      <section id="pageVisualization" class="page-visualization" hidden aria-live="polite"></section>
       <div id="board" class="board">
         <div class="placeholder">enabled 위젯만 표시됩니다.</div>
         <div id="snapGuide" class="snap-guide"></div>
@@ -572,6 +719,18 @@
       activeCctvByWidget: new Map(),
       chartSeriesModeByWidget: new Map(),
       chartInstances: new Map(),
+      pageVisualization: null,
+      pageVisualizationError: null,
+      pageScene3dApi: null,
+      pageVisualizationEditMode: false,
+      pageSceneDraft: null,
+      pageSceneHistory: [],
+      pageSceneHistoryIndex: -1,
+      pageSceneBaseline: null,
+      pageSceneDirty: false,
+      pageSceneEditorExpanded: false,
+      pageSceneLoadError: false,
+      dashboardReady: false,
       trendModalChart: null,
       pollTimer: null,
       editMode: false,
@@ -608,6 +767,7 @@
     const fixedAnalysisPage = embeddedInConsole && requestedPageCode?.toUpperCase() === "ANALYSIS";
     const fixedPageView = embeddedInConsole && dashboardParams.get("fixedPage") === "1";
     const displayOnlyPage = embeddedInConsole && dashboardParams.get("displayOnly") === "1";
+    const layoutEditRequested = embeddedInConsole && dashboardParams.get("layoutEdit") === "1";
     const boardView = embeddedInConsole && dashboardParams.get("boardView") === "1";
     if (fixedAnalysisPage) document.body.classList.add("embedded-analysis");
     $("managerUrl").value = embeddedInConsole ? location.origin : storedManagerUrl("widgetDashManagerUrl");
@@ -688,6 +848,8 @@
       })();
       return state.refreshPromise;
     }
+
+    window.dcimModelToken = () => state.token;
 
     async function api(path, options = {}) {
       const { retryOnUnauthorized = true, ...requestOptions } = options;
@@ -919,9 +1081,10 @@
       const initialPage = requestedPage || findPage(savedPageCode) || defaultPage;
       pageSelect.value = initialPage.code;
       pageSelect.disabled = fixedAnalysisPage || fixedPageView;
-      $("addWidgetBtn").style.display = boardView && consoleAuth()?.getRole?.() === "ADMIN" ? "inline-flex" : "none";
-      $("metricsBtn").style.display = boardView ? "inline-flex" : "none";
-      $("drawerBtn").style.display = boardView ? "inline-flex" : "none";
+      const canManagePage = (boardView || fixedPageView) && consoleAuth()?.getRole?.() === "ADMIN";
+      $("addWidgetBtn").style.display = canManagePage ? "inline-flex" : "none";
+      $("metricsBtn").style.display = canManagePage ? "inline-flex" : "none";
+      $("drawerBtn").style.display = (boardView || fixedPageView) ? "inline-flex" : "none";
       $("addWidgetBtn").disabled = state.editMode;
       updateDashboardTitle();
     }
@@ -930,13 +1093,14 @@
     function toFineLayout(layout) {
       if (!layout) return null;
       let { gridX, gridY, w, h } = layout;
-      // 12칸 시대 (작은 w/h)
-      if (w <= 6 && h <= 3) {
-        gridX *= 4; gridY *= 4; w *= 4; h *= 4;
-      }
-      // 24칸 시대
-      else if (w <= 12 && h <= 6) {
-        gridX *= 2; gridY *= 2; w *= 2; h *= 2;
+      // New writes are explicitly versioned. Infer only old rows, so a new small widget
+      // (for example 8×4) is never unexpectedly scaled after saving and reloading.
+      if (Number(layout.gridVersion || 0) !== 48) {
+        if (w <= 6 && h <= 3) {
+          gridX *= 4; gridY *= 4; w *= 4; h *= 4;
+        } else if (w <= 12 && h <= 6) {
+          gridX *= 2; gridY *= 2; w *= 2; h *= 2;
+        }
       }
       return {
         gridX: Math.max(0, gridX),
@@ -1006,16 +1170,37 @@
 
     async function loadWidgets() {
       const pageCode = $("pageCode").value;
+      if (!pageCode) return;
       if (!new URLSearchParams(location.search).has("pageCode")) localStorage.setItem("widgetDashPageCode", pageCode);
       if (!embeddedInConsole) localStorage.setItem("widgetDashManagerUrl", $("managerUrl").value);
-      const [widgets, devicePage, models] = await Promise.all([
+      const [widgets, devicePage, models, pageMeasurements, pageDisplay] = await Promise.all([
         api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`, { cache: "no-store" }),
         api("/api/manager/devices?page=1&size=500"),
         api("/api/manager/device-models"),
+        fixedPageView && !fixedAnalysisPage
+          ? api(`/api/manager/device-pages/${encodeURIComponent(pageCode)}/measurements?lookbackHours=24`, { cache: "no-store" }).catch((error) => {
+              state.pageVisualizationError = error.message;
+              return null;
+            })
+          : Promise.resolve(null),
+        fixedPageView && !fixedAnalysisPage
+          ? api(`/api/manager/device-pages/${encodeURIComponent(pageCode)}/display`, { cache: "no-store" }).catch((error) => {
+              state.pageVisualizationError = error.message;
+              return null;
+            })
+          : Promise.resolve(null),
       ]);
       state.widgets = widgets || [];
       state.devices = devicePage?.content || [];
       state.models = models?.content || models || [];
+      try {
+        const catalog = await api("/api/manager/scene-models", { cache: "no-store" });
+        const { setShowroomModels } = await import("/showroom-models.js?v=20261103b");
+        setShowroomModels(catalog);
+      } catch (error) { console.warn("3D 모델 목록을 불러오지 못했습니다", error); }
+      state.pageVisualization = pageMeasurements ? { ...pageMeasurements, ...(pageDisplay || {}) } : null;
+      if (pageMeasurements) state.pageVisualizationError = null;
+      renderPageVisualization();
       let autoIdx = 0;
       for (const w of state.widgets) {
         if (w.enabled && !w.layout) {
@@ -1025,6 +1210,610 @@
       renderWidgetList();
       await refreshBoard(true);
     }
+
+    function createSceneHeader(page, modeLabel, devices) {
+      const head = document.createElement("div"); head.className = "page-visualization-head";
+      if (!['PLAN_2D', 'SCENE_3D'].includes(page.viewMode)) {
+        const title = document.createElement("strong"); title.textContent = `${page.pageName || page.pageCode} · ${modeLabel}`;
+        head.append(title);
+      }
+      const tools = document.createElement("div"); tools.className = "page-scene-nav";
+      tools.style.marginLeft = "auto";
+      const count = document.createElement("small"); count.textContent = `${devices.length}대 · 최신값 자동 갱신`;
+      tools.append(count);
+      if (consoleAuth()?.getRole?.() === "ADMIN") {
+        if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
+          if (page.viewMode === "SCENE_3D") {
+            const views = document.createElement("select");
+            views.setAttribute("aria-label", "시점 맞추기");
+            views.innerHTML = '<option value="">시점 맞추기</option><option value="down45">아래로 45°</option><option value="down60">아래로 60°</option><option value="top">위에서 보기</option><option value="front">정면 보기</option><option value="side">측면 보기</option>';
+            views.onchange = () => { state.pageScene3dApi?.alignView?.(views.value); views.value = ""; };
+            tools.append(views);
+          }
+          const defaultView = document.createElement("button"); defaultView.type = "button"; defaultView.className = "page-default-view";
+          defaultView.textContent = "현재 시점 기본값 저장";
+          defaultView.title = "현재 카메라 시점을 이 페이지의 오른쪽 클릭 기본 시점으로 저장";
+          defaultView.onclick = () => state.pageScene3dApi?.saveViewAsDefault?.();
+          tools.append(defaultView);
+        }
+        const edit = document.createElement("button"); edit.type="button"; edit.className="page-edit-icon";
+        edit.textContent = "✎";
+        edit.title = state.pageVisualizationEditMode ? "도면 편집 종료" : "도면·위젯 편집";
+        edit.setAttribute("aria-label", edit.title);
+        edit.onclick=async()=>{
+          if (state.pageVisualizationEditMode) {
+            if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
+            state.pageVisualizationEditMode=false;
+            clearSceneDraft();
+          } else {
+            state.pageVisualizationEditMode=true;
+          }
+          renderPageVisualization();
+        };
+        tools.append(edit);
+      }
+      head.append(tools); return head;
+    }
+
+    function clearSceneDraft() {
+      state.pageSceneDraft = null; state.pageSceneHistory = []; state.pageSceneHistoryIndex = -1;
+      state.pageSceneBaseline = null; state.pageSceneDirty = false;
+      state.pageSceneEditorExpanded = false;
+    }
+    function updateSceneHistoryUI() {
+      const editor = document.querySelector(".page-scene-editor");
+      if (!editor) return;
+      editor.querySelector("[data-scene-dirty]").textContent = state.pageSceneDirty ? "저장하지 않은 변경" : "저장됨";
+      editor.querySelector("[data-scene-undo]").disabled = state.pageSceneHistoryIndex <= 0;
+      editor.querySelector("[data-scene-redo]").disabled = state.pageSceneHistoryIndex >= state.pageSceneHistory.length - 1;
+    }
+    function recordSceneChange(items) {
+      const snapshot = structuredClone(items), serialized = JSON.stringify(snapshot);
+      if (state.pageSceneHistoryIndex >= 0 && JSON.stringify(state.pageSceneHistory[state.pageSceneHistoryIndex]) === serialized) return;
+      state.pageSceneHistory.splice(state.pageSceneHistoryIndex + 1);
+      state.pageSceneHistory.push(snapshot);
+      if (state.pageSceneHistory.length > 101) state.pageSceneHistory.shift();
+      state.pageSceneHistoryIndex = state.pageSceneHistory.length - 1;
+      state.pageSceneDraft = snapshot;
+      state.pageSceneDirty = serialized !== state.pageSceneBaseline;
+      updateSceneHistoryUI();
+    }
+    function navigateSceneHistory(step) {
+      const index = state.pageSceneHistoryIndex + step;
+      if (index < 0 || index >= state.pageSceneHistory.length) return;
+      state.pageSceneHistoryIndex = index;
+      state.pageSceneDraft = structuredClone(state.pageSceneHistory[index]);
+      state.pageSceneDirty = JSON.stringify(state.pageSceneDraft) !== state.pageSceneBaseline;
+      renderPageVisualization();
+    }
+    window.addEventListener("beforeunload", (event) => {
+      if (state.pageSceneDirty) { event.preventDefault(); event.returnValue = ""; }
+    });
+    window.dcimSceneHasUnsavedChanges = () => state.pageSceneDirty;
+    async function refreshSceneRack(locationCode) {
+      if (!locationCode || !state.pageScene3dApi) return;
+      const scene = state.pageScene3dApi;
+      const layout = await api(`/api/manager/assets/racks/${encodeURIComponent(locationCode)}/layout`, { cache: "no-store" });
+      const { readRackDoorState } = await import("/rack-door-attachment.js?v=20261103b");
+      const { readRackTemperatureHumidity } = await import("/rack-scene-display.js?v=20261103e");
+      const [door, display, sensors] = await Promise.allSettled([
+        readRackDoorState(layout, (id) => api(`/api/manager/widgets/sources/preview?deviceId=${id}&pointName=DOOR_CONTACT&protocol=mqtt`, { cache: "no-store" })),
+        api(`/api/manager/assets/racks/${encodeURIComponent(locationCode)}/scene-display/values`, { cache: "no-store" }),
+        readRackTemperatureHumidity(layout, (id, point) => api(`/api/manager/widgets/sources/preview?deviceId=${id}&pointName=${encodeURIComponent(point)}&protocol=mqtt`, { cache: "no-store" }))
+      ]);
+      layout.doorOpen = door.status === "fulfilled" ? door.value : null;
+      layout.sceneDisplay = display.status === "fulfilled" ? display.value : null;
+      layout.sensorReadings = sensors.status === "fulfilled" ? sensors.value : {};
+      if (scene === state.pageScene3dApi) scene.setRackLayout(locationCode, layout);
+    }
+    window.addEventListener("message", (event) => {
+      if (event.origin !== location.origin || event.source !== window.parent) return;
+      if (event.data?.type === "dcim:dashboard:rack-changed") {
+        refreshSceneRack(String(event.data.rackLocationCode || "")).catch((error) => console.warn("랙 배치 갱신 실패", error)); return;
+      }
+      if (event.data?.type !== "dcim:dashboard:rack-selected") return;
+      if (!state.pageVisualizationEditMode || consoleAuth()?.getRole?.() !== "ADMIN") return;
+      if (state.pageScene3dApi?.linkRackLocation(String(event.data.itemKey || ""), String(event.data.rackLocationCode || ""))) {
+        refreshSceneRack(String(event.data.rackLocationCode || "")).catch((error) => console.warn("랙 배치 조회 실패", error));
+        const rack = state.pageScene3dApi.getItems().find((item) => findSceneItemKey(item) === String(event.data.itemKey || ""));
+        window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: event.data.rackLocationCode, rackModelKey: rack?.modelKey || "RACK", editing: true }, location.origin);
+      }
+    });
+
+    async function savePageScene() {
+      const page = state.pageVisualization;
+      const scene = state.pageScene3dApi;
+      if (!page || !scene) return;
+      const items = scene.getItems();
+      const request = {
+        viewMode: page.viewMode || "SCENE_3D",
+        layoutAssetKey: page.layoutAssetKey || null,
+        items: items.map((item) => ({
+          clientKey: item.id != null ? `db-${item.id}` : item.clientKey,
+          parentClientKey: item.parentId != null ? `db-${item.parentId}` : item.parentClientKey || null,
+          itemType: item.itemType, deviceId: item.deviceId ?? null, locationNodeCode: item.locationNodeCode || null, pointName: item.pointName || null,
+          label: item.label, modelKey: item.modelKey, x: Number(item.x), y: Number(item.y), z: Number(item.z),
+          sizeX: Number(item.sizeX) || 4,
+          sizeY: Number(item.sizeY) || 4,
+          sizeZ: Number(item.sizeZ) || 4,
+          groupKey: item.groupKey || null,
+          groupName: item.groupName || null,
+          locked: Boolean(item.locked),
+          rotationY: Number(item.rotationY || 0),
+        })),
+      };
+      try {
+        await api(`/api/manager/device-pages/${encodeURIComponent(page.pageCode)}/display`, { method: "PUT", body: JSON.stringify(request) });
+        state.pageVisualizationEditMode = false;
+        clearSceneDraft();
+        await refreshPageVisualization();
+        log("랙 배치와 센서 장착 정보를 저장했습니다.");
+      } catch (error) { log("3D 장면 저장 실패: " + error.message); }
+    }
+
+    function findSceneItemKey(item) { return item.id != null ? `db-${item.id}` : item.clientKey; }
+
+    function renderPageVisualization() {
+      const root = $("pageVisualization"), board = $("board");
+      if (!root) return;
+      state.pageScene3dApi?.dispose?.(); state.pageScene3dApi = null;
+      if (!fixedPageView || fixedAnalysisPage) { root.hidden = true; root.replaceChildren(); return; }
+      root.hidden = false;
+      const page = state.pageVisualizationEditMode && state.pageSceneDraft
+        ? { ...state.pageVisualization, items: structuredClone(state.pageSceneDraft) } : state.pageVisualization;
+      if (state.pageVisualizationError) {
+        document.body.classList.remove("page-scene-fullscreen"); board.classList.remove("map-overlay-board"); board.style.gridTemplateRows = "";
+        root.innerHTML = `<div class="page-layout-empty">페이지 장면을 불러오지 못했습니다: ${escapeHtml(state.pageVisualizationError)}</div>`; root.after(board); return;
+      }
+      if (!page) { root.innerHTML = '<div class="page-layout-empty">페이지 데이터를 불러오는 중입니다.</div>'; root.after(board); return; }
+      const mode = page.viewMode || "DATA", devices = page.devices || [], items = page.items || [];
+      document.body.classList.toggle("page-scene-fullscreen", mode === "PLAN_2D" || mode === "SCENE_3D");
+      root.replaceChildren();
+      if (mode === "DATA") {
+        root.append(createSceneHeader(page, "장비 데이터", devices));
+        root.insertAdjacentHTML("beforeend", devices.length ? `<div class="page-device-data-grid">${devices.map((device) => `
+          <article class="page-device-data-card"><h3>${escapeHtml(device.deviceName)}</h3><div class="page-device-meta">${escapeHtml(device.modelName || "모델 미지정")} · ${escapeHtml(device.locationName || device.locationCode || "위치 미지정")}</div>
+          ${(device.points || []).slice(0, 8).map((point) => `<div class="page-device-data-point"><span>${escapeHtml(point.pointName)}</span><b>${point.value == null ? "—" : `${formatValue(point.value)}${point.unit ? ` ${escapeHtml(point.unit)}` : ""}`}</b></div>`).join("")}</article>`).join("")}</div>` : '<div class="page-layout-empty">페이지 장비 설정에서 표시할 장비를 선택하세요.</div>');
+        board.classList.remove("map-overlay-board"); board.style.gridTemplateRows = ""; root.after(board); return;
+      }
+
+      const stage = document.createElement("div"); stage.className = `page-layout-stage scene-${mode === "SCENE_3D" ? "3d" : "2d"}`;
+      root.append(createSceneHeader(page, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices), stage);
+      const viewport = document.createElement("div"); viewport.className = "page-scene-webgl"; stage.append(viewport);
+      let sceneEditor = null;
+      const updateSceneEditorLists = (nextItems = items) => {
+        if (!sceneEditor) return;
+        const mountedIds = new Set(nextItems.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType)).map((item) => Number(item.deviceId)));
+        const deviceSelect = sceneEditor.querySelector("[data-scene-device]");
+        const attachable = devices.filter((device) => !mountedIds.has(Number(device.deviceId)));
+        deviceSelect.innerHTML = attachable.length ? attachable.map((device) => `<option value="${Number(device.deviceId)}">${escapeHtml(device.deviceName)}</option>`).join("") : '<option value="">부착 가능한 페이지 장비 없음</option>';
+        sceneEditor.querySelector("[data-scene-attach]").disabled = !attachable.length || !sceneEditor._selectedHostKey;
+        const groupList = sceneEditor.querySelector("[data-scene-groups]");
+        if (!groupList) return;
+        const groups = new Map();
+        for (const item of nextItems) {
+          if (!item.groupKey) continue;
+          if (!groups.has(item.groupKey)) groups.set(item.groupKey, []);
+          groups.get(item.groupKey).push(item);
+        }
+        const expandedGroups = new Set([...groupList.querySelectorAll("details[open][data-group-key]")].map((card) => card.dataset.groupKey));
+        groupList.replaceChildren();
+        if (!groups.size) { groupList.textContent = "아직 묶은 설비가 없습니다."; return; }
+        let index = 0;
+        for (const [key, members] of groups) {
+          index++;
+          const name = members.find((item) => item.groupName)?.groupName || `이름 없는 묶음 ${index}`;
+          const card = document.createElement("details"); card.className = "scene-group-card";
+          card.dataset.groupKey = key; card.open = expandedGroups.has(key);
+          const lockedCount = members.filter((item) => item.locked).length;
+          const summary = document.createElement("summary"); summary.textContent = `${name} · ${members.length}개 · 잠금 ${lockedCount}/${members.length}`;
+          const names = document.createElement("div"); names.className = "scene-group-members";
+          for (const item of members) {
+            const member = document.createElement("button"); member.type = "button";
+            member.textContent = `${item.locked ? "🔒 " : ""}${item.label || item.modelKey}`; member.title = "이 설비만 선택";
+            member.onclick = () => state.pageScene3dApi?.selectGroupMember(findSceneItemKey(item));
+            names.append(member);
+          }
+          const actions = document.createElement("div"); actions.className = "scene-editor-actions";
+          const select = document.createElement("button"); select.type = "button"; select.textContent = "전체 선택";
+          select.onclick = () => state.pageScene3dApi?.selectGroup(key);
+          const edit = document.createElement("button"); edit.type = "button"; edit.textContent = "이름·구성 변경";
+          edit.onclick = () => openSceneGroupEditor(key, name);
+          const lockActions = document.createElement("div"); lockActions.className = "scene-editor-actions";
+          const lock = document.createElement("button"); lock.type = "button"; lock.textContent = "전체 잠금";
+          lock.disabled = lockedCount === members.length; lock.onclick = () => state.pageScene3dApi?.setGroupLocked(key, true);
+          const unlock = document.createElement("button"); unlock.type = "button"; unlock.textContent = "전체 잠금 해제";
+          unlock.disabled = lockedCount === 0; unlock.onclick = () => state.pageScene3dApi?.setGroupLocked(key, false);
+          actions.append(select, edit); lockActions.append(lock, unlock);
+          card.append(summary, names, actions, lockActions); groupList.append(card);
+        }
+      };
+      const openSceneGroupEditor = (groupKey, displayName) => {
+        const api = state.pageScene3dApi;
+        if (!api) return;
+        const candidates = api.getGroupableItems();
+        const dialog = document.createElement("dialog"); dialog.className = "scene-group-dialog";
+        const heading = document.createElement("h3"); heading.textContent = "묶음 이름과 설비 변경";
+        const nameLabel = document.createElement("label"); nameLabel.textContent = "묶음 이름";
+        const nameInput = document.createElement("input"); nameInput.type = "text"; nameInput.maxLength = 80; nameInput.value = displayName;
+        nameLabel.append(nameInput);
+        const description = document.createElement("div"); description.textContent = "이 묶음에 포함할 설비를 선택하세요.";
+        const list = document.createElement("div"); list.className = "scene-group-members";
+        for (const item of candidates) {
+          const label = document.createElement("label"), check = document.createElement("input"), text = document.createElement("span");
+          check.type = "checkbox"; check.value = findSceneItemKey(item); check.checked = item.groupKey === groupKey;
+          if (item.groupKey && item.groupKey !== groupKey) check.dataset.otherGroup = "true";
+          text.textContent = `${item.label || item.modelKey}${check.dataset.otherGroup ? ` · ${item.groupName || "다른 묶음"}에서 이동` : ""}`;
+          label.append(check, text); list.append(label);
+        }
+        const actions = document.createElement("div"); actions.className = "scene-editor-actions";
+        const cancel = document.createElement("button"); cancel.type = "button"; cancel.textContent = "취소"; cancel.onclick = () => dialog.close();
+        const save = document.createElement("button"); save.type = "button"; save.textContent = "변경 적용";
+        save.onclick = () => {
+          const keys = [...list.querySelectorAll('input:checked')].map((input) => input.value);
+          if (!nameInput.value.trim() || !keys.length) { alert("묶음 이름과 설비를 하나 이상 선택하세요."); return; }
+          if (list.querySelector('input:checked[data-other-group]') && !confirm("선택한 설비를 다른 묶음에서 이 묶음으로 옮길까요?")) return;
+          if (api.updateGroup(groupKey, nameInput.value, keys)) dialog.close();
+        };
+        actions.append(cancel, save); dialog.append(heading, nameLabel, description, list, actions);
+        dialog.addEventListener("close", () => dialog.remove(), { once: true });
+        stage.append(dialog); dialog.showModal();
+      };
+      if (window.DcimRoomScene3D?.mount) {
+        try {
+          state.pageScene3dApi = window.DcimRoomScene3D.mount(viewport, page, {
+            editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN",
+            canBuild: consoleAuth()?.getRole?.() === "ADMIN",
+            onBuildModeToggle: () => {
+              if (state.pageVisualizationEditMode && state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
+              state.pageVisualizationEditMode = !state.pageVisualizationEditMode;
+              if (!state.pageVisualizationEditMode) clearSceneDraft();
+              renderPageVisualization();
+            },
+            onChange: (nextItems) => { recordSceneChange(nextItems); updateSceneEditorLists(nextItems); },
+            onWalkChange: (active) => { stage.classList.toggle("walk-mode", active); const button = stage.querySelector("[data-scene-walk]"); if (button) button.textContent = active ? "둘러보기 종료" : "아바타 둘러보기"; },
+            onWholeSceneMoveChange: (active) => {
+              stage.classList.toggle("whole-move-mode", active);
+              const button = stage.querySelector("[data-scene-move-all]");
+              if (button) { button.textContent = active ? "전체 이동 종료" : "도면 전체 이동"; button.classList.toggle("is-active", active); }
+            },
+            onHint: (message) => { const status = stage.querySelector(".scene-editor-status"); if (status) status.textContent = message; },
+            onLockedRack: () => {
+              window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
+            },
+            onPanelDetail: (panel) => {
+              const key = findSceneItemKey(panel);
+              const attached = (state.pageScene3dApi?.getItems?.() || []).filter((item) =>
+                ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key)
+                .map((item) => Number(item.deviceId)).filter((id) => Number.isSafeInteger(id) && id > 0);
+              window.parent.postMessage({ type: "dcim:dashboard:open-panel", label: panel.label || "분전반", deviceIds: attached }, location.origin);
+            },
+            onRackDetail: (rack) => {
+              if (!rack.locationNodeCode) {
+                if (!state.pageVisualizationEditMode) {
+                  window.parent.postMessage({ type: "dcim:dashboard:rack-link-required" }, location.origin);
+                  return;
+                }
+                window.parent.postMessage({ type: "dcim:dashboard:choose-rack", itemKey: findSceneItemKey(rack),
+                  currentRackCode: rack.locationNodeCode || "",
+                  rackLinks: (state.pageScene3dApi?.getItems?.() || []).filter((item) => item.locationNodeCode).map((item) => ({ itemKey: findSceneItemKey(item), rackLocationCode: item.locationNodeCode })) }, location.origin);
+                return;
+              }
+              window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: rack.locationNodeCode, rackModelKey: rack.modelKey || "RACK", editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN" }, location.origin);
+            },
+            onHostSelected: (host) => {
+              if (!sceneEditor) return;
+              if (host.locked) {
+                sceneEditor._selectedHostKey = null;
+                sceneEditor.querySelector("[data-scene-host-picker]").hidden = true;
+                const status = stage.querySelector(".scene-editor-status");
+                if (status) status.textContent = "잠긴 설비입니다. 편집하려면 설비를 선택해 잠금 해제를 누르세요.";
+                return;
+              }
+              sceneEditor._selectedHostKey = findSceneItemKey(host);
+              sceneEditor.querySelector("[data-scene-host-name]").textContent = host.label || host.itemType;
+              sceneEditor.querySelector("[data-scene-host-picker]").hidden = false;
+              updateSceneEditorLists(state.pageScene3dApi?.getItems?.() || items);
+              const status = stage.querySelector(".scene-editor-status");
+              if (status) status.textContent = "선택한 설비에 장착할 장비를 고르세요.";
+            },
+          });
+          for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
+            refreshSceneRack(code).catch((error) => console.warn("랙 배치 조회 실패", error));
+          }
+          if (state.pageVisualizationEditMode && state.pageSceneHistoryIndex < 0) {
+            const initial = state.pageScene3dApi.getItems();
+            state.pageSceneDraft = structuredClone(initial); state.pageSceneHistory = [structuredClone(initial)];
+            state.pageSceneHistoryIndex = 0; state.pageSceneBaseline = JSON.stringify(initial); state.pageSceneDirty = false;
+          }
+        } catch (error) {
+          state.pageSceneLoadError = true;
+          const message = document.createElement("div"); message.className = "page-layout-empty";
+          message.textContent = `공간 화면을 초기화하지 못했습니다: ${error.message}`; stage.append(message);
+        }
+      } else {
+        const loading = document.createElement("div"); loading.className = "page-layout-empty";
+        loading.textContent = state.pageSceneLoadError ? "3D 공간 모듈을 불러오지 못했습니다. 새로고침하거나 서버의 정적 파일 배포 상태를 확인하세요." : "도면을 불러오는 중입니다…";
+        stage.append(loading);
+      }
+      if (state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN") {
+        // The shared embedded-board CSS hides every <aside>; this editor is an
+        // overlay, not the widget drawer, so keep it outside that selector.
+        const editor = document.createElement("div"); editor.className = "page-scene-editor"; sceneEditor = editor;
+        const mounted = items.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType));
+        const mountedIds = new Set(mounted.map((item) => Number(item.deviceId)));
+        const attachableDevices = devices.filter((device) => !mountedIds.has(Number(device.deviceId)));
+        editor.classList.toggle("collapsed", !state.pageSceneEditorExpanded);
+        editor.innerHTML = `<div class="scene-editor-heading"><h3>${mode === "SCENE_3D" ? "3D 편집" : "2D 편집"}</h3><button type="button" class="scene-save" data-scene-save>저장</button><button type="button" class="scene-editor-cancel" data-scene-cancel>취소</button><button type="button" class="scene-editor-collapse" data-scene-collapse aria-expanded="false" title="편집 도구 펼치기">+</button></div><div data-scene-dirty style="font-size:11px;color:#a9c5d6;margin-top:7px"></div><div class="scene-editor-actions"><button type="button" data-scene-undo>↶ 실행 취소</button><button type="button" data-scene-redo>↷ 다시 실행</button></div>
+          <div class="scene-editor-content"><div class="scene-editor-note">방향키로 0.1m씩 이동 · Shift + 방향키로 1m 이동<br>변경 후 저장을 눌러 반영하세요.</div>
+            <div class="scene-section-label">공간과 시점</div>
+            ${mode === "SCENE_3D" ? '<div class="scene-editor-actions"><button type="button" data-scene-walk>아바타 둘러보기</button></div>' : ""}
+            <div class="scene-editor-actions"><button type="button" data-scene-templates>공간 템플릿</button><button type="button" data-scene-move-all>도면 전체 이동</button></div>
+            <div class="scene-section-label">선택과 이동</div>
+            <div class="scene-editor-actions"><button type="button" data-area-select>영역 선택</button><button type="button" data-area-move>선택 이동</button></div>
+            <div class="scene-editor-actions"><button type="button" data-equipment-area-select>설비 영역 선택</button><button type="button" data-area-delete>선택 삭제</button></div>
+            <div class="scene-editor-actions"><button type="button" data-scene-group>설비 묶기</button><button type="button" data-scene-ungroup>묶음 해제</button></div>
+            <div class="scene-section-label">설비 묶음 목록</div><div class="scene-group-list" data-scene-groups></div>
+            <div class="scene-section-label">도면 관리</div>
+            <div class="scene-editor-actions"><button type="button" class="scene-clear-all" data-scene-clear-all>도면 전체 삭제</button></div>
+            <div class="scene-host-picker" data-scene-host-picker hidden><strong>선택한 설비: <span data-scene-host-name></span></strong>
+              <label>부착할 장비<select data-scene-device>${attachableDevices.length ? attachableDevices.map((device) => `<option value="${Number(device.deviceId)}">${escapeHtml(device.deviceName)}</option>`).join("") : '<option value="">부착 가능한 페이지 장비 없음</option>'}</select></label>
+              <button type="button" data-scene-attach ${attachableDevices.length ? "" : "disabled"}>이 설비에 장비 부착</button></div>
+            <div class="scene-section-label">위젯</div><div class="scene-editor-actions"><button type="button" data-scene-add-widget>＋ 위젯</button><button type="button" data-scene-edit-widgets>위젯 위치 편집</button></div>
+            <div class="scene-editor-status">${mode === "SCENE_3D" ? "아바타 둘러보기: WASD·방향키 이동, Shift 달리기 · 마우스로 시점 회전 · 휠로 확대/축소 · Esc 종료" : "평면도: 위에서 내려다보며 이동합니다."}</div></div>`;
+        editor.querySelector("[data-scene-collapse]").onclick = (event) => {
+          const collapsed = editor.classList.toggle("collapsed");
+          state.pageSceneEditorExpanded = !collapsed;
+          event.currentTarget.textContent = collapsed ? "+" : "−";
+          event.currentTarget.setAttribute("aria-expanded", String(!collapsed));
+        };
+        editor.querySelector("[data-scene-collapse]").textContent = state.pageSceneEditorExpanded ? "−" : "+";
+        editor.querySelector("[data-scene-collapse]").setAttribute("aria-expanded", String(state.pageSceneEditorExpanded));
+        updateSceneEditorLists(state.pageScene3dApi?.getItems?.() || items);
+        const currentSceneItems = state.pageScene3dApi?.getItems?.() || items;
+        if (currentSceneItems.length < items.length) {
+          const status = editor.querySelector(".scene-editor-status");
+          if (status) status.textContent = `${items.length - currentSceneItems.length}개 기존 배치는 바닥이 없어 숨겼습니다. 새 배치를 저장하면 숨겨진 기존 배치는 페이지 도면에서 제거됩니다.`;
+        }
+        const assetDock = document.createElement("div"); assetDock.className = "page-scene-asset-dock";
+        assetDock.setAttribute("aria-label", "설비·건축 자산 선택");
+        const catalog = [
+          { key: "architecture", label: "건축·공간", items: [["WALL", "기본 벽", "▥"], ["WALL_CONCRETE", "콘크리트 벽", "▤"], ["WALL_GLASS", "유리 벽", "▦"], ["WALL_GLASS_CLEAR", "통유리 벽", "▣"], ["WALL_PANEL", "패널 벽", "▥"], ["DOOR", "문", "▯"], ["DOOR_DOUBLE", "양문", "▯"], ["DOOR_SLIDING", "미닫이문", "▯"], ["WINDOW", "창문", "▦"], ["WINDOW_DOUBLE", "큰 창문", "▦"], ["FLOOR", "바닥", "▱"], ["CEILING", "유리 천장", "▤"], ["CEILING_CLEAR", "투명 유리 천장", "▤"], ["LIGHT", "조명", "☼"], ["PIPE", "배관", "∿"], ["STAIR", "계단", "⌁"]] },
+          { key: "factory", label: "공장 설비", items: [["MACHINE", "생산 설비", "⚙"], ["CONVEYOR", "컨베이어", "⇢"], ["TANK", "저장 탱크", "◉"], ["TABLE", "작업대", "▱"]] },
+          { key: "showroom", label: "3D 모델", items: [] },
+        ];
+        assetDock.innerHTML = catalog.map((category) => `<button type="button" data-scene-category="${category.key}">${category.label}<span>자산 선택</span></button>`).join("");
+        const assetModal = document.createElement("dialog"); assetModal.className = "page-scene-asset-modal";
+        assetModal.innerHTML = `<div class="scene-modal-head"><h3 data-scene-modal-title>자산 선택</h3><button type="button" data-scene-modal-close aria-label="닫기">닫기</button></div><p class="scene-modal-hint" data-scene-modal-hint>자산을 선택한 뒤 도면에 배치하세요.</p><div class="scene-model-category-tabs" data-model-category-tabs hidden aria-label="3D 모델 카테고리"></div><div class="scene-asset-grid" data-scene-asset-grid></div>`;
+        const assetGrid = assetModal.querySelector("[data-scene-asset-grid]");
+        const modelCategoryTabs = assetModal.querySelector("[data-model-category-tabs]");
+        let thumbnailGeneration = 0;
+        assetModal.addEventListener("close", () => { thumbnailGeneration++; });
+        const showAssetCategory = (category) => {
+            const generation = ++thumbnailGeneration;
+            const isModelGallery = category.key === "showroom";
+            const isBuiltinGallery = category.key === "architecture" || category.key === "factory";
+            assetGrid.classList.toggle("is-model-gallery", isModelGallery || isBuiltinGallery);
+            modelCategoryTabs.hidden = !isModelGallery;
+            assetModal.querySelector("[data-scene-modal-title]").textContent = category.label;
+            assetModal.querySelector("[data-scene-modal-hint]").textContent = category.key === "architecture"
+              ? "문·창문은 벽을 먼저 클릭해 선택한 뒤 설치합니다. 다른 자산은 선택 후 도면에서 끌어 위치를 정하고 마우스를 놓으세요. 바닥은 빈 타일 칸에 자동 정렬됩니다."
+              : "자산을 선택한 뒤 도면에서 끌어 위치를 정하고 마우스를 놓으세요.";
+            assetGrid.innerHTML = category.items.map(([key, label, icon]) => `<button type="button" data-scene-place="${key}" title="${escapeHtml(label)} 선택">${isModelGallery || isBuiltinGallery ? '<span class="scene-model-thumbnail">불러오는 중</span>' : `<span class="scene-asset-icon">${icon}</span>`}<span class="scene-asset-caption">${escapeHtml(label)}</span></button>`).join("");
+            if (isModelGallery && category.models) {
+              const modelCategories = [...new Set(category.models.map((model) => model.category || "기타"))].sort((a, b) => a.localeCompare(b, "ko"));
+              modelCategoryTabs.replaceChildren(...["전체", ...modelCategories].map((label, index) => {
+                const button = document.createElement("button");
+                button.type = "button"; button.textContent = label;
+                button.dataset.modelCategory = index ? label : "";
+                button.setAttribute("aria-pressed", String(index === 0));
+                button.onclick = () => {
+                  modelCategoryTabs.querySelectorAll("button").forEach((tab) => tab.setAttribute("aria-pressed", String(tab === button)));
+                  assetGrid.querySelectorAll("[data-scene-place]").forEach((card) => {
+                    const model = category.models.find((entry) => entry.key === card.dataset.scenePlace);
+                    card.style.display = !button.dataset.modelCategory || (model?.category || "기타") === button.dataset.modelCategory ? "" : "none";
+                  });
+                };
+                return button;
+              }));
+              const active = () => generation === thumbnailGeneration && assetModal.open && assetGrid.isConnected;
+              const setThumbnail = (key, data) => {
+                if (!active()) return;
+                const button = [...assetGrid.querySelectorAll("[data-scene-place]")].find((entry) => entry.dataset.scenePlace === key);
+                const target = button?.querySelector(".scene-model-thumbnail"); if (!target) return;
+                if (!data) { target.textContent = "미리보기 없음"; return; }
+                const image = document.createElement("img"); image.alt = ""; image.src = data; target.replaceChildren(image);
+              };
+              queueMicrotask(() => {
+                if (!active()) return;
+                if (window.DcimRoomScene3D?.renderModelThumbnails) window.DcimRoomScene3D.renderModelThumbnails(category.models, setThumbnail, active);
+                else category.models.forEach((model) => setThumbnail(model.key, null));
+              });
+            }
+            if (isBuiltinGallery && category.builtinAssets) {
+              const active = () => generation === thumbnailGeneration && assetModal.open && assetGrid.isConnected;
+              queueMicrotask(async () => {
+                if (!active()) return;
+                const setThumbnail = (key, data) => {
+                  if (!active()) return;
+                  const button = [...assetGrid.querySelectorAll("[data-scene-place]")].find((entry) => entry.dataset.scenePlace === key);
+                  const target = button?.querySelector(".scene-model-thumbnail"); if (!target) return;
+                  if (!data) { target.textContent = "미리보기 없음"; return; }
+                  const image = document.createElement("img"); image.alt = ""; image.src = data; target.replaceChildren(image);
+                };
+                await window.DcimRoomScene3D?.renderBuiltinThumbnails(category.builtinAssets, setThumbnail, active);
+                if (active() && category.uploadedModels?.length) {
+                  await window.DcimRoomScene3D?.renderModelThumbnails(category.uploadedModels, setThumbnail, active);
+                }
+              });
+            }
+            assetGrid.querySelectorAll("[data-scene-place]").forEach((assetButton) => {
+              assetButton.onclick = () => {
+                const modelKey = assetButton.dataset.scenePlace;
+                if (modelKey.startsWith("WALL")) {
+                  const asset = category.items.find(([key]) => key === modelKey);
+                  assetModal.querySelector("[data-scene-modal-title]").textContent = `${asset?.[1] || "벽"} 방향 선택`;
+                  assetModal.querySelector("[data-scene-modal-hint]").textContent = "도면 기준 방향을 선택한 뒤 원하는 위치를 클릭하세요. 배치 중 회전 버튼으로도 바꿀 수 있습니다.";
+                  modelCategoryTabs.hidden = true;
+                  assetGrid.innerHTML = `<button type="button" data-wall-direction="0"><span class="scene-asset-icon">━</span><span class="scene-asset-caption">가로 방향</span></button><button type="button" data-wall-direction="90"><span class="scene-asset-icon">┃</span><span class="scene-asset-caption">세로 방향</span></button><button type="button" data-wall-back><span class="scene-asset-icon">←</span><span class="scene-asset-caption">자산 다시 선택</span></button>`;
+                  assetGrid.querySelectorAll("[data-wall-direction]").forEach((directionButton) => {
+                    directionButton.onclick = () => {
+                      const direction = Number(directionButton.dataset.wallDirection);
+                      if (state.pageScene3dApi?.addEquipment(modelKey, direction)) assetModal.close();
+                    };
+                  });
+                  assetGrid.querySelector("[data-wall-back]").onclick = () => showAssetCategory(category);
+                  return;
+                }
+                const attached = modelKey.startsWith("DOOR") || modelKey.startsWith("WINDOW");
+                const added = attached ? state.pageScene3dApi?.addWallOpening(modelKey) : state.pageScene3dApi?.addEquipment(modelKey);
+                if (added && !attached) assetModal.close();
+                if (added && attached) assetModal.close();
+              };
+            });
+        };
+        assetDock.querySelectorAll("[data-scene-category]").forEach((button) => {
+          button.onclick = async () => {
+            const category = catalog.find((entry) => entry.key === button.dataset.sceneCategory);
+            if (!category) return;
+            if (category.key === "showroom") {
+              try {
+                const models = await api("/api/manager/scene-models", { cache: "no-store" });
+                const { setShowroomModels } = await import("/showroom-models.js?v=20261103b");
+                setShowroomModels(models);
+                category.models = models.filter((model) => model.enabled);
+                category.items = category.models.map((model) => [model.key, model.label, "▣"]);
+              } catch (error) { log("3D 모델을 불러오지 못했습니다: " + error.message); return; }
+            } else {
+              try {
+                const [builtins, models] = await Promise.all([
+                  api("/api/manager/scene-builtin-assets", { cache: "no-store" }),
+                  api("/api/manager/scene-models", { cache: "no-store" }),
+                ]);
+                const { setShowroomModels } = await import("/showroom-models.js?v=20261103b");
+                setShowroomModels(models);
+                const enabled = builtins.filter((asset) => asset.enabled && asset.category === category.key.toUpperCase());
+                const icons = new Map(category.items.map(([key, , icon]) => [key, icon]));
+                category.builtinAssets = enabled;
+                category.uploadedModels = models.filter((model) => model.enabled && model.category === category.label);
+                category.items = [...enabled.map((asset) => [asset.key, asset.label, icons.get(asset.key) || "▣"]),
+                  ...category.uploadedModels.map((model) => [model.key, model.label, "▣"])];
+                window.DcimRoomScene3D?.setBuiltinAssets(builtins);
+              } catch (error) {
+                log("기본 3D 자산 목록을 불러오지 못했습니다: " + error.message);
+                category.builtinAssets = category.items.map(([key, label]) => ({ key, label }));
+                window.DcimRoomScene3D?.setBuiltinAssets(category.builtinAssets);
+              }
+            }
+            showAssetCategory(category);
+            assetModal.showModal();
+          };
+        });
+        assetModal.querySelector("[data-scene-modal-close]").onclick = () => assetModal.close();
+        assetModal.addEventListener("click", (event) => { if (event.target === assetModal) assetModal.close(); });
+        const templateModal = document.createElement("dialog"); templateModal.className = "page-scene-asset-modal";
+        templateModal.innerHTML = `<div class="scene-modal-head"><h3>공간 템플릿 선택</h3><button type="button" data-template-close aria-label="닫기">닫기</button></div><p class="scene-modal-hint">현재 ${mode === "SCENE_3D" ? "3D" : "2D"} 보기 방식은 유지됩니다. 템플릿은 공간과 예시 설비만 만들며 실제 장비·위치 데이터와 연결하지 않습니다.</p><div class="scene-template-grid">
+          <button type="button" class="scene-template-card" data-room-template="SERVER_ROOM"><strong>서버실</strong><span>바닥 타일, 벽과 출입문, 서버 랙 6개, 공조기와 UPS</span></button>
+          <button type="button" class="scene-template-card" data-room-template="OFFICE"><strong>사무실</strong><span>바닥 타일, 외벽과 유리 칸막이, 출입문·창문, 책상 4개</span></button>
+          <button type="button" class="scene-template-card" data-room-template="FACTORY"><strong>공장</strong><span>넓은 바닥과 외벽, 컨베이어 2개, 생산 설비·탱크·작업대</span></button>
+          <button type="button" class="scene-template-card" data-room-template="EMPTY"><strong>빈 공간</strong><span>도면을 비우고 바닥부터 직접 제작</span></button>
+        </div>`;
+        templateModal.querySelector("[data-template-close]").onclick = () => templateModal.close();
+        templateModal.addEventListener("click", (event) => { if (event.target === templateModal) templateModal.close(); });
+        templateModal.querySelectorAll("[data-room-template]").forEach((templateButton) => {
+          templateButton.onclick = () => {
+            const templateKey = templateButton.dataset.roomTemplate;
+            const currentItems = state.pageScene3dApi?.getItems?.() || [];
+            if (currentItems.length && !confirm(`현재 도면의 ${currentItems.length}개 배치가 선택한 템플릿으로 교체됩니다. 페이지의 실제 장비와 위치 데이터는 삭제되지 않지만, 도면에 저장한 장비 부착 배치는 다시 배치해야 합니다. 계속할까요?`)) return;
+            const applied = state.pageScene3dApi?.applyTemplate(templateKey);
+            if (applied) templateModal.close();
+          };
+        });
+        editor.querySelector("[data-scene-templates]").onclick = () => templateModal.showModal();
+        editor.querySelector("[data-area-select]").onclick = () => state.pageScene3dApi?.setAreaSelect(true);
+        editor.querySelector("[data-equipment-area-select]").onclick = () => state.pageScene3dApi?.setAreaSelect(true, true);
+        editor.querySelector("[data-scene-group]").onclick = () => {
+          const name = prompt("새 묶음의 이름을 입력하세요.");
+          if (name !== null) state.pageScene3dApi?.groupSelection(name);
+        };
+        editor.querySelector("[data-scene-ungroup]").onclick = () => state.pageScene3dApi?.ungroupSelection();
+        editor.querySelector("[data-area-move]").onclick = () => state.pageScene3dApi?.setAreaMove(true);
+        editor.querySelector("[data-area-delete]").onclick = () => {
+          if (confirm("선택한 바닥과 벽을 삭제할까요? 변경 사항은 저장 후 반영됩니다.")) state.pageScene3dApi?.removeAreaSelection();
+        };
+        editor.querySelector("[data-scene-move-all]").onclick = (event) => {
+          const button = event.currentTarget;
+          state.pageScene3dApi?.setWholeSceneMove(button.textContent === "도면 전체 이동");
+        };
+        stage.append(assetDock);
+        stage.append(assetModal);
+        stage.append(templateModal);
+        const walkButton = editor.querySelector("[data-scene-walk]");
+        if (walkButton) walkButton.onclick = () => {
+          state.pageScene3dApi?.setWalking(walkButton.textContent === "아바타 둘러보기");
+        };
+        editor.querySelector("[data-scene-clear-all]").onclick = () => {
+          const currentItems = state.pageScene3dApi?.getItems?.() || [];
+          const count = currentItems.length;
+          if (!count) { state.pageScene3dApi?.clearUserPlacedItems(); return; }
+          if (!confirm(`도면에 표시된 랙·바닥·벽·설비 등 ${count}개를 모두 지울까요?\n실제 위치 정보와 장비 데이터는 삭제되지 않습니다. 삭제 후 저장해야 반영됩니다.`)) return;
+          state.pageScene3dApi?.clearUserPlacedItems();
+        };
+        editor.querySelector("[data-scene-add-widget]").onclick = () => window.parent.postMessage({ type: "dcim:dashboard:add-widget", pageCode: page.pageCode }, location.origin);
+        editor.querySelector("[data-scene-edit-widgets]").onclick = () => window.parent.postMessage({ type: "dcim:dashboard:open-layout-editor", pageCode: page.pageCode }, location.origin);
+        editor.querySelector("[data-scene-attach]").onclick = () => {
+          const select = editor.querySelector("[data-scene-device]");
+          if (!select.value) return;
+          const device = devices.find((item) => Number(item.deviceId) === Number(select.value));
+          if (!device || !sceneEditor._selectedHostKey) return;
+          const attached = state.pageScene3dApi?.attachDevice(sceneEditor._selectedHostKey, { deviceId: device.deviceId });
+          if (attached) {
+            sceneEditor._selectedHostKey = null;
+            sceneEditor.querySelector("[data-scene-host-picker]").hidden = true;
+            updateSceneEditorLists(state.pageScene3dApi?.getItems?.() || items);
+          }
+        };
+        editor.querySelector("[data-scene-save]").onclick = savePageScene;
+        editor.querySelector("[data-scene-undo]").onclick = () => navigateSceneHistory(-1);
+        editor.querySelector("[data-scene-redo]").onclick = () => navigateSceneHistory(1);
+        editor.querySelector("[data-scene-cancel]").onclick = () => {
+          if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
+          state.pageVisualizationEditMode = false;
+          clearSceneDraft();
+          renderPageVisualization();
+        };
+        stage.append(editor);
+        updateSceneHistoryUI();
+      }
+      board.classList.add("map-overlay-board");
+      const maxRow = Math.max(24, ...state.widgets.filter((widget) => widget.enabled).map((widget) => { const layout = widgetLayout(widget); return layout ? layout.gridY + layout.h : 24; }));
+      board.style.gridTemplateRows = `repeat(${maxRow},minmax(0,1fr))`;
+      stage.append(board);
+    }
+
+    async function refreshPageVisualization() {
+      if (!fixedPageView || fixedAnalysisPage || !$('pageCode').value) return;
+      try {
+        const code = encodeURIComponent($('pageCode').value);
+        const [measurements, display] = await Promise.all([
+          api(`/api/manager/device-pages/${code}/measurements?lookbackHours=24`, { cache: "no-store" }),
+          api(`/api/manager/device-pages/${code}/display`, { cache: "no-store" }),
+        ]);
+        state.pageVisualization = { ...measurements, ...display };
+        state.pageVisualizationError = null;
+      } catch (error) {
+        state.pageVisualizationError = error.message;
+      }
+      // Keep unsaved rack/sensor placement alive while the user is editing; polling
+      // updates the cached measurements and the scene is refreshed after save/exit.
+      if (!state.pageVisualizationEditMode) renderPageVisualization();
+    }
+
+    window.addEventListener("dcim:scene3d-ready", () => { state.pageSceneLoadError = false; if (state.pageVisualization) renderPageVisualization(); });
+    document.getElementById("pageSceneModule")?.addEventListener("error", () => {
+      state.pageSceneLoadError = true;
+      renderPageVisualization();
+    });
 
     function renderWidgetList() {
       const enabledCount = state.widgets.filter((widget) => widget.enabled).length;
@@ -1049,8 +1838,8 @@
         <article class="widget-item ${w.enabled ? "" : "disabled"}" data-id="${w.id}">
           <h3>
             <span>${escapeHtml(w.name)}</span>
-            <label class="switch" title="UI 표시">
-              <input type="checkbox" data-toggle="${w.id}" ${w.enabled ? "checked" : ""} ${state.editMode || !canManage ? "disabled" : ""} />
+            <label class="switch" title="이 페이지에 위젯 표시">
+              <input type="checkbox" data-toggle="${w.id}" aria-label="${escapeHtml(w.name)} 페이지 표시" ${w.enabled ? "checked" : ""} ${!canManage ? "disabled" : ""} />
               <span class="slider"></span>
             </label>
           </h3>
@@ -1075,6 +1864,7 @@
             const idx = state.widgets.findIndex((w) => w.id === id);
             if (idx >= 0) {
               updated._tempLayout = state.widgets[idx]._tempLayout;
+              updated._draftLayout = state.widgets[idx]._draftLayout;
               state.widgets[idx] = updated;
             }
             renderWidgetList();
@@ -1847,10 +2637,7 @@
       const enabled = state.widgets.filter((w) => w.enabled);
       if (!enabled.length) {
         destroyChartInstances();
-        const emptyMessage = displayOnlyPage
-          ? "표시할 위젯이 없습니다. 위젯 추가에서 이 페이지에 표시할 위젯을 등록하세요."
-          : "표시할 enabled 위젯이 없습니다.";
-        $("board").innerHTML = `<div class="placeholder">${emptyMessage}</div><div id="ghost" class="ghost"></div>`;
+        $("board").innerHTML = '<div id="ghost" class="ghost"></div>';
         return;
       }
 
@@ -2030,7 +2817,8 @@
       const rect = board.getBoundingClientRect();
       const styles = getComputedStyle(board);
       const gap = parseFloat(styles.gap) || 6;
-      const rowH = parseFloat(styles.gridAutoRows) || 24;
+      const explicitRows = styles.gridTemplateRows.match(/-?\d+(?:\.\d+)?px/g) || [];
+      const rowH = parseFloat(explicitRows[0]) || parseFloat(styles.gridAutoRows) || 24;
       const colW = (rect.width - gap * (COLS - 1)) / COLS;
       const stepX = colW + gap;
       const stepY = rowH + gap;
@@ -2068,7 +2856,7 @@
         snap.h = d.layout.h;
         snap.gridX = Math.max(0, Math.min(COLS - snap.w, snap.gridX));
         snap.gridY = Math.max(0, snap.gridY);
-        return snap;
+        return alignWidgetLayout(snap, d.id);
       }
       const { gap, stepX, stepY } = boardMetrics();
       let w = d.layout.w;
@@ -2081,6 +2869,31 @@
         h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
       }
       return { gridX: d.layout.gridX, gridY: d.layout.gridY, w, h };
+    }
+
+    function alignWidgetLayout(layout, movingId) {
+      const result = { ...layout, alignX: false, alignY: false };
+      let bestX = 1.01, bestY = 1.01;
+      for (const other of state.widgets) {
+        if (other.id === movingId || !other.enabled) continue;
+        const target = widgetLayout(other);
+        if (!target) continue;
+        const xCandidates = [target.gridX, target.gridX + target.w - layout.w];
+        const yCandidates = [target.gridY, target.gridY + target.h - layout.h];
+        for (const x of xCandidates) {
+          if (x < 0 || x + layout.w > COLS) continue;
+          const distance = Math.abs(layout.gridX - x);
+          if (distance < bestX) { bestX = distance; result.gridX = x; result.alignX = true; }
+        }
+        for (const y of yCandidates) {
+          if (y < 0) continue;
+          const distance = Math.abs(layout.gridY - y);
+          if (distance < bestY) { bestY = distance; result.gridY = y; result.alignY = true; }
+        }
+      }
+      if (bestX > 1) { result.gridX = layout.gridX; result.alignX = false; }
+      if (bestY > 1) { result.gridY = layout.gridY; result.alignY = false; }
+      return result;
     }
 
     function placeLiveBox(left, top, width, height, snap) {
@@ -2098,10 +2911,12 @@
       ghost.style.width = width + "px";
       ghost.style.height = height + "px";
       if (label && snap) {
-        label.textContent = `${snap.w}×${snap.h}  @(${snap.gridX},${snap.gridY})`;
+        label.textContent = `미리보기 · ${snap.w}×${snap.h} · ${snap.gridX + 1}열 ${snap.gridY + 1}행`;
       }
       if (guide && snap) {
         const px = layoutToPixels(snap);
+        const alignText = [snap.alignX && "좌우", snap.alignY && "상하"].filter(Boolean).join("·");
+        guide.dataset.label = `놓을 위치 · ${snap.w}×${snap.h} · ${snap.gridX + 1}열 ${snap.gridY + 1}행${alignText ? ` · ${alignText} 정렬` : ""}`;
         guide.style.display = "block";
         guide.style.left = px.left + "px";
         guide.style.top = px.top + "px";
@@ -2308,13 +3123,18 @@
         if (discarded) log(`저장하지 않은 배치 변경 ${discarded}개 취소`);
       }
       state.editMode = on;
+      const pageEditButton = $("pageVisualization")?.querySelector(".page-edit-icon");
+      if (pageEditButton) {
+        pageEditButton.title = state.pageVisualizationEditMode ? "도면 편집 종료" : "도면·위젯 편집";
+        pageEditButton.setAttribute("aria-label", pageEditButton.title);
+      }
       if (on) {
         document.body.classList.remove("controls-open");
         $("controlsBtn").classList.remove("active");
       }
       document.body.classList.toggle("edit-mode", on);
       if (!on) document.body.classList.remove("drawer-open");
-      $("drawerBtn").style.display = boardView ? "" : "none";
+      $("drawerBtn").style.display = (boardView || fixedPageView) ? "" : "none";
       $("drawerBtn").setAttribute("aria-expanded", String(document.body.classList.contains("drawer-open")));
       $("drawerBtn").classList.toggle("active", document.body.classList.contains("drawer-open"));
       $("addWidgetBtn").disabled = on;
@@ -2361,11 +3181,12 @@
       if (state.editMode || (isAnalysisPage() && analysisState.viewMode === "trend")) return;
       state.pollTimer = setInterval(() => {
         if (state.drag || state.saving) return;
-        refreshBoard(true).catch((e) => log("poll: " + e.message));
+        Promise.all([refreshBoard(true), refreshPageVisualization()]).catch((e) => log("poll: " + e.message));
       }, POLL_MS);
     }
 
     async function reload() {
+      if (!$("pageCode").value) return;
       if (isAnalysisPage() && analysisState.viewMode === "trend") return;
       await loadWidgets();
       if (!state.editMode) startPolling();
@@ -2485,13 +3306,18 @@
       else setEditMode(true);
     });
     $("addWidgetBtn").addEventListener("click", () => {
-      if (!boardView || !$("pageCode").value || state.editMode) return;
+      if ((!boardView && !fixedPageView) || consoleAuth()?.getRole?.() !== "ADMIN" || !$("pageCode").value || state.editMode) return;
       window.parent.postMessage({ type: "dcim:dashboard:add-widget", pageCode: $("pageCode").value }, location.origin);
     });
     $("metricsBtn").addEventListener("click", () => {
       if (boardView && !state.editMode) window.parent.postMessage({ type: "dcim:dashboard:calculated-metrics" }, location.origin);
     });
-    $("cancelEditBtn").addEventListener("click", () => setEditMode(false));
+    $("cancelEditBtn").addEventListener("click", () => {
+      setEditMode(false);
+      if (layoutEditRequested && embeddedInConsole && window.parent !== window) {
+        window.parent.postMessage({ type: "dcim:dashboard:layout-cancelled", pageCode: $("pageCode").value }, location.origin);
+      }
+    });
     $("drawerBtn").addEventListener("click", () => {
       const open = document.body.classList.toggle("drawer-open");
       $("drawerBtn").setAttribute("aria-expanded", String(open));
@@ -2506,11 +3332,13 @@
       $("logBtn").classList.toggle("active", document.body.classList.contains("log-open"));
     });
     window.addEventListener("message", (event) => {
-      if ((!displayOnlyPage && !boardView) || state.editMode || event.origin !== location.origin
+      if ((!displayOnlyPage && !boardView) || !state.dashboardReady || !$("pageCode").value || state.editMode || event.origin !== location.origin
           || event.source !== window.parent || event.data?.type !== "dcim:dashboard:reload") return;
       reload().catch((error) => log("페이지 새로고침 실패: " + error.message));
     });
-    window.addEventListener("resize", () => drawPsychrometricCanvases());
+    window.addEventListener("resize", () => {
+      drawPsychrometricCanvases();
+    });
 
     sessionStorage.removeItem("widgetDashToken");
     setAuthStatus();
@@ -2526,7 +3354,11 @@
         return;
       }
       hideLoginModal();
-      loadDashboardPages().then(activateSelectedPage).catch((error) => {
+      loadDashboardPages().then(async () => {
+        await activateSelectedPage();
+        state.dashboardReady = true;
+        if (layoutEditRequested && consoleAuth()?.getRole?.() === "ADMIN") setEditMode(true);
+      }).catch((error) => {
         log("대시보드 초기화 실패: " + error.message);
         if (!state.token) showLoginModal("로그인이 필요합니다.");
       });
