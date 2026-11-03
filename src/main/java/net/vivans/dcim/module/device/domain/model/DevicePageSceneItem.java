@@ -89,6 +89,16 @@ public class DevicePageSceneItem extends BaseEntity {
     @Column(name = "locked", nullable = false)
     private boolean locked;
 
+    @Column(name = "rack_color", length = 7)
+    private String rackColor;
+
+    public void setRackColor(String color) {
+        if (color == null || color.isBlank()) { this.rackColor = null; return; }
+        if (!("RACK".equals(itemType) || (modelKey != null && modelKey.matches("SR_.*RACK") && !"SR_PDU_RACK".equals(modelKey)))
+                || !color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Invalid rack color");
+        this.rackColor = color.toUpperCase(java.util.Locale.ROOT);
+    }
+
     public void setLocked(boolean locked) { this.locked = locked; }
 
     public void setGroupName(String groupName) {

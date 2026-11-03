@@ -8,8 +8,20 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ShowroomSceneModelTest {
+    @Test void rackColorAcceptsHexAndRejectsOtherEquipment() {
+        DevicePageSceneItem rack = new DevicePageSceneItem();
+        rack.update(null, null, null, "EQUIPMENT", null, "Rack", "SR_RACK", 0, 0, 0, 0, 4, 4, 4);
+        rack.setRackColor("#a1b2c3"); assertEquals("#A1B2C3", rack.getRackColor());
+        assertThrows(IllegalArgumentException.class, () -> rack.setRackColor("not-a-color"));
+        rack.setRackColor(null); assertNull(rack.getRackColor());
+        DevicePageSceneItem pdu = new DevicePageSceneItem();
+        pdu.update(null, null, null, "EQUIPMENT", null, "PDU", "SR_PDU_RACK", 0, 0, 0, 0, 4, 4, 4);
+        assertThrows(IllegalArgumentException.class, () -> pdu.setRackColor("#FFFFFF"));
+    }
     @Test void showroomRackCanReferenceRackLocationButOtherEquipmentCannot() {
         CommonCode type = CommonCode.createCommonCode(CodeGroup.createCodeGroup("LOCATION_TYPE", "위치"), "RACK", "랙", 1);
         LocationNode location = LocationNode.createRoot("0000000001", type, "랙", 42);

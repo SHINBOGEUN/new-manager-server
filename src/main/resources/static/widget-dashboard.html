@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261103o"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261103p"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1316,7 +1316,7 @@
       if (state.pageScene3dApi?.linkRackLocation(String(event.data.itemKey || ""), String(event.data.rackLocationCode || ""))) {
         refreshSceneRack(String(event.data.rackLocationCode || "")).catch((error) => console.warn("랙 배치 조회 실패", error));
         const rack = state.pageScene3dApi.getItems().find((item) => findSceneItemKey(item) === String(event.data.itemKey || ""));
-        window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: event.data.rackLocationCode, rackModelKey: rack?.modelKey || "RACK", editing: true }, location.origin);
+        window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: event.data.rackLocationCode, rackModelKey: rack?.modelKey || "RACK", rackColor: rack?.rackColor || null, editing: true }, location.origin);
       }
     });
 
@@ -1336,6 +1336,7 @@
           sizeX: Number(item.sizeX) || 4,
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
+          rackColor: item.rackColor || null,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),
@@ -1499,7 +1500,7 @@
                   rackLinks: (state.pageScene3dApi?.getItems?.() || []).filter((item) => item.locationNodeCode).map((item) => ({ itemKey: findSceneItemKey(item), rackLocationCode: item.locationNodeCode })) }, location.origin);
                 return;
               }
-              window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: rack.locationNodeCode, rackModelKey: rack.modelKey || "RACK", editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN" }, location.origin);
+              window.parent.postMessage({ type: "dcim:dashboard:open-rack", rackLocationCode: rack.locationNodeCode, rackModelKey: rack.modelKey || "RACK", rackColor: rack.rackColor || null, editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN" }, location.origin);
             },
             onHostSelected: (host) => {
               if (!sceneEditor) return;
@@ -1681,7 +1682,7 @@
                 const models = await api("/api/manager/scene-models", { cache: "no-store" });
                 const { setShowroomModels } = await import("/showroom-models.js?v=20261103b");
                 setShowroomModels(models);
-                category.models = models.filter((model) => model.enabled);
+                category.models = models.filter((model) => model.enabled && !["SR_DLC_RACK", "SR_INROW_RACK", "SR_HAC_RACK", "SR_OCP_RACK", "SR_ORV3_RACK"].includes(model.key));
                 category.items = category.models.map((model) => [model.key, model.label, "▣"]);
               } catch (error) { log("3D 모델을 불러오지 못했습니다: " + error.message); return; }
             } else {

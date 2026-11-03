@@ -3795,7 +3795,7 @@
     }
 
     async function loadSceneModels() {
-      sceneModels = await api("/api/manager/scene-models", { cache: "no-store" });
+      sceneModels = (await api("/api/manager/scene-models", { cache: "no-store" })).filter((model) => !["SR_DLC_RACK", "SR_INROW_RACK", "SR_HAC_RACK", "SR_OCP_RACK", "SR_ORV3_RACK"].includes(model.key));
       const categories = [...new Set(sceneModels.map((model) => model.category || "기타"))].sort((a, b) => a.localeCompare(b, "ko"));
       const filter = $("sceneModelCategoryFilter");
       const previousFilter = filter.value;
@@ -3856,7 +3856,7 @@
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103o");
+        await import("/page-scene-3d.js?v=20261103p");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -3892,7 +3892,7 @@
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103o");
+        await import("/page-scene-3d.js?v=20261103p");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -4073,6 +4073,7 @@
       if (event.data?.type === "dcim:dashboard:open-rack") {
         rackDetailPageCode = sourceFrame.dataset.pageKey || "";
         rackDetailModelKey = String(event.data.rackModelKey || "RACK");
+        rackDetailColor = /^#[0-9a-f]{6}$/i.test(event.data.rackColor || "") ? event.data.rackColor : null;
         rackDetailEditing = event.data.editing === true && state.role === "ADMIN";
         const code = String(event.data.rackLocationCode || "").trim();
         if (!code) return;
@@ -6278,7 +6279,7 @@
       }
       return '';
     }
-    let rackDetailViewer = null, rackDetailPageCode = "", rackDetailModelKey = "RACK", rackDetailEditing = false;
+    let rackDetailViewer = null, rackDetailPageCode = "", rackDetailModelKey = "RACK", rackDetailColor = null, rackDetailEditing = false;
     async function setupRackWidgets(code, body, editing) {
       const panel = body.querySelector('[data-rack-widgets]');
       if (!panel) return;
@@ -6574,7 +6575,7 @@
       $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout"><div class="rack-detail-stage"><div class="rack-detail-tools"><button type="button" data-panel-door>문 닫기</button></div><div data-panel-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div class="rack-detail-info"><b>연결 장비 최신 측정값</b><div data-panel-values class="muted">${deviceIds.length ? "측정값을 불러오는 중입니다." : "도면에서 분전반에 장비를 연결하면 이곳에 측정값이 표시됩니다."}</div></div></div>`;
       $("rackPreviewModal").classList.add("open"); $("rackPreviewModal").setAttribute("aria-hidden", "false");
       const canvas = $("rackPreviewBody").querySelector("[data-panel-canvas]"), values = $("rackPreviewBody").querySelector("[data-panel-values]");
-      import("/page-scene-3d.js?v=20261103o").then(() => {
+      import("/page-scene-3d.js?v=20261103p").then(() => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountPanelDetail(canvas);
         $("rackPreviewBody").querySelector("[data-panel-door]").onclick = (event) => { event.currentTarget.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
@@ -6771,7 +6772,7 @@
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103o")]).then(([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103p")]).then(([models]) => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountRackDetail(canvas, layout, models, (u) => {
           if (!form) return;
@@ -6784,7 +6785,7 @@
             return;
           }
           form.elements.mountType.value = "RACK_U"; form.elements.mountType.dispatchEvent(new Event("change")); form.elements.uPosition.value = u; form.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, { modelKey: rackDetailModelKey, onError: (message) => toast(message, true), onSelectPlacement: !rackDetailEditing ? null : (item) => {
+        }, { modelKey: rackDetailModelKey, rackColor: rackDetailColor, onError: (message) => toast(message, true), onSelectPlacement: !rackDetailEditing ? null : (item) => {
           if (selectedRackItem) rackDetailViewer?.applyPlacement(selectedRackItem);
           selectedRackItem = item;
           $("rackPreviewBody").querySelectorAll('[data-rack-entry]').forEach((row) => row.classList.toggle('is-selected', !!item && row.dataset.rackEntry === placementKey(item)));
@@ -6857,7 +6858,7 @@
 
     function closeRackPreview() {
       rackDetailViewer?.dispose(); rackDetailViewer = null;
-      rackDetailPageCode = ""; rackDetailModelKey = "RACK"; rackDetailEditing = false;
+      rackDetailPageCode = ""; rackDetailModelKey = "RACK"; rackDetailColor = null; rackDetailEditing = false;
       $("rackPreviewModal").classList.remove("open");
       $("rackPreviewModal").setAttribute("aria-hidden", "true");
     }

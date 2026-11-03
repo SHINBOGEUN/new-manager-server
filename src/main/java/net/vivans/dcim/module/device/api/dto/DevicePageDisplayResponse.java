@@ -27,6 +27,7 @@ public record DevicePageDisplayResponse(
             double sizeZ,
             String groupKey,
             String groupName,
-            boolean locked
+            boolean locked,
+            String rackColor
     ) {}
 }

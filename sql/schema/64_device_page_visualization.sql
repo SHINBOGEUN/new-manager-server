@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `device_page_scene_item` (
   `point_name` varchar(100) DEFAULT NULL COMMENT '센서 마커가 표시할 측정 포인트 이름',
   `label` varchar(120) NOT NULL COMMENT '장면에 표시할 객체 이름',
   `model_key` varchar(32) NOT NULL COMMENT '장면 모델 카탈로그 키 (랙/장비/벽/문/창문/천장/바닥/조명/배관 등)',
+  `rack_color` varchar(7) DEFAULT NULL COMMENT '랙 표시 색상 (#RRGGBB)',
   `position_x` double NOT NULL COMMENT '장면 X 좌표(랙/장비: 방 기준 미터, 센서: 랙 기준 미터)',
   `position_y` double NOT NULL COMMENT '장면 Y 높이(랙/장비: 방 기준 미터, 센서: 랙 기준 미터)',
   `position_z` double NOT NULL COMMENT '장면 Z 좌표(랙/장비: 방 기준 미터, 센서: 랙 기준 미터)',

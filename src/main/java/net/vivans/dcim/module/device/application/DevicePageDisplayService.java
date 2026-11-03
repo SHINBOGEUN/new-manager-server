@@ -52,7 +52,7 @@ public class DevicePageDisplayService {
                         item.getLocationNode() == null ? null : item.getLocationNode().getCode(),
                         item.getPointName(), item.getLocationNode() == null ? item.getLabel() : item.getLocationNode().getName(),
                         item.getModelKey(), item.getX(), item.getY(),
-                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked()))
+                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked(), item.getRackColor()))
                 .toList());
 
         // Import descendant location racks until the page's scene is next saved.
@@ -93,7 +93,7 @@ public class DevicePageDisplayService {
                     int row = rackIndex / 4;
                     items.add(new DevicePageDisplayResponse.SceneItem(
                             null, null, "RACK", null, rack.getCode(), null, rack.getName(), "RACK",
-                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false));
+                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false, null));
                 }
                 rackIndex++;
             }
@@ -194,6 +194,7 @@ public class DevicePageDisplayService {
                     item.sizeZ() == null ? (isScalableEquipment(item) ? (item.sizeX() == null ? 4 : item.sizeX()) : 4) : item.sizeZ()));
             if (item.groupKey() != null && !isScalableEquipment(item)) throw new IllegalArgumentException("Only equipment can be grouped");
             saved.setGroupKey(item.groupKey());
+            saved.setRackColor(item.rackColor());
             saved.setGroupName(item.groupName());
             if (Boolean.TRUE.equals(item.locked()) && !isScalableEquipment(item)) throw new IllegalArgumentException("Only equipment can be locked");
             saved.setLocked(Boolean.TRUE.equals(item.locked()));

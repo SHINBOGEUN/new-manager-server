@@ -177,6 +177,35 @@ function makeRoom(scene, flat = false) {
   }
 }
 
+function isColorableRack(item) {
+  return item?.itemType === "RACK" || (/^SR_.*RACK$/.test(item?.modelKey || "") && item.modelKey !== "SR_PDU_RACK");
+}
+
+function applyRackColor(group, color) {
+  group.traverse((node) => {
+    if (!node.isMesh || !node.material) return;
+    for (let current = node; current && current !== group; current = current.parent) {
+      if (current.name === "rack-asset-overlay" || current.userData?.sceneKind === "SENSOR") return;
+    }
+    const change = (material) => {
+      if (!material?.color || material.transparent || material.emissiveIntensity > 1) return material;
+      if (!material.userData.rackColorOwned) {
+        material = material.clone(); material.userData.rackColorOwned = true;
+        material.userData.rackOriginalColor = material.color.getHex();
+        material.userData.rackOriginalEmissive = material.emissive?.getHex();
+        material.userData.rackOriginalEmissiveIntensity = material.emissiveIntensity;
+      }
+      material.color.set(color || material.userData.rackOriginalColor);
+      if (material.emissive && material.userData.rackOriginalEmissive != null) {
+        material.emissive.set(color || material.userData.rackOriginalEmissive);
+        material.emissiveIntensity = color ? .12 : material.userData.rackOriginalEmissiveIntensity;
+      }
+      return material;
+    };
+    node.material = Array.isArray(node.material) ? node.material.map(change) : change(node.material);
+  });
+}
+
 function makeRack(item) {
   const group = new THREE.Group();
   const width = .9, depth = .9, height = 2.35;
@@ -197,6 +226,7 @@ function makeRack(item) {
   const top = new THREE.Mesh(new THREE.BoxGeometry(width * 1.06, .06, depth * 1.06), edge); top.position.y = height + .03; group.add(top);
   group.scale.set((Number(item.sizeX) || 4) / 4, (Number(item.sizeY) || Number(item.sizeX) || 4) / 4, (Number(item.sizeZ) || Number(item.sizeX) || 4) / 4);
   group.userData.sceneItem = item; group.userData.sceneKind = "RACK";
+  if (item.rackColor) applyRackColor(group, item.rackColor);
   return group;
 }
 
@@ -387,6 +417,7 @@ function makeEquipment(item) {
       wrapper.position.set(-center.x * scale.x, -bounds.min.y * scale.y, -center.z * scale.z);
       object.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
       group.add(wrapper); group.remove(placeholder);
+      if (isColorableRack(item) && item.rackColor) applyRackColor(group, item.rackColor);
       placeholder.geometry.dispose(); placeholder.material.dispose();
       group.userData.onImportedModelReady?.(wrapper);
     }).catch((error) => { console.error(`쇼룸 모델 ${showroomModel.label} 로딩 실패`, error); });
@@ -586,6 +617,23 @@ function mount(container, page, options = {}) {
   sizeToggle.style.fontSize = "12px";
   sizeToggle.setAttribute("aria-expanded", "false");
   mainActions.insertBefore(sizeToggle, removeFocusedButton);
+  const rackColorLabel = document.createElement("label");
+  Object.assign(rackColorLabel.style, { display:"flex", alignItems:"center", gap:"5px", padding:"3px 6px", color:"#8beaff", fontSize:"12px", fontWeight:"700" });
+  rackColorLabel.append("랙 색상");
+  const rackColorInput = document.createElement("input"); rackColorInput.type = "color"; rackColorInput.setAttribute("aria-label", "랙 색상");
+  Object.assign(rackColorInput.style, { width:"30px", height:"26px", padding:"0", border:"0", cursor:"pointer", background:"transparent" });
+  rackColorInput.addEventListener("input", () => {
+    if (!selectedItem || selectedItem.locked || !isColorableRack(selectedItem)) return;
+    selectedItem.rackColor = rackColorInput.value; const group = itemGroups.get(findItemKey(selectedItem));
+    if (group) applyRackColor(group, selectedItem.rackColor); options.onChange?.(items);
+  });
+  rackColorLabel.append(rackColorInput); mainActions.append(rackColorLabel);
+  const rackColorReset = makeActionButton("기본색", "랙 원래 색상으로 복원", "#8beaff", () => {
+    if (!selectedItem || selectedItem.locked || !isColorableRack(selectedItem)) return;
+    selectedItem.rackColor = null; const group = itemGroups.get(findItemKey(selectedItem));
+    if (group) applyRackColor(group, null); options.onChange?.(items);
+  });
+  rackColorReset.style.fontSize = "12px";
   const sizeRows = [];
   for (const [label, minus, plus] of [["전체", shrinkButton, enlargeButton], ["너비", widthShrinkButton, widthEnlargeButton], ["높이", heightShrinkButton, heightEnlargeButton], ["앞뒤 길이", depthShrinkButton, depthEnlargeButton]]) {
     const row = document.createElement("div"), name = document.createElement("span");
@@ -1001,6 +1049,10 @@ function mount(container, page, options = {}) {
     heightShrinkButton.title = "설비 높이 줄이기"; heightEnlargeButton.title = "설비 높이 늘리기";
     if (isEquipment) { depthShrinkButton.title = "설비 앞뒤 길이 줄이기"; depthEnlargeButton.title = "설비 앞뒤 길이 늘리기"; }
     selectedLabel.textContent = `${item.locked ? "🔒 " : ""}${item.label || item.modelKey || "선택한 설비"}`;
+    const showRackColor = !placement && isColorableRack(item);
+    rackColorLabel.style.display = showRackColor ? "flex" : "none"; rackColorInput.disabled = Boolean(item.locked);
+    rackColorInput.value = /^#[0-9a-f]{6}$/i.test(item.rackColor || "") ? item.rackColor : "#365562";
+    rackColorReset.hidden = !showRackColor; rackColorReset.disabled = Boolean(item.locked);
     selectGroupButton.hidden = !item.groupKey || Boolean(placement);
     sizeToggle.hidden = !canResize;
     if (!canResize) { sizePanel.style.display = "none"; sizeToggle.setAttribute("aria-expanded", "false"); }
@@ -1097,7 +1149,7 @@ function mount(container, page, options = {}) {
     if (copySource) Object.assign(item, { itemType: copySource.itemType, label: `${String(copySource.label || modelKey).slice(0, 117)} 복사`,
       x: Number(copySource.x) || 0, y: Number(copySource.y) || 0, z: Number(copySource.z) || 0,
       sizeX: Number(copySource.sizeX) || 4, sizeY: Number(copySource.sizeY) || Number(copySource.sizeX) || 4,
-      sizeZ: Number(copySource.sizeZ) || Number(copySource.sizeX) || 4, groupKey: null, groupName: null });
+      sizeZ: Number(copySource.sizeZ) || Number(copySource.sizeX) || 4, rackColor: copySource.rackColor || null, groupKey: null, groupName: null });
     if (isWallModel(modelKey) && wallFloor != null) item._wallFloor = wallFloor;
     const group = item.itemType === "RACK" ? makeRack(item) : makeEquipment(item); group.position.set(item.x, item.y, item.z); applyItemRotation(item, group);
     if (isCeilingModel(item.modelKey)) rebuildCeilingSurface(group, [...items, item], item);
@@ -2948,6 +3000,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
       if (disposed) return;
       const object = prepareShowroomObject(rackModel, gltf.scene.clone(true));
       object.traverse((node) => { node.userData.rackSharedModel = true; });
+      if (options.rackColor) applyRackColor(object, options.rackColor);
       const bounds = new THREE.Box3().setFromObject(object);
       if (bounds.isEmpty()) throw new Error("모델에 형상이 없습니다.");
       const size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());

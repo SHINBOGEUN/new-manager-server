@@ -29,6 +29,7 @@ public record DevicePageDisplayUpdateRequest(
             Double sizeZ,
             String groupKey,
             String groupName,
-            Boolean locked
+            Boolean locked,
+            String rackColor
     ) {}
 }
