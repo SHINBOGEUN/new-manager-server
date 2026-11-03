@@ -79,6 +79,14 @@ public class InfluxPointQuery implements PointQuery {
     }
 
     @Override
+    public List<SeriesPoint> findMeanSeries(List<Integer> deviceIds, List<String> pointNames,
+                                           Instant start, Instant end, String protocol, int minutes) {
+        String flux = AnalysisFluxBuilder.buildMeanQuery(properties.getBucket(), properties.getMeasurement(), deviceIds, pointNames, start, end, protocol, minutes);
+        try { return mapSeries(query(flux)); }
+        catch (RuntimeException exception) { log.error("Query mean series failed: {}", exception.getMessage(), exception); throw new QueryException("InfluxDB query failed"); }
+    }
+
+    @Override
     public List<SeriesPoint> findRawSeries(
             List<Integer> deviceIds,
             List<String> pointNames,

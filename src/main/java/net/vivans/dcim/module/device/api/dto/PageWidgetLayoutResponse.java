@@ -6,7 +6,8 @@ public record PageWidgetLayoutResponse(
         int gridX,
         int gridY,
         int w,
-        int h
+        int h,
+        int gridVersion
 ) {
     public static PageWidgetLayoutResponse from(PageWidgetLayout layout) {
         if (layout == null) {
@@ -16,7 +17,8 @@ public record PageWidgetLayoutResponse(
                 layout.getGridX(),
                 layout.getGridY(),
                 layout.getW(),
-                layout.getH()
+                layout.getH(),
+                layout.getGridVersion()
         );
     }
 }

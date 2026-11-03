@@ -34,6 +34,11 @@ public interface PointQuery {
         return findRawSeries(deviceIds, pointNames, start, end);
     }
 
+    default List<SeriesPoint> findMeanSeries(List<Integer> deviceIds, List<String> pointNames,
+                                             Instant start, Instant end, String protocol, int minutes) {
+        return findRawSeries(deviceIds, pointNames, start, end, protocol);
+    }
+
     List<SeriesPoint> findLatestRaw(List<Integer> deviceIds, List<String> pointNames,
                                     Instant end, String protocol);
 

@@ -54,6 +54,31 @@ public class DeviceRackPlacement extends BaseEntity {
     @Column(name = "form_factor", length = 30)
     private String formFactor;
 
+    @Column(name = "position_x") private Double positionX;
+    @Column(name = "position_y") private Double positionY;
+    @Column(name = "position_z") private Double positionZ;
+    @Column(name = "scene_model_key", length = 32) private String sceneModelKey;
+    @Column(name = "visual_length_ratio") private Double visualLengthRatio;
+
+    public void setVisualLengthRatio(Double value) {
+        if (value != null && (!Double.isFinite(value) || value < 0.1 || value > 1.0)) throw new IllegalArgumentException("PDU 길이는 랙 높이의 10~100%로 설정하세요");
+        this.visualLengthRatio = value;
+    }
+
+    public void setSceneModelKey(String key) {
+        this.sceneModelKey = key == null || key.isBlank() ? null : key.trim();
+    }
+
+    public void setVisualizationPosition(Double x, Double y, Double z) {
+        if ((x == null || y == null || z == null) && !(x == null && y == null && z == null))
+            throw new IllegalArgumentException("visual position requires all three coordinates");
+        for (Double value : new Double[]{x, y, z}) {
+            if (value != null && (!Double.isFinite(value) || value < 0 || value > 1))
+                throw new IllegalArgumentException("visual coordinates must be between 0 and 1");
+        }
+        this.positionX = x; this.positionY = y; this.positionZ = z;
+    }
+
     private DeviceRackPlacement(Device device, LocationNode rackLocation, DeviceMountType mountType, DeviceRackSide rackSide, Integer uPosition, Integer uHeight, String formFactor) {
         update(device, rackLocation, mountType, rackSide, uPosition, uHeight, formFactor);
     }

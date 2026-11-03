@@ -9,5 +9,16 @@ public record DeviceRackPlacementRequest(
         DeviceRackSide rackSide,
         Integer uPosition,
         Integer uHeight,
-        String formFactor
-) {}
+        String formFactor,
+        Double positionX,
+        Double positionY,
+        Double positionZ,
+        Boolean clearPosition,
+        String sceneModelKey,
+        Boolean updateSceneModel,
+        Double visualLengthRatio
+) {
+    public DeviceRackPlacementRequest(DeviceMountType mountType, String rackLocationCode, DeviceRackSide rackSide, Integer uPosition, Integer uHeight, String formFactor, Double positionX, Double positionY, Double positionZ, Boolean clearPosition, String sceneModelKey, Boolean updateSceneModel) {
+        this(mountType, rackLocationCode, rackSide, uPosition, uHeight, formFactor, positionX, positionY, positionZ, clearPosition, sceneModelKey, updateSceneModel, null);
+    }
+}

@@ -44,6 +44,13 @@ final class AnalysisFluxBuilder {
         );
     }
 
+    static String buildMeanQuery(String bucket, String measurement, List<Integer> deviceIds,
+                                 List<String> pointNames, Instant start, Instant end, String protocol, int minutes) {
+        if (!java.util.Set.of(1, 5, 15, 60).contains(minutes)) throw new IllegalArgumentException("invalid interval");
+        return buildRawQuery(bucket, measurement, deviceIds, pointNames, start, end, protocol)
+                .replace("|> keep(columns:", "|> aggregateWindow(every: " + minutes + "m, fn: mean, createEmpty: false, timeSrc: \"_start\")\n  |> keep(columns:");
+    }
+
     static String buildLatestRawQuery(String bucket, String measurement, List<Integer> deviceIds,
                                       List<String> pointNames, Instant end, String protocol) {
         return """

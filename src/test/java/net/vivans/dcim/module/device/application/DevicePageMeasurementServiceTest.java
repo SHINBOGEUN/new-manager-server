@@ -11,6 +11,8 @@ import net.vivans.dcim.module.device.domain.repository.DeviceModbusReadingReposi
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DeviceModbusBitFieldRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDeviceRepository;
+import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDisplayConfigRepository;
+import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageSceneItemRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelModbusPoint;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModelProtocol;
@@ -50,6 +52,8 @@ class DevicePageMeasurementServiceTest {
     @Mock CommonCodeRepository commonCodeRepository;
     @Mock DeviceRepository deviceRepository;
     @Mock DevicePageDeviceRepository pageDeviceRepository;
+    @Mock DevicePageDisplayConfigRepository displayConfigRepository;
+    @Mock DevicePageSceneItemRepository sceneItemRepository;
     @Mock DeviceModelSnmpPointRepository snmpPointRepository;
     @Mock DeviceModelModbusPointRepository modbusPointRepository;
     @Mock DeviceModbusReadingRepository modbusReadingRepository;
@@ -115,6 +119,7 @@ class DevicePageMeasurementServiceTest {
         var response = service.getMeasurements("COOLING", 168);
 
         assertThat(response.pageCode()).isEqualTo("COOLING");
+        assertThat(response.viewMode()).isEqualTo("DATA");
         assertThat(response.devices()).hasSize(3);
         assertThat(response.devices().get(0).points().get(0).value()).isEqualTo(23.5);
         assertThat(response.devices().get(0).points().get(0).protocol()).isEqualTo("snmp");
@@ -136,6 +141,7 @@ class DevicePageMeasurementServiceTest {
 
         assertThat(service.replaceDevices("COOLING", List.of(2, 2))).containsExactly(2);
 
+        verify(sceneItemRepository).deleteAllForPageAndDevices(10, List.of(1));
         ArgumentCaptor<List<DevicePageDevice>> deleted = ArgumentCaptor.forClass(List.class);
         verify(pageDeviceRepository).deleteAll(deleted.capture());
         assertThat(deleted.getValue()).hasSize(1);

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS `device_asset_document` (
   `original_name` varchar(255) NOT NULL COMMENT '업로드 원본 파일명',
   `content_type` varchar(150) NOT NULL COMMENT 'MIME type',
   `file_size` bigint(20) NOT NULL COMMENT '파일 크기(byte)',
+  `file_kind` varchar(16) NOT NULL DEFAULT 'DOCUMENT' COMMENT '첨부 유형 (DOCUMENT/ASSET_2D/ASSET_3D)',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '업로드 시각',
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '수정 시각',
   PRIMARY KEY (`id`),

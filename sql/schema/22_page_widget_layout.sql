@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS `page_widget_layout` (
   `grid_y` int(11) NOT NULL COMMENT '그리드 Y',
   `w` int(11) NOT NULL COMMENT '가로 칸 수',
   `h` int(11) NOT NULL COMMENT '세로 칸 수',
+  `grid_version` int(11) NOT NULL DEFAULT 48 COMMENT '그리드 기준 버전 (48=48열 기준, 0=레거시 자동 판별)',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '생성 시각',
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '수정 시각',
   PRIMARY KEY (`widget_id`),

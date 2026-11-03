@@ -13,6 +13,14 @@ class AnalysisFluxBuilderTest {
     private static final Instant END = Instant.parse("2026-10-07T15:00:00Z");
 
     @Test
+    void buildsProtocolFilteredMeanAtWindowStart() {
+        String flux = AnalysisFluxBuilder.buildMeanQuery("dcim", "dcim_sensor", List.of(17), List.of("WATT"), START, END, "snmp", 15);
+        assertThat(flux).contains("r[\"protocol\"] == \"snmp\"");
+        assertThat(flux).contains("aggregateWindow(every: 15m, fn: mean, createEmpty: false, timeSrc: \"_start\")");
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> AnalysisFluxBuilder.buildMeanQuery("dcim", "dcim_sensor", List.of(17), List.of("WATT"), START, END, "snmp", 3));
+    }
+
+    @Test
     void buildsRawAnalysisQueryWithoutWindowAggregation() {
         String flux = AnalysisFluxBuilder.buildRawQuery(
                 "dcim", "dcim_sensor", List.of(17), List.of("AMP"), START, END);

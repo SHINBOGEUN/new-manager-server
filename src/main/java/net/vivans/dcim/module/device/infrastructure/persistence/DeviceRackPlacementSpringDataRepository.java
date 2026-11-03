@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DeviceRackPlacementSpringDataRepository extends JpaRepository<DeviceRackPlacement, Integer> {
+    boolean existsBySceneModelKey(String sceneModelKey);
     @EntityGraph(attributePaths = {"device", "device.deviceModel", "rackLocation"})
     Optional<DeviceRackPlacement> findByDevice_Id(Integer deviceId);
 

@@ -6,6 +6,8 @@ import java.util.List;
 public record DevicePageMeasurementsResponse(
         String pageCode,
         String pageName,
+        String viewMode,
+        String layoutAssetKey,
         int lookbackHours,
         List<DeviceMeasurement> devices
 ) {
