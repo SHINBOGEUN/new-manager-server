@@ -35,3 +35,5 @@ upload/
 uploads/
 .env
 .tmp_last_extract/
+__pycache__/
+*.pyc
