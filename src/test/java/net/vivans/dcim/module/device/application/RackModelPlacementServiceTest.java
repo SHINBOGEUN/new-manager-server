@@ -97,6 +97,9 @@ class RackModelPlacementServiceTest {
         when(modelPlacements.findById(7)).thenReturn(Optional.of(model));
         when(placements.findByDeviceId(10)).thenReturn(Optional.empty());
         when(devices.findById(10)).thenReturn(Optional.of(mock(Device.class)));
+        SceneModel rackModel = SceneModel.uploaded("MODEL", "서버", "랙", "x.glb", "x.glb", 1, 1, 1);
+        rackModel.setRackInstallable(true);
+        when(models.findById("MODEL")).thenReturn(Optional.of(rackModel));
         when(models.existsById("MODEL")).thenReturn(true);
         when(placements.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(locations.findByCode(RACK)).thenReturn(Optional.of(rack));

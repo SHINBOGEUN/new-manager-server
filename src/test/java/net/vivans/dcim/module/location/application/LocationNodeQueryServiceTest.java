@@ -70,6 +70,9 @@ class LocationNodeQueryServiceTest {
     @Mock
     private DeviceRepository deviceRepository;
 
+    @Mock
+    private net.vivans.dcim.module.location.infrastructure.persistence.LocationNodeSpringDataRepository locationLocks;
+
     @InjectMocks
     private LocationNodeQueryService locationNodeQueryService;
 
@@ -174,7 +177,7 @@ class LocationNodeQueryServiceTest {
 
     @Test
     void updateLocationNode_updatesNameAndType() {
-        when(locationNodeRepository.findByCode("TSTCNTR001")).thenReturn(Optional.of(container));
+        when(locationLocks.lockByCode("TSTCNTR001")).thenReturn(Optional.of(container));
         when(commonCodeRepository.findById(3)).thenReturn(Optional.of(ROW_TYPE));
         when(locationNodeRepository.existsByParentIsNullAndNameAndCodeNot("컨테이너 B", "TSTCNTR001"))
                 .thenReturn(false);
@@ -192,7 +195,7 @@ class LocationNodeQueryServiceTest {
 
     @Test
     void updateLocationNode_throwsWhenNodeNotFound() {
-        when(locationNodeRepository.findByCode("UNKNOWN01")).thenReturn(Optional.empty());
+        when(locationLocks.lockByCode("UNKNOWN01")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> locationNodeCommandService.updateLocationNode(
                 "UNKNOWN01",
@@ -508,7 +511,7 @@ class LocationNodeQueryServiceTest {
 
     @Test
     void updateLocationNode_throwsWhenNewTypeBreaksChildOrder() {
-        when(locationNodeRepository.findByCode("TSTCNTR001")).thenReturn(Optional.of(container));
+        when(locationLocks.lockByCode("TSTCNTR001")).thenReturn(Optional.of(container));
         when(commonCodeRepository.findById(3)).thenReturn(Optional.of(ROW_TYPE));
         when(locationNodeRepository.findByParent_Code("TSTCNTR001")).thenReturn(List.of(row));
         when(locationNodeRepository.existsByParentIsNullAndNameAndCodeNot("컨테이너 B", "TSTCNTR001"))
