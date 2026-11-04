@@ -528,6 +528,11 @@
     body.embedded-board.edit-mode .board { background-image:linear-gradient(to right,rgba(42,53,68,.42) 1px,transparent 1px),linear-gradient(to bottom,rgba(42,53,68,.42) 1px,transparent 1px); }
     .page-visualization { position:relative; margin:0 0 14px; border:1px solid #263951; border-radius:12px; overflow:hidden; background:#101a29; }
     .page-visualization[hidden] { display:none !important; }
+    .page-visualization.widget-page-controls { position:sticky; top:0; z-index:20; height:0; margin:0; border:0; overflow:visible; background:transparent; }
+    .widget-page-controls .page-visualization-head { position:absolute; right:8px; top:8px; padding:0; border:0; }
+    .widget-page-controls .page-tools-menu[open] { padding:6px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
+    .board > .card .card-body { scrollbar-width:none; }
+    .board > .card .card-body::-webkit-scrollbar { display:none; }
     .page-visualization-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #263951; }
     .page-visualization-head strong { color:#e4edf8; }
     .page-visualization-head small { color:#8fa4be; }
@@ -1426,10 +1431,6 @@
 
     function createSceneHeader(page, modeLabel, devices) {
       const head = document.createElement("div"); head.className = "page-visualization-head";
-      if (!['PLAN_2D', 'SCENE_3D'].includes(page.viewMode)) {
-        const title = document.createElement("strong"); title.textContent = `${page.pageName || page.pageCode} · ${modeLabel}`;
-        head.append(title);
-      }
       const tools = document.createElement("div"); tools.className = "page-scene-nav";
       tools.style.marginLeft = "auto";
       const count = document.createElement("small"); count.textContent = `${devices.length}대 · 최신값 자동 갱신`;
@@ -1465,13 +1466,12 @@
           renderPageVisualization();
         };
         if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) tools.append(edit);
-        const widgetEdit = document.createElement("button"); widgetEdit.type="button"; widgetEdit.className="page-widget-edit";
-        widgetEdit.textContent = "위젯 편집";
-        widgetEdit.onclick = () => {
-          if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소하고 위젯 편집으로 이동할까요?")) return;
-          window.parent.postMessage({ type:"dcim:dashboard:open-widget-editor", pageCode:page.pageCode }, location.origin);
-        };
-        if (!widgetWorkspaceRequested) tools.append(widgetEdit);
+        if (page.viewMode === "DATA") {
+          const widgetEdit = document.createElement("button"); widgetEdit.type="button"; widgetEdit.className="page-widget-edit";
+          widgetEdit.textContent = "위젯 편집";
+          widgetEdit.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:open-widget-editor", pageCode:page.pageCode }, location.origin);
+          if (!widgetWorkspaceRequested) tools.append(widgetEdit);
+        }
       }
       if (consoleAuth()?.getRole?.() === "ADMIN") {
         const menu = document.createElement("details"); menu.className = "page-tools-menu";
@@ -1610,14 +1610,13 @@
       document.body.classList.toggle("page-scene-fullscreen", mode === "PLAN_2D" || mode === "SCENE_3D");
       [...root.children].forEach((child) => { if (child !== board) child.remove(); });
       if (mode === "DATA") {
-        root.append(createSceneHeader(page, "장비 데이터", devices));
-        root.insertAdjacentHTML("beforeend", devices.length ? `<div class="page-device-data-grid">${devices.map((device) => `
-          <article class="page-device-data-card"><h3>${escapeHtml(device.deviceName)}</h3><div class="page-device-meta">${escapeHtml(device.modelName || "모델 미지정")} · ${escapeHtml(device.locationName || device.locationCode || "위치 미지정")}</div>
-          ${(device.points || []).slice(0, 8).map((point) => `<div class="page-device-data-point"><span>${escapeHtml(point.pointName)}</span><b>${point.value == null ? "—" : `${formatValue(point.value)}${point.unit ? ` ${escapeHtml(point.unit)}` : ""}`}</b></div>`).join("")}</article>`).join("")}</div>` : '<div class="page-layout-empty">페이지 장비 설정에서 표시할 장비를 선택하세요.</div>');
+        root.classList.add("widget-page-controls");
+        root.append(createSceneHeader(page, "위젯", devices));
         board.classList.remove("map-overlay-board"); board.style.gridTemplateRows = "";
         if (root.nextElementSibling !== board) root.after(board);
         return;
       }
+      root.classList.remove("widget-page-controls");
 
       const stage = document.createElement("div"); stage.className = `page-layout-stage scene-${mode === "SCENE_3D" ? "3d" : "2d"}`;
       root.append(createSceneHeader(page, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices), stage);
@@ -2351,9 +2350,23 @@
       return { label: labels[key] || String(pointName || '측정값').replaceAll('_', ' '), kind, icon: paths[kind] };
     }
 
-    function latestMetricValue(value, unit) {
+    function knownMetricUnit(pointName) {
+      const key = String(pointName || '').trim().toUpperCase();
+      if (key === 'TOTAL_KWH') return 'kWh';
+      if (['TOTAL_WT', 'TOTAL_WATT', 'L1_WATT', 'L2_WATT', 'L3_WATT'].includes(key)) return 'W';
+      if (['TEMPC_SHT', 'TEMPC_TMP117'].includes(key)) return '°C';
+      if (key === 'DEVICE_COUNT') return '대';
+      return '';
+    }
+
+    function knownWidgetUnit(widget) {
+      const units = [...new Set((widget?.pointNames || []).map(knownMetricUnit).filter(Boolean))];
+      return units.length === 1 ? units[0] : '';
+    }
+
+    function latestMetricValue(value, unit, pointName) {
       let number = value == null || value === '' ? NaN : Number(value);
-      let displayUnit = String(unit || '');
+      let displayUnit = String(unit || knownMetricUnit(pointName));
       if (!Number.isFinite(number)) return { number: '—', unit: displayUnit, missing: true };
       const scaledUnits = { W: 'kW', Wh: 'kWh' };
       if (scaledUnits[displayUnit] && Math.abs(number) >= 1000) {
@@ -2369,7 +2382,7 @@
       if (!points.length) return '<div class="empty" style="padding:12px">표시할 측정값이 없습니다.</div>';
       const tiles = points.map((point) => {
         const presentation = latestMetricPresentation(point.pointName, point.unit);
-        const value = latestMetricValue(point.value, point.unit);
+        const value = latestMetricValue(point.value, point.unit, point.pointName);
         const time = point.time ? new Date(point.time) : null;
         const collectedAt = time && Number.isFinite(time.getTime()) ? time.toLocaleString('ko-KR') : null;
         const stale = time && Number.isFinite(time.getTime()) && Number(last.dataStatus?.freshnessMinutes) > 0
@@ -2383,8 +2396,8 @@
           </div></div>`;
       });
       if (points.length > 1 && last.total != null && ['W','kW','Wh','kWh','MWh'].includes(last.totalUnit)
-          && points.every((point) => !latestMetricValue(point.value, point.unit).missing && point.unit === last.totalUnit)) {
-        const value = latestMetricValue(last.total, last.totalUnit);
+          && points.every((point) => !latestMetricValue(point.value, point.unit, point.pointName).missing && point.unit === last.totalUnit)) {
+        const value = latestMetricValue(last.total, last.totalUnit, points[0]?.pointName);
         const presentation = latestMetricPresentation('TOTAL', last.totalUnit);
         tiles.unshift(`<div class="metric-tile ${presentation.kind}"><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span>
           <div class="metric-content"><div class="metric-label">${presentation.kind === 'energy' ? '누적 전력량 합계' : '전력 합계'}</div>
@@ -2393,10 +2406,11 @@
       return `<div class="metric-grid">${tiles.join('')}</div>`;
     }
 
-    function renderAggregateBody(agg) {
+    function renderAggregateBody(agg, widget) {
       if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
-      const unit = agg.unit ? " " + escapeHtml(agg.unit) : "";
+      const resolvedUnit = agg.unit || knownWidgetUnit(widget);
+      const unit = resolvedUnit ? " " + escapeHtml(resolvedUnit) : "";
       if (agg.aggregatePreset === "demand") {
         return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : formatValue(agg.value)}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
       }
@@ -2716,6 +2730,13 @@
         <div class="chart-legend">${legend}</div>`;
     }
 
+    function chartWithKnownUnit(widget, chart) {
+      if (!chart || chart.error || chart.unit || (chart.units || []).some(Boolean)) return chart;
+      const unit = knownWidgetUnit(widget);
+      if (!unit) return chart;
+      return { ...chart, unit, units: [unit], series: (chart.series || []).map((series) => ({ ...series, unit: series.unit || unit })) };
+    }
+
     function destroyChartInstances() {
       for (const chart of state.chartInstances.values()) {
         try { chart.destroy(); } catch (_) { /* ignore */ }
@@ -2824,7 +2845,8 @@
       if (typeof Chart === "undefined") return;
       destroyChartInstances();
       for (const [widgetId, data] of state.chartByWidget) {
-        mountChartInstance(widgetId, data);
+        const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
+        mountChartInstance(widgetId, chartWithKnownUnit(widget, data));
       }
     }
 
@@ -3144,14 +3166,14 @@
         } else if (w.queryKind === "chart") {
           const chart = state.chartByWidget.get(w.id);
           dataStatus = chart?.dataStatus;
-          body = renderChartBody(chart);
+          body = renderChartBody(chartWithKnownUnit(w, chart));
           const sm = chartSeriesModeForWidget(w);
           subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
           cardClass = "card chart-card";
         } else if (w.queryKind === "aggregate") {
           const aggregate = state.aggregateByWidget.get(w.id);
           dataStatus = aggregate?.dataStatus;
-          body = renderAggregateBody(aggregate);
+          body = renderAggregateBody(aggregate, w);
           subExtra = ` · ${escapeHtml(aggregatePresetLabel(w.op))} · ${escapeHtml(w.aggregateRangePreset || "")}`;
         } else if (w.queryKind === "calculated") {
           const pue = state.pueByWidget.get(w.id);
