@@ -48,6 +48,63 @@ class PageWidgetControllerIntegrationTest {
     @Autowired
     private CommonCodeRepository commonCodeRepository;
 
+    @Test
+    void widgetFormSavesDesignWithContentAndPreservesItWhenOmitted() throws Exception {
+        String token = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-design-form", "password123");
+        devicePageCodeId(token, "DESIGN", "Design", 1);
+        String created = mockMvc.perform(post("/api/manager/widgets").header("Authorization", bearerToken(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"pageCode":"DESIGN","name":"디자인 선택","queryKind":"count","countMode":"total","visualStyle":"vivid"}
+                        """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("vivid"))
+                .andReturn().getResponse().getContentAsString();
+        int id = objectMapper.readTree(created).path("data").path("id").asInt();
+        mockMvc.perform(put("/api/manager/widgets/{id}", id).header("Authorization", bearerToken(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"디자인 변경","queryKind":"count","countMode":"total","visualStyle":"minimal"}
+                        """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("minimal"));
+        mockMvc.perform(put("/api/manager/widgets/{id}", id).header("Authorization", bearerToken(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"이름만 변경","queryKind":"count","countMode":"total"}
+                        """))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("minimal"));
+        mockMvc.perform(put("/api/manager/widgets/{id}", id).header("Authorization", bearerToken(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"name":"저장되면 안 됨","queryKind":"count","countMode":"total","visualStyle":"unknown"}
+                        """))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/manager/widgets/{id}", id).header("Authorization", bearerToken(token)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.name").value("이름만 변경"))
+                .andExpect(jsonPath("$.data.visualStyle").value("minimal"));
+    }
+
+    @Test
+    void visualStyleIsSavedAndReturnedForWidget() throws Exception {
+        String token = loginAndGetAccessToken(mockMvc, objectMapper, userRepository, "widget-style", "password123");
+        devicePageCodeId(token, "STYLE", "Style", 1);
+        String created = mockMvc.perform(post("/api/manager/widgets").header("Authorization", bearerToken(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pageCode\":\"STYLE\",\"name\":\"스타일 테스트\",\"queryKind\":\"count\",\"countMode\":\"total\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("classic"))
+                .andReturn().getResponse().getContentAsString();
+        int id = objectMapper.readTree(created).path("data").path("id").asInt();
+        mockMvc.perform(patch("/api/manager/widgets/" + id + "/visual-style")
+                .header("Authorization", bearerToken(token)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"style\":\"vivid\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("vivid"));
+        mockMvc.perform(get("/api/manager/widgets/" + id).header("Authorization", bearerToken(token)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.visualStyle").value("vivid"));
+        mockMvc.perform(patch("/api/manager/widgets/" + id + "/visual-style")
+                .header("Authorization", bearerToken(token)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"style\":\"invalid\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
 
     @Test
     void createAndListWidgets_filtersByPageCode() throws Exception {
@@ -486,12 +543,13 @@ class PageWidgetControllerIntegrationTest {
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"dashboard","name":"센터 온습도","enabled":true,
+                                {"pageCode":"dashboard","name":"센터 온습도","enabled":true,"visualStyle":"vivid",
                                  "temperatureSources":[{"deviceId":%d,"pointName":"TEMP"}],
                                  "humiditySources":[{"deviceId":%d,"pointName":"HUM"}]}
                                 """.formatted(temperatureDevice, humidityDevice)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.queryKind").value("psychrometric"))
+                .andExpect(jsonPath("$.data.visualStyle").value("vivid"))
                 .andExpect(jsonPath("$.data.psychrometricSources", hasSize(2)))
                 .andReturn().getResponse().getContentAsString();
         int widgetId = objectMapper.readTree(created).path("data").path("id").asInt();
@@ -500,12 +558,13 @@ class PageWidgetControllerIntegrationTest {
                         .header("Authorization", bearerToken(accessToken))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"pageCode":"COOLING","name":"센터 온습도 수정","enabled":true,
+                                {"pageCode":"COOLING","name":"센터 온습도 수정","enabled":true,"visualStyle":"minimal",
                                  "temperatureSources":[{"deviceId":%d,"pointName":"TEMP"}],
                                  "humiditySources":[{"deviceId":%d,"pointName":"HUM"}]}
                                 """.formatted(temperatureDevice, humidityDevice)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("센터 온습도 수정"))
+                .andExpect(jsonPath("$.data.visualStyle").value("minimal"))
                 .andExpect(jsonPath("$.data.pageCode").value("COOLING"))
                 .andExpect(jsonPath("$.data.psychrometricSources", hasSize(2)));
     }

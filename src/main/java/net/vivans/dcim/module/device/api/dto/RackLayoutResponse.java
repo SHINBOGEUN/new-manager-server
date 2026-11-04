@@ -14,6 +14,7 @@ public record RackLayoutResponse(
             Integer deviceId, String deviceName, String assetCode, String modelName,
             DeviceMountType mountType, DeviceRackSide rackSide,
             Integer uPosition, Integer uHeight, Integer lastU, String formFactor, String assetColor,
-            DeviceImageResponse primaryImage
+            DeviceImageResponse primaryImage, Double positionX, Double positionY, Double positionZ, String sceneModelKey,
+            Integer modelPlacementId, Double visualLengthRatio
     ) {}
 }

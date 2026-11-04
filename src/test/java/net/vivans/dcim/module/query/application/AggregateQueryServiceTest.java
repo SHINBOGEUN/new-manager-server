@@ -17,6 +17,7 @@ import net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog;
 import net.vivans.dcim.module.query.api.dto.AggregateWidgetResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import net.vivans.dcim.module.query.domain.SeriesPoint;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
@@ -60,6 +61,26 @@ class AggregateQueryServiceTest {
 
     @InjectMocks
     private AggregateQueryService service;
+
+    @Test
+    void demandUsesCompleteFifteenMinuteMeansAndReturnsOccurrenceTime() {
+        Device d1 = device(101), d2 = device(102);
+        PageWidget widget = aggregateWidget(12, "최대수요", PageWidgetOp.demand,
+                PageWidgetChartRangePreset.last_24h,
+                List.of(mapping(d1, PageWidgetDeviceRole.DEFAULT), mapping(d2, PageWidgetDeviceRole.DEFAULT)), "POWER");
+        when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(
+                new DeviceMeasurementSourceCatalog.Source(101,"D-101",1,"snmp","POWER","W","POWER",101,"MODEL",false),
+                new DeviceMeasurementSourceCatalog.Source(102,"D-102",1,"snmp","POWER","W","POWER",102,"MODEL",false)));
+        Instant windowEnd = Instant.ofEpochSecond((Instant.now().getEpochSecond() / 900 - 1) * 900);
+        when(pointQuery.findSeries(eq(List.of(101,102)), eq(List.of("POWER")), any(), any(), eq("15m")))
+                .thenReturn(List.of(new SeriesPoint(101,"POWER",100.0,windowEnd),
+                        new SeriesPoint(102,"POWER",200.0,windowEnd)));
+        AggregateWidgetResponse response = service.getAggregate(12, null);
+        assertThat(response.value()).isEqualByComparingTo("300.00");
+        assertThat(response.peakTime()).isEqualTo(windowEnd.minusSeconds(900));
+        assertThat(response.unit()).isEqualTo("W");
+    }
 
     @Test
     void usageSumsLastMinusFirstPerDevice() {

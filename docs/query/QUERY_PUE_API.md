@@ -1,3 +1,5 @@
+> 보관 문서: 아래는 이전 PUE 전용 설계입니다. 현재 구현에는 `/pue-definitions`와 `/query/pue`가 없습니다. 현재는 `/api/manager/calculated-metrics`에서 계산 지표를 관리하고 `/api/manager/query/calculated`로 조회합니다. 신규 UI·연동에 아래 경로를 사용하지 마세요.
+
 # PUE 정의·조회 API
 
 PUE는 장비가 아닌 **계속 수집되는 파생 지표**다. `pue_definition`이 total/cooler source와 수집 주기를 보관하고, 위젯은 정의를 참조해 저장된 시계열만 표시한다.

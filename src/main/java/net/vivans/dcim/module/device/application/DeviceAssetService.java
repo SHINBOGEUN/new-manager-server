@@ -19,6 +19,7 @@ import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceAssetHistory;
 import net.vivans.dcim.module.device.domain.model.DeviceAssetHistoryAction;
 import net.vivans.dcim.module.device.domain.model.DeviceAssetDocument;
+import net.vivans.dcim.module.device.domain.model.DeviceAssetFileKind;
 import net.vivans.dcim.module.device.domain.model.DeviceImage;
 import net.vivans.dcim.module.device.domain.model.DeviceProtocolEndpoint;
 import net.vivans.dcim.module.device.domain.repository.DeviceImageRepository;
@@ -172,14 +173,45 @@ public class DeviceAssetService {
     }
 
     @Transactional
-    public DeviceAssetDocumentResponse uploadDocument(Integer deviceId, MultipartFile file) {
+    public DeviceAssetDocumentResponse uploadDocument(Integer deviceId, MultipartFile file, DeviceAssetFileKind kind) {
         Device device = findDevice(deviceId);
+        validateAssetModelFile(file, kind);
         DeviceAssetFileStorage.StoredFile stored = fileStorage.storeDocument(deviceId, file);
         DeviceAssetDocument document = DeviceAssetDocument.create(device, stored.storageKey(), stored.originalName(),
-                stored.contentType(), stored.size());
+                stored.contentType(), stored.size(), kind);
         DeviceAssetDocumentResponse response = DeviceAssetDocumentResponse.from(documentRepository.save(document));
         lifecycleService.recordDocumentChange(device, DeviceAssetHistoryAction.DOCUMENT_UPLOADED, stored.originalName());
         return response;
+    }
+
+    static void validateAssetModelFile(MultipartFile file, DeviceAssetFileKind kind) {
+        if (kind == null) throw new IllegalArgumentException("file kind is required");
+        if (kind == DeviceAssetFileKind.DOCUMENT) return;
+        String name = file == null ? "" : file.getOriginalFilename();
+        String extension = name == null || !name.contains(".") ? "" : name.substring(name.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT);
+        boolean supported = kind == DeviceAssetFileKind.ASSET_2D
+                ? java.util.Set.of("svg", "png", "jpg", "jpeg", "webp").contains(extension)
+                : java.util.Set.of("obj", "glb").contains(extension);
+        if (!supported) throw new IllegalArgumentException(kind == DeviceAssetFileKind.ASSET_2D
+                ? "2D 자산은 SVG, PNG, JPG, WEBP 파일만 등록할 수 있습니다."
+                : "3D 자산은 OBJ 또는 GLB 파일만 등록할 수 있습니다.");
+        if (file == null || file.isEmpty() || file.getSize() > 20L * 1024 * 1024) {
+            throw new IllegalArgumentException("자산 모델 파일은 20MB 이하의 비어 있지 않은 파일이어야 합니다.");
+        }
+        if (kind == DeviceAssetFileKind.ASSET_3D && "glb".equals(extension)) {
+            try (var input = file.getInputStream()) {
+                byte[] header = input.readNBytes(12);
+                if (header.length != 12 || header[0] != 'g' || header[1] != 'l' || header[2] != 'T' || header[3] != 'F') {
+                    throw new IllegalArgumentException("올바른 GLB 파일이 아닙니다.");
+                }
+                var buffer = java.nio.ByteBuffer.wrap(header).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+                if (buffer.getInt(4) != 2 || Integer.toUnsignedLong(buffer.getInt(8)) != file.getSize()) {
+                    throw new IllegalArgumentException("GLB 2.0 형식과 파일 크기를 확인하세요.");
+                }
+            } catch (java.io.IOException error) {
+                throw new IllegalArgumentException("GLB 파일을 읽지 못했습니다.", error);
+            }
+        }
     }
 
     public Resource loadDocument(Integer deviceId, Integer documentId) {

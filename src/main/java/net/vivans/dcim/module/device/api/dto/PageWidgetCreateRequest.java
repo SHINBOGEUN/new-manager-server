@@ -84,6 +84,10 @@ public record PageWidgetCreateRequest(
 
         @Schema(description = "2D 그리드 배치 (선택)")
         @Valid
-        PageWidgetLayoutRequest layout
+        PageWidgetLayoutRequest layout,
+        @jakarta.validation.constraints.Pattern(regexp = "classic|minimal|vivid", message = "visualStyle must be classic, minimal or vivid")
+        String visualStyle,
+        @jakarta.validation.constraints.Pattern(regexp = "^$|#[0-9a-fA-F]{6}", message = "visualColor must be #RRGGBB")
+        String visualColor
 ) {
 }

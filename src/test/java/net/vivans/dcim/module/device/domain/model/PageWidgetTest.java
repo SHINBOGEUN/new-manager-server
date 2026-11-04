@@ -14,6 +14,16 @@ import static org.mockito.Mockito.when;
 class PageWidgetTest {
 
     @Test
+    void visualStyleDefaultsToClassicAndRejectsUnknownValues() {
+        PageWidget widget = lastWidget("PDU", List.of("W"), List.of(device(1)));
+        assertThat(widget.getVisualStyle()).isEqualTo("classic");
+        widget.changeVisualStyle("vivid");
+        assertThat(widget.getVisualStyle()).isEqualTo("vivid");
+        assertThatThrownBy(() -> widget.changeVisualStyle("unknown")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(widget.getVisualStyle()).isEqualTo("vivid");
+    }
+
+    @Test
     void create_withDevicesAndPoints_succeeds() {
         PageWidget widget = lastWidget("칠러", List.of("status", "W"), List.of(device(9), device(10)));
 

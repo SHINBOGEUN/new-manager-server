@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface DevicePageDeviceRepository extends JpaRepository<DevicePageDevice, Integer> {
-    @EntityGraph(attributePaths = {"device", "device.deviceModel", "device.locationNode"})
+    @EntityGraph(attributePaths = {"device", "device.deviceModel", "device.locationNode", "device.locationNode.locationType"})
     List<DevicePageDevice> findAllByPageCode_IdOrderByIdAsc(Integer pageCodeId);
 }

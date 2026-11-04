@@ -32,7 +32,7 @@ componentUuidField를 추가한다.
 ## 호환성과 전환
 
 기존 `/api/manager/lora/endpoints/resolve`, `/endpoints/bulk`, `/mappings/models/bulk`는
-LoraLookupController의 컨트롤러·URL 매핑 어노테이션을 주석 처리하여 비활성화했다.
+이전 LoraLookupController와 전용 조회 서비스는 통합 MQTT 조회 API로 대체되어 제거했다.
 구현은 원복용으로 보존하지만 기존 URL로는 설정을 조회할 수 없다.
 LoRa 등록·수정 API와 소스 관리 API는 비활성화 대상이 아니다.
 기존 Sensor Data가 LoRa 조회 URL을 사용 중이라면 공통 API로 전환하기 전까지

@@ -4,13 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <title>DEFOG · 분석</title>
-  <script>
-    localStorage.setItem("widgetDashPageCode", "ANALYSIS");
-    location.replace("/widget-dashboard.html");
-  </script>
+  <title>SPATIVIA · 분석</title>
+  <style>
+    :root { color-scheme:dark; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:#090e17; color:#e7edf8; font:14px/1.6 Pretendard,"Segoe UI","Malgun Gothic",sans-serif; }
+    main { width:min(520px,100%); padding:28px; border:1px solid #2a3a52; border-radius:12px; background:#121a29; }
+    .brand { color:#35bdf4; font-weight:800; letter-spacing:.12em; }
+    h1 { margin:12px 0 8px; font-size:24px; }
+    p { margin:0 0 20px; color:#93a7c1; }
+    nav { display:flex; flex-wrap:wrap; gap:10px; }
+    a { padding:9px 13px; border:1px solid #2a3a52; border-radius:7px; color:#e7edf8; text-decoration:none; }
+    a.primary { background:#35bdf4; color:#06111c; font-weight:700; }
+    a:focus-visible { outline:2px solid #35bdf4; outline-offset:3px; }
+    body.embedded nav a:not(.primary) { display:none; }
+  </style>
 </head>
 <body>
-  분석 화면으로 이동 중입니다. 자동으로 이동하지 않으면 <a href="/widget-dashboard.html">대시보드로 이동</a>해 주세요.
+  <main>
+    <span class="brand">SPATIVIA</span>
+    <h1>분석 화면으로 이동합니다</h1>
+    <p>운영 콘솔의 분석 메뉴에서 측정값 이력과 비교 차트를 확인할 수 있습니다. 자동으로 이동하지 않으면 아래 링크를 선택하세요.</p>
+    <nav aria-label="분석 화면 이동">
+      <a id="analysisLink" class="primary" href="/ops-console.html?page=analysis">분석 열기</a>
+      <a href="/">시작</a>
+      <a href="/ops-console.html">운영 콘솔</a>
+    </nav>
+  </main>
+  <script>
+    // Legacy entry: the shell owns navigation, login and the embedded analysis view.
+    // Do not pass widget-only parameters or change the saved dashboard page.
+    const analysisTarget = "/ops-console.html?page=analysis";
+    if (new URLSearchParams(location.search).has("embedded")) document.body.classList.add("embedded");
+    document.getElementById("analysisLink").href = analysisTarget;
+    location.replace(analysisTarget);
+  </script>
 </body>
 </html>

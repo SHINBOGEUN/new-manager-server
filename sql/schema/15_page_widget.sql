@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS `page_widget` (
   `page_code_id` int(11) NOT NULL COMMENT 'common_code.id (DEVICE_PAGE)',
   `name` varchar(100) NOT NULL COMMENT '위젯 표시명',
   `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '사용 여부',
+  `visual_style` varchar(16) NOT NULL DEFAULT 'classic' COMMENT '위젯 디자인',
+  `visual_color` varchar(7) DEFAULT NULL COMMENT '위젯 강조 색상',
   `data_freshness_minutes` int(11) NOT NULL DEFAULT 15 COMMENT '원천 데이터 최신 허용 경과 분',
   `query_kind` varchar(32) NOT NULL COMMENT 'last | aggregate | count | chart | calculated | psychrometric | power_distribution | cctv',
   `group_by` varchar(16) DEFAULT NULL COMMENT 'device | point | location',
@@ -15,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `page_widget` (
   KEY `idx_page_widget_page_code_id` (`page_code_id`),
   CONSTRAINT `fk_page_widget_page_code_id` FOREIGN KEY (`page_code_id`) REFERENCES `common_code` (`id`) ON UPDATE CASCADE,
   CONSTRAINT `chk_page_widget_enabled` CHECK (`enabled` in (0,1)),
+  CONSTRAINT `chk_page_widget_visual_style` CHECK (`visual_style` in ('classic','minimal','vivid')),
   CONSTRAINT `chk_page_widget_data_freshness` CHECK (`data_freshness_minutes` between 1 and 1440),
   CONSTRAINT `chk_page_widget_group_by` CHECK (`group_by` is null or `group_by` in ('device','point','location')),
   CONSTRAINT `chk_page_widget_query_kind` CHECK (`query_kind` in ('last','aggregate','count','chart','calculated','psychrometric','power_distribution','cctv'))

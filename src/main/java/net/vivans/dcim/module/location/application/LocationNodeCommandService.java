@@ -41,6 +41,9 @@ public class LocationNodeCommandService {
     private final LocationNodeRepository locationNodeRepository;
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
+    private final net.vivans.dcim.module.device.domain.repository.DeviceRackPlacementRepository rackPlacements;
+    private final net.vivans.dcim.module.device.infrastructure.persistence.RackModelPlacementRepository modelPlacements;
+    private final net.vivans.dcim.module.location.infrastructure.persistence.LocationNodeSpringDataRepository locationLocks;
 
     public LocationNodeResponse createLocationNode(LocationNodeCreateRequest request) {
         CommonCode locationType = findLocationType(request.locationTypeId());
@@ -81,7 +84,15 @@ public class LocationNodeCommandService {
     }
 
     public LocationNodeResponse updateLocationNode(String code, LocationNodeUpdateRequest request) {
-        LocationNode node = findNode(code);
+        LocationNode node = locationLocks.lockByCode(code)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LocationNode not found: " + code));
+        if (request.rackUCapacity() != null && rackPlacements.findAllByRackLocationCode(code).stream()
+                .map(p -> p.lastU()).filter(java.util.Objects::nonNull).anyMatch(u -> u > request.rackUCapacity())) {
+            throw new IllegalArgumentException("랙 용량이 이미 배치된 장비의 마지막 U보다 작습니다");
+        }
+        if (request.rackUCapacity() != null && modelPlacements.findAllByRackLocationCode(code).stream()
+                .map(p -> p.lastU()).filter(java.util.Objects::nonNull).anyMatch(u -> u > request.rackUCapacity()))
+            throw new IllegalArgumentException("랙 용량이 이미 배치된 모델의 마지막 U보다 작습니다");
         CommonCode locationType = findLocationType(request.locationTypeId());
         validateSiblingName(node.getParent(), request.name(), node.getCode());
         validateLocationTypeDepth(node.getParent(), locationType);

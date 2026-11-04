@@ -12,6 +12,7 @@ import net.vivans.dcim.module.device.api.dto.DeviceAssetSummaryResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceImageResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetDocumentResponse;
+import net.vivans.dcim.module.device.domain.model.DeviceAssetFileKind;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementResponse;
 import net.vivans.dcim.module.device.api.dto.DeviceRackPlacementHistoryResponse;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -42,6 +44,64 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "asset", description = "장비 자산·Rack 배치·이미지 관리 API")
 public class DeviceAssetController {
     private final DeviceAssetService assetService;
+    private final net.vivans.dcim.module.device.application.DeviceAssetRackService rackService;
+    private final net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog measurementSourceCatalog;
+
+    @GetMapping("/racks/{code}/widget-sources")
+    public ResponseEntity<ApiResponse<java.util.List<net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog.Source>>> rackWidgetSources(@PathVariable String code) {
+        var ids = rackService.getRackLayout(code).placements().stream()
+                .map(RackLayoutResponse.RackLayoutItem::deviceId)
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        return ResponseEntity.ok(ApiResponse.ok(ids.isEmpty() ? java.util.List.of() : measurementSourceCatalog.availableSources(ids)));
+    }
+
+    public record BindRackModelRequest(@jakarta.validation.constraints.NotNull Integer deviceId) {}
+    public record RackModelReplacementRequest(@jakarta.validation.constraints.NotBlank String sceneModelKey) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/racks/{code}/placements/{deviceId}/model")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> replaceRackDeviceModel(@PathVariable String code, @PathVariable Integer deviceId,
+            @Valid @RequestBody RackModelReplacementRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.replacePlacementModel(code, deviceId, request.sceneModelKey())));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/racks/{code}/models/{id}/model")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> replaceRackModel(@PathVariable String code, @PathVariable Integer id,
+            @Valid @RequestBody RackModelReplacementRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.replaceUnlinkedModel(code, id, request.sceneModelKey())));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/racks/{code}/models")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> createRackModel(@PathVariable String code, @RequestBody DeviceRackPlacementRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.createModelPlacement(code, request)));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/racks/{code}/models/{id}/device")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> bindRackModel(@PathVariable String code, @PathVariable Integer id, @Valid @RequestBody BindRackModelRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.bindModelPlacement(code, id, request.deviceId())));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/racks/{code}/placements/{deviceId}/device")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> replaceRackPlacementDevice(@PathVariable String code, @PathVariable Integer deviceId,
+            @Valid @RequestBody BindRackModelRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.replacePlacementDevice(code, deviceId, request.deviceId())));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/racks/{code}/models/{id}/position")
+    public ResponseEntity<ApiResponse<RackLayoutResponse>> moveRackModel(@PathVariable String code, @PathVariable Integer id, @RequestBody DeviceRackPlacementRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(rackService.moveModelPlacement(code, id, request)));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/racks/{code}/models/{id}")
+    public ResponseEntity<ApiResponse<Integer>> deleteRackModel(@PathVariable String code, @PathVariable Integer id) {
+        rackService.deleteModelPlacement(code, id); return ResponseEntity.ok(ApiResponse.ok(id));
+    }
 
     @GetMapping
     @Operation(summary = "자산 목록 조회")
@@ -134,8 +194,9 @@ public class DeviceAssetController {
     @PostMapping(path = "/{deviceId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "자산 문서 파일 업로드")
     public ResponseEntity<ApiResponse<DeviceAssetDocumentResponse>> uploadDocument(
-            @PathVariable Integer deviceId, @RequestPart("file") MultipartFile file) {
-        return ResponseEntity.ok(ApiResponse.ok(assetService.uploadDocument(deviceId, file)));
+            @PathVariable Integer deviceId, @RequestPart("file") MultipartFile file,
+            @RequestParam(defaultValue = "DOCUMENT") DeviceAssetFileKind kind) {
+        return ResponseEntity.ok(ApiResponse.ok(assetService.uploadDocument(deviceId, file, kind)));
     }
 
     @GetMapping("/{deviceId}/documents/{documentId}/content")

@@ -40,6 +40,9 @@ public class PageWidgetLayout extends BaseEntity {
     @Column(nullable = false)
     private int h;
 
+    @Column(name = "grid_version", nullable = false)
+    private int gridVersion;
+
     private PageWidgetLayout(PageWidget widget, int gridX, int gridY, int w, int h) {
         validate(gridX, gridY, w, h);
         this.widget = widget;
@@ -47,6 +50,7 @@ public class PageWidgetLayout extends BaseEntity {
         this.gridY = gridY;
         this.w = w;
         this.h = h;
+        this.gridVersion = 48;
     }
 
     static PageWidgetLayout create(PageWidget widget, int gridX, int gridY, int w, int h) {
@@ -62,6 +66,7 @@ public class PageWidgetLayout extends BaseEntity {
         this.gridY = gridY;
         this.w = w;
         this.h = h;
+        this.gridVersion = 48;
     }
 
     private static void validate(int gridX, int gridY, int w, int h) {

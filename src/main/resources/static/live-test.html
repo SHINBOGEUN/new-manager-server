@@ -3,160 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DCIM Live Telemetry</title>
+  <title>SPATIVIA · 실시간 측정값</title>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
-    :root {
-      --bg: #090e17;
-      --panel: #121a29;
-      --panel-2: #182235;
-      --line: #2a3a52;
-      --text: #e7edf8;
-      --muted: #93a7c1;
-      --accent: #35bdf4;
-      --ok: #47d58c;
-      --warn: #ffbd54;
-      --bad: #ff6274;
-      --chip: #1c2a40;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 78% -20%, #17365a 0, transparent 34%), var(--bg); color: var(--text); font-family: Pretendard, "Segoe UI", "Malgun Gothic", sans-serif; }
-    body { display: grid; grid-template-rows: auto 1fr; }
-    header {
-      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-      min-height:64px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: rgba(13,20,33,.96); box-shadow:0 5px 18px rgba(0,0,0,.16);
-    }
-    h1 { font-size: 16px; margin: 0; font-weight: 750; letter-spacing: .02em; }
-    h1::before { content:"D"; display:inline-grid; place-items:center; width:28px; height:28px; margin-right:9px; border-radius:6px; color:#06111c; background:linear-gradient(135deg,#4cd4ff,#2498df); font-weight:900; }
-    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    label { font-size: 12px; color: var(--muted); }
-    input, button, select {
-      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-      border-radius: 6px; padding: 7px 10px; font-size: 13px;
-    }
-    input { min-width: 140px; }
-    button { cursor: pointer; background: linear-gradient(135deg,#159ad0,#287ee0); border-color:#2aa6dd; color:#fff; font-weight:700; }
-    button.ghost { background:#172337; color:var(--text); border-color:#334861; }
-    button.danger { background: #c94c53; color: #fff; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); display: inline-block; }
-    .dot.on { background: var(--ok); }
-    .dot.warn { background: var(--warn); }
-    main { display: grid; grid-template-columns: 340px 1fr; min-height: 0; }
-    aside {
-      border-right: 1px solid var(--line); background: rgba(12,18,29,.9);
-      overflow: auto; padding: 12px;
-    }
-    .panel-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
-    .device {
-      background: linear-gradient(145deg,#182338,#111a29); border: 1px solid var(--line); border-radius: 8px;
-      padding: 10px; margin-bottom: 8px;
-    }
-    .device h3 { margin: 0 0 4px; font-size: 14px; }
-    .meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-    .point { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
-    .point input { min-width: 0; }
-    .charts {
-      overflow: auto; padding: 12px;
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px;
-      align-content: start;
-    }
-    .chart-card {
-      background: linear-gradient(145deg,#182338,#111a29); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
-      min-height: 260px;
-    }
-    .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-    .chart-head strong { font-size: 13px; }
-    .chart-head span { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--accent); }
-    .unit { color: var(--muted); font-size: 12px; margin-left: 4px; }
-    canvas { width: 100% !important; height: 200px !important; }
-    .log {
-      grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--line);
-      border-radius: 10px; padding: 10px; font-family: Consolas, monospace; font-size: 12px;
-      max-height: 160px; overflow: auto; color: var(--muted); white-space: pre-wrap;
-    }
-    .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
-    .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 8px; font-size: 11px; }
-
-    /* Live telemetry workspace */
-    header.live-header { display:block; min-height:0; padding:0; border:0; }
-    .live-topbar { min-height:68px; display:flex; align-items:center; gap:14px; padding:10px 22px; border-bottom:1px solid var(--line); background:#0d1522; }
-    .live-brand { display:flex; align-items:center; gap:11px; min-width:230px; }
-    .live-mark { width:36px; height:36px; display:grid; place-items:center; border-radius:9px; color:#06111c; background:linear-gradient(135deg,#4cd4ff,#2498df); font-weight:900; }
-    .live-brand strong { display:block; font-size:14px; letter-spacing:.12em; }
-    .live-brand span { display:block; margin-top:2px; color:var(--muted); font-size:10px; letter-spacing:.08em; }
-    .live-context { flex:1; padding-left:18px; border-left:1px solid var(--line); }
-    .live-context small { display:block; color:#6f87a4; font-size:10px; letter-spacing:.12em; }
-    .live-context h1 { margin:2px 0 0; font-size:17px; }
-    .live-context h1::before { display:none; }
-    .live-nav { display:flex; align-items:center; gap:8px; }
-    .live-nav a { padding:8px 11px; border:1px solid var(--line); border-radius:8px; color:var(--text); background:#162235; text-decoration:none; font-size:12px; font-weight:700; }
-    .live-config { display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:12px; padding:14px 22px; border-bottom:1px solid var(--line); background:#101a29; }
-    .live-config-group { min-width:0; padding:12px; border:1px solid #263951; border-radius:10px; background:#131f30; }
-    .live-config-title { margin:0 0 9px; color:#7f96b0; font-size:10px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }
+    :root { color-scheme:dark; --bg:#090e17; --panel:#121a29; --panel-2:#182235; --line:#2a3a52; --text:#e7edf8; --muted:#93a7c1; --accent:#35bdf4; --ok:#47d58c; --warn:#ffbd54; --bad:#ff6274; --chip:#1c2a40; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font:14px/1.6 Pretendard,"Segoe UI","Malgun Gothic",sans-serif; }
+    body { display:grid; grid-template-rows:auto minmax(0,1fr); overflow:hidden; }
+    .live-topbar { display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:14px 24px; border-bottom:1px solid var(--line); background:#0d1522; }
+    .live-brand { display:flex; align-items:center; gap:10px; }
+    .live-mark { width:36px; height:36px; display:grid; place-items:center; border-radius:9px; color:#06111c; background:var(--accent); font-size:20px; font-weight:900; }
+    .live-brand strong { font-size:14px; letter-spacing:.12em; }
+    .live-context { flex:1; }
+    .live-context h1 { margin:0; font-size:20px; }
+    .live-nav { display:flex; flex-wrap:wrap; gap:6px; }
+    .live-nav a { padding:7px 10px; border:1px solid var(--line); border-radius:7px; color:var(--text); text-decoration:none; font-size:12px; }
+    .live-nav a:hover,.live-nav a[aria-current="page"] { background:var(--chip); border-color:var(--accent); }
+    .live-guide { margin:0; padding:10px 24px 0; color:var(--muted); font-size:13px; }
+    .live-config { display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:12px; padding:12px 24px; border-bottom:1px solid var(--line); }
+    .live-config-group { min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+    .live-config-title { margin:0 0 8px; font-size:13px; font-weight:700; }
+    .row { display:flex; align-items:end; gap:8px; flex-wrap:wrap; }
     .live-field { flex:1; min-width:110px; }
-    .live-field label { display:block; margin-bottom:5px; }
+    label { display:block; margin-bottom:5px; color:var(--muted); font-size:12px; }
+    input,button { border:1px solid var(--line); border-radius:7px; padding:8px 10px; background:var(--panel-2); color:var(--text); font:inherit; font-size:13px; }
     .live-field input { width:100%; min-width:0; }
-    .session-status { min-height:36px; display:flex; align-items:center; gap:8px; flex:1; padding:7px 10px; border:1px solid #2a3a52; border-radius:8px; background:#0e1928; color:#b9c9da; font-size:12px; }
-    main { grid-template-columns:360px minmax(0,1fr); background:#090f19; }
-    aside { padding:18px; background:#0d1624; }
-    .target-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
-    .target-head .panel-title { margin:0 0 4px; color:var(--text); font-size:16px; letter-spacing:0; text-transform:none; }
-    .target-head p { margin:0; color:var(--muted); font-size:11px; }
+    button { cursor:pointer; background:var(--accent); border-color:var(--accent); color:#06111c; font-weight:700; }
+    button.ghost { background:var(--panel-2); border-color:var(--line); color:var(--text); }
+    button.danger { background:#542530; border-color:#75404b; color:#ffdde2; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .session-status { display:flex; align-items:center; gap:8px; flex-basis:100%; color:var(--muted); font-size:12px; }
+    .dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:var(--bad); }
+    .dot.on { background:var(--ok); }
+    .dot.warn { background:var(--warn); }
+    main { display:grid; grid-template-columns:340px minmax(0,1fr); min-height:0; overflow:hidden; }
+    aside { min-height:0; padding:18px; border-right:1px solid var(--line); background:#0d1522; overflow:auto; }
+    .target-head { display:flex; align-items:start; justify-content:space-between; gap:10px; margin-bottom:14px; }
+    .panel-title { margin:0 0 4px; font-size:16px; }
+    .target-head p:last-child { margin:0; color:var(--muted); font-size:12px; }
     .target-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:14px; }
     .target-actions #reloadBtn { grid-column:1/-1; }
-    .target-actions button { min-height:35px; }
-    .device { padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.12); }
-    .point { min-height:31px; padding:5px 7px; border-radius:6px; }
-    .point:hover { background:#1b2a3f; }
-    .point input { accent-color:var(--accent); }
-    .charts { padding:0 20px 22px; gap:14px; }
-    .charts-head { grid-column:1/-1; min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:14px; position:sticky; top:0; z-index:8; margin:0 -20px 2px; padding:12px 20px; border-bottom:1px solid rgba(42,58,82,.75); background:rgba(9,15,25,.91); backdrop-filter:blur(12px); }
-    .charts-head strong { display:block; font-size:18px; }
-    .charts-head span { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
-    .stream-chip { display:inline-flex !important; align-items:center; gap:7px; margin:0 !important; padding:7px 11px; border:1px solid rgba(71,213,140,.25); border-radius:999px; color:var(--ok) !important; background:rgba(71,213,140,.08); font-size:11px !important; font-weight:800; }
-    .stream-chip::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-    .chart-card { min-height:290px; padding:14px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.15); }
-    .chart-head { padding-bottom:10px; border-bottom:1px solid rgba(42,58,82,.75); }
-    .log { margin-top:4px; }
-    @media (max-width:1100px) { .live-config { grid-template-columns:1fr 1fr; } .live-config-group:first-child { grid-column:1/-1; } .live-brand { min-width:auto; } .live-brand div { display:none; } }
-    @media (max-width:760px) { .live-topbar { padding:10px 12px; } .live-brand { display:none; } .live-context { padding-left:0; border-left:0; } .live-context h1 { font-size:16px; white-space:nowrap; } .live-context small,.live-nav a:first-of-type { display:none; } .live-config { grid-template-columns:1fr; padding:12px; } .live-config-group:first-child { grid-column:auto; } main { grid-template-columns:1fr; overflow:auto; } aside { max-height:48vh; border-right:0; border-bottom:1px solid var(--line); } .charts { overflow:visible; grid-template-columns:1fr; } }
-    /* Targets and charts scroll independently on desktop; mobile keeps one workspace scroll. */
-    body { overflow:hidden; }
-    main { min-height:0; overflow:hidden; }
-    aside,.charts { min-height:0; scrollbar-gutter:stable; }
-    :is(button,a,input,select):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-    @media (max-width:760px) { main { overflow:auto; } aside { overflow:auto; } .charts { overflow:visible; } }
-    body.embedded .live-brand, body.embedded .live-context, body.embedded .live-nav a { display:none; }
-    body.embedded .live-topbar { min-height:48px; padding:8px 16px; justify-content:flex-end; }
-    body.embedded #liveAuthGroup { display:none; }
-    body.embedded .live-config { grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
-    body.embedded .live-config-group:first-child { grid-column:auto; }
+    .device { margin-bottom:10px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+    .device h3 { margin:0 0 4px; font-size:14px; overflow-wrap:anywhere; }
+    .meta { margin-bottom:8px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+    .point { display:flex; align-items:center; gap:7px; min-height:34px; padding:5px; margin:0; color:var(--text); font-size:13px; }
+    .point:hover { background:var(--panel-2); }
+    .point input { flex:none; accent-color:var(--accent); }
+    .point span:first-of-type { min-width:0; overflow-wrap:anywhere; }
+    .chip { display:inline-block; flex:none; padding:2px 8px; border-radius:999px; background:var(--chip); color:var(--muted); font-size:11px; white-space:nowrap; }
+    .charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr)); align-content:start; gap:14px; min-height:0; padding:0 20px 20px; overflow:auto; }
+    .charts-head { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 0; border-bottom:1px solid var(--line); }
+    .charts-head h2 { margin:0; font-size:18px; }
+    .charts-head p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+    .chart-card { min-width:0; min-height:270px; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+    .chart-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; padding-bottom:10px; margin-bottom:8px; border-bottom:1px solid var(--line); }
+    .chart-head strong { font-size:13px; overflow-wrap:anywhere; }
+    .chart-head [data-value] { color:var(--accent); font-size:22px; font-variant-numeric:tabular-nums; }
+    .unit { margin-left:4px; color:var(--muted); font-size:12px; }
+    canvas { width:100% !important; height:200px !important; }
+    .log { grid-column:1/-1; max-height:160px; overflow:auto; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--muted); font:12px/1.6 Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .log:empty { display:none; }
+    .empty { grid-column:1/-1; padding:32px 12px; color:var(--muted); text-align:center; }
+    :is(button,a,input):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    @media(max-width:1200px) { .live-nav { flex-basis:100%; } .live-config { grid-template-columns:1fr 1fr; } .live-config-group:last-child { grid-column:1/-1; } .session-status { flex-basis:auto; margin-right:auto; } }
+    @media(max-height:700px) { body { height:auto; min-height:100%; overflow:auto; } main { min-height:420px; } aside,.charts { max-height:70vh; } }
+    @media(max-width:760px) { body { height:auto; min-height:100%; overflow:auto; } .live-topbar { padding:12px 14px; } .live-brand strong { display:none; } .live-guide { padding:12px 14px 0; } .live-config { grid-template-columns:1fr; padding:12px 14px; } .live-config-group:last-child { grid-column:auto; } main { grid-template-columns:1fr; min-height:0; overflow:visible; } aside { max-height:380px; border-right:0; border-bottom:1px solid var(--line); } .charts { max-height:none; overflow:visible; padding:0 14px 14px; } }
+    /* The operations console provides navigation and authentication for embedded views. */
+    body.embedded .live-brand,body.embedded .live-context,body.embedded .live-nav,body.embedded .live-guide,body.embedded #liveAuthGroup { display:none; }
+    body.embedded .live-topbar { justify-content:flex-end; padding:8px 16px; }
+    body.embedded .live-config { grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); }
+    body.embedded .live-config-group:last-child { grid-column:auto; }
   </style>
 </head>
 <body>
+  <script>if(new URLSearchParams(location.search).has('embedded'))document.body.classList.add('embedded');</script>
   <header class="live-header">
-    <div class="live-topbar"><div class="live-brand"><span class="live-mark">D</span><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div><div class="live-context"><small>REALTIME WORKSPACE</small><h1>실시간 텔레메트리</h1></div><div class="live-nav"><span id="authStatus" class="chip">미로그인</span><a href="/widget-dashboard.html">대시보드</a><a href="/ops-console.html">운영 콘솔 ↗</a></div></div>
-    <section class="live-config">
-      <div class="live-config-group"><p class="live-config-title">Connection</p><div class="row"><span class="live-field"><label>Manager 서버</label><input id="managerUrl" placeholder="http://localhost:8080" /></span><span class="live-field"><label>MQTT WebSocket</label><input id="mqttUrl" value="ws://localhost:9001/mqtt" /></span><span class="live-field"><label>구독 Topic</label><input id="topic" value="dcim/sensor/realtime" /></span></div></div>
-      <div class="live-config-group" id="liveAuthGroup"><p class="live-config-title">Authentication</p><div class="row"><span class="live-field"><label>아이디</label><input id="username" placeholder="username" /></span><span class="live-field"><label>비밀번호</label><input id="password" type="password" placeholder="password" /></span><button id="loginBtn" type="button">로그인</button></div></div>
-      <div class="live-config-group"><p class="live-config-title">Realtime session</p><div class="row"><div class="session-status"><span class="dot" id="mqttDot"></span><span id="mqttStatus">MQTT 미연결</span></div><button id="mqttBtn" class="ghost" type="button">연결</button><button id="applyBtn" type="button">수집 시작</button><button id="stopBtn" class="danger" type="button">중지</button></div></div>
+    <div class="live-topbar">
+      <div class="live-brand"><span class="live-mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false"><path d="M6 10 16 4l10 6v12l-10 6L6 22Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m6 10 10 6 10-6M16 16v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/></svg></span><strong>SPATIVIA</strong></div>
+      <div class="live-context"><h1>실시간 측정값</h1></div>
+      <span id="authStatus" class="chip" role="status">로그인 필요</span>
+      <nav class="live-nav" aria-label="주요 화면">
+        <a href="/">시작</a><a href="/ops-console.html">운영 콘솔</a><a href="/widget-dashboard.html?pageCode=dashboard">위젯 대시보드</a><a href="/ops-console.html?page=analysis">분석</a><a href="/live-test.html" aria-current="page">실시간 측정값</a><a href="/mqtt-monitor.html">MQTT 모니터</a>
+      </nav>
+    </div>
+    <p class="live-guide">로그인 → 측정 항목 선택 → 수집 시작 순서로 진행하세요. 수집을 시작하면 선택한 항목의 그래프에 새 값이 표시됩니다.</p>
+    <section class="live-config" aria-label="로그인 및 수집 설정">
+      <div class="live-config-group" id="liveAuthGroup">
+        <p class="live-config-title">1. 로그인</p>
+        <div class="row"><span class="live-field"><label for="username">아이디</label><input id="username" autocomplete="username" /></span><span class="live-field"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" /></span><button id="loginBtn" type="button">로그인</button></div>
+      </div>
+      <div class="live-config-group">
+        <p class="live-config-title">연결 설정</p>
+        <div class="row"><span class="live-field"><label for="managerUrl">운영 서버 주소</label><input id="managerUrl" placeholder="현재 서버 사용" spellcheck="false" /></span><span class="live-field"><label for="mqttUrl">실시간 연결 주소 (WebSocket)</label><input id="mqttUrl" value="ws://localhost:9001/mqtt" spellcheck="false" /></span><span class="live-field"><label for="topic">구독 토픽</label><input id="topic" value="dcim/sensor/realtime" spellcheck="false" /></span></div>
+      </div>
+      <div class="live-config-group">
+        <p class="live-config-title">3. 수집 시작 · 중지</p>
+        <div class="row"><div class="session-status" role="status"><span class="dot" id="mqttDot" aria-hidden="true"></span><span id="mqttStatus">MQTT 미연결</span></div><button id="applyBtn" type="button">수집 시작</button><button id="stopBtn" class="danger" type="button">수집 중지</button><button id="mqttBtn" class="ghost" type="button">연결 새로고침</button></div>
+      </div>
+    </section>
   </header>
   <main>
-    <aside>
-      <div class="target-head"><div><p class="panel-title">측정 대상 선택</p><p>실시간으로 확인할 장비와 Point를 고르세요.</p></div><span id="selectedCount" class="chip">0 선택</span></div>
-      <div class="target-actions">
-        <button id="reloadBtn" class="ghost" type="button">목록 새로고침</button>
-        <button id="allBtn" class="ghost" type="button">전체 선택</button>
-        <button id="noneBtn" class="ghost" type="button">선택 해제</button>
-      </div>
-      <div id="devices"><p class="empty">로그인 후 목록을 불러오세요.</p></div>
+    <aside aria-labelledby="targetTitle">
+      <div class="target-head"><div><h2 class="panel-title" id="targetTitle">2. 측정 항목 선택</h2><p>실시간으로 확인할 장비와 항목을 고르세요.</p></div><span id="selectedCount" class="chip" role="status">0개 선택</span></div>
+      <div class="target-actions"><button id="reloadBtn" class="ghost" type="button">장비 목록 새로고침</button><button id="allBtn" class="ghost" type="button">전체 선택</button><button id="noneBtn" class="ghost" type="button">선택 해제</button></div>
+      <div id="devices"><p class="empty">로그인하면 장비 목록을 불러옵니다.</p></div>
     </aside>
-    <section class="charts" id="charts">
-      <div class="charts-head"><div><strong>Live signal</strong><span>수집 중인 Point의 최근 90개 값을 확인합니다.</span></div><span class="stream-chip">STREAM READY</span></div>
-      <p class="empty" id="chartEmpty">point를 고른 뒤 수집을 시작하면 그래프가 생깁니다.</p>
-      <div class="log" id="log"></div>
+    <section class="charts" id="charts" aria-labelledby="chartsTitle">
+      <div class="charts-head"><div><h2 id="chartsTitle">측정값 그래프</h2><p>항목별 최근 90개 값을 표시합니다. 수신이 멈추면 마지막 값이 남습니다.</p></div></div>
+      <p class="empty" id="chartEmpty">측정 항목을 고르고 수집 시작을 누르세요.</p>
+      <div class="log" id="log" role="log" aria-label="연결 및 수집 기록"></div>
     </section>
   </main>
   <script>
@@ -243,7 +199,7 @@
     }
 
     function setAuthStatus() {
-      $("authStatus").textContent = state.token ? "로그인됨" : "미로그인";
+      $("authStatus").textContent = state.token ? "로그인됨" : "로그인 필요";
     }
 
     async function refreshAccessToken(force = false) {
@@ -389,7 +345,7 @@
     }
 
     function updateSelectedCount() {
-      $("selectedCount").textContent = `${selectedKeys().length} 선택`;
+      $("selectedCount").textContent = `${selectedKeys().length}개 선택`;
     }
 
     async function applySelection() {

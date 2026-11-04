@@ -18,6 +18,13 @@ public record AggregateWidgetResponse(
         Integer contributingDevices,
         /** 장비별 기여 값 */
         List<AggregateDeviceValueResponse> devices,
-        WidgetDataStatusResponse dataStatus
+        WidgetDataStatusResponse dataStatus,
+        Instant peakTime
 ) {
+    public AggregateWidgetResponse(Integer widgetId, String widgetName, String pageCode, String aggregatePreset,
+            String rangePreset, Instant start, Instant end, BigDecimal value, String unit, Integer contributingDevices,
+            List<AggregateDeviceValueResponse> devices, WidgetDataStatusResponse dataStatus) {
+        this(widgetId, widgetName, pageCode, aggregatePreset, rangePreset, start, end, value, unit,
+                contributingDevices, devices, dataStatus, null);
+    }
 }

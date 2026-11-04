@@ -22,7 +22,8 @@ sql/
     ├── 57_threshold_rule.sql
     ├── 58_alarm_event.sql
     ├── 59_threshold_alarm_event.sql
-    └── 63_device_monitoring_policy.sql
+    ├── 63_device_monitoring_policy.sql
+    └── 64_device_page_visualization.sql
 ```
 
 스키마 파일은 FK 의존성과 신규 설치 순서대로 `01`부터 연속 번호를 사용합니다. 파일을 제거하거나 합칠 때는 뒤 파일을 함께 재번호화하고, SQL 테스트·문서의 참조도 같은 변경에서 갱신합니다. 기존 DB에 이미 적용된 DDL은 파일명 변경만으로 재실행하지 않습니다.
@@ -66,6 +67,8 @@ Get-ChildItem sql/schema/*_*.sql | Where-Object { $_.Name -notmatch '^(43|44|45|
 3. 애플리케이션 재기동 후 수집 상태·Collector Job 동기화를 확인
 
 기존 DB에는 새 증분 SQL만 적용합니다. 파일에 포함된 확인 조회에서 미처리 행이 없는지 확인한 뒤 다음 애플리케이션 배포를 진행합니다.
+
+페이지 도면 바닥 타일 크기를 저장하려면 `migration/20261027_scene_item_floor_dimensions.sql`을 적용합니다. 바닥 타일의 X/Z 크기를 저장해 비정형 빈 공간을 채운 뒤에도 재조회 시 같은 크기를 유지합니다.
 
 임계값/알람 기능 배포 시에는 `57_threshold_rule.sql`~`59_threshold_alarm_event.sql`을 순서대로 적용합니다. `common_code.threshold_supported`는 `DATA_POINT_TYPE`에서만 사용하며, 임계값에서 허용할 측정 유형을 DB에서 관리합니다. 임계값은 장비·포인트 조합당 한 행이며 프로토콜은 실제 Influx 조회 경로를 가리키기 위해 보관합니다. 포인트 유형과 단위는 장비 측정 카탈로그에서 파생하므로 `threshold_rule`에는 중복 저장하지 않습니다. 기존 DB는 `migration/20261020_add_threshold_supported_to_common_code.sql`을 적용한 뒤 해당 유형을 Ops Console에서 허용합니다. 기존 JSON 규칙 테이블이 있다면 백업 후 `migration/20261020_normalize_threshold_rules.sql`을 추가 적용해 이전 테이블을 보존 이름으로 변경하고, 새 DDL을 생성합니다. 이미 정규화 테이블을 생성한 DB에는 `migration/20261020_simplify_threshold_rule_columns.sql`을 적용해 중복 컬럼을 제거하고 컬럼 주석을 추가한 뒤, `migration/20261021_add_threshold_severity_levels.sql`로 기존 단일 기준값을 주의 또는 위험 기준값으로 이관합니다. 주의·위험 기준값은 둘 중 하나 이상 입력하며 둘 다 설정하면 조건 방향에 맞게 위험 기준을 더 엄격하게 설정합니다. 알람은 현재 측정값에 해당하는 가장 높은 심각도 하나만 발생시킵니다. 임계값 규칙은 기존 `threshold_rule_legacy_json`에 보존되며 새 임계값은 재등록해야 합니다. 알람 이력은 `alarm_event`와 정규화 상세 테이블 `threshold_alarm_event`로 관리합니다. 더 이상 필요하지 않은 `alarm_event_legacy_json`은 백업 후 `migration/20261021_simplify_alarm_event.sql`로 삭제하며, 같은 마이그레이션에서 `alarm_event`의 중복 `source_key`·`subject_key`도 제거합니다. `cleared_dt`는 중복 알람을 방지하고 복구 시각을 기록하는 내부 기준이며, API/UI에는 진행 중·복구 상태와 복구 시각을 표시합니다. 임계값 알람은 사용자에게 항상 표시됩니다. 실제 DB 적용은 별도 운영 절차에서 수행합니다.
 
@@ -147,6 +150,7 @@ mysql -h HOST -P PORT -u dcim -p dcim < sql/schema/41_device_asset_document.sql
 | 61 | `61_cctv_camera.sql` | CCTV 카메라 정보 |
 | 62 | `62_page_widget_cctv.sql` | CCTV 위젯 카메라 연결 |
 | 63 | `63_device_monitoring_policy.sql` | 장비별 주기/상태 변경 데이터 감시 방식 |
+| 64 | `64_device_page_visualization.sql` | 페이지 표시 방식과 3D 랙·센서 장착 배치 |
 
 ## LoRa → 공통 MQTT 이관 (2026-10-14)
 
@@ -193,6 +197,22 @@ GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 
 기존 DB에서 장비별 예상 수집 주기 컬럼을 제거하려면
 `migration/20261021_remove_device_monitoring_expected_interval.sql`을 적용합니다.
 
+기존 DB에는 `migration/20261022_widget_grid_version.sql`을 적용해 레거시 위젯 좌표와 새 48열
+그리드 좌표를 구분합니다. 기존 `device_page_scene_item`을 이미 만든 DB에는 그 다음
+`migration/20261022_page_scene_device_mount.sql`을 적용합니다. 이 마이그레이션은 기존 포인트별
+센서 마커를 장비별 마커 하나로 합치고, 페이지당 장비 1개 장착으로 제한합니다. 신규 DB는
+`schema/22_page_widget_layout.sql`과 `schema/64_device_page_visualization.sql`의 최신 정의를 사용합니다.
+
+페이지 도면의 랙은 `location_node` 중 실제 `LOCATION_TYPE=RACK` 위치를 기준으로 표시합니다.
+기존 DB에는 `migration/20261022_scene_item_location_node.sql`을 적용해 도면 좌표와 실제 위치 노드 코드를 연결합니다.
+기존 페이지 도면에도 상위 위치의 하위 랙을 최초 1회 자동 배치하려면
+`migration/20261027_device_page_location_hierarchy.sql`을 적용합니다. 배치 목록을 저장한 뒤에는
+사용자가 도면에서 제거한 랙을 다시 자동 추가하지 않습니다.
+
+장비 자산 상세에서 2D 도면(SVG/PNG/JPG/WEBP)과 3D OBJ 파일을 구분 저장하려면
+기존 DB에 `migration/20261023_device_asset_model_files.sql`을 적용합니다. 기존 첨부 문서는
+`DOCUMENT`로 유지됩니다. 신규 DB는 `schema/41_device_asset_document.sql`의 `file_kind` 정의를 사용합니다.
+
 신규 DB에서는 구 `schema/46`, `schema/47`을 건너뛰고 `schema/55`, `schema/56`을 사용합니다.
 이관 SQL과 신규 생성 SQL을 같은 기존 DB에 혼용하지 않습니다. 자세한 API와 배포 순서는
 `docs/MQTT_SOURCE_API.md`를 참고합니다. Sensor Data의 공통 소스 구독 전환은 별도 작업입니다.
@@ -204,3 +224,29 @@ GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 
 | 2026-09-02 | — | `schema/01~22` baseline 확정. 구 `history/`, `seed/`, `dumps/` 제거 |
 | 2026-09-03 | — | `schema/23_device_endpoint_modbus.sql` 추가 (Modbus endpoint 확장, unit_id) |
 | 2026-10-02 | `dcim` 개발 DB | 계산 지표 테이블 최종 구조로 전환. 기존 계산 지표 정의·위젯은 보존하고 구 PUE 그룹 연결 구조는 제거 |
+| 2026-10-28 | `dcim` 개발 DB | `scene_model` 카탈로그 생성, 인로우 프레임·분전반 분리 (총 15개) |
+| 2026-10-28 | `dcim` 개발 DB | `scene_model.category` 추가, 기본 모델 4개 카테고리로 분류 |
+| 2026-10-28 | `dcim` 개발 DB | 인로우 카테고리를 모델 역할별로 재분류, 프레임 앞뒤 길이 분리, 건축·공장 기본 자산 20개 카탈로그 등록 |
+| 2026-10-29 | `dcim` 개발 DB | 프레임 높이 `size_y` 추가, 기존 인로우·월 코일 프레임 높이를 현재 `size_x`로 보존 |
+
+## 3D 도면 모델 관리
+
+`sql/migration/20261028_scene_model_catalog.sql`을 적용하면 쇼룸 모델 카탈로그가 등록됩니다.
+기존 DB에서는 `sql/migration/20261028_inrow_components.sql`로 인로우 프레임과 분전반을 분리합니다.
+기존 모델 카테고리는 `sql/migration/20261028_scene_model_categories.sql`로 추가합니다.
+기존 인로우 분류와 프레임 크기는 `sql/migration/20261028_scene_model_reclassify_and_frame.sql`로 조정합니다.
+월 코일 설비를 내부 배치가 가능한 프레임으로 전환할 때는 `sql/migration/20261028_wall_coil_frame.sql`을 적용합니다.
+프레임 높이를 독립적으로 조절하려면 `sql/migration/20261029_scene_frame_height.sql`을 적용합니다. 기존 프레임의 높이는 유지됩니다.
+설비의 너비·높이·앞뒤 길이를 독립적으로 조절하려면 `sql/migration/20261029_equipment_axis_sizes.sql`을 적용합니다. 기존 설비의 화면 크기는 유지됩니다.
+설비 묶음을 저장하려면 `sql/migration/20261029_scene_equipment_groups.sql`을 적용합니다.
+묶음 이름을 저장하려면 `sql/migration/20261101_scene_equipment_group_names.sql`을 적용합니다. 기존 묶음은 유지되며 목록에서 이름을 지정할 수 있습니다.
+설비 잠금 상태를 저장하려면 `sql/migration/20261101_scene_equipment_lock.sql`을 적용합니다.
+랙별 표시 색상과 중복 랙 선택 목록을 정리하려면 `sql/migration/20261103_rack_scene_color.sql`을 적용합니다. 기존 도면은 유지됩니다.
+양문형 서버 랙을 등록하려면 `sql/migration/20261103_double_door_rack.sql`을 적용합니다.
+랙 측면·후면 장비의 3D 표시 위치를 저장하려면 `sql/migration/20261101_rack_visual_position.sql`을 적용합니다. 좌표는 랙 크기에 대한 0~1 상대값이며 기존 배치는 그대로 유지됩니다.
+실제 장비를 연결하기 전에 3D 모델을 랙에 배치하려면 `sql/migration/20261101_rack_model_placement.sql`을 적용합니다. 장비 연결 시 모델 배치를 실제 장비의 랙 배치로 전환합니다.
+랙에서 선택할 3D 모델을 관리하려면 `sql/migration/20261101_rack_installable_models.sql`을 적용합니다. 최초에는 GPU 서버, DLC 서버, 가로형·세로형 PDU를 허용하며 이후 3D 자산 관리에서 변경할 수 있습니다.
+건축·공장 기본 자산은 `sql/migration/20261028_scene_builtin_asset.sql`로 등록합니다.
+운영 콘솔의 **3D 자산 관리**에서 GLB 파일을 등록·수정하고, 건축·공장 기본 자산의 이름과 표시 여부를 관리할 수 있습니다. 파일은
+`scene.model.storage-path`(기본 `./uploads/scene-models`)에 저장되므로 배포 시 영속 볼륨을 연결하세요.
+사용 중인 모델은 도면에서 먼저 제거해야 삭제할 수 있습니다.

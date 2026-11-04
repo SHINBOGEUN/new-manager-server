@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,16 +41,22 @@ public class DeviceAssetDocument extends BaseEntity {
     @Column(name = "file_size", nullable = false)
     private long fileSize;
 
-    private DeviceAssetDocument(Device device, String storageKey, String originalName, String contentType, long fileSize) {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "file_kind", nullable = false, length = 16)
+    private DeviceAssetFileKind kind;
+
+    private DeviceAssetDocument(Device device, String storageKey, String originalName, String contentType, long fileSize, DeviceAssetFileKind kind) {
         this.device = device;
         this.storageKey = storageKey;
         this.originalName = originalName;
         this.contentType = contentType;
         this.fileSize = fileSize;
+        this.kind = kind;
     }
 
-    public static DeviceAssetDocument create(Device device, String storageKey, String originalName, String contentType, long fileSize) {
+    public static DeviceAssetDocument create(Device device, String storageKey, String originalName, String contentType, long fileSize, DeviceAssetFileKind kind) {
         if (device == null) throw new IllegalArgumentException("device is required");
-        return new DeviceAssetDocument(device, storageKey, originalName, contentType, fileSize);
+        if (kind == null) throw new IllegalArgumentException("file kind is required");
+        return new DeviceAssetDocument(device, storageKey, originalName, contentType, fileSize, kind);
     }
 }

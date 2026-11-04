@@ -6,7 +6,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.api.dto.DevicePageDevicesRequest;
+import net.vivans.dcim.module.device.api.dto.DevicePageDisplayResponse;
+import net.vivans.dcim.module.device.api.dto.DevicePageDisplayUpdateRequest;
 import net.vivans.dcim.module.device.api.dto.DevicePageMeasurementsResponse;
+import net.vivans.dcim.module.device.application.DevicePageDisplayService;
 import net.vivans.dcim.module.device.application.DevicePageMeasurementService;
 import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +30,23 @@ import java.util.List;
 @Tag(name = "device-page-measurements", description = "페이지별 장비 측정항목 및 최신값 API")
 public class DevicePageMeasurementController {
     private final DevicePageMeasurementService service;
+    private final DevicePageDisplayService displayService;
+
+    @GetMapping("/{pageCode}/display")
+    @Operation(summary = "페이지 표시 방식 및 장면 배치 조회")
+    public ResponseEntity<ApiResponse<DevicePageDisplayResponse>> getDisplay(@PathVariable String pageCode) {
+        return ResponseEntity.ok(ApiResponse.ok(displayService.get(pageCode)));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{pageCode}/display")
+    @Operation(summary = "페이지 표시 방식 및 장면 배치 저장",
+            description = "DATA, PLAN_2D, SCENE_3D 모드와 랙·장비 위치, 랙에 장착한 측정 포인트 센서를 저장합니다.")
+    public ResponseEntity<ApiResponse<DevicePageDisplayResponse>> updateDisplay(
+            @PathVariable String pageCode,
+            @Valid @RequestBody DevicePageDisplayUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(displayService.update(pageCode, request)));
+    }
 
     @GetMapping("/{pageCode}/devices")
     @Operation(summary = "페이지에 선택된 장비 ID 목록 조회")

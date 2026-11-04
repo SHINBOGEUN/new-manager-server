@@ -8,10 +8,13 @@ import net.vivans.dcim.module.device.api.dto.DevicePageMeasurementsResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
 import net.vivans.dcim.module.device.domain.model.DevicePageDevice;
+import net.vivans.dcim.module.device.domain.model.DevicePageViewMode;
 import net.vivans.dcim.module.device.domain.repository.DeviceModbusReadingRepository;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DeviceModbusBitFieldRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDeviceRepository;
+import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDisplayConfigRepository;
+import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageSceneItemRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
@@ -40,6 +43,8 @@ public class DevicePageMeasurementService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
     private final DevicePageDeviceRepository pageDeviceRepository;
+    private final DevicePageDisplayConfigRepository displayConfigRepository;
+    private final DevicePageSceneItemRepository sceneItemRepository;
     private final DeviceModelSnmpPointRepository snmpPointRepository;
     private final DeviceModelModbusPointRepository modbusPointRepository;
     private final DeviceModbusReadingRepository modbusReadingRepository;
@@ -59,6 +64,8 @@ public class DevicePageMeasurementService {
         List<DevicePageDevice> existing = pageDeviceRepository.findAllByPageCode_IdOrderByIdAsc(page.getId());
         List<DevicePageDevice> removed = existing.stream()
                 .filter(mapping -> !selected.contains(mapping.getDevice().getId())).toList();
+        List<Integer> removedDeviceIds = removed.stream().map(mapping -> mapping.getDevice().getId()).toList();
+        if (!removedDeviceIds.isEmpty()) sceneItemRepository.deleteAllForPageAndDevices(page.getId(), removedDeviceIds);
         pageDeviceRepository.deleteAll(removed);
         Set<Integer> linked = existing.stream().map(mapping -> mapping.getDevice().getId())
                 .collect(Collectors.toSet());
@@ -86,7 +93,7 @@ public class DevicePageMeasurementService {
                 .map(DevicePageDevice::getDevice).toList();
         Map<Integer, LinkedHashMap<String, PointDefinition>> definitions = pointDefinitions(devices);
         Map<String, Map<String, LastPoint>> values = latestValues(definitions, lookbackHours);
-
+        var displayConfig = displayConfigRepository.findById(page.getId()).orElse(null);
         List<DevicePageMeasurementsResponse.DeviceMeasurement> results = new ArrayList<>();
         for (Device device : devices) {
             List<DevicePageMeasurementsResponse.PointMeasurement> points = new ArrayList<>();
@@ -103,7 +110,9 @@ public class DevicePageMeasurementService {
                     device.getDeviceModel().getName(), device.getLocationNode().getCode(),
                     device.getLocationNode().getName(), device.isEnabled(), points));
         }
-        return new DevicePageMeasurementsResponse(page.getCode(), page.getName(), lookbackHours, results);
+        return new DevicePageMeasurementsResponse(page.getCode(), page.getName(),
+                displayConfig == null ? DevicePageViewMode.DATA.name() : displayConfig.getViewMode(),
+                displayConfig == null ? null : displayConfig.getLayoutAssetKey(), lookbackHours, results);
     }
 
     private CommonCode findPage(String pageCode) {

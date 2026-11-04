@@ -47,13 +47,36 @@ public class AggregateQueryService {
             throw new IllegalArgumentException("aggregatePreset/op is required");
         }
         PageWidgetChartRangePreset rangePreset = resolvePreset(widget, preset, rangePresetOverride);
-        QueryRanges.Range range = QueryRanges.resolve(rangePreset);
+        QueryRanges.Range range = switch (preset) {
+            case usage_rank, power_rank, demand -> QueryRanges.resolve(rangePreset, java.time.ZoneId.of("Asia/Seoul"));
+            default -> QueryRanges.resolve(rangePreset);
+        };
 
         AggregateWidgetResponse response = switch (preset) {
-            case usage -> computeUsage(widget, preset, rangePreset, range);
-            case power -> computePower(widget, preset, rangePreset, range);
+            case usage, usage_rank -> computeUsage(widget, preset, rangePreset, range);
+            case power, power_rank -> computePower(widget, preset, rangePreset, range);
+            case demand -> computeDemand(widget, preset, rangePreset, range);
         };
         return withDataStatus(widget, response);
+    }
+
+    private AggregateWidgetResponse computeDemand(PageWidget widget, PageWidgetOp preset,
+            PageWidgetChartRangePreset rangePreset, QueryRanges.Range range) {
+        List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
+        String pointName = requireAggregatePoint(widget);
+        String unit = resolveUnit(devices, List.of(pointName));
+        if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, unit);
+        validateRankingSources(devices, pointName, "POWER");
+        if (!"W".equalsIgnoreCase(unit) && !"kW".equalsIgnoreCase(unit)) {
+            throw new IllegalArgumentException("최대수요전력은 동일한 W 또는 kW 단위의 전력 항목이 필요합니다");
+        }
+        List<Integer> ids = devices.stream().map(Device::getId).toList();
+        var points = pointQuery.findSeries(ids, List.of(pointName), range.start(), range.end(), "15m");
+        var peak = PowerDemandCalculator.peak(points, ids, range.start(), range.end());
+        if (peak == null) return empty(widget, preset, rangePreset, range, unit);
+        return new AggregateWidgetResponse(widget.getId(), widget.getName(), widget.getPageCode().getCode(),
+                preset.name(), rangePreset.name(), range.start(), range.end(), QueryValues.round2(peak.value()),
+                unit, ids.size(), List.of(), null, peak.time());
     }
 
     private AggregateWidgetResponse computeUsage(
@@ -69,6 +92,7 @@ public class AggregateQueryService {
         List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
         Map<Integer, Device> deviceById = indexDevices(devices);
         String pointName = requireAggregatePoint(widget);
+        if (preset == PageWidgetOp.usage_rank) validateRankingSources(devices, pointName, "ENERGY");
         List<String> pointNames = List.of(pointName);
         String unit = resolveUnit(devices, pointNames);
 
@@ -117,7 +141,20 @@ public class AggregateQueryService {
         if (devices.isEmpty()) {
             return empty(widget, preset, rangePreset, range, null);
         }
+        if (preset == PageWidgetOp.power_rank) validateRankingSources(devices, requireAggregatePoint(widget), "POWER");
         return sumLastPower(widget, preset, rangePreset, range, devices, PageWidgetDeviceRole.DEFAULT);
+    }
+
+    private void validateRankingSources(List<Device> devices, String pointName, String type) {
+        Set<Integer> ids = devices.stream().map(Device::getId).collect(Collectors.toSet());
+        var matches = sourceCatalog.availableSources(ids).stream()
+                .filter(source -> ids.contains(source.deviceId()) && !source.ambiguous()
+                        && pointName.equals(source.pointName()) && type.equalsIgnoreCase(source.dataPointType())
+                        && source.unit() != null && !source.unit().isBlank()).toList();
+        if (matches.stream().map(DeviceMeasurementSourceCatalog.Source::deviceId).distinct().count() != ids.size()
+                || matches.stream().map(source -> source.unit().trim().toLowerCase(java.util.Locale.ROOT)).distinct().count() != 1) {
+            throw new IllegalArgumentException("순위는 모든 장비의 동일한 유형과 단위의 측정항목이 필요합니다");
+        }
     }
 
     private AggregateWidgetResponse sumLastPower(
@@ -251,8 +288,8 @@ public class AggregateQueryService {
             return fromWidget;
         }
         return switch (preset) {
-            case usage -> PageWidgetChartRangePreset.today;
-            case power -> PageWidgetChartRangePreset.last_24h;
+            case usage, usage_rank, demand -> PageWidgetChartRangePreset.today;
+            case power, power_rank -> PageWidgetChartRangePreset.last_24h;
         };
     }
 
@@ -330,7 +367,7 @@ public class AggregateQueryService {
         return new AggregateWidgetResponse(
                 response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
                 response.rangePreset(), response.start(), response.end(), response.value(), response.unit(),
-                response.contributingDevices(), response.devices(), dataStatus);
+                response.contributingDevices(), response.devices(), dataStatus, response.peakTime());
     }
 
     private static String blankToNull(String value) {
