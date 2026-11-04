@@ -1273,6 +1273,19 @@
     #tab-collection-status > [data-collection-pane="operations"], #tab-collection-status > [data-collection-pane="jobs"] { flex:1 1 auto; min-height:0; overflow:auto; margin:0; }
     #tab-collection-status > .stats { flex:none; }
     #tab-collection-status > .workspace-table-card { flex:1 1 auto; margin:0; }
+    #tab-collection-status .collection-tabs { margin-bottom:7px; padding:3px; }
+    #tab-collection-status .collection-tabs button { padding:7px 12px; }
+    #tab-collection-status > .stats { grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-bottom:8px; }
+    #tab-collection-status > .stats .stat { padding:7px 12px; }
+    #tab-collection-status > .stats .v { font-size:20px; margin-top:1px; }
+    #tab-collection-status > .workspace-table-card { padding:10px 12px; }
+    #tab-collection-status #csGeneratedAt { margin:5px 0 !important; }
+    #tab-collection-status #csBody td { padding:5px 9px; }
+    body:has(#tab-collection-status.active) .workspace-context { gap:5px; margin-bottom:8px; }
+    body:has(#tab-collection-status.active) .workspace-nav { padding-bottom:6px; }
+    body:has(#tab-collection-status.active) .workspace-hint { display:none; }
+    @media (max-width:900px) { #tab-collection-status > .stats { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (max-width:600px) { #tab-collection-status > .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
     :is(#tab-device-groups,#tab-tasks,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active { display:flex; flex-direction:column; overflow:hidden; }
     :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2,
@@ -1281,6 +1294,10 @@
     :is(#tab-models,#tab-lora-model-mapping) > .models-layout > * { height:100%; min-height:0; overflow:auto; scrollbar-gutter:stable; }
     :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > .card,
     #tab-lora-model-mapping > .models-layout > .card { margin-bottom:0; }
+    #tab-models > .models-layout { grid-template-columns:minmax(340px,42fr) minmax(500px,58fr); }
+    #tab-models .model-list-panel { display:flex; flex-direction:column; min-height:0; }
+    #tab-models .model-list-panel > .card { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; margin:0; }
+    #tab-models .model-list-scroll { flex:1 1 auto; min-height:0; overflow:auto; }
 
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes).panel.active { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(350px,.7fr); grid-template-rows:minmax(0,1fr); gap:14px; overflow:hidden; }
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes) > .card { height:100%; min-height:0; margin:0; overflow:auto; }
@@ -1301,6 +1318,8 @@
     .asset-detail-body > .card:first-child { grid-column:auto; }
     .asset-detail-body > .card[data-asset-pane="basic"] { grid-column:1 / -1; }
     @media (max-width:1180px) {
+      #tab-models > .models-layout { grid-template-columns:minmax(0,1fr); }
+      #tab-models .model-list-scroll { max-height:55vh; }
       :is(#tab-device-groups,#tab-tasks,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active,
       :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes).panel.active,
       #tab-wizard.panel.active { display:block; overflow:auto; }
@@ -2013,10 +2032,11 @@
 
     <!-- SCENE MODEL CATALOG -->
     <section class="panel" id="tab-scene-models">
-      <h1 class="page-title">3D 자산 관리</h1>
+      <div class="row" style="justify-content:space-between;align-items:center"><h1 class="page-title" style="margin:0">3D 자산 관리</h1><button type="button" class="primary" id="sceneModelNew" data-role-gate="admin">+ 새 모델</button></div>
       <p class="page-desc">도면에 배치할 모델을 등록하고 카테고리, 이름, 기본 크기, 파일을 관리합니다. 카테고리는 도면의 3D 모델 선택 창에도 적용됩니다.</p>
-      <div class="card" data-role-gate="admin">
-        <div class="row" style="justify-content:space-between"><h2 id="sceneModelFormTitle" style="margin:0">새 모델 등록</h2><button type="button" class="ghost" id="sceneModelReset">새 모델</button></div>
+      <dialog id="sceneModelDialog" aria-labelledby="sceneModelFormTitle" style="width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)">
+      <div class="card" data-role-gate="admin" style="margin:0;border:0">
+        <div class="row" style="justify-content:space-between"><h2 id="sceneModelFormTitle" style="margin:0">새 모델 등록</h2><button type="button" class="ghost" id="sceneModelReset" aria-label="닫기">닫기 ×</button></div>
         <div class="fields" style="margin-top:12px">
           <label class="field">모델 이름<input id="sceneModelName" maxlength="120" placeholder="예: 냉각기" /></label>
           <label class="field">카테고리<input id="sceneModelCategory" list="sceneModelCategoryOptions" maxlength="50" value="기타" placeholder="예: 랙·서버" /><datalist id="sceneModelCategoryOptions"></datalist></label>
@@ -2029,6 +2049,7 @@
         <p class="muted" style="font-size:12px">새 모델은 20MB 이하 GLB 파일이 필요합니다. 기존 모델은 파일을 선택하지 않으면 현재 파일을 유지합니다. 크기 변경은 기존 도면에도 반영됩니다.</p>
         <div class="row"><button type="button" class="primary" id="sceneModelSave">모델 등록</button><span class="muted" id="sceneModelSelected"></span></div>
       </div>
+      </dialog>
       <div class="card" style="margin-top:14px">
         <div class="row" style="justify-content:space-between"><h2 style="margin:0">등록된 3D 모델</h2><div class="row"><label class="muted" for="sceneModelCategoryFilter">카테고리</label><select id="sceneModelCategoryFilter"><option value="">전체</option></select><button type="button" class="ghost" id="sceneModelReload">새로고침</button></div></div>
         <div id="sceneModelList" class="scene-model-list"></div>
@@ -2384,9 +2405,9 @@
 
     <!-- DEVICE GROUPS -->
     <section class="panel" id="tab-device-groups">
-      <h1 class="page-title">장비 그룹</h1>
+      <div class="row" style="justify-content:space-between;align-items:center"><h1 class="page-title" style="margin:0">장비 그룹</h1><button type="button" class="primary" id="dgAddOpen" data-role-gate="admin">+ 새 그룹</button></div>
       <p class="page-desc">위치와 별개로 장비를 여러 목적에 묶습니다. 예: IT 장비, Cooling 장비, A계통. 그룹을 삭제해도 장비는 삭제되지 않습니다.</p>
-      <div class="grid2">
+      <div class="grid2" style="grid-template-columns:minmax(0,1fr)">
         <div class="card">
           <div class="row" style="justify-content:space-between;margin-bottom:12px">
             <h2 style="margin:0">등록된 그룹</h2>
@@ -2394,8 +2415,9 @@
           </div>
           <div id="dgList" class="stack" style="display:flex;flex-direction:column;gap:10px"></div>
         </div>
-        <div class="card">
-          <h2 id="dgFormTitle">새 장비 그룹</h2>
+        <dialog id="dgDialog" aria-labelledby="dgFormTitle" style="width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)">
+        <div class="card" style="margin:0;border:0">
+          <div class="row" style="justify-content:space-between"><h2 id="dgFormTitle" style="margin:0">새 장비 그룹</h2><button type="button" class="ghost" id="dgClose" aria-label="닫기">닫기 ×</button></div>
           <div class="fields">
             <label class="field full">그룹명
               <input id="dgName" placeholder="예: IT 장비" maxlength="100" />
@@ -2416,6 +2438,7 @@
             <button type="button" class="ghost" id="dgCancel" style="display:none">새 그룹으로</button>
           </div>
         </div>
+        </dialog>
       </div>
     </section>
 
@@ -2944,7 +2967,7 @@
       <h1 class="page-title">장비 모델</h1>
       <p class="page-desc">모델별 측정값 해석 규칙을 관리합니다. Modbus의 Unit ID와 장비마다 달라지는 주소는 장비 목록에서 매핑합니다.</p>
       <div class="models-layout">
-        <div>
+        <div class="model-list-panel">
           <div class="card">
             <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">모델 목록</h2>
               <button type="button" class="primary" id="modelAddOpen" data-role-gate="admin">+ 모델 생성</button>
@@ -2952,7 +2975,7 @@
             <div class="row" style="margin-bottom:10px">
               <button type="button" class="ghost" id="modelReload">새로고침</button>
             </div>
-            <div style="overflow:auto;max-height:360px">
+            <div class="model-list-scroll">
               <table>
                 <thead><tr><th>이름</th><th>유형</th><th>프로토콜</th><th></th></tr></thead>
                 <tbody id="modelBody"></tbody>
@@ -3858,13 +3881,23 @@
           <div class="preview-empty" data-scene-preview>미리보기 불러오는 중</div>
           <strong>${esc(model.label)} ${model.enabled ? "" : "(숨김)"}</strong>
           <small>${esc(model.category || "기타")} · ${esc(model.file)}<br>${model.width} × ${model.height} × ${model.depth} m · ${model.builtin ? "기본 모델" : "업로드 모델"}${model.inUse ? " · 도면에서 사용 중" : ""}</small>
-          <div class="row" style="margin-bottom:8px"><label><input type="checkbox" data-scene-rack-u="${esc(model.key)}" ${model.rackUInstallable ? "checked" : ""}> 랙 U 장착</label><label><input type="checkbox" data-scene-rack-attachment="${esc(model.key)}" ${model.rackAttachmentInstallable ? "checked" : ""}> 랙 부착</label></div>
+          <div class="row" style="margin-bottom:8px"><label><input type="checkbox" data-scene-rack-u="${esc(model.key)}" ${model.rackUInstallable ? "checked" : ""}> 랙 U 장착</label><label><input type="checkbox" data-scene-rack-attachment="${esc(model.key)}" ${model.rackAttachmentInstallable ? "checked" : ""}> 랙 부착</label><label><input type="checkbox" data-scene-device-link="${esc(model.key)}" ${model.deviceLinkable ? "checked" : ""}> 장비 연결</label></div>
           <div class="row"><button type="button" class="ghost" data-scene-edit="${esc(model.key)}">수정</button><button type="button" class="danger" data-scene-delete="${esc(model.key)}" ${model.inUse ? "disabled title=\"도면에서 사용 중\"" : ""}>삭제</button></div>
         </article>`).join("") : '<div class="empty">등록된 3D 모델이 없습니다.</div>';
       filter.onchange = () => list.querySelectorAll("[data-scene-model]").forEach((card) => {
         card.style.display = !filter.value || card.dataset.sceneCategory === filter.value ? "" : "none";
       });
       filter.onchange();
+      list.querySelectorAll('[data-scene-device-link]').forEach((control) => control.onchange = async () => {
+        control.disabled = true;
+        try {
+          const updated = await api(`/api/manager/scene-models/${encodeURIComponent(control.dataset.sceneDeviceLink)}/device-linkable`, { method:'PATCH', body:JSON.stringify({deviceLinkable:control.checked}) });
+          const model = sceneModels.find((entry) => entry.key === updated.key);
+          if (model) Object.assign(model, updated);
+          toast('장비 연결 설정을 저장했습니다.');
+        } catch (error) { control.checked = !control.checked; toast(error.message, true); }
+        finally { control.disabled = false; }
+      });
       list.querySelectorAll("[data-scene-rack-u], [data-scene-rack-attachment]").forEach((control) => control.onchange = async () => {
         const card = control.closest('[data-scene-model]'), key = card.dataset.sceneModel;
         const u = card.querySelector('[data-scene-rack-u]'), attachment = card.querySelector('[data-scene-rack-attachment]');
@@ -3888,7 +3921,8 @@
         $("sceneModelEnabled").value = String(model.enabled);
         $("sceneModelEnabled").disabled = false;
         $("sceneModelFile").value = "";
-        $("tab-scene-models").scrollTo({ top: 0, behavior: "smooth" });
+        if (!$('sceneModelDialog').open) $('sceneModelDialog').showModal();
+        $("sceneModelName").focus();
       });
       list.querySelectorAll("[data-scene-delete]").forEach((button) => button.onclick = async () => {
         const model = sceneModels.find((entry) => entry.key === button.dataset.sceneDelete);
@@ -3900,7 +3934,7 @@
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103r");
+        await import("/page-scene-3d.js?v=20261104a");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -3936,7 +3970,7 @@
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103r");
+        await import("/page-scene-3d.js?v=20261104a");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -3974,6 +4008,7 @@
       const editing = sceneModelEditingKey;
       const path = editing ? `/api/manager/scene-models/${encodeURIComponent(editing)}` : "/api/manager/scene-models";
       await sceneModelFormRequest(path, editing ? "PUT" : "POST", form);
+      $("sceneModelDialog").close();
       resetSceneModelForm(); await loadSceneModels();
       $("sceneModelCategoryFilter").value = category;
       $("sceneModelCategoryFilter").onchange();
@@ -6785,7 +6820,7 @@
       $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout"><div class="rack-detail-stage"><div class="rack-detail-tools"><button type="button" data-panel-door>문 닫기</button></div><div data-panel-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div class="rack-detail-info"><b>연결 장비 최신 측정값</b><div data-panel-values class="muted">${deviceIds.length ? "측정값을 불러오는 중입니다." : "도면에서 분전반에 장비를 연결하면 이곳에 측정값이 표시됩니다."}</div></div></div>`;
       $("rackPreviewModal").classList.add("open"); $("rackPreviewModal").setAttribute("aria-hidden", "false");
       const canvas = $("rackPreviewBody").querySelector("[data-panel-canvas]"), values = $("rackPreviewBody").querySelector("[data-panel-values]");
-      import("/page-scene-3d.js?v=20261103r").then(() => {
+      import("/page-scene-3d.js?v=20261104a").then(() => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountPanelDetail(canvas);
         $("rackPreviewBody").querySelector("[data-panel-door]").onclick = (event) => { event.currentTarget.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
@@ -6982,7 +7017,7 @@
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103r")]).then(([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261104a")]).then(([models]) => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountRackDetail(canvas, layout, models, (u) => {
           if (!form) return;
@@ -7579,8 +7614,7 @@
 
     async function loadDeviceGroups() {
       state.deviceGroups = await api("/api/manager/device-groups") || [];
-      const page = await api("/api/manager/devices?page=1&size=100");
-      state.groupDevices = page.content || [];
+      state.groupDevices = await fetchPageDeviceCatalog();
       fillSelect($("devFilterGroup"), state.deviceGroups,
         (group) => `<option value="${group.id}">${esc(group.name)} (${group.deviceCount || 0})</option>`, "모든 장비 그룹");
       renderDeviceGroupList();
@@ -7825,6 +7859,8 @@
       $("dgCancel").style.display = "inline-flex";
       renderDeviceGroupDevicePick((group.devices || []).map((device) => device.id));
       renderDeviceGroupList();
+      if (!$('dgDialog').open) $('dgDialog').showModal();
+      $("dgName").focus();
     }
 
     async function deleteDeviceGroup(id) {
@@ -11052,7 +11088,8 @@
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
     $("sceneModelReload").onclick = () => loadSceneModels().catch((e) => toast(e.message, true));
     $("sceneBuiltinReload").onclick = () => loadSceneBuiltins().catch((e) => toast(e.message, true));
-    $("sceneModelReset").onclick = resetSceneModelForm;
+    $("sceneModelNew").onclick = () => { resetSceneModelForm(); $("sceneModelDialog").showModal(); $("sceneModelName").focus(); };
+    $("sceneModelReset").onclick = () => $("sceneModelDialog").close();
     $("sceneModelSave").onclick = () => saveSceneModel().catch((e) => toast(e.message, true));
     resetSceneModelForm();
     $("devReload").onclick = () => loadDevices().catch((e) => toast(e.message, true));
@@ -11251,6 +11288,9 @@
       else closeRackPreview();
     });
     $("dgReload").onclick = () => loadDeviceGroups().catch((e) => toast(e.message, true));
+    document.body.append($("dgDialog"));
+    $("dgAddOpen").onclick = () => { resetDeviceGroupForm(); $("dgDialog").showModal(); $("dgName").focus(); };
+    $("dgClose").onclick = () => $("dgDialog").close();
     $("dgCancel").onclick = resetDeviceGroupForm;
     $("dgSave").onclick = async () => {
       const name = $("dgName").value.trim();
@@ -11267,6 +11307,7 @@
           }),
         });
         toast(id ? "장비 그룹을 수정했습니다" : "장비 그룹을 만들었습니다");
+        $("dgDialog").close();
         state.editingDeviceGroupId = null;
         await loadDeviceGroups();
         await loadDevices();
