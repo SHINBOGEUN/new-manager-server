@@ -6,7 +6,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261103r"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261104a"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -75,6 +75,7 @@
     .widget-size-pick input { width:15px; height:15px; margin:0; accent-color:var(--accent); }
     .size-match-tools { display:none; flex:none; align-items:center; gap:8px; padding:9px; margin:0 0 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-2); }
     body.edit-mode .size-match-tools { display:flex; }
+    body.edit-mode .board > .card.row-selected { outline:3px solid #43e6ff; outline-offset:-3px; box-shadow:0 0 0 2px #08253a,0 0 18px #38d9ff88; }
     .size-match-tools span { flex:1; color:var(--muted); font-size:11px; line-height:1.4; }
     .board > .card.is-list-selected { outline:3px solid #4ad9ff; outline-offset:2px; z-index:12; box-shadow:0 0 0 5px #4ad9ff55,0 0 24px #4ad9ff88 !important; }
     .widget-item h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -500,6 +501,18 @@
     body.analysis-page-active #reloadBtn,body.analysis-page-active #editBtn,body.analysis-page-active #controlsBtn,body.analysis-page-active #logBtn,body.analysis-page-active #dashboardControls { display:none; }
     body.embedded-analysis .page-switcher { display:none; }
     body.analysis-page-active main:not(#analysisMain) { display:none; }
+    body.embedded-analysis.analysis-page-active { grid-template-rows:minmax(0,1fr); }
+    body.embedded-analysis.analysis-page-active > .dashboard-header { display:none; }
+    body.embedded-analysis #analysisMain { padding:10px 14px; }
+    #analysisMain .analysis-heading { margin-bottom:8px; align-items:center; }
+    #analysisMain .analysis-heading h2 { font-size:17px; }
+    #analysisMain .analysis-heading p { margin-top:3px; }
+    #analysisMain .analysis-toolbar { gap:10px; padding:8px 12px; }
+    #analysisMain .analysis-label { margin-bottom:3px; }
+    #analysisMain .analysis-range { margin-top:3px; }
+    #analysisMain .analysis-layout { margin-top:8px; gap:10px; }
+    #analysisMain .analysis-selection-head, #analysisMain .analysis-results-head { padding:9px 12px; }
+    #analysisMain .analysis-canvas-wrap { height:clamp(300px,42vh,520px); }
     @media(max-width:1050px) { #analysisMain .analysis-toolbar { grid-template-columns:1fr 1fr; } #analysisMain .analysis-layout { grid-template-columns:300px minmax(0,1fr); } }
     @media(max-width:760px) { #analysisMain { padding:14px 10px; } #analysisMain .analysis-heading { align-items:flex-start;flex-direction:column; } #analysisMain .analysis-toolbar,#analysisMain .analysis-layout { grid-template-columns:1fr; } #analysisMain .analysis-selection { position:static;max-height:none; } #analysisMain .analysis-chart-grid { grid-template-columns:1fr; } #analysisMain .analysis-dates input { flex:1;width:1px; } }
     body.embedded .dashboard-brand, body.embedded .dashboard-context,
@@ -847,7 +860,7 @@
     <aside id="widgetDrawer" aria-label="위젯 목록">
       <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div><button type="button" id="closeWidgetDrawerBtn" class="ghost" aria-label="위젯 목록 접기" title="위젯 목록 접기">접기 ‹</button></div>
       <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>배치 편집을 누른 뒤 카드 상단이나 가장자리를 끌어 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 내용 수정은 배치 편집을 마친 뒤 이용하세요.</p></details>
-      <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">크기를 통일할 위젯을 선택하세요. 첫 번째 선택이 기준입니다.</span><button id="applySizeMatchBtn" type="button" disabled>크기 맞춤</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
+      <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">도면에서 위젯을 클릭해 선택하세요.</span><button id="applySizeMatchBtn" type="button" disabled>한 줄로 채우기</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -1451,8 +1464,8 @@
           tools.append(defaultView);
         }
         const edit = document.createElement("button"); edit.type="button"; edit.className="page-edit-icon";
-        edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 도면 편집";
-        edit.title = state.pageVisualizationEditMode ? "도면 편집 종료" : "도면 편집";
+        edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
+        edit.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
         edit.setAttribute("aria-label", edit.title);
         edit.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
         edit.onclick=async()=>{
@@ -1721,6 +1734,42 @@
             onHint: (message) => { const status = stage.querySelector(".scene-editor-status"); if (status) status.textContent = message; },
             onLockedRack: () => {
               window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
+            },
+            onDeviceLink: (host) => {
+              if (!state.pageVisualizationEditMode || consoleAuth()?.getRole?.() !== "ADMIN") return;
+              const key = findSceneItemKey(host), scene = state.pageScene3dApi;
+              const dialog = document.createElement("dialog");
+              dialog.className = "scene-asset-modal";
+              const title = document.createElement("h3"); title.textContent = `${host.label || "설비"} · 장비 연결`;
+              const note = document.createElement("p"); note.className = "muted"; note.textContent = "이 페이지에 등록된 장비를 연결하세요. 도면 저장을 눌러 변경사항을 저장합니다.";
+              const content = document.createElement("div");
+              const close = document.createElement("button"); close.type = "button"; close.textContent = "닫기"; close.onclick = () => dialog.close();
+              const draw = () => {
+                const current = scene.getItems();
+                const linked = current.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key);
+                const used = new Set(current.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType)).map((item) => Number(item.deviceId)));
+                const available = devices.filter((device) => !used.has(Number(device.deviceId)));
+                content.replaceChildren();
+                const list = document.createElement("div");
+                for (const item of linked) {
+                  const row = document.createElement("div"); row.className = "scene-editor-actions";
+                  const label = document.createElement("span"); label.textContent = devices.find((device) => Number(device.deviceId) === Number(item.deviceId))?.deviceName || item.label || `장비 #${item.deviceId}`;
+                  const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "연결 해제";
+                  remove.onclick = () => { if (scene.removeItem(findSceneItemKey(item))) draw(); };
+                  row.append(label, remove); list.append(row);
+                }
+                if (!linked.length) list.textContent = "연결된 장비가 없습니다.";
+                const select = document.createElement("select"); select.setAttribute("aria-label", "연결할 장비");
+                select.append(new Option(available.length ? "연결할 장비 선택" : "연결 가능한 장비 없음", ""));
+                available.forEach((device) => select.append(new Option(device.deviceName, String(device.deviceId))));
+                const add = document.createElement("button"); add.type = "button"; add.textContent = "장비 연결"; add.disabled = !available.length;
+                add.onclick = () => { if (select.value && scene.attachDevice(key, { deviceId: Number(select.value) })) draw(); };
+                const actions = document.createElement("div"); actions.className = "scene-editor-actions"; actions.append(select, add);
+                content.append(list, actions);
+              };
+              dialog.append(title, note, content, close); stage.append(dialog);
+              dialog.addEventListener("close", () => dialog.remove(), { once:true });
+              draw(); dialog.showModal();
             },
             onPanelDetail: (panel) => {
               const key = findSceneItemKey(panel);
@@ -2056,6 +2105,14 @@
     });
 
     let selectedListWidgetId = null;
+    function toggleRowSelection(id) {
+      if (!state.editMode) return;
+      id = Number(id);
+      if (state.sizeMatchWidgetIds.includes(id)) state.sizeMatchWidgetIds = state.sizeMatchWidgetIds.filter((item) => item !== id);
+      else state.sizeMatchWidgetIds.push(id);
+      $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => card.classList.toggle("row-selected", state.sizeMatchWidgetIds.includes(Number(card.dataset.widgetId))));
+      updateSizeMatchTools();
+    }
     function selectWidgetFromList(id) {
       selectedListWidgetId = Number(id);
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
@@ -2077,11 +2134,9 @@
       const hint = $("sizeMatchHint");
       const apply = $("applySizeMatchBtn");
       if (!hint || !apply) return;
-      const reference = state.widgets.find((widget) => Number(widget.id) === selected[0]);
-      const layout = reference && widgetLayout(reference);
       hint.textContent = selected.length < 2
-        ? "크기를 통일할 위젯을 2개 이상 선택하세요. 첫 번째 선택이 기준입니다."
-        : `${selected.length}개 선택 · ${reference.name}의 ${layout?.w ?? "–"}×${layout?.h ?? "–"} 크기를 적용합니다. 위치는 유지됩니다.`;
+        ? "위젯을 직접 클릭해 2개 이상 선택하세요."
+        : `${selected.length}개 선택 · 가장 위쪽 위치에 한 줄로 나눠 배치합니다.`;
       apply.disabled = selected.length < 2 || state.saving;
     }
 
@@ -2090,19 +2145,21 @@
         .map((id) => state.widgets.find((widget) => Number(widget.id) === id && widget.enabled))
         .filter(Boolean);
       if (selected.length < 2) return;
-      const reference = widgetLayout(selected[0]);
-      if (!reference) return;
-      selected.slice(1).forEach((widget) => {
-        const current = widgetLayout(widget) || ensureLayout(widget, 0);
-        const width = Math.min(reference.w, COLS);
-        widget._draftLayout = {
-          ...current,
-          gridX: Math.min(current.gridX, COLS - width),
-          w: width,
-          h: reference.h,
-        };
+      if (selected.length > COLS) return alert(`한 줄에는 최대 ${COLS}개까지 배치할 수 있습니다.`);
+      selected.sort((a, b) => widgetLayout(a).gridX - widgetLayout(b).gridX || widgetLayout(a).gridY - widgetLayout(b).gridY);
+      const top = Math.min(...selected.map((widget) => widgetLayout(widget).gridY));
+      const height = Math.max(...selected.map((widget) => widgetLayout(widget).h));
+      const selectedIds = new Set(selected.map((widget) => Number(widget.id)));
+      const occupied = state.widgets.filter((widget) => widget.enabled && !selectedIds.has(Number(widget.id)))
+        .find((widget) => { const layout = widgetLayout(widget); return layout && layout.gridY < top + height && layout.gridY + layout.h > top; });
+      if (occupied) return alert(`선택한 위치에 '${occupied.name}' 위젯이 있습니다. 위젯을 이동하거나 함께 선택해 주세요.`);
+      let x = 0;
+      selected.forEach((widget, index) => {
+        const width = Math.floor(COLS / selected.length) + (index < COLS % selected.length ? 1 : 0);
+        widget._draftLayout = { ...widgetLayout(widget), gridX: x, gridY: top, w: width, h: height };
+        x += width;
       });
-      log(`위젯 ${selected.length - 1}개의 크기를 ${reference.w}×${reference.h}로 맞췄습니다. 위치는 유지되며, 저장을 눌러 반영하세요.`);
+      log(`위젯 ${selected.length}개를 한 줄에 배치했습니다. 변경 저장을 눌러 반영하세요.`);
       renderWidgetList();
       await refreshBoard(false);
     }
@@ -2136,7 +2193,6 @@
             </label>
           </h3>
           <div class="meta">#${w.id} · ${escapeHtml(widgetKindLabel(w.queryKind))}${countMeta}${chartMeta} · ${pos}</div>
-          <label class="widget-size-pick"><input type="checkbox" data-size-match="${w.id}" ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${!w.enabled ? "disabled" : ""}><span>크기 맞춤에 포함</span></label>
           ${canManage ? `<label class="widget-style-choice">디자인 <select data-widget-style="${w.id}" ${state.saving ? "disabled" : ""} aria-label="${escapeHtml(w.name)} 디자인"><option value="classic" ${(w.visualStyle || 'classic') === 'classic' ? 'selected' : ''}>클래식</option><option value="minimal" ${w.visualStyle === 'minimal' ? 'selected' : ''}>미니멀</option><option value="vivid" ${w.visualStyle === 'vivid' ? 'selected' : ''}>비비드</option></select></label>` : ""}
           <div class="widget-actions">
             <button type="button" class="ghost" data-edit-scroll="${w.id}" ${w.enabled ? "" : "disabled"} title="표시 중인 위젯으로 이동">위치 찾기</button>
@@ -2149,6 +2205,7 @@
       $("widgetList").querySelectorAll('.widget-item').forEach((item) => {
         item.addEventListener('click', (event) => {
           if (event.target.closest('button, input, select, label, a')) return;
+          if (state.editMode && !item.classList.contains('disabled')) toggleRowSelection(item.dataset.id);
           selectWidgetFromList(item.dataset.id);
         });
         item.addEventListener('keydown', (event) => {
@@ -2158,15 +2215,6 @@
         });
       });
 
-      $("widgetList").querySelectorAll("[data-size-match]").forEach((checkbox) => {
-        checkbox.addEventListener("click", (event) => event.stopPropagation());
-        checkbox.addEventListener("change", () => {
-          const id = Number(checkbox.dataset.sizeMatch);
-          state.sizeMatchWidgetIds = state.sizeMatchWidgetIds.filter((selectedId) => selectedId !== id);
-          if (checkbox.checked) state.sizeMatchWidgetIds.push(id);
-          updateSizeMatchTools();
-        });
-      });
       updateSizeMatchTools();
 
       $("widgetList").querySelectorAll("[data-widget-style]").forEach((select) => {
@@ -3205,7 +3253,7 @@
           ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
           : "";
         return `
-          <article class="${cardClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
+          <article class="${cardClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? 'row-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
             <div class="card-head" data-drag-handle>
               <span class="drag-handle">⠿</span>
               <div>
@@ -3395,6 +3443,12 @@
 
     function bindEditHandlers() {
       if (!state.editMode) return;
+      $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => {
+        card.addEventListener("click", (event) => {
+          if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
+          toggleRowSelection(card.dataset.widgetId);
+        });
+      });
       $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
         handle.addEventListener("pointerdown", onDragStart);
       });
@@ -3587,6 +3641,7 @@
 
     function setEditMode(on) {
       if (!on) {
+        state.sizeMatchWidgetIds = [];
         const discarded = state.widgets.filter((widget) => widget._draftLayout).length;
         state.widgets.forEach((widget) => { delete widget._draftLayout; });
         if (discarded) log(`저장하지 않은 배치 변경 ${discarded}개 취소`);
@@ -3594,8 +3649,8 @@
       state.editMode = on;
       const pageEditButton = $("pageVisualization")?.querySelector(".page-edit-icon");
       if (pageEditButton) {
-        pageEditButton.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 도면 편집";
-        pageEditButton.title = state.pageVisualizationEditMode ? "도면 편집 종료" : "도면 편집";
+        pageEditButton.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
+        pageEditButton.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
         pageEditButton.setAttribute("aria-label", pageEditButton.title);
         pageEditButton.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
       }
@@ -3782,6 +3837,7 @@
     });
     $("clearSizeMatchBtn").addEventListener("click", () => {
       state.sizeMatchWidgetIds = [];
+      $("board").querySelectorAll(".row-selected").forEach((card) => card.classList.remove("row-selected"));
       renderWidgetList();
     });
     $("addWidgetBtn").addEventListener("click", () => {

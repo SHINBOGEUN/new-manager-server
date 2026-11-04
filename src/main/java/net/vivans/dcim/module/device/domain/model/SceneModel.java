@@ -53,6 +53,11 @@ public class SceneModel extends BaseEntity {
     @Column(name = "rack_attachment_installable", nullable = false)
     private boolean rackAttachmentInstallable;
 
+    @Column(name = "device_linkable", nullable = false)
+    private boolean deviceLinkable;
+
+    public void setDeviceLinkable(boolean allowed) { this.deviceLinkable = allowed; }
+
     public void setRackInstallable(boolean allowed) { this.rackInstallable = allowed; this.rackUInstallable = allowed; this.rackAttachmentInstallable = allowed; }
     public void setRackMountOptions(boolean rackU, boolean attachment) { this.rackUInstallable = rackU; this.rackAttachmentInstallable = attachment; this.rackInstallable = rackU || attachment; }
     public boolean permitsRackMount(DeviceMountType type) {

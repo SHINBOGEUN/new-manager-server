@@ -232,6 +232,8 @@ GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 
 ## 3D 도면 모델 관리
 
 `sql/migration/20261028_scene_model_catalog.sql`을 적용하면 쇼룸 모델 카탈로그가 등록됩니다.
+
+3D 모델별 장비 연결 설정을 사용하기 전에 `sql/migration/20261104_scene_model_device_linkable.sql`을 적용합니다. 기존 모델의 설정은 반복 실행 시 덮어쓰지 않습니다.
 기존 DB에서는 `sql/migration/20261028_inrow_components.sql`로 인로우 프레임과 분전반을 분리합니다.
 기존 모델 카테고리는 `sql/migration/20261028_scene_model_categories.sql`로 추가합니다.
 기존 인로우 분류와 프레임 크기는 `sql/migration/20261028_scene_model_reclassify_and_frame.sql`로 조정합니다.

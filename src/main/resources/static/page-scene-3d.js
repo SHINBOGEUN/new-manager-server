@@ -2460,6 +2460,12 @@ function mount(container, page, options = {}) {
     if (walking || placement || areaSelectMode || areaMoveMode || wholeSceneMoveMode) return;
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     const item = hit && nearestSceneItemRoot(hit.object)?.userData?.sceneItem;
+    if (options.editing && item?.itemType === "EQUIPMENT" && showroomModelByKey(item.modelKey)?.deviceLinkable) {
+      event.preventDefault();
+      if (item.locked) options.onHint?.("잠긴 설비는 잠금 해제 후 장비를 연결할 수 있습니다.");
+      else options.onDeviceLink?.(structuredClone(item));
+      return;
+    }
     if (item?.modelKey === "SR_INROW_PANEL") { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
     const action = rackDetailAction(item);
     if (action === "ignore") return;

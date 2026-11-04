@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `scene_model` (
   `enabled` tinyint(1) NOT NULL DEFAULT 1,
   `rack_u_installable` tinyint(1) NOT NULL DEFAULT 0,
   `rack_attachment_installable` tinyint(1) NOT NULL DEFAULT 0,
+  `device_linkable` tinyint(1) NOT NULL DEFAULT 0,
   `rack_installable` tinyint(1) NOT NULL DEFAULT 0 COMMENT '랙에 설치 가능한 3D 모델 여부',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6),
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
@@ -58,3 +59,4 @@ WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_GPU_SERVER', 'SR_DLC
 
 UPDATE `scene_model` SET `rack_u_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_GPU_SERVER','SR_DLC_SERVER','SR_PDU_RACK');
 UPDATE `scene_model` SET `rack_attachment_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_PDU_VERTICAL','SR_DRAGINO_TH','SR_DRAGINO_DOOR');
+UPDATE `scene_model` SET `device_linkable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_RDC','SR_IMMERSION','SR_RDC_RACK');

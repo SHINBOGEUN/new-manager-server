@@ -18,6 +18,14 @@ import java.util.List;
 public class SceneModelController {
     private final SceneModelService service;
 
+    public record DeviceLinkableRequest(@jakarta.validation.constraints.NotNull Boolean deviceLinkable) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{key}/device-linkable")
+    public ResponseEntity<ApiResponse<SceneModelService.ModelResponse>> setDeviceLinkable(@PathVariable String key, @jakarta.validation.Valid @RequestBody DeviceLinkableRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(service.setDeviceLinkable(key, request.deviceLinkable())));
+    }
+
     public record RackInstallableRequest(@jakarta.validation.constraints.NotNull Boolean rackInstallable) {}
 
     @PreAuthorize("hasRole('ADMIN')")

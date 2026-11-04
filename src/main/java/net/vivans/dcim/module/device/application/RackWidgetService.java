@@ -53,9 +53,54 @@ public class RackWidgetService {
     public List<Widget> get(String code) {
         racks.getRackLayout(code);
         var rows = jdbc.query("SELECT widgets_json FROM rack_widget_config WHERE rack_location_code=?", (rs, n) -> rs.getString(1), code);
-        if (rows.isEmpty()) return List.of();
+        if (rows.isEmpty()) return defaultWidgets(code);
         try { return mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {}); }
         catch (Exception e) { throw new IllegalStateException("랙 위젯 설정을 읽을 수 없습니다", e); }
+    }
+
+    private List<Widget> defaultWidgets(String code) {
+        var valid = sources(code).stream().filter(s -> !s.ambiguous()).toList();
+        var pdus = devices(code).stream().filter(d -> "PDU".equalsIgnoreCase(d.deviceType())).toList();
+        var defaults = new ArrayList<Widget>();
+        var a = pdus.stream().filter(d -> "A".equalsIgnoreCase(d.pathCode())).toList();
+        var b = pdus.stream().filter(d -> "B".equalsIgnoreCase(d.pathCode())).toList();
+        var aPower = a.size() == 1 ? defaultPowerSource(valid, a.get(0).deviceId()) : null;
+        var bPower = b.size() == 1 ? defaultPowerSource(valid, b.get(0).deviceId()) : null;
+        if (aPower != null && bPower != null && aPower.unit().equalsIgnoreCase(bPower.unit())) {
+            var pair = List.of(toSource(aPower), toSource(bPower));
+            defaults.add(new Widget("전력 균형", "PATH_BALANCE", 1, pair));
+            defaults.add(new Widget("전력 추이", "POWER_TREND", 1, pair, 24, 15));
+        } else {
+            for (var pdu : pdus) {
+                var power = defaultPowerSource(valid, pdu.deviceId());
+                if (power != null && defaults.size() < 16) {
+                    String name = pdu.deviceName();
+                    if (name.length() > 50) name = name.substring(0, 50);
+                    defaults.add(new Widget("전력 · " + name + " #" + pdu.deviceId(), "VALUE", 1, List.of(toSource(power))));
+                }
+            }
+        }
+        var environmental = valid.stream().filter(s -> {
+            var type = s.dataPointType() == null ? "" : s.dataPointType().toUpperCase(Locale.ROOT);
+            return type.equals("TEMPERATURE") || type.equals("HUMIDITY");
+        }).limit(8).map(RackWidgetService::toSource).toList();
+        if (!environmental.isEmpty()) defaults.add(new Widget("온습도 추이", "TREND", 2, environmental));
+        return List.copyOf(defaults);
+    }
+
+    private static DeviceMeasurementSourceCatalog.Source defaultPowerSource(List<DeviceMeasurementSourceCatalog.Source> sources, int deviceId) {
+        var candidates = sources.stream().filter(s -> s.deviceId().equals(deviceId) && s.unit() != null
+                && Set.of("W", "KW", "MW").contains(s.unit().trim().toUpperCase(Locale.ROOT))).toList();
+        for (String name : List.of("TOTAL_WT", "TOTAL_POWER", "ACTIVE_POWER", "WATT")) {
+            var matches = candidates.stream().filter(s -> s.pointName().equalsIgnoreCase(name)).toList();
+            if (matches.size() == 1) return matches.get(0);
+            if (matches.size() > 1) return null;
+        }
+        return candidates.size() == 1 ? candidates.get(0) : null;
+    }
+
+    private static Source toSource(DeviceMeasurementSourceCatalog.Source source) {
+        return new Source(source.deviceId(), source.pointName(), source.protocol());
     }
     @Transactional
     public List<Widget> save(String code, List<Widget> widgets) {
