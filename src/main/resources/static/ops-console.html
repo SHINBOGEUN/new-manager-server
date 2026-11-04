@@ -1621,6 +1621,16 @@
     @media (max-width:900px) { #rackPreviewModal .rack-detail-stage { position:relative; height:min(55dvh,480px); } #rackPreviewModal .rack-preview-body.is-rack-layout-edit { overflow:auto; } }
     @media (max-width:600px) { #rackPreviewModal { padding:8px; } #rackPreviewModal .rack-preview { max-height:calc(100dvh - 16px); } #rackPreviewModal .rack-preview-head { padding:13px 15px; } #rackPreviewModal .rack-preview-body { padding:12px; } #rackPreviewModal .rack-detail-tabs { width:100%; } #rackPreviewModal .rack-detail-tabs button { flex:1; padding:7px; } }
 
+    .alarm-notifications { position:relative; }
+    .alarm-notifications[hidden] { display:none; }
+    .alarm-bell { position:relative; min-width:38px; font-size:18px; }
+    .alarm-badge { position:absolute; top:-6px; right:-6px; min-width:18px; padding:2px 4px; border-radius:12px; background:#ef4444; color:white; font-size:10px; line-height:14px; text-align:center; }
+    .alarm-popover { position:absolute; z-index:200; right:0; top:calc(100% + 10px); width:min(390px,calc(100vw - 24px)); max-height:min(520px,75vh); overflow:auto; padding:14px; border:1px solid var(--line); border-radius:12px; background:var(--surface); box-shadow:0 18px 48px #0009; }
+    .alarm-popover[hidden] { display:none; }
+    .alarm-popover-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+    .alarm-notice { display:block; width:100%; text-align:left; margin:6px 0; padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--surface2); color:var(--text); }
+    .alarm-notice small { display:block; margin-top:5px; color:var(--muted); }
+    .alarm-notice-footer { width:100%; margin-top:8px; }
   </style>
   <link rel="stylesheet" href="/ops-workspace.css?v=20261103a">
 </head>
@@ -1643,6 +1653,14 @@
         <button type="button" class="primary" id="loginBtn">로그인</button>
       </div>
       <span id="authStatus" class="chip bad" style="cursor:pointer" title="로그인">로그인 필요</span>
+      <div class="alarm-notifications" id="alarmNotifications" hidden>
+        <button type="button" class="ghost alarm-bell" id="alarmBell" aria-label="알람 알림" aria-expanded="false" title="알람 알림">🔔<span id="alarmBadge" class="alarm-badge" hidden></span></button>
+        <div id="alarmPopover" class="alarm-popover" hidden>
+          <div class="alarm-popover-head"><strong>알람</strong><span id="alarmNoticeSummary" class="muted"></span></div>
+          <div id="alarmNoticeList" aria-live="polite"></div>
+          <button type="button" class="ghost alarm-notice-footer" id="alarmNoticeAll">알람 이력 전체 보기</button>
+        </div>
+      </div>
       <button type="button" class="ghost" id="logoutBtn">로그아웃</button>
       <button type="button" class="ghost" id="bootBtn" title="데이터 다시 불러오기">새로고침</button>
       <button type="button" class="ghost" id="reloadAllBtn" style="display:none">다시 로드</button>
@@ -1660,18 +1678,17 @@
     <div id="workspaceSearchResults" role="region" aria-label="검색 결과" hidden></div>
     <div class="group">모니터링</div>
     <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 상태와 확인할 알람</small></button>
-    <button type="button" data-tab="dashboard-page">대시보드<small>주요 지표 · 위젯</small></button>
-    <button type="button" data-tab="environment-page">공간 · 환경<small>2D · 3D 도면과 센서</small></button>
-    <button type="button" data-tab="cooling-page">냉각 모니터링<small>냉각 설비와 측정값</small></button>
+    <div id="dynamicPageNav-monitoring"></div>
     <div class="group">운영 관리</div>
     <button type="button" data-tab="devices">장비 관리<small>등록 · 통신 · 그룹</small></button>
     <button type="button" data-tab="assets">자산 · 랙<small>자산 · 랙 배치 · 3D 모델</small></button>
     <button type="button" data-tab="collection-status">데이터 수집<small>수집 상태 · 작업 · MQTT</small></button>
     <button type="button" data-tab="alarms" data-role-gate="admin-user">알람<small>발생 이력 · 경보 기준</small></button>
-    <button type="button" data-tab="analysis">데이터 분석<small>이력 조회 · 비교</small></button>
+    <div id="dynamicPageNav-operations"></div>
     <div class="group">관리</div>
     <button type="button" data-tab="locations">설정<small>위치 · 모델 · 화면 · 계정</small></button>
     <button type="button" data-tab="notes">사용 가이드<small>처음 시작하기</small></button>
+    <div id="dynamicPageNav-settings"></div>
     <div class="side-footer"><span class="status-pulse"></span><div><strong>SPATIVIA</strong><small>시설 운영 관리</small></div></div>
   </aside>
   <button type="button" class="side-backdrop" id="sideBackdrop" aria-label="메뉴 닫기"></button>
@@ -2466,7 +2483,7 @@
         </div>
         <p class="muted" style="font-size:12px;margin:10px 0 0">이 페이지의 장비 선택은 위젯과 별개이며, 페이지별 측정값 API에서 사용합니다.</p>
       </div>
-      <div class="card" style="margin-top:12px">
+      <div class="card" id="pdDeviceSelectionCard" style="margin-top:12px">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
           <div><h2 style="margin:0">표시할 장비</h2><div id="pdSelectionCount" class="muted" style="font-size:12px;margin-top:5px">페이지를 선택하세요.</div></div>
           <button type="button" class="primary" id="pdSave" data-role-gate="admin" disabled>선택 저장</button>
@@ -2487,10 +2504,22 @@
         </div>
         <div style="max-width:440px;margin-top:12px">
           <label class="field">페이지 보기 방식
-            <select id="pdViewMode"><option value="DATA">데이터 목록</option><option value="PLAN_2D">2D 평면도</option><option value="SCENE_3D">3D 장면</option></select>
+            <select id="pdViewMode"><option value="DATA">위젯 대시보드</option><option value="PLAN_2D">2D 평면도</option><option value="SCENE_3D">3D 장면</option></select>
           </label>
         </div>
         <p id="pdSceneEditorHint" class="muted" style="font-size:11px;margin:8px 0">페이지 보기 방식을 선택하세요.</p>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div><h2 style="margin:0">왼쪽 메뉴 표시</h2><div class="muted" style="font-size:12px;margin-top:5px">선택한 페이지를 사이드바에 추가하고 표시 위치와 순서를 정합니다.</div></div>
+          <button type="button" class="primary" id="pdSidebarSave" data-role-gate="admin" disabled>메뉴 설정 저장</button>
+        </div>
+        <div class="fields" style="margin-top:12px">
+          <label class="field">메뉴 표시 여부<select id="pdSidebarVisible"><option value="true">표시</option><option value="false">숨김</option></select></label>
+          <label class="field">왼쪽 카테고리<select id="pdSidebarGroup"><option value="monitoring">모니터링</option><option value="operations">운영 관리</option><option value="settings">관리</option></select></label>
+          <label class="field">카테고리 안 순서<input id="pdSidebarOrder" type="number" min="1" max="99" value="10" /></label>
+        </div>
+        <p class="muted" id="pdSidebarHint" style="font-size:11px;margin:8px 0 0">메뉴 배치는 이 브라우저에 저장됩니다.</p>
       </div>
     </section>
 
@@ -3537,6 +3566,7 @@
       pageDeviceLoadedCode: null,
       pageDisplay: { viewMode: "DATA", layoutAssetKey: null, devices: [] },
       pageDisplayDirty: false,
+      dynamicPageTabs: new Map(),
       assets: [],
       users: [],
       rackLayouts: [],
@@ -3669,6 +3699,9 @@
       renderWorkspaceSearch();
       if ($("loginError")) $("loginError").style.display = "none";
       applyRolePermissions();
+      $("alarmNotifications").hidden = !ok || !["ADMIN", "USER"].includes(state.role);
+      if ($("alarmNotifications").hidden) $("alarmPopover").hidden = true;
+      else refreshAlarmNotifications();
       if (ok && (state.role === "ADMIN" || state.role === "USER")) startAlarmStream();
     }
 
@@ -4005,7 +4038,7 @@
           history.replaceState(history.state, "", url.pathname + url.search + url.hash);
         } catch (_) { /* Keep navigation usable when browser history is unavailable. */ }
       }
-      const embedded = new Set(["dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor"]);
+      const embedded = new Set(["dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor", ...state.dynamicPageTabs.keys()]);
       if (name !== "devices") closeDeviceDetail(false);
       document.querySelectorAll("#tabs button[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === (window.OpsNavigation.groupFor(name)?.key || name)));
       renderWorkspaceNavigation(name);
@@ -4376,6 +4409,92 @@
       }
     };
 
+    const PAGE_NAV_PREFS_KEY = "spativiaPageNavigationPrefs";
+    const FIXED_PAGE_TABS = new Map([
+      ["dashboard", "dashboard-page"], ["environment", "environment-page"],
+      ["cooling", "cooling-page"], ["analysis", "analysis"],
+    ]);
+    function pageTabForCode(code) {
+      const key = String(code || "").toLowerCase();
+      return FIXED_PAGE_TABS.get(key) || window.OpsNavigation.pageTab(code);
+    }
+    function readPageNavigationPrefs() {
+      try {
+        const value = JSON.parse(localStorage.getItem(PAGE_NAV_PREFS_KEY) || "{}");
+        return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+      } catch (_) { return {}; }
+    }
+    function pageNavigationPreference(page, index) {
+      const code = String(page.code || ""), key = code.toLowerCase(), saved = readPageNavigationPrefs()[key] || {};
+      return {
+        visible: typeof saved.visible === "boolean" ? saved.visible :
+          (FIXED_PAGE_TABS.has(key) || ["power", "telemetry"].includes(key)),
+        section: ["monitoring", "operations", "settings"].includes(saved.section) ? saved.section :
+          (key === "analysis" ? "operations" : "monitoring"),
+        order: Number.isFinite(Number(saved.order)) ? Math.max(1, Math.min(99, Number(saved.order))) :
+          ({ dashboard: 1, environment: 2, cooling: 3, power: 4, telemetry: 5, analysis: 1 }[key] || index + 1),
+      };
+    }
+    function renderConfiguredPageNavigation() {
+      const pages = state.codes.DEVICE_PAGE || [];
+      const records = pages.map((page, index) => ({ page, preference: pageNavigationPreference(page, index) }));
+      const navEntries = records.filter(({ preference }) => preference.visible).map(({ page, preference }) => ({
+        code: page.code, name: page.name, tab: pageTabForCode(page.code), section: preference.section, order: preference.order,
+      }));
+      window.OpsNavigation.setDynamicPages(navEntries);
+      state.dynamicPageTabs.clear();
+      for (const page of pages) {
+        const tab = pageTabForCode(page.code);
+        state.dynamicPageTabs.set(tab, page.code);
+        let panel = document.getElementById(`tab-${tab}`);
+        if (!panel) {
+          panel = document.createElement("section"); panel.id = `tab-${tab}`;
+          panel.className = "panel embedded-page widget-display-page";
+          const title = document.createElement("h1"); title.className = "page-title"; title.textContent = page.name;
+          const description = document.createElement("p"); description.className = "page-desc"; description.textContent = "페이지 위젯과 장비 화면을 표시합니다.";
+          const frame = document.createElement("iframe"); frame.title = page.name; frame.dataset.pageKey = page.code; frame.loading = "lazy";
+          panel.append(title, description, frame); $("tab-notes").before(panel);
+        }
+      }
+      for (const section of ["monitoring", "operations", "settings"]) {
+        const slot = $(`dynamicPageNav-${section}`); if (!slot) continue;
+        slot.replaceChildren();
+        records.filter(({ preference }) => preference.visible && preference.section === section)
+          .sort((a, b) => a.preference.order - b.preference.order || String(a.page.name).localeCompare(String(b.page.name)))
+          .forEach(({ page }) => {
+            const tab = pageTabForCode(page.code), button = document.createElement("button");
+            button.type = "button"; button.dataset.tab = tab; button.dataset.dynamicPage = "true";
+            button.append(document.createTextNode(page.name));
+            const small = document.createElement("small"); small.textContent = "위젯 · 페이지 화면"; button.append(small);
+            button.onclick = () => goTab(tab); slot.append(button);
+          });
+      }
+      renderWorkspaceSearch();
+    }
+    function renderPageNavigationSettings() {
+      const page = (state.codes.DEVICE_PAGE || []).find((item) => item.code === $("pdPage").value);
+      const visible = $("pdSidebarVisible"), section = $("pdSidebarGroup"), order = $("pdSidebarOrder"), save = $("pdSidebarSave");
+      if (!page || !visible || !section || !order || !save) return;
+      const pref = pageNavigationPreference(page, (state.codes.DEVICE_PAGE || []).indexOf(page));
+      visible.value = String(pref.visible); section.value = pref.section; order.value = String(pref.order);
+      save.disabled = state.role !== "ADMIN";
+      $("pdSidebarHint").textContent = "메뉴 설정은 이 브라우저에 저장되며, 메뉴 표시·위치·순서에만 적용됩니다.";
+    }
+    function savePageNavigationSettings() {
+      if (state.role !== "ADMIN") return;
+      const page = (state.codes.DEVICE_PAGE || []).find((item) => item.code === $("pdPage").value);
+      if (!page) return toast("먼저 페이지를 선택하세요.", true);
+      const prefs = readPageNavigationPrefs();
+      prefs[String(page.code).toLowerCase()] = {
+        visible: $("pdSidebarVisible").value === "true",
+        section: $("pdSidebarGroup").value,
+        order: Math.max(1, Math.min(99, Number($("pdSidebarOrder").value) || 1)),
+      };
+      localStorage.setItem(PAGE_NAV_PREFS_KEY, JSON.stringify(prefs));
+      renderConfiguredPageNavigation(); renderPageNavigationSettings();
+      toast("왼쪽 메뉴 설정을 저장했습니다.");
+    }
+
     async function loadCodes() {
       const groups = await api("/api/manager/code-groups");
       state.codeGroups = groups || [];
@@ -4383,6 +4502,7 @@
       for (const g of groups) {
         state.codes[g.groupKey] = await api(`/api/manager/common-codes?codeGroupId=${g.id}`);
       }
+      renderConfiguredPageNavigation();
       fillPathSelects();
       fillModelFormSelects();
       fillUnitSelect($("mpEditUnit"), $("mpEditUnit").value);
@@ -7476,6 +7596,7 @@
       const defaultPage = pages.find((page) => page.code === "dashboard") || pages[0];
       $("pdPage").value = pages.some((page) => page.code === previous)
         ? previous : (defaultPage?.code || "");
+      renderPageNavigationSettings();
     }
 
     function hasUnsavedPageDeviceSelection() {
@@ -7542,12 +7663,13 @@
       const mode = state.pageDisplay.viewMode || "DATA";
       $("pdViewMode").value = mode;
       $("pdViewMode").disabled = state.role !== "ADMIN";
+      $("pdDeviceSelectionCard").hidden = false;
       const hint = $("pdSceneEditorHint");
       hint.textContent = mode === "SCENE_3D"
-        ? "환경 화면에서 연필 버튼을 눌러 랙을 배치하고, 센서 측정값을 랙에 장착하세요."
+        ? "이 페이지는 3D 도면으로 표시됩니다. 장비 목록과 도면 편집은 이 페이지에서 관리합니다. 위젯 편집은 사용할 수 없습니다."
         : mode === "PLAN_2D"
-          ? "환경 화면에서 연필 버튼을 눌러 평면도 위젯 배치를 편집하세요."
-          : "페이지 장비 데이터가 카드 목록으로 표시됩니다.";
+          ? "이 페이지는 2D 평면도로 표시됩니다. 장비 목록과 도면 편집은 이 페이지에서 관리합니다. 위젯 편집은 사용할 수 없습니다."
+          : "장비별 데이터 목록은 표시하지 않습니다. 이 페이지에는 등록된 위젯만 표시하며, 위젯 추가·편집은 페이지 화면에서 할 수 있습니다.";
       updatePageDeviceSelectionSummary();
     }
     function readPageDeviceDisplayForm() {
@@ -7619,6 +7741,7 @@
         $("pdPage").value = state.pageDeviceLoadedCode;
         return;
       }
+      renderPageNavigationSettings();
       loadPageDeviceEditor().catch((e) => toast(e.message, true));
     });
     $("pdReload").onclick = () => {
@@ -7632,6 +7755,7 @@
       state.pageDisplayDirty = true;
       renderPageDeviceDisplayEditor();
     });
+    $("pdSidebarSave").addEventListener("click", savePageNavigationSettings);
     $("pdSelectAll").onclick = () => {
       if (state.role !== "ADMIN" || state.pageDeviceLoadedCode !== $("pdPage").value) return;
       state.pageDeviceIds = new Set(state.pageDeviceCatalog.map((device) => Number(device.id)));
@@ -7717,7 +7841,15 @@
     }
 
     async function loadWidgetSources() {
-      state.widgetSources = await api("/api/manager/widgets/sources") || [];
+      const pageCode = String($("wCreatePage").value || "");
+      if (!pageCode) throw new Error("페이지를 먼저 선택하세요.");
+      const [sources, deviceIds] = await Promise.all([
+        api("/api/manager/widgets/sources"),
+        api(`/api/manager/device-pages/${encodeURIComponent(pageCode)}/devices`),
+      ]);
+      if ($("wCreatePage").value !== pageCode) return [];
+      state.widgetPageDeviceIds = new Set((deviceIds || []).map(Number));
+      state.widgetSources = (sources || []).filter((source) => state.widgetPageDeviceIds.has(Number(source.deviceId)));
       state.widgetSourcesLoaded = true;
       return state.widgetSources;
     }
@@ -7883,12 +8015,20 @@
     }
 
     function openWidgetEditor(editing = false) {
-      if (!editing) clearWidgetForm(false);
+      if (!editing) clearWidgetForm(true);
+      $("wCreatePage").disabled = true;
+      state.widgetSourcesLoaded = false;
+      state.widgetSources = [];
+      state.widgetPageDeviceIds = new Set();
+      fillWidgetDevicePick();
       $("wEditorBackdrop").classList.add("open");
       $("wEditorCard").classList.add("open");
       $("wEditorCard").setAttribute("aria-hidden", "false");
       showWidgetEditorStep(1);
       loadWidgetSources().then(() => {
+        fillWidgetDevicePick();
+        fillPsychrometricDevicePicks();
+        fillPowerDistributionPicks();
         if ($("wPickDevice")?.value) loadDevicePointPicker();
         refreshWidgetPoints();
       }).catch((error) => toast("측정항목을 불러오지 못했습니다: " + error.message, true));
@@ -8058,7 +8198,8 @@
       const point = kind === "aggregate" ? selectedAggregatePoint() : null;
       const selected = new Set(state.widgetDeviceGroupIds.map(Number));
       const groups = state.deviceGroups.filter((group) => group.enabled
-        && !selected.has(Number(group.id)) && (group.devices || []).length);
+        && !selected.has(Number(group.id)) && (group.devices || []).length
+        && (group.devices || []).every((device) => state.widgetPageDeviceIds?.has(Number(device.id))));
       const ready = kind !== "aggregate" || Boolean(point);
       const compatible = groups.filter((group) => !point || (group.devices || []).every(
         (device) => point.deviceIds.has(Number(device.id))));
@@ -8153,7 +8294,7 @@
     function fillWidgetItDevicePick() {
       if (!$("wPickItDevice")) return;
       const selected = new Set([...state.widgetDeviceIds, ...state.widgetItDeviceIds]);
-      const available = state.devices.filter((d) => !selected.has(d.id));
+      const available = state.devices.filter((d) => state.widgetPageDeviceIds?.has(Number(d.id)) && !selected.has(d.id));
       fillSelect(
         $("wPickItDevice"),
         available,
@@ -10213,6 +10354,53 @@
     const alarmStream = { socket: null, timer: null, user: null, cursor: 0, starting: false,
       syncing: false, queued: [], generation: 0 };
 
+    async function refreshAlarmNotifications() {
+      if (!state.token || !["ADMIN", "USER"].includes(state.role)) return;
+      const token = state.token;
+      try {
+        const [summary, result] = await Promise.all([
+          api("/api/manager/alarms/summary", { cache: "no-store" }),
+          api("/api/manager/alarms?page=1&size=8", { cache: "no-store" }),
+        ]);
+        if (state.token !== token) return;
+        const count = Number(summary.openCount) || 0;
+        $("alarmBadge").hidden = count === 0;
+        $("alarmBadge").textContent = count > 99 ? "99+" : String(count);
+        $("alarmBell").setAttribute("aria-label", `알람 알림 · 진행 중 ${count}건`);
+        $("alarmNoticeSummary").textContent = `진행 중 ${count}건`;
+        $("alarmNoticeList").innerHTML = (result.content || []).map((event) => {
+          const detail = event.details, gap = event.collectionGapDetails;
+          const title = detail ? `${detail.deviceName} · ${detail.pointName}` : gap ? `${gap.deviceName} · 데이터 수집 누락` : event.alarmType || "알람";
+          const status = event.clearedDt ? "복구" : "진행 중";
+          const severity = ({ WARNING: "주의", CRITICAL: "위험" })[event.severity] || event.severity || "알람";
+          return `<button type="button" class="alarm-notice" data-alarm-notice><strong>${esc(title)}</strong><small>${esc(severity)} · ${esc(status)} · ${esc(alarmTime(event.raisedDt))}</small></button>`;
+        }).join("") || '<div class="empty">최근 알람이 없습니다.</div>';
+      } catch (error) {
+        if (state.token === token) $("alarmNoticeList").textContent = "알람을 불러오지 못했습니다.";
+      }
+    }
+    function openAlarmHistory() {
+      $("alarmPopover").hidden = true;
+      $("alarmBell").setAttribute("aria-expanded", "false");
+      alarmUi.page = 1;
+      goTab("alarms");
+    }
+    $("alarmBell").onclick = () => {
+      const panel = $("alarmPopover");
+      panel.hidden = !panel.hidden;
+      $("alarmBell").setAttribute("aria-expanded", String(!panel.hidden));
+      if (!panel.hidden) refreshAlarmNotifications();
+    };
+    $("alarmNoticeAll").onclick = openAlarmHistory;
+    $("alarmNoticeList").onclick = (event) => { if (event.target.closest("[data-alarm-notice]")) openAlarmHistory(); };
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("#alarmNotifications")) {
+        $("alarmPopover").hidden = true;
+        $("alarmBell").setAttribute("aria-expanded", "false");
+      }
+    });
+    setInterval(refreshAlarmNotifications, 60000);
+
     function stopAlarmStream() {
       alarmStream.generation++;
       clearTimeout(alarmStream.timer);
@@ -10231,6 +10419,7 @@
       const id = Number(event?.id);
       if (!Number.isSafeInteger(id) || id <= alarmStream.cursor) return;
       alarmStream.cursor = id;
+      refreshAlarmNotifications();
       localStorage.setItem(alarmCursorKey(), String(id));
       const detail = event.details;
       const gap = event.collectionGapDetails;
@@ -11825,7 +12014,6 @@
 
     async function startEditWidget(id) {
       try {
-        await loadWidgetSources();
         const w = await api(`/api/manager/widgets/${id}`);
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
@@ -11840,6 +12028,8 @@
           $("wCreatePage").value = w.pageCode;
           $("wPage").value = w.pageCode;
         }
+        $("wCreatePage").disabled = true;
+        await loadWidgetSources();
         $("wName").value = w.name || "";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
