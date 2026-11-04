@@ -1,6 +1,7 @@
 // Models used by the showroom; files are kept locally for reliable display.
 export const SHOWROOM_MODELS = [
   { key: 'SR_RACK', label: '서버 랙 (전면 도어)', file: 'Inrow_Cooling_Rack.glb', width: .9, height: 2.35, depth: .9 },
+  { key: 'SR_DOUBLE_RACK', label: '서버 랙 (양문형)', file: 'rack_double_door.glb', width: .9, height: 2.35, depth: .9 },
   { key: 'SR_RDC', label: 'RDC 장비', file: 'rdc.glb', width: 1.2, height: 2.1, depth: 1.1 },
   { key: 'SR_INROW', label: '인로우 냉각기', file: 'inrow-cooler.glb', width: .9, height: 2.35, depth: .9 },
   { key: 'SR_INROW_MOLD', label: '인로우 프레임', file: 'in_row_frame.glb', width: 1.05, height: 1.05, depth: 1.45 },
@@ -23,7 +24,7 @@ export const SHOWROOM_MODELS = [
 ].map((model) => ({ ...model, category: (
   ['SR_DRAGINO_TH', 'SR_DRAGINO_DOOR'].includes(model.key) ? '센서' :
   ['SR_INROW_MOLD', 'SR_WALL_COIL'].includes(model.key) ? '프레임·구조물' :
-  ['SR_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER'].includes(model.key) ? '랙·서버' :
+  ['SR_RACK', 'SR_DOUBLE_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER'].includes(model.key) ? '랙·서버' :
   ['SR_INROW', 'SR_IMMERSION', 'SR_DLC_CDU'].includes(model.key) ? '냉각 설비' : '전력 설비'
 ) }));
 let catalogModels = SHOWROOM_MODELS;
@@ -31,7 +32,10 @@ export const setShowroomModels = (models) => {
   if (Array.isArray(models)) catalogModels = models;
 };
 export const showroomModelByKey = (key) => catalogModels.find((model) => model.key === key);
-export const showroomModelUrl = (model) => model.url || `/scene-assets/showroom/${encodeURIComponent(model.file)}`;
+export const showroomModelUrl = (model) => {
+  const url = model.url || `/scene-assets/showroom/${encodeURIComponent(model.file)}`;
+  return model.key === 'SR_DOUBLE_RACK' ? `${url}${url.includes('?') ? '&' : '?'}asset=20261103b` : url;
+};
 
 // The source RDC asset includes two unfolded side panels. In the room layout
 // we show the cabinet with those panels closed so it can stand beside a rack.

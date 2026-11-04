@@ -1,30 +1,108 @@
-<!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DCIM MQTT 모니터</title>
-<style>
-:root{--bg:#0b1220;--card:#121d2e;--line:#2a3e5b;--text:#eaf2fc;--muted:#91a6c0;--blue:#42c5f5;--green:#39d98a;--warn:#ffbd54;--bad:#ff687b}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% -20%,#17385d,transparent 35%),var(--bg);color:var(--text);font:14px Pretendard,"Segoe UI","Malgun Gothic",sans-serif}header{height:64px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:#0d1523}.brand{display:flex;gap:10px;align-items:center}.mark{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(135deg,#43cdfb,#3978ed);font-weight:800}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em}.brand strong{letter-spacing:.12em;font-size:13px}a{color:#b9dffc;text-decoration:none}main{max-width:1560px;margin:auto;padding:28px}.eyebrow{color:#78d4fa;font-size:11px;font-weight:800;letter-spacing:.13em}h1{margin:5px 0}.desc{margin:0;color:var(--muted)}.toolbar,.panel,.stat{background:var(--card);border:1px solid var(--line);border-radius:12px}.toolbar{display:grid;grid-template-columns:minmax(220px,1.15fr) 120px minmax(230px,1fr) minmax(280px,.9fr);grid-template-areas:"host port topic actions" "help help help actions";gap:10px 12px;align-items:end;margin:22px 0 14px;padding:17px}.field-host{grid-area:host}.field-port{grid-area:port}.field-topic{grid-area:topic}.toolbar-actions{grid-area:actions;display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end}.connection-help{grid-area:help;margin:0;color:var(--muted);font-size:12px}.connection-help code{color:#83d8fa}.toolbar-actions .status{min-width:0;padding:10px 3px;white-space:nowrap}label{display:block;margin-bottom:6px;color:#a9bdd3;font-size:12px;font-weight:700}input{height:38px;width:100%;padding:0 11px;border:1px solid #39516f;border-radius:7px;background:#0c1624;color:var(--text);outline:0}input:focus{border-color:var(--blue)}button{border:0;border-radius:7px;padding:9px 13px;background:#20324a;color:var(--text);font-weight:700;cursor:pointer}button.primary{background:var(--blue);color:#062033}button.danger{background:#542530;color:#ffdde2}button:disabled{opacity:.5;cursor:not-allowed}.status{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:12px;font-weight:700}.dot{width:9px;height:9px;flex:0 0 9px;border-radius:99px;background:#6b7b91}.dot.on{background:var(--green);box-shadow:0 0 0 3px #39d98a22}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.stats{display:flex;gap:12px;margin-bottom:14px}.stat{min-width:145px;padding:12px 15px}.stat span{display:block;color:var(--muted);font-size:12px}.stat b{display:block;margin-top:4px;font-size:22px}.workspace{display:grid;grid-template-columns:minmax(220px,.55fr) minmax(380px,1.15fr) minmax(330px,.9fr);gap:14px}.panel{overflow:hidden}.head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}.head h2{margin:0;font-size:14px}.head span{color:var(--muted);font-size:12px}.scroll{max-height:590px;overflow:auto}.topic,.message{width:100%;border-radius:0;border-bottom:1px solid #21314a;background:transparent;text-align:left}.topic{display:flex;justify-content:space-between;gap:8px;padding:12px 15px}.topic:hover,.topic.active,.message:hover,.message.active{background:#1b3048}.topic code,.message code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#71cff8}.topic b{color:#71cff8}.message{display:grid;grid-template-columns:94px minmax(0,1fr);gap:10px;padding:13px 16px;font:inherit}.message time{color:#9bb0c9;font-size:12px}.message code{grid-column:2}.message pre{grid-column:2;overflow:hidden;margin:0;color:#d6e1ef;white-space:nowrap;text-overflow:ellipsis;font:12px ui-monospace,Consolas,monospace}.empty{padding:75px 18px;color:var(--muted);text-align:center}.detail{height:590px;padding:16px;background:#0c1624}.detail code{display:block;margin-bottom:10px;color:#71cff8}.detail pre{height:calc(100% - 30px);overflow:auto;margin:0;white-space:pre-wrap;word-break:break-word;color:#dce8f8;font:12px/1.65 ui-monospace,Consolas,monospace}.hint{padding:11px 15px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media(max-width:1250px){.toolbar{grid-template-columns:1fr 1fr;grid-template-areas:"host port" "topic topic" "help help" "actions actions"}.toolbar-actions{justify-self:start;min-width:360px}.workspace{grid-template-columns:260px minmax(0,1fr)}.detail-panel{grid-column:1/-1}.detail{height:280px}.message{grid-template-columns:90px minmax(0,1fr)}}@media(max-width:720px){header{padding:0 14px}header>div:last-child{display:none}main{padding:20px 14px}.toolbar{grid-template-columns:1fr;grid-template-areas:"host" "port" "topic" "help" "actions"}.toolbar-actions{grid-template-columns:1fr 1fr;min-width:0;width:100%}.toolbar-actions .status{grid-column:1/-1}.stats{flex-wrap:wrap}.workspace{grid-template-columns:1fr}.detail-panel{grid-column:auto}.message{grid-template-columns:80px 1fr}.message pre{display:none}}
-/* Keep connection controls visible while topic, message and JSON panes scroll independently. */
-html,body{height:100%;overflow:hidden}
-body{display:flex;flex-direction:column}
-header{flex:none}
-main{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;width:100%;max-width:none;padding:18px 24px;overflow:hidden}
-main>.eyebrow,main>h1,main>.desc,main>.toolbar,main>.stats{flex:none}
-.toolbar{margin:14px 0 12px}
-.workspace{flex:1 1 auto;min-height:0;grid-template-columns:minmax(210px,.55fr) minmax(360px,1.15fr) minmax(320px,.9fr)}
-.workspace>.panel{display:flex;flex-direction:column;min-height:0}
-.workspace .head,.workspace .hint{flex:none}
-.workspace .scroll{flex:1 1 auto;min-height:0;max-height:none}
-.workspace .detail{flex:1 1 auto;min-height:0;height:auto}
-.workspace .detail pre{height:calc(100% - 30px)}
-button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-@media(max-width:1250px){.workspace{grid-template-columns:260px minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(190px,.65fr)}.detail-panel{min-height:0}}
-@media(max-width:720px){main{overflow:auto;padding:16px 14px}.workspace{display:flex;flex-direction:column;overflow:visible;flex:none}.workspace>.panel{min-height:220px}.workspace .scroll{max-height:260px}.workspace .detail{height:280px;flex:none}}
-body.embedded header{display:none}body.embedded main{padding-top:14px}
-</style></head>
-<body><script>if(new URLSearchParams(location.search).has('embedded'))document.body.classList.add('embedded');</script><header><div class="brand"><i class="mark">D</i><div><strong>DEFOG</strong><small>DCIM PLATFORM · MQTT MONITOR</small></div></div><div><a href="/ops-console.html">운영 콘솔</a> · <a href="/widget-dashboard.html">위젯 보드</a></div></header>
-<main><span class="eyebrow">LIVE MESSAGE INSPECTOR</span><h1>MQTT 모니터</h1><p class="desc">Manager가 MQTT를 구독하고 새 메시지가 들어오는 즉시 원문 payload를 화면에 전달합니다.</p>
-<section class="toolbar"><div class="field-host"><label>MQTT 호스트 / IP</label><input id="host" placeholder="예: 192.168.10.14" spellcheck="false"></div><div class="field-port"><label>MQTT 포트</label><input id="port" inputmode="numeric" placeholder="1883" spellcheck="false"></div><div class="field-topic"><label>구독 토픽</label><input id="subscription" spellcheck="false"></div><p class="connection-help">Sensor Data와 같은 TCP MQTT 구독 방식입니다. polling 없이 새 메시지만 WebSocket으로 전달합니다. 예: <code>dcim/#</code>, <code>dcim/sensor/realtime</code></p><div class="toolbar-actions"><div class="status"><i id="dot" class="dot"></i><span id="status">연결 안 됨</span></div><button id="connect" class="primary">연결</button><button id="disconnect" class="danger" disabled>연결 해제</button></div></section>
-<section class="stats"><div class="stat"><span>수신 메시지</span><b id="messageCount">0</b></div><div class="stat"><span>수신 토픽</span><b id="topicCount">0</b></div><div class="stat"><span>화면 보관</span><b>500건</b></div><button id="clear">메시지 비우기</button></section>
-<section class="workspace"><aside class="panel"><div class="head"><h2>수신 토픽</h2><span id="topicLabel">전체</span></div><div id="topics" class="scroll"><div class="empty">메시지를 기다리고 있습니다.</div></div></aside><section class="panel"><div class="head"><h2>메시지</h2><span id="filterLabel">전체 토픽</span></div><div id="messages" class="scroll"><div class="empty">MQTT 연결 후 새 메시지를 기다립니다.</div></div><div class="hint">목록을 선택하면 오른쪽에서 원문 JSON을 확인할 수 있습니다.</div></section><aside class="panel detail-panel"><div class="head"><h2>원문 JSON</h2><span>RAW PAYLOAD</span></div><div class="detail"><code id="detailTopic">메시지를 선택하세요.</code><pre id="detailPayload"></pre></div></aside></section></main>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPATIVIA · MQTT 모니터</title>
+  <style>
+    :root { color-scheme:dark; --bg:#090e17; --panel:#121a29; --line:#2a3a52; --text:#e7edf8; --muted:#93a7c1; --accent:#35bdf4; --ok:#47d58c; --warn:#ffbd54; --bad:#ff6274; }
+    * { box-sizing:border-box; }
+    html,body { height:100%; }
+    body { display:flex; flex-direction:column; margin:0; overflow:hidden; background:var(--bg); color:var(--text); font:14px/1.6 Pretendard,"Segoe UI","Malgun Gothic",sans-serif; }
+    header { display:flex; align-items:center; flex-wrap:wrap; gap:14px; flex:none; padding:14px 24px; border-bottom:1px solid var(--line); background:#0d1522; }
+    .brand { display:flex; align-items:center; gap:10px; margin-right:auto; }
+    .mark { width:36px; height:36px; display:grid; place-items:center; border-radius:9px; color:#06111c; background:var(--accent); font-size:20px; font-weight:900; }
+    .brand strong { font-size:14px; letter-spacing:.12em; }
+    nav { display:flex; flex-wrap:wrap; gap:6px; }
+    nav a { padding:7px 10px; border:1px solid var(--line); border-radius:7px; color:var(--text); text-decoration:none; font-size:12px; }
+    nav a:hover,nav a[aria-current="page"] { background:#1c2a40; border-color:var(--accent); }
+    a { color:var(--accent); text-underline-offset:3px; }
+    main { display:flex; flex:1 1 auto; flex-direction:column; gap:12px; min-height:0; width:100%; padding:18px 24px; overflow:hidden; }
+    .intro,.toolbar,.stats { flex:none; }
+    h1 { margin:0 0 4px; font-size:22px; }
+    .desc { margin:0; color:var(--muted); font-size:13px; }
+    .standalone-help { margin:8px 0 0; color:var(--muted); font-size:13px; }
+    .toolbar,.panel,.stat { background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+    .toolbar { display:grid; grid-template-columns:minmax(180px,1fr) 100px minmax(180px,1fr) auto; grid-template-areas:"host port topic actions" "help help help help"; gap:10px 12px; align-items:end; padding:14px; }
+    .field-host { grid-area:host; }
+    .field-port { grid-area:port; }
+    .field-topic { grid-area:topic; }
+    .toolbar-actions { grid-area:actions; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+    .connection-help { grid-area:help; margin:0; color:var(--muted); font-size:12px; }
+    .connection-help code { color:var(--accent); }
+    label { display:block; margin-bottom:5px; color:var(--muted); font-size:12px; }
+    input,button { padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:#182235; color:var(--text); font:inherit; font-size:13px; }
+    input { width:100%; min-width:0; }
+    button { cursor:pointer; font-weight:700; }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#06111c; }
+    button.danger { background:#542530; border-color:#75404b; color:#ffdde2; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .status { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; }
+    .dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:#6b7b91; }
+    .dot.on { background:var(--ok); }
+    .dot.warn { background:var(--warn); }
+    .dot.bad { background:var(--bad); }
+    .stats { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+    .stat { min-width:130px; padding:8px 14px; }
+    .stat span { display:block; color:var(--muted); font-size:12px; }
+    .stat b { font-size:20px; font-variant-numeric:tabular-nums; }
+    .stats button { margin-left:auto; }
+    .workspace { display:grid; grid-template-columns:minmax(180px,.55fr) minmax(300px,1.15fr) minmax(280px,.9fr); gap:12px; flex:1 1 auto; min-height:0; }
+    .panel { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
+    .head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
+    .head h2 { flex:none; margin:0; font-size:14px; }
+    .head span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:12px; }
+    .scroll { flex:1 1 auto; min-height:0; overflow:auto; }
+    .topic,.message { width:100%; border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; text-align:left; }
+    .topic { display:flex; justify-content:space-between; gap:8px; padding:12px 14px; }
+    .topic:hover,.topic.active,.message:hover,.message.active { background:#1c2a40; }
+    .topic code,.message code { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--accent); }
+    .topic b { color:var(--accent); }
+    .message { display:grid; grid-template-columns:90px minmax(0,1fr); gap:6px 10px; padding:12px 14px; font-weight:400; }
+    .message time { color:var(--muted); font-size:12px; }
+    .message code,.message pre { grid-column:2; }
+    .message pre { margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:12px Consolas,monospace; }
+    .empty { padding:38px 16px; color:var(--muted); text-align:center; }
+    .detail { display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; padding:14px; background:#0d1522; }
+    .detail code { color:var(--accent); overflow-wrap:anywhere; }
+    .detail pre { flex:1 1 auto; min-height:0; margin:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:12px/1.65 Consolas,monospace; }
+    .hint { margin:0; padding:10px 14px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+    :is(button,input,a,[tabindex]):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    @media(max-width:1200px) { nav { flex-basis:100%; } main { overflow:auto; } .toolbar { grid-template-columns:1fr 100px 1fr; grid-template-areas:"host port topic" "help help help" "actions actions actions"; } .workspace { grid-template-columns:220px minmax(0,1fr); grid-template-rows:minmax(220px,1fr) minmax(200px,.65fr); min-height:460px; flex:none; } .detail-panel { grid-column:1/-1; } }
+    @media(max-height:700px) { main { overflow:auto; } .workspace { min-height:460px; flex:none; } }
+    @media(max-width:760px) { header { padding:12px 14px; } main { overflow:auto; padding:16px 14px; } .toolbar { grid-template-columns:1fr; grid-template-areas:"host" "port" "topic" "help" "actions"; } .toolbar-actions .status { flex-basis:100%; } .stat { min-width:0; flex:1; } .stats button { margin-left:0; } .workspace { display:flex; flex-direction:column; min-height:0; flex:none; } .scroll { max-height:280px; min-height:180px; } .detail { height:280px; flex:none; } .message { grid-template-columns:85px minmax(0,1fr); } }
+    /* Keep the shell's navigation and login when this page is embedded. */
+    body.embedded header,body.embedded .standalone-help { display:none; }
+  </style>
+</head>
+<body>
+  <script>if(new URLSearchParams(location.search).has('embedded'))document.body.classList.add('embedded');</script>
+  <header>
+    <div class="brand"><span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false"><path d="M6 10 16 4l10 6v12l-10 6L6 22Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m6 10 10 6 10-6M16 16v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/></svg></span><strong>SPATIVIA</strong></div>
+    <nav aria-label="주요 화면"><a href="/">시작</a><a href="/ops-console.html">운영 콘솔</a><a href="/widget-dashboard.html?pageCode=dashboard">위젯 대시보드</a><a href="/ops-console.html?page=analysis">분석</a><a href="/live-test.html">실시간 측정값</a><a href="/mqtt-monitor.html" aria-current="page">MQTT 모니터</a></nav>
+  </header>
+  <main>
+    <div class="intro">
+      <h1>MQTT 모니터</h1>
+      <p class="desc">서버 주소와 구독 토픽을 입력해 연결한 뒤, 토픽과 메시지를 선택해 원문을 확인하세요.</p>
+      <p class="standalone-help">관리자 계정이 필요합니다. 먼저 <a href="/ops-console.html">운영 콘솔에서 로그인</a>한 뒤 이 화면으로 돌아오세요. 운영 콘솔의 MQTT 모니터 메뉴에서도 사용할 수 있습니다.</p>
+    </div>
+    <section class="toolbar" aria-label="메시지 수신 연결">
+      <div class="field-host"><label for="host">MQTT 서버 주소 / IP</label><input id="host" placeholder="예: 192.168.10.14" spellcheck="false" /></div>
+      <div class="field-port"><label for="port">포트 (TCP)</label><input id="port" inputmode="numeric" placeholder="1883" spellcheck="false" /></div>
+      <div class="field-topic"><label for="subscription">구독 토픽</label><input id="subscription" spellcheck="false" /></div>
+      <p class="connection-help">운영 서버에서 접근할 수 있는 MQTT 주소를 입력하세요. 연결 후 들어오는 새 메시지만 표시합니다. 전체 토픽: <code>#</code> · 특정 경로: <code>dcim/#</code></p>
+      <div class="toolbar-actions"><div class="status" role="status"><span id="dot" class="dot" aria-hidden="true"></span><span id="status">연결 안 됨</span></div><button id="connect" class="primary" type="button">연결</button><button id="disconnect" class="danger" type="button" disabled>연결 해제</button></div>
+    </section>
+    <section class="stats" aria-label="메시지 보관 현황">
+      <div class="stat"><span>보관 메시지</span><b id="messageCount">0</b></div><div class="stat"><span>수신 토픽 · 누적</span><b id="topicCount">0</b></div><div class="stat"><span>최대 보관</span><b>500건</b></div><button id="clear" type="button">화면 기록 비우기</button>
+    </section>
+    <section class="workspace" aria-label="수신 메시지 확인">
+      <aside class="panel"><div class="head"><h2>1. 토픽 선택</h2><span id="topicLabel">전체</span></div><div id="topics" class="scroll" tabindex="0" aria-label="수신 토픽 목록"><div class="empty">연결 후 새 메시지를 기다립니다.</div></div><p class="hint">토픽별 숫자는 화면 기록을 비운 뒤의 누적 수신 건수입니다.</p></aside>
+      <section class="panel"><div class="head"><h2>2. 메시지 선택</h2><span id="filterLabel">전체 토픽</span></div><div id="messages" class="scroll" tabindex="0" aria-label="수신 메시지 목록"><div class="empty">연결 후 새 메시지를 기다립니다.</div></div><p class="hint">최신 500건을 보관합니다. 메시지를 선택하면 원문이 표시됩니다.</p></section>
+      <aside class="panel detail-panel"><div class="head"><h2>3. 메시지 원문</h2><span>JSON · 텍스트</span></div><div class="detail"><code id="detailTopic">메시지를 선택하세요.</code><pre id="detailPayload" tabindex="0" aria-label="선택한 메시지 원문"></pre></div></aside>
+    </section>
+  </main>
 <script>
 const $=id=>document.getElementById(id),MAX=500,sessionId=localStorage.getItem('mqttMonitorSessionId')||crypto.randomUUID(),state={messages:[],counts:new Map(),topic:null,message:null,socket:null,connected:false};localStorage.setItem('mqttMonitorSessionId',sessionId);
 const defaultMonitorHost=location.port==='21080'?'dcim-new-mqtt-broker':(location.hostname||'localhost'),savedMonitorHost=localStorage.getItem('mqttMonitorHost'),savedMonitorHostIsStale=location.port==='21080'&&savedMonitorHost&&([location.hostname,'localhost','127.0.0.1'].includes(savedMonitorHost));if(savedMonitorHostIsStale)localStorage.removeItem('mqttMonitorHost');$('host').value=savedMonitorHostIsStale?defaultMonitorHost:(savedMonitorHost||defaultMonitorHost);$('port').value=localStorage.getItem('mqttMonitorPort')||'1883';$('subscription').value=localStorage.getItem('mqttMonitorSubscription')||'#';

@@ -242,6 +242,7 @@ GPU 에이전트, Sensor Data 수신·Influx 저장, 구성요소별 분석 및 
 묶음 이름을 저장하려면 `sql/migration/20261101_scene_equipment_group_names.sql`을 적용합니다. 기존 묶음은 유지되며 목록에서 이름을 지정할 수 있습니다.
 설비 잠금 상태를 저장하려면 `sql/migration/20261101_scene_equipment_lock.sql`을 적용합니다.
 랙별 표시 색상과 중복 랙 선택 목록을 정리하려면 `sql/migration/20261103_rack_scene_color.sql`을 적용합니다. 기존 도면은 유지됩니다.
+양문형 서버 랙을 등록하려면 `sql/migration/20261103_double_door_rack.sql`을 적용합니다.
 랙 측면·후면 장비의 3D 표시 위치를 저장하려면 `sql/migration/20261101_rack_visual_position.sql`을 적용합니다. 좌표는 랙 크기에 대한 0~1 상대값이며 기존 배치는 그대로 유지됩니다.
 실제 장비를 연결하기 전에 3D 모델을 랙에 배치하려면 `sql/migration/20261101_rack_model_placement.sql`을 적용합니다. 장비 연결 시 모델 배치를 실제 장비의 랙 배치로 전환합니다.
 랙에서 선택할 3D 모델을 관리하려면 `sql/migration/20261101_rack_installable_models.sql`을 적용합니다. 최초에는 GPU 서버, DLC 서버, 가로형·세로형 PDU를 허용하며 이후 3D 자산 관리에서 변경할 수 있습니다.

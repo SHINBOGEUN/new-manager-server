@@ -5,6 +5,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
 final class QueryRanges {
@@ -13,30 +14,34 @@ final class QueryRanges {
     }
 
     static Range resolve(PageWidgetChartRangePreset preset) {
+        return resolve(preset, ZoneOffset.UTC);
+    }
+
+    static Range resolve(PageWidgetChartRangePreset preset, ZoneId zone) {
         Instant now = Instant.now();
-        LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
+        LocalDate todayUtc = LocalDate.now(zone);
         return switch (preset) {
             case last_24h -> new Range(now.minus(24, ChronoUnit.HOURS), now);
-            case today -> new Range(todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC), now);
+            case today -> new Range(todayUtc.atStartOfDay(zone).toInstant(), now);
             case yesterday -> {
                 LocalDate yesterday = todayUtc.minusDays(1);
                 yield new Range(
-                        yesterday.atStartOfDay().toInstant(ZoneOffset.UTC),
-                        todayUtc.atStartOfDay().toInstant(ZoneOffset.UTC)
+                        yesterday.atStartOfDay(zone).toInstant(),
+                        todayUtc.atStartOfDay(zone).toInstant()
                 );
             }
             case last_3d -> new Range(now.minus(3, ChronoUnit.DAYS), now);
             case last_7d -> new Range(now.minus(7, ChronoUnit.DAYS), now);
             case this_month -> new Range(
-                    todayUtc.withDayOfMonth(1).atStartOfDay().toInstant(ZoneOffset.UTC),
+                    todayUtc.withDayOfMonth(1).atStartOfDay(zone).toInstant(),
                     now
             );
             case last_month -> {
                 LocalDate firstOfThisMonth = todayUtc.withDayOfMonth(1);
                 LocalDate firstOfLastMonth = firstOfThisMonth.minusMonths(1);
                 yield new Range(
-                        firstOfLastMonth.atStartOfDay().toInstant(ZoneOffset.UTC),
-                        firstOfThisMonth.atStartOfDay().toInstant(ZoneOffset.UTC)
+                        firstOfLastMonth.atStartOfDay(zone).toInstant(),
+                        firstOfThisMonth.atStartOfDay(zone).toInstant()
                 );
             }
         };

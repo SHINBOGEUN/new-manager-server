@@ -47,7 +47,7 @@ class ShowroomSceneModelTest {
         assertThrows(IllegalArgumentException.class, () -> item.setGroupName("그룹 없음"));
     }
     @Test void showroomModelsCanBeStoredAsEquipment() {
-        for (String key : new String[]{"SR_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK",
+        for (String key : new String[]{"SR_RACK", "SR_DOUBLE_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK",
                 "SR_INROW_RACK", "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK",
                 "SR_DLC_CDU", "SR_DLC_SERVER", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER"}) {
             DevicePageSceneItem item = new DevicePageSceneItem();

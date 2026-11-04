@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <title>DCIM 운영 콘솔</title>
+  <title>SPATIVIA · 운영 콘솔</title>
+  <script src="/ops-navigation.js?v=20261103a"></script>
   <script src="/rack-widget-layout.js?v=20261103b"></script>
   <script src="/rack-widget-chart.js?v=20261103a"></script>
   <style>
@@ -1353,11 +1354,6 @@
     .metric-modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
     .widget-editor-head { display:flex; justify-content:space-between; align-items:center; gap:12px; position:sticky; top:0; z-index:4; margin:0 -22px; padding:14px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
     .widget-editor-head h2 { margin:2px 0 0; font-size:18px; }
-    .widget-editor-steps { display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 12px; }
-    .widget-editor-steps button { flex:1 1 160px; min-height:42px; text-align:left; background:var(--surface2); border:1px solid var(--line); color:var(--muted); }
-    .widget-editor-steps button.active { border-color:var(--accent); color:var(--text); background:var(--accent-soft); }
-    .widget-editor-steps button:disabled { opacity:.6; cursor:not-allowed; }
-    .widget-step-description { margin:0 0 16px; font-size:13px; line-height:1.5; }
     #wEditorCard [data-widget-stage].widget-step-hidden { display:none !important; }
     .widget-review { padding:16px; margin-top:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); line-height:1.7; }
     .widget-review .pick-item { margin-top:6px; }
@@ -1366,6 +1362,56 @@
     .widget-page-preview-head p { margin:3px 0 0; font-size:12px; }
     .widget-page-preview iframe { display:block; width:100%; height:min(48vh,540px); min-height:300px; border:0; background:#090f19; }
     .widget-editor-footer { display:flex; justify-content:space-between; align-items:center; gap:10px; position:sticky; bottom:-18px; z-index:4; margin:18px -22px -18px; padding:12px 22px; border-top:1px solid var(--line); background:var(--surface); }
+    .widget-form-grid { display:grid; grid-template-columns:320px minmax(0,1fr); grid-template-areas:'basic sources' 'settings sources'; gap:18px; align-items:start; margin:22px 0 12px; }
+    .widget-form-section { min-width:0; padding:18px; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb,var(--surface2) 45%,var(--surface)); }
+    .widget-form-section:nth-child(1) { grid-area:basic; }
+    .widget-form-section:nth-child(2) { grid-area:sources; align-self:stretch; }
+    .widget-form-section:nth-child(3) { grid-area:settings; }
+    .widget-form-section h3 { margin:0 0 18px; color:var(--text); font-size:13px; font-weight:700; letter-spacing:.02em; }
+    .widget-form-section .fields { grid-template-columns:minmax(0,1fr); gap:12px; }
+    .widget-form-section .field.full { grid-column:auto; }
+    .widget-form-section .grid2 { grid-template-columns:minmax(0,1fr); }
+    .widget-form-section .row > select, .widget-form-section .row > input { min-width:0; }
+    .widget-preview-details { margin:0 0 15px; color:var(--muted); }
+    .widget-preview-details summary { cursor:pointer; padding:10px 0; font-size:12px; }
+    #wEditorCard .field { font-size:12px; gap:7px; }
+    #wEditorCard input:not([type=checkbox]):not([type=radio]), #wEditorCard select { min-height:38px; font-size:12px; border-radius:8px; }
+    #wEditorCard button { font-size:12px; white-space:nowrap; }
+    #wEditorCard .point-grid { gap:8px; padding:0; border:0; background:transparent; max-height:310px; margin:12px 0; }
+    #wEditorCard .point-grid label { gap:10px; padding:11px; border:1px solid var(--line); border-radius:9px; background:var(--surface); align-items:center; min-width:0; }
+    #wEditorCard .point-grid label:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+    #wEditorCard .point-grid label:has(input:disabled) { opacity:.5; }
+    #wEditorCard .point-grid input { flex:none; width:15px; height:15px; min-height:0; accent-color:var(--accent); }
+    #wEditorCard .point-grid label > span { min-width:0; overflow-wrap:anywhere; }
+    #wEditorCard .point-grid b { display:block; font-size:12px; font-weight:600; }
+    #wEditorCard .point-grid small { display:block; margin-top:4px; color:var(--muted); font-size:10px; font-weight:400; }
+    #wEditorCard #wDeviceList .empty { border:0; background:none; text-align:left; color:var(--muted); font-size:12px; }
+    #wEditorCard #wDataFreshnessBlock { margin-top:18px !important; }
+    .widget-design-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:9px; }
+    .widget-design-option { position:relative; cursor:pointer; min-width:0; }
+    .widget-design-option > input { position:absolute; opacity:0; width:1px; height:1px; }
+    .widget-design-option > span { display:block; padding:7px; border:1px solid var(--line); border-radius:9px; font-size:11px; text-align:center; color:var(--muted); }
+    .widget-design-option:has(input:checked) > span { border-color:var(--accent); color:var(--text); background:var(--accent-soft); box-shadow:0 0 0 1px var(--accent); }
+    .widget-design-option:has(input:focus-visible) > span { outline:2px solid var(--accent); outline-offset:3px; }
+    .widget-design-sample { display:flex; flex-direction:column; gap:7px; padding:10px 6px; margin-bottom:7px; border:1px solid var(--line); border-radius:7px; background:var(--surface2); text-align:left; }
+    .widget-design-sample small { font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .widget-design-sample b { color:#38d399; font-size:18px; }
+    .widget-design-sample em { font-size:9px; color:var(--muted); font-style:normal; }
+    .widget-design-option[data-style=minimal] .widget-design-sample { background:var(--surface); border-radius:2px; }
+    .widget-design-option[data-style=minimal] b { color:var(--text); }
+    .widget-design-option[data-style=vivid] .widget-design-sample { background:linear-gradient(140deg,#16435b,#101929); border-color:#317eaa; box-shadow:0 0 10px #18bfff22; }
+    .widget-design-option[data-style=vivid] b { color:#4edbff; text-shadow:0 0 10px #18bfff66; }
+    .widget-preview-card { --preview-color:#54cbf3; display:flex; align-items:center; gap:14px; min-height:105px; margin-top:10px; padding:16px; border:1px solid color-mix(in srgb,var(--preview-color) 20%,#34445b); border-top:2px solid var(--preview-color); border-radius:10px; background:color-mix(in srgb,var(--preview-color) 6%,#121a29); color:#e7edf8; }
+    .widget-preview-card[data-style=minimal] { border:0; border-left:2px solid var(--preview-color); border-radius:0; background:#121a29; }
+    .widget-preview-card[data-style=vivid] { background:linear-gradient(135deg,color-mix(in srgb,var(--preview-color) 10%,#121a29),#121a29); }
+    .widget-preview-icon { display:grid; place-items:center; flex:none; width:42px; height:42px; border-radius:12px; color:var(--preview-color); background:color-mix(in srgb,var(--preview-color) 14%,transparent); font-size:22px; }
+    .widget-preview-card small { display:block; color:#93a7c1; font-size:11px; margin-bottom:5px; }
+    .widget-preview-card strong { color:var(--preview-color); font-size:27px; line-height:1.1; }
+    .widget-preview-card em { color:var(--preview-color); font-size:14px; font-style:normal; margin-left:4px; }
+    .widget-color-control { display:flex; align-items:center; gap:10px; margin-top:16px; font-size:12px; }
+    #wVisualColor { width:40px; min-height:32px !important; height:32px; padding:2px; cursor:pointer; }
+    @media (max-width:900px) { .widget-form-grid { grid-template-columns:280px minmax(0,1fr); } #wEditorCard .point-grid { grid-template-columns:1fr; } }
+    @media (max-width:700px) { .widget-form-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:'basic' 'sources' 'settings'; } }
     @media (max-width:700px) { #wEditorCard, #calculatedMetricCard { width:100vw; max-height:100vh; height:100vh; border-radius:0; } .widget-editor-footer { flex-wrap:wrap; } }
 
     /* Shared registration and management workspace */
@@ -1576,6 +1622,7 @@
     @media (max-width:600px) { #rackPreviewModal { padding:8px; } #rackPreviewModal .rack-preview { max-height:calc(100dvh - 16px); } #rackPreviewModal .rack-preview-head { padding:13px 15px; } #rackPreviewModal .rack-preview-body { padding:12px; } #rackPreviewModal .rack-detail-tabs { width:100%; } #rackPreviewModal .rack-detail-tabs button { flex:1; padding:7px; } }
 
   </style>
+  <link rel="stylesheet" href="/ops-workspace.css?v=20261103a">
 </head>
 <body>
   <header class="top">
@@ -1603,54 +1650,39 @@
     <div class="top-time"><span id="topDate"></span><strong id="topClock"></strong></div>
     <div class="top-links">
       <button type="button" class="ghost theme-toggle" id="themeToggle" title="화면 테마 변경">☀ 라이트</button>
-      <a class="chip" href="/">도구 목록</a>
+      <button type="button" class="ghost" data-quick-tab="notes">도움말</button>
     </div>
   </header>
 
   <aside class="side" id="tabs">
-    <div class="side-brand"><i>D</i><div><strong>DEFOG</strong><span>DCIM PLATFORM</span></div></div>
-    <div class="group">시작</div>
-    <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 현황 · 다음 할 일</small></button>
-    <div class="group">운영</div>
-    <button type="button" data-tab="wizard" data-role-gate="admin">장비 추가<small>등록부터 수집까지</small></button>
-    <button type="button" data-tab="devices">장비 목록<small>통신 · 수집 연결</small></button>
-    <button type="button" data-tab="assets">자산관리<small>Rack · U · 이미지</small></button>
-    <button type="button" data-tab="scene-models" data-role-gate="admin">3D 자산 관리<small>GLB · 건축 · 공장 설비</small></button>
-    <button type="button" data-tab="rack-overview">랙 현황<small>점유 U · 설치 장비</small></button>
-    <button type="button" data-tab="device-groups">장비 그룹<small>IT · Cooling · 운영 분류</small></button>
-    <button type="button" data-tab="tasks">수집 작업<small>Task · 주기 그룹</small></button>
-    <button type="button" data-tab="collection-status">수집 상태<small>지연 · 데이터 없음</small></button>
-    <button type="button" data-tab="alarms" data-role-gate="admin-user">알람 · 임계값<small>이력 · 경보 기준</small></button>
-    <button type="button" data-tab="device-pages" data-role-gate="admin-user">페이지 장비<small>페이지별 표시 대상</small></button>
-    <div class="group">모니터링 화면</div>
-    <button type="button" data-tab="dashboard-page">Dashboard<small>운영 현황 위젯</small></button>
-    <button type="button" data-tab="environment-page">Environment<small>환경 모니터링 위젯</small></button>
-    <button type="button" data-tab="cooling-page">Cooling<small>냉각 설비 위젯</small></button>
-    <button type="button" data-tab="analysis">분석<small>측정값 이력 · 비교 차트</small></button>
-    <button type="button" data-tab="live-telemetry">실시간 텔레메트리<small>MQTT 최신값 · 차트</small></button>
-    <button type="button" data-tab="mqtt-monitor" data-role-gate="admin">MQTT 모니터<small>토픽 · 메시지 확인</small></button>
-    <div class="group">기준 정보</div>
-    <button type="button" data-tab="locations">위치<small>존 · Path · 랙</small></button>
-    <button type="button" data-tab="models">장비 모델<small>OID · 측정 항목</small></button>
-    <button type="button" data-tab="codes" data-role-gate="admin-user">공통코드<small>그룹 · 코드 값</small></button>
-    <div class="group">LoRa / Dragino</div>
-    <button type="button" data-tab="lora-collection-status">MQTT 수집 상태<small>LoRa · GPU 저장 확인</small></button>
-    <button type="button" data-tab="lora-mqtt-sources">MQTT 수집 소스<small>Broker · Topic · 연결 상태</small></button>
-    <button type="button" data-tab="lora-endpoints">MQTT 장비 식별자<small>MAC · UUID · devEUI 연결</small></button>
-    <button type="button" data-tab="lora-model-mapping">MQTT 모델 포인트<small>LoRa · GPU · 공통 MQTT</small></button>
-    <div class="group">시스템</div>
-    <button type="button" data-tab="users" data-role-gate="admin">사용자 관리<small>계정 · 역할 분류</small></button>
-    <button type="button" data-tab="notes">API 안내<small>콘솔 커버리지</small></button>
-    <div class="side-footer"><span class="status-pulse"></span><div><strong>Manager Online</strong><small>Operations workspace</small></div></div>
+    <div class="side-brand"><i><svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false"><path d="M6 10 16 4l10 6v12l-10 6L6 22Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m6 10 10 6 10-6M16 16v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/></svg></i><div><strong>SPATIVIA</strong><span>DCIM PLATFORM</span></div></div>
+    <label class="side-search"><input id="workspaceSearch" type="search" placeholder="메뉴 · 기능 찾기" aria-label="메뉴 또는 기능 검색"></label>
+    <div id="workspaceSearchResults" role="region" aria-label="검색 결과" hidden></div>
+    <div class="group">모니터링</div>
+    <button type="button" data-tab="home" class="active">한눈에 보기<small>운영 상태와 확인할 알람</small></button>
+    <button type="button" data-tab="dashboard-page">대시보드<small>주요 지표 · 위젯</small></button>
+    <button type="button" data-tab="environment-page">공간 · 환경<small>2D · 3D 도면과 센서</small></button>
+    <button type="button" data-tab="cooling-page">냉각 모니터링<small>냉각 설비와 측정값</small></button>
+    <div class="group">운영 관리</div>
+    <button type="button" data-tab="devices">장비 관리<small>등록 · 통신 · 그룹</small></button>
+    <button type="button" data-tab="assets">자산 · 랙<small>자산 · 랙 배치 · 3D 모델</small></button>
+    <button type="button" data-tab="collection-status">데이터 수집<small>수집 상태 · 작업 · MQTT</small></button>
+    <button type="button" data-tab="alarms" data-role-gate="admin-user">알람<small>발생 이력 · 경보 기준</small></button>
+    <button type="button" data-tab="analysis">데이터 분석<small>이력 조회 · 비교</small></button>
+    <div class="group">관리</div>
+    <button type="button" data-tab="locations">설정<small>위치 · 모델 · 화면 · 계정</small></button>
+    <button type="button" data-tab="notes">사용 가이드<small>처음 시작하기</small></button>
+    <div class="side-footer"><span class="status-pulse"></span><div><strong>SPATIVIA</strong><small>시설 운영 관리</small></div></div>
   </aside>
   <button type="button" class="side-backdrop" id="sideBackdrop" aria-label="메뉴 닫기"></button>
 
   <main class="content">
+    <nav class="workspace-context" id="workspaceContext" aria-label="업무 화면 이동" hidden><div class="workspace-path" id="workspacePath"></div><div class="workspace-nav" id="workspaceNav"></div><p class="workspace-hint" id="workspaceHint"></p></nav>
     <div class="login-experience">
       <section class="login-promo">
-        <div class="login-logo"><i>D</i><div><strong>DEFOG</strong><span>DATA CENTER INTELLIGENCE</span></div></div>
+        <div class="login-logo"><i><svg viewBox="0 0 32 32" width="24" height="24" aria-hidden="true" focusable="false"><path d="M6 10 16 4l10 6v12l-10 6L6 22Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m6 10 10 6 10-6M16 16v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/></svg></i><div><strong>SPATIVIA</strong><span>DATA CENTER INTELLIGENCE</span></div></div>
         <div class="login-copy"><span class="eyebrow">UNIFIED OPERATIONS</span><h1>복잡한 데이터센터를<br/>하나의 흐름으로.</h1><p>장비와 수집, 자산과 Rack, 에너지와 환경 데이터를 연결해 운영 상태를 빠르게 이해하고 대응하세요.</p><div class="login-features"><div class="login-feature"><b>Live Monitoring</b><span>실시간 수집 상태와 주요 지표</span></div><div class="login-feature"><b>Asset & Space</b><span>자산 이력과 Rack 공간 관리</span></div><div class="login-feature"><b>Flexible Widgets</b><span>업무에 맞춘 대시보드 구성</span></div></div></div>
-        <div class="login-foot"><span>DEFOG DCIM · OPERATIONS WORKSPACE</span><button type="button" class="theme-toggle" id="loginThemeToggle">☀ 라이트 모드</button></div>
+        <div class="login-foot"><span>SPATIVIA DCIM · OPERATIONS WORKSPACE</span><button type="button" class="theme-toggle" id="loginThemeToggle">☀ 라이트 모드</button></div>
       </section>
       <div class="login-card" id="loginCard">
       <span class="login-card-kicker">WELCOME BACK</span>
@@ -1689,42 +1721,42 @@
     <!-- HOME -->
     <section class="panel active" id="tab-home">
       <div class="home-hero">
-        <div><span class="eyebrow">OPERATIONS CENTER</span><h1 class="page-title">데이터센터 운영을 한눈에</h1><p class="page-desc">장비 등록부터 수집 상태, 자산과 Rack, 위젯 구성까지 하나의 흐름으로 관리하세요.</p></div>
-        <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><button type="button" class="hero-link" data-quick-tab="dashboard-page">Dashboard 위젯 열기 →</button></div>
-      </div>
-      <div class="stats home-stats">
-        <div class="stat stat-location"><div class="stat-icon">⌖</div><div><div class="k">등록 위치</div><div class="v"><span id="statLoc">–</span><small> locations</small></div><p>Zone · Row · Rack</p></div></div>
-        <div class="stat stat-model"><div class="stat-icon">◇</div><div><div class="k">장비 모델</div><div class="v"><span id="statModel">–</span><small> models</small></div><p>수집 Point 카탈로그</p></div></div>
-        <div class="stat stat-device"><div class="stat-icon">▣</div><div><div class="k">등록 장비</div><div class="v"><span id="statDev">–</span><small> devices</small></div><p>운영 자산 인스턴스</p></div></div>
-        <div class="stat stat-task"><div class="stat-icon">↻</div><div><div class="k">수집 작업</div><div class="v"><span id="statTask">–</span><small> tasks</small></div><p>Collector 스케줄</p></div></div>
+        <div><span class="eyebrow">운영 현황</span><h1 class="page-title">데이터센터 운영을 한눈에</h1><p class="page-desc">장비 상태와 알람, 데이터 수집 현황을 확인하고 필요한 작업을 시작하세요.</p></div>
+        <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><button type="button" class="hero-link" data-quick-tab="dashboard-page">대시보드 열기 →</button></div>
       </div>
       <div class="stats home-stats home-live-stats" aria-label="실시간 운영 요약">
         <div class="stat" id="homeDeviceHealth" data-state="normal"><div class="stat-icon">▣</div><div><div class="k">장비 운영 상태</div><div class="v"><span id="homeEnabledDevices">–</span><small> 사용 장비</small></div><div class="ops-detail" id="homeDeviceDetail">현황 확인 중…</div></div></div>
         <div class="stat" id="homeAlarmHealth" data-state="normal"><div class="stat-icon">⚑</div><div><div class="k">미복구 알람</div><div class="v"><span id="homeOpenAlarms">–</span><small> 건</small></div><div class="ops-detail" id="homeAlarmDetail">현황 확인 중…</div></div></div>
         <div class="stat" id="homeCollectionHealth" data-state="normal"><div class="stat-icon">↻</div><div><div class="k">수집 상태 정상</div><div class="v"><span id="homeCollectionNormal">–</span><small> / <span id="homeCollectionTotal">–</span>대</small></div><div class="ops-detail" id="homeCollectionDetail">현황 확인 중…</div></div></div>
       </div>
+      <div class="stats home-stats">
+        <div class="stat stat-location"><div class="stat-icon">⌖</div><div><div class="k">등록 위치</div><div class="v"><span id="statLoc">–</span><small>개</small></div><p>구역 · 열 · 랙</p></div></div>
+        <div class="stat stat-model"><div class="stat-icon">◇</div><div><div class="k">장비 모델</div><div class="v"><span id="statModel">–</span><small>개</small></div><p>측정항목 기준</p></div></div>
+        <div class="stat stat-device"><div class="stat-icon">▣</div><div><div class="k">등록 장비</div><div class="v"><span id="statDev">–</span><small>대</small></div><p>등록된 장비</p></div></div>
+        <div class="stat stat-task"><div class="stat-icon">↻</div><div><div class="k">수집 작업</div><div class="v"><span id="statTask">–</span><small>개</small></div><p>예약된 수집 작업</p></div></div>
+      </div>
       <div class="home-layout">
         <div class="card home-onboarding">
-          <div class="card-heading"><div><span class="eyebrow">GETTING STARTED</span><h2>운영 준비 순서</h2></div><span class="chip">4 STEPS</span></div>
+          <div class="card-heading"><div><span class="eyebrow">처음 시작하기</span><h2>운영 준비 순서</h2></div><span class="chip">4단계</span></div>
           <ul class="checklist">
             <li><div class="n">1</div><div><strong>위치 확인</strong><span>장비 추가 화면에서도 새 위치를 만들 수 있습니다</span></div></li>
             <li><div class="n">2</div><div><strong>모델 확인</strong><span>새 모델을 만들고 측정항목을 설정하세요</span></div></li>
-            <li><div class="n">3</div><div><strong>장비 추가 마법사</strong><span>장비 → IP → 수집 작업까지</span></div></li>
-            <li><div class="n">4</div><div><strong>위젯으로 확인</strong><span>Dashboard·Environment·Cooling 페이지에서 위젯을 구성</span></div></li>
+            <li><div class="n">3</div><div><strong>장비 추가 마법사</strong><span>장비 → 연결 정보 → 수집 설정</span></div></li>
+            <li><div class="n">4</div><div><strong>위젯으로 확인</strong><span>모니터링 화면에 위젯을 추가하세요</span></div></li>
           </ul>
           <div class="row" style="margin-top:14px">
             <button type="button" class="ghost" id="goDevices">장비 목록 보기</button>
           </div>
         </div>
         <div class="card home-ready">
-          <div class="card-heading"><div><span class="eyebrow">SYSTEM READINESS</span><h2>시스템 준비 상태</h2></div><span class="live-badge"><i></i> LIVE</span></div>
+          <div class="card-heading"><div><span class="eyebrow">시작 전 확인</span><h2>데이터 준비 상태</h2></div><span class="live-badge"><i></i> 설정 정보</span></div>
           <div id="bootStatus" class="system-readiness muted">로그인 후 자동으로 불러옵니다.</div>
         </div>
         <div class="quick-actions">
           <button type="button" data-quick-tab="collection-status"><span>◉</span><div><strong>수집 상태</strong><small>지연·누락 장비 확인</small></div><b>→</b></button>
-          <button type="button" data-quick-tab="rack-overview"><span>▤</span><div><strong>Rack 현황</strong><small>U 점유와 배치 관리</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="rack-overview"><span>▤</span><div><strong>랙 현황</strong><small>U 점유와 배치 관리</small></div><b>→</b></button>
           <button type="button" data-quick-tab="assets"><span>◆</span><div><strong>자산 관리</strong><small>상태·문서·이력 관리</small></div><b>→</b></button>
-          <button type="button" data-quick-tab="dashboard-page"><span>▦</span><div><strong>Dashboard 위젯</strong><small>페이지 안에서 위젯 등록 · 배치</small></div><b>→</b></button>
+          <button type="button" data-quick-tab="dashboard-page"><span>▦</span><div><strong>대시보드</strong><small>페이지 안에서 위젯 등록 · 배치</small></div><b>→</b></button>
         </div>
       </div>
     </section>
@@ -2465,37 +2497,13 @@
     <!-- Widget editor backing fields; the visible workspace is Widget Board. -->
     <section id="widgetEditorSupport" hidden>
       <div class="grid2">
-        <div class="card widget-list-card">
-          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
-            <h2 style="margin:0">위젯 목록</h2>
-            <button type="button" class="primary" id="wOpenEditor" data-role-gate="admin">+ 위젯 만들기</button>
-          </div>
-          <div class="row" style="margin-bottom:12px">
-            <label class="field">페이지
-              <select id="wPage"></select>
-            </label>
-            <button type="button" class="ghost" id="wReload">조회</button>
-          </div>
-          <div style="overflow:auto;max-height:420px">
-            <table>
-              <thead><tr><th>이름</th><th>종류</th><th>표시</th><th>장비</th><th class="actions">작업</th></tr></thead>
-              <tbody id="wBody"></tbody>
-            </table>
-          </div>
-          <div id="wLastOut" style="margin-top:12px"></div>
-        </div>
+        <select id="wPage" aria-label="위젯 작업 페이지"></select>
         <div id="wEditorBackdrop" aria-hidden="true"></div>
         <div class="card widget-editor-card" id="wEditorCard" role="dialog" aria-modal="true" aria-labelledby="wFormTitle" aria-hidden="true" data-step="1">
           <div class="widget-editor-head">
-            <div><div class="muted" style="font-size:11px;letter-spacing:.08em">WIDGET SETUP</div><h2 id="wFormTitle">위젯 만들기</h2></div>
+            <div><h2 id="wFormTitle">위젯 만들기</h2><p class="muted" style="margin:6px 0 0;font-size:12px">표시할 데이터와 디자인을 한곳에서 설정하세요.</p></div>
             <button type="button" class="ghost" id="wCloseEditor" aria-label="위젯 편집 닫기">닫기 ×</button>
           </div>
-          <nav class="widget-editor-steps" aria-label="위젯 등록 단계">
-            <button type="button" data-widget-step-nav="1">1 · 종류와 이름</button>
-            <button type="button" data-widget-step-nav="2">2 · 표시할 값</button>
-            <button type="button" data-widget-step-nav="3">3 · 표시 설정과 확인</button>
-          </nav>
-          <p class="muted widget-step-description" id="wStepDescription">위젯 종류와 표시 이름을 정하세요. 다음 단계에서 장비와 측정항목을 선택합니다.</p>
           <div class="fields" data-widget-stage="1">
             <label class="field">페이지
               <select id="wCreatePage"></select>
@@ -2505,13 +2513,13 @@
             </label>
             <label class="field full">조회 종류
               <select id="wKind">
-                <option value="last">최신값 (last)</option>
-                <option value="count">개수 (count)</option>
-                <option value="chart">차트 (chart)</option>
-                <option value="aggregate">집계 (aggregate)</option>
+                <option value="last">최신 측정값</option>
+                <option value="count">장비 수</option>
+                <option value="chart">추이 차트</option>
+                <option value="aggregate">전력·사용량 집계 / 순위 / 최대수요</option>
                 <option value="calculated">계산 지표</option>
-                <option value="psychrometric">사이코메트릭 (psychrometric)</option>
-                <option value="power_distribution">전력 분배 (power distribution)</option>
+                <option value="psychrometric">공기선도</option>
+                <option value="power_distribution">전력 분배</option>
                 <option value="cctv">CCTV</option>
               </select>
             </label>
@@ -2569,13 +2577,13 @@
             </div>
             <div class="row">
               <select id="wPickDevice" style="flex:1;min-width:180px"></select>
-              <button type="button" class="primary" id="wAddDevice" disabled>장비·측정항목 추가</button>
+              <button type="button" class="primary" id="wAddDevice" disabled>선택 추가</button>
             </div>
             <div id="wDevicePointPick" style="margin-top:8px;display:none">
               <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">이 장비의 측정항목 (하나 이상 선택)</div>
               <input id="wPointSearch" type="search" placeholder="측정항목 이름·프로토콜 검색" aria-label="측정항목 검색" style="width:100%;margin-bottom:8px" />
               <div id="wPickDevicePoints" class="point-grid" style="display:grid"></div>
-              <div class="muted" style="font-size:12px;margin-top:5px">측정항목을 고른 뒤 추가하면, 다음 장비도 같은 방식으로 이어서 추가할 수 있습니다.</div>
+              <div class="muted" style="font-size:12px;margin-top:5px">여러 항목을 선택해 추가하세요. 다른 장비도 이어서 추가할 수 있습니다.</div>
             </div>
             <div id="wDeviceList" class="pick-list"></div>
           </div>
@@ -2639,6 +2647,9 @@
                   <option value="">측정 항목을 선택하세요</option>
                   <option value="usage">사용량 (ENERGY)</option>
                   <option value="power">전력 합 (POWER)</option>
+                  <option value="usage_rank">사용량 순위 (ENERGY)</option>
+                  <option value="power_rank">전력 순위 · 기간별 마지막 값 (POWER)</option>
+                  <option value="demand">최대수요전력 (POWER)</option>
                 </select>
               </label>
               <label class="field">기간 (aggregateRangePreset)
@@ -2727,6 +2738,17 @@
             </div>
           </div>
 
+          <div data-widget-stage="3" role="group" aria-labelledby="wDesignLabel">
+            <div id="wDesignLabel" class="muted" style="font-size:12px">위젯 디자인</div>
+            <div class="widget-design-choices">
+              <label class="widget-design-option" data-style="classic"><input type="radio" name="wVisualStyle" value="classic" checked /><span><span class="widget-design-sample"><small data-design-title>내 위젯</small><b>27.4</b><em>표시 예시</em></span>클래식</span></label>
+              <label class="widget-design-option" data-style="minimal"><input type="radio" name="wVisualStyle" value="minimal" /><span><span class="widget-design-sample"><small data-design-title>내 위젯</small><b>27.4</b><em>표시 예시</em></span>미니멀</span></label>
+              <label class="widget-design-option" data-style="vivid"><input type="radio" name="wVisualStyle" value="vivid" /><span><span class="widget-design-sample"><small data-design-title>내 위젯</small><b>27.4</b><em>표시 예시</em></span>비비드</span></label>
+            </div>
+            <div class="widget-color-control"><label><input id="wColorCustom" type="checkbox" /> 색상 직접 지정</label><input id="wVisualColor" type="color" value="#54cbf3" aria-label="위젯 강조 색상" disabled /></div>
+            <div id="wVisualPreviewNote" class="muted" style="font-size:11px;margin-top:16px">위젯 미리보기 · 예시 데이터</div>
+            <div id="wVisualPreview" class="widget-preview-card" data-style="classic"><span class="widget-preview-icon" aria-hidden="true">◈</span><div><small id="wVisualPreviewTitle">내 위젯</small><strong id="wVisualPreviewValue">29.1</strong><em id="wVisualPreviewUnit">kWh</em></div></div>
+          </div>
           <div id="wDataFreshnessBlock" class="fields" data-widget-stage="3" style="margin-top:14px">
             <label class="field">데이터 최신성 기준 (분)
               <input id="wDataFreshnessMinutes" type="number" min="1" max="1440" value="15" />
@@ -2742,15 +2764,14 @@
             <iframe id="wPagePreviewFrame" title="선택한 페이지의 도면과 위젯 미리보기" loading="lazy"></iframe>
           </section>
           <div class="widget-editor-footer">
-            <button type="button" class="ghost" id="wStepBack">이전</button>
+            <span class="muted" style="font-size:12px">종류와 대상을 선택한 뒤 저장하세요.</span>
             <div class="row" style="gap:8px">
-              <button type="button" class="primary" id="wStepNext">다음</button>
             <button type="button" class="primary" id="wCreate" data-role-gate="admin">만들기</button>
             <button type="button" class="ghost" id="wCancelEdit" style="display:none">수정 취소</button>
             <button type="button" class="danger" id="wDeleteEdit" style="display:none">삭제</button>
             </div>
           </div>
-          <details class="raw" data-widget-stage="3"><summary>응답 상세</summary><pre id="wOut"></pre></details>
+          <pre id="wOut" hidden></pre>
         </div>
       </div>
       <div id="metricBackdrop" aria-hidden="true"></div>
@@ -3394,30 +3415,15 @@
 
     <!-- NOTES -->
     <section class="panel" id="tab-notes">
-      <h1 class="page-title">API 안내</h1>
-      <p class="page-desc">이 콘솔이 연결한 manager API 범위입니다. 대부분 등록·수정·삭제까지 지원합니다.</p>
-      <div class="card">
-        <h2>커버리지</h2>
-        <table>
-          <thead><tr><th>영역</th><th>콘솔</th><th>비고</th></tr></thead>
-          <tbody>
-            <tr><td>Auth</td><td><span class="chip ok">login · register</span></td><td>refresh/validate 미연결</td></tr>
-            <tr><td>사용자</td><td><span class="chip ok">계정 CRUD · 역할 분류</span></td><td>역할별 권한 제한은 후속 적용</td></tr>
-            <tr><td>공통코드</td><td><span class="chip ok">그룹·코드 CRUD</span></td><td>공통코드 탭</td></tr>
-            <tr><td>위치</td><td><span class="chip ok">트리 CRUD · DnD</span></td><td>bulk 미연결</td></tr>
-            <tr><td>장비 모델</td><td><span class="chip ok">모델 CRUD · SNMP point CRUD</span></td><td>Modbus create는 API 예정으로 생략</td></tr>
-            <tr><td>장비</td><td><span class="chip ok">CRUD · endpoint CRUD · instance</span></td><td>capabilities 미연결</td></tr>
-            <tr><td>수집 Task</td><td><span class="chip ok">task/group CRUD · toggle</span></td><td>–</td></tr>
-            <tr><td>위젯</td><td><span class="chip ok">생성·수정·삭제 · last/count/chart/aggregate</span></td><td>layout은 위젯 보드</td></tr>
-            <tr><td>Query</td><td><span class="chip ok">last · count · chart · aggregate</span></td><td>usage / power</td></tr>
-            <tr><td>Live</td><td><span class="chip ok">연결됨</span></td><td><button type="button" class="inline-link" data-quick-tab="live-telemetry">실시간 텔레메트리 열기</button></td></tr>
-          </tbody>
-        </table>
-        <p class="muted" style="margin:12px 0 0;font-size:13px">
-          문서: <code>docs/ops/OPS_CONSOLE.md</code> ·
-          위젯: <code>docs/device/PAGE_WIDGET_API.md</code> ·
-          query: <code>/api/manager/query/{last|count|chart|aggregate}</code>
-        </p>
+      <h1 class="page-title">사용 가이드</h1>
+      <p class="page-desc">장비 등록부터 공간 구성과 모니터링까지 필요한 순서대로 시작하세요.</p>
+      <div class="guide-grid">
+        <article><h2>1. 장비 등록</h2><p>장비 관리에서 장비를 등록하고 위치와 통신 방식을 선택합니다. 같은 종류의 장비는 장비 모델에 측정 항목을 한 번 설정해 함께 사용할 수 있습니다.</p><button type="button" data-quick-tab="devices">장비 관리 열기 →</button></article>
+        <article><h2>2. 데이터 수집 확인</h2><p>데이터 수집에서 최신 저장 시각과 지연 여부를 확인합니다. SNMP·Modbus는 수집 작업을 설정하고, MQTT는 연결과 장비 식별자를 설정합니다.</p><button type="button" data-quick-tab="collection-status">데이터 수집 열기 →</button></article>
+        <article><h2>3. 공간과 랙 구성</h2><p>자산 · 랙에서 장비 자산과 랙 용량, 장착 위치를 관리합니다. 공간 · 환경의 연필 버튼을 눌러 도면에 설비와 위젯을 배치하고 저장하세요.</p><button type="button" data-quick-tab="assets">자산 · 랙 열기 →</button></article>
+        <article><h2>4. 화면 구성</h2><p>설정의 화면 구성에서 페이지에 표시할 장비와 2D·3D 보기 방식을 선택합니다. 각 모니터링 화면에서 연필 버튼으로 위젯을 추가하고 크기를 조절할 수 있습니다.</p><button type="button" data-quick-tab="device-pages" data-role-gate="admin-user">화면 구성 열기 →</button></article>
+        <article><h2>5. 경보와 이력 확인</h2><p>알람에서 장비별 주의·위험 기준을 설정합니다. 이상이 발생하면 진행 상태와 복구 이력을 확인하고, 데이터 분석에서 같은 시간대의 측정값을 비교하세요.</p><button type="button" data-quick-tab="alarms" data-role-gate="admin-user">알람 열기 →</button></article>
+        <article><h2>도면 편집의 기본</h2><p>편집 → 바닥 설치 → 설비 배치 → 저장 순서로 작업합니다. 랙을 더블클릭하면 장비 장착과 위젯을 설정할 수 있습니다. 편집 중 취소·되돌리기와 잠금으로 배치를 관리하세요.</p><button type="button" data-quick-tab="environment-page">공간 · 환경 열기 →</button></article>
       </div>
     </section>
 
@@ -3634,7 +3640,7 @@
       if (el.textContent.length > 8000) el.textContent = el.textContent.slice(0, 8000);
     }
 
-    const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor"]);
+    const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor", "scene-models"]);
     const ADMIN_USER_TABS = new Set(["codes", "device-pages", "alarms"]);
 
     function canAccessTab(name) {
@@ -3656,6 +3662,11 @@
       $("authStatus").textContent = ok ? "로그인됨" : "로그인 필요";
       $("authStatus").className = "chip " + (ok ? "ok" : "bad");
       document.body.classList.toggle("is-authed", ok);
+      if (!ok) {
+        $("workspaceContext").hidden = true;
+        $("workspaceSearch").value = "";
+      }
+      renderWorkspaceSearch();
       if ($("loginError")) $("loginError").style.display = "none";
       applyRolePermissions();
       if (ok && (state.role === "ADMIN" || state.role === "USER")) startAlarmStream();
@@ -3856,7 +3867,7 @@
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103p");
+        await import("/page-scene-3d.js?v=20261103r");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -3892,7 +3903,7 @@
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261103p");
+        await import("/page-scene-3d.js?v=20261103r");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -3937,18 +3948,50 @@
     }
 
     window.addEventListener("beforeunload", (event) => {
-      const dirty = [...document.querySelectorAll("iframe[data-page-key]")]
+      const dirty = (state.token && hasUnsavedPageDeviceChanges()) || [...document.querySelectorAll("iframe[data-page-key]")]
         .some((frame) => frame.contentWindow?.dcimSceneHasUnsavedChanges?.());
       if (dirty) { event.preventDefault(); event.returnValue = ""; }
     });
 
+    function renderWorkspaceNavigation(name) {
+      const navigation = window.OpsNavigation, group = navigation.groupFor(name);
+      const root = $("workspaceContext"), nav = $("workspaceNav"); nav.replaceChildren();
+      root.hidden = !state.token || !group;
+      if (!group) return;
+      $("workspacePath").replaceChildren(document.createTextNode(group.label + " / "));
+      const current = document.createElement("strong"); current.textContent = navigation.labelFor(name); $("workspacePath").append(current);
+      const buttonFor = ([tab,label]) => {
+        const button = document.createElement("button"); button.type="button"; button.textContent=label;
+        if(tab===name) button.setAttribute("aria-current","page");
+        button.onclick=()=>goTab(tab); return button;
+      };
+      const items = group.items.filter(([tab])=>canAccessTab(tab));
+      const advanced = (group.advanced||[]).filter(([tab])=>canAccessTab(tab));
+      if(items.length+advanced.length>1) items.forEach(item=>nav.append(buttonFor(item)));
+      if(advanced.length) {
+        const details=document.createElement("details"), summary=document.createElement("summary"), menu=document.createElement("div");
+        details.className="workspace-advanced"; summary.textContent=advanced.some(([tab])=>tab===name) ? navigation.labelFor(name)+" ▾" : "연결 설정 · 진단 ▾";
+        advanced.forEach(item=>menu.append(buttonFor(item))); details.append(summary,menu); nav.append(details);
+      }
+      const hints={devices:"장비를 등록한 뒤 통신과 수집 연결을 확인하세요.",assets:"장비 자산과 랙의 설치 상태, 도면에서 사용할 3D 모델을 관리합니다.","collection-status":"수집 상태에서 문제가 있는 장비를 확인하고 작업 또는 연결 설정을 점검하세요.",locations:"운영에 필요한 위치, 장비 모델과 화면 표시 방식을 설정합니다."};
+      $("workspaceHint").textContent=hints[group.key]||"";
+      $("workspaceHint").hidden=!hints[group.key];
+    }
+
     function goTab(name) {
       if (name === "widgets" || name === "widget-board") name = "dashboard-page";
+      if (!window.OpsNavigation.groupFor(name) || !document.getElementById(`tab-${name}`)) {
+        toast("이 화면을 찾을 수 없습니다.", true);
+        return false;
+      }
+      if (state.token && name !== "device-pages" && $("tab-device-pages").classList.contains("active")
+          && hasUnsavedPageDeviceChanges()
+          && !confirm("저장하지 않은 장비 선택 또는 보기 방식 변경이 있습니다. 다른 화면으로 이동할까요?")) return false;
       const activePage = document.querySelector(".embedded-page:not([hidden])");
       if (activePage && activePage.id !== `tab-${name}`) {
         const frame = activePage.querySelector("iframe[data-page-key]");
         if (frame?.contentWindow?.dcimSceneHasUnsavedChanges?.()
-          && !confirm("도면에 저장하지 않은 변경이 있습니다. 다른 페이지로 이동할까요?")) return;
+          && !confirm("도면 또는 위젯에 저장하지 않은 변경이 있습니다. 다른 페이지로 이동할까요?")) return false;
       }
       if (!canAccessTab(name)) {
         toast("이 메뉴에 접근할 권한이 없습니다", true);
@@ -3956,10 +3999,16 @@
       }
       if (state.token) {
         try { sessionStorage.setItem("opsConsoleActiveTab", name); } catch (_) { /* Storage may be unavailable. */ }
+        try {
+          const url = new URL(location.href);
+          url.searchParams.set("page", name);
+          history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+        } catch (_) { /* Keep navigation usable when browser history is unavailable. */ }
       }
       const embedded = new Set(["dashboard-page", "environment-page", "cooling-page", "analysis", "live-telemetry", "mqtt-monitor"]);
       if (name !== "devices") closeDeviceDetail(false);
-      document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+      document.querySelectorAll("#tabs button[data-tab]").forEach((b) => b.classList.toggle("active", b.dataset.tab === (window.OpsNavigation.groupFor(name)?.key || name)));
+      renderWorkspaceNavigation(name);
       document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + name));
       document.querySelectorAll(".embedded-page").forEach((panel) => {
         panel.hidden = panel.id !== "tab-" + name;
@@ -4013,14 +4062,16 @@
       if (name === "lora-mqtt-sources" && state.token) loadMqttSources().catch((e) => toast(e.message, true));
       if (name === "lora-model-mapping" && state.token) loadLoraModels().catch((e) => toast(e.message, true));
       if (name === "lora-collection-status" && state.token) loadLoraCollectionStatus().catch((e) => toast(e.message, true));
+      return true;
     }
 
     function restoreActiveTab() {
       let saved = "";
       try { saved = sessionStorage.getItem("opsConsoleActiveTab") || ""; } catch (_) { /* Use the default page. */ }
-      const menuExists = [...document.querySelectorAll("#tabs button[data-tab]")].some((button) => button.dataset.tab === saved);
-      const valid = menuExists && !!document.getElementById(`tab-${saved}`) && canAccessTab(saved);
-      goTab(valid ? saved : "home");
+      const requested = typeof location !== "undefined" ? new URLSearchParams(location.search).get("page") : null;
+      const valid = (name) => !!window.OpsNavigation.groupFor(name)
+        && !!document.getElementById(`tab-${name}`) && canAccessTab(name);
+      goTab(valid(requested) ? requested : valid(saved) ? saved : "home");
     }
 
     window.addEventListener("message", (event) => {
@@ -4094,11 +4145,12 @@
         openCalculatedMetrics();
         return;
       }
-      if (event.data?.type === "dcim:dashboard:open-layout-editor") {
+      if (["dcim:dashboard:open-layout-editor", "dcim:dashboard:open-widget-editor"].includes(event.data?.type)) {
         if (state.role !== "ADMIN") return;
         const pageCode = String(event.data.pageCode || sourceFrame.dataset.pageKey || "");
         sourceFrame.dataset.layoutEditing = "true";
-        sourceFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&layoutEdit=1&pageCode=${encodeURIComponent(pageCode)}`;
+        const mode = event.data.type === "dcim:dashboard:open-widget-editor" ? "widgetEdit=1" : "layoutEdit=1";
+        sourceFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&${mode}&pageCode=${encodeURIComponent(pageCode)}`;
         return;
       }
       if (["dcim:dashboard:layout-saved", "dcim:dashboard:layout-cancelled"].includes(event.data?.type)
@@ -4146,7 +4198,7 @@
       const title = panel?.querySelector(":scope > .page-title, .home-hero .page-title");
       const description = panel?.querySelector(":scope > .page-desc, .home-hero .page-desc");
       const topTitle = $("topPageTitle");
-      topTitle.textContent = activeMenu?.childNodes[0]?.textContent.trim() || title?.textContent.trim() || "";
+      topTitle.textContent = window.OpsNavigation.labelFor(name) || activeMenu?.childNodes[0]?.textContent.trim() || title?.textContent.trim() || "";
       topTitle.title = topTitle.textContent;
       const topDescription = $("topPageDescription");
       topDescription.replaceChildren(...Array.from(description?.childNodes || [], (node) => node.cloneNode(true)));
@@ -4181,6 +4233,44 @@
     document.querySelectorAll("#tabs button").forEach((btn) => {
       btn.addEventListener("click", () => goTab(btn.dataset.tab));
     });
+    function renderWorkspaceSearch() {
+      const query = $("workspaceSearch").value.trim().toLocaleLowerCase();
+      const results = $("workspaceSearchResults");
+      results.replaceChildren();
+      results.hidden = !query || !state.token;
+      document.querySelectorAll("#tabs button[data-tab]").forEach((button) => {
+        const group = window.OpsNavigation.groupFor(button.dataset.tab);
+        const labels = [...(group?.items || []), ...(group?.advanced || [])]
+          .filter(([tab]) => canAccessTab(tab)).map(([, label]) => label);
+        button.hidden = !!query && ![group?.label, ...labels].join(" ").toLocaleLowerCase().includes(query);
+      });
+      if (results.hidden) return;
+      for (const group of window.OpsNavigation.groups) {
+        for (const [tab, label] of [...group.items, ...(group.advanced || [])]) {
+          if (!canAccessTab(tab) || !document.getElementById(`tab-${tab}`)
+              || ![group.label, label].join(" ").toLocaleLowerCase().includes(query)) continue;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          const parent = document.createElement("small");
+          parent.textContent = group.label;
+          button.append(parent);
+          button.onclick = () => {
+            if (goTab(tab) === false) return;
+            $("workspaceSearch").value = "";
+            renderWorkspaceSearch();
+          };
+          results.append(button);
+        }
+      }
+      if (!results.childElementCount) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "일치하는 화면이 없습니다.";
+        results.append(empty);
+      }
+    }
+    $("workspaceSearch").addEventListener("input", renderWorkspaceSearch);
     $("goWizard").onclick = () => goTab("wizard");
     $("goDevices").onclick = () => goTab("devices");
     $("devGoWizard").onclick = () => goTab("wizard");
@@ -5781,7 +5871,7 @@
 
     async function importShowroomModelToAsset() {
       if (!state.selectedAssetId) return toast("먼저 자산을 선택하세요", true);
-      const { showroomModelUrl } = await import("/showroom-models.js?v=20261103b");
+      const { showroomModelUrl } = await import("/showroom-models.js?v=20261103d");
       const models = await api("/api/manager/scene-models");
       const model = models.find((entry) => entry.key === $("showroomAssetModel").value);
       if (!model) return toast("쇼룸 3D 모델을 선택하세요", true);
@@ -6575,7 +6665,7 @@
       $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout"><div class="rack-detail-stage"><div class="rack-detail-tools"><button type="button" data-panel-door>문 닫기</button></div><div data-panel-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div class="rack-detail-info"><b>연결 장비 최신 측정값</b><div data-panel-values class="muted">${deviceIds.length ? "측정값을 불러오는 중입니다." : "도면에서 분전반에 장비를 연결하면 이곳에 측정값이 표시됩니다."}</div></div></div>`;
       $("rackPreviewModal").classList.add("open"); $("rackPreviewModal").setAttribute("aria-hidden", "false");
       const canvas = $("rackPreviewBody").querySelector("[data-panel-canvas]"), values = $("rackPreviewBody").querySelector("[data-panel-values]");
-      import("/page-scene-3d.js?v=20261103p").then(() => {
+      import("/page-scene-3d.js?v=20261103r").then(() => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountPanelDetail(canvas);
         $("rackPreviewBody").querySelector("[data-panel-door]").onclick = (event) => { event.currentTarget.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
@@ -6772,7 +6862,7 @@
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103p")]).then(([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261103r")]).then(([models]) => {
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountRackDetail(canvas, layout, models, (u) => {
           if (!form) return;
@@ -7394,6 +7484,10 @@
           || [...state.pageDeviceIds].some((id) => !state.savedPageDeviceIds.has(id)));
     }
 
+    function hasUnsavedPageDeviceChanges() {
+      return hasUnsavedPageDeviceSelection() || (!!state.pageDeviceLoadedCode && state.pageDisplayDirty);
+    }
+
     function updatePageDeviceSelectionSummary() {
       const ready = state.pageDeviceLoadedCode === $("pdPage").value && !!state.pageDeviceLoadedCode;
       const dirty = ready && hasUnsavedPageDeviceSelection();
@@ -7521,14 +7615,14 @@
     }
 
     $("pdPage").addEventListener("change", () => {
-      if (hasUnsavedPageDeviceSelection() && !confirm("저장하지 않은 장비 선택을 버리고 페이지를 바꿀까요?")) {
+      if (hasUnsavedPageDeviceChanges() && !confirm("저장하지 않은 장비 선택 또는 보기 방식 변경을 버리고 페이지를 바꿀까요?")) {
         $("pdPage").value = state.pageDeviceLoadedCode;
         return;
       }
       loadPageDeviceEditor().catch((e) => toast(e.message, true));
     });
     $("pdReload").onclick = () => {
-      if (hasUnsavedPageDeviceSelection() && !confirm("저장하지 않은 장비 선택을 버리고 다시 불러올까요?")) return;
+      if (hasUnsavedPageDeviceChanges() && !confirm("저장하지 않은 장비 선택 또는 보기 방식 변경을 버리고 다시 불러올까요?")) return;
       loadPageDeviceEditor(true).catch((e) => toast(e.message, true));
     };
     $("pdSearch").addEventListener("input", renderPageDeviceCandidates);
@@ -7688,37 +7782,77 @@
       return `${source.pointName} · ${String(source.protocol || "").toUpperCase()} · ${source.unit || "단위 없음"} · ${origin}${polling}`;
     }
 
-    function showWidgetEditorStep(step) {
+    function showWidgetEditorStep() {
       const editor = $("wEditorCard");
       if (!editor) return;
-      const current = Math.min(3, Math.max(1, Number(step) || 1));
-      editor.dataset.step = String(current);
-      editor.querySelectorAll("[data-widget-stage]").forEach((element) => {
-        element.classList.toggle("widget-step-hidden", Number(element.dataset.widgetStage) !== current);
-      });
-      editor.querySelectorAll("[data-widget-step-nav]").forEach((button) => {
-        const active = Number(button.dataset.widgetStepNav) === current;
-        button.classList.toggle("active", active);
-        button.setAttribute("aria-current", active ? "step" : "false");
-      });
-      const kind = $("wKind").value;
-      const sourceHint = kind === "count" ? "집계 방식과 대상 모델을 선택하세요. 측정항목은 필요하지 않습니다."
-        : kind === "calculated" ? "미리 만든 계산 지표를 선택하세요. 위젯은 계산 결과를 조회합니다."
-        : kind === "psychrometric" ? "온도와 습도의 장비·측정항목을 각각 추가하세요."
-        : kind === "power_distribution" ? "전력 그룹을 두 개 이상 만들고 각 그룹에 W 단위 항목을 추가하세요."
-        : "장비를 선택하면 실제 저장 대상 기준의 SNMP·Modbus 항목이 나타납니다.";
-      $("wStepDescription").textContent = [
-        "", "위젯 종류·페이지·표시 이름을 정하세요.", sourceHint,
-        "표시 설정과 선택한 값을 확인한 뒤 저장하세요.",
-      ][current];
-      $("wStepBack").style.visibility = current === 1 ? "hidden" : "visible";
-      $("wStepNext").style.display = current === 3 ? "none" : "inline-flex";
-      $("wCreate").style.display = current === 3 ? "inline-flex" : "none";
-      if (current === 3) {
-        renderWidgetReview();
-        updateWidgetPagePreview();
+      if (!editor.querySelector(".widget-form-grid")) {
+        const grid = document.createElement("div"); grid.className = "widget-form-grid";
+        const sections = ["기본 정보", "데이터 선택", "디자인과 표시"].map((title) => {
+          const section = document.createElement("section"); section.className = "widget-form-section";
+          const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); grid.append(section);
+          return section;
+        });
+        const preview = document.createElement("details"); preview.className = "widget-preview-details";
+        const summary = document.createElement("summary"); summary.textContent = "선택 항목과 페이지 미리보기"; preview.append(summary);
+        const review = $("wReview"), pagePreview = editor.querySelector(".widget-page-preview");
+        for (const element of [...editor.querySelectorAll(":scope > [data-widget-stage]")]) {
+          if (element === review || element === pagePreview) { preview.append(element); continue; }
+          if (element.classList.contains("raw")) continue;
+          const stage = Number(element.dataset.widgetStage);
+          if (stage >= 1 && stage <= 3) sections[stage - 1].append(element);
+        }
+        preview.addEventListener("toggle", () => { if (preview.open) { renderWidgetReview(); updateWidgetPagePreview(); } });
+        editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
+        editor.insertBefore(preview, editor.querySelector(".widget-editor-footer"));
       }
+      editor.dataset.step = "3";
+      const preview = editor.querySelector(".widget-preview-details");
+      if (preview) preview.open = false;
+      editor.querySelectorAll("[data-widget-stage]").forEach((element) => element.classList.remove("widget-step-hidden"));
+      $("wCreate").style.display = "inline-flex";
       editor.scrollTop = 0;
+    }
+
+    let widgetVisualPreviewData = null;
+    function selectedWidgetVisualStyle() {
+      return document.querySelector('input[name="wVisualStyle"]:checked')?.value || "classic";
+    }
+
+    function setWidgetVisualStyle(style = "classic") {
+      document.querySelectorAll('input[name="wVisualStyle"]').forEach((input) => {
+        input.checked = input.value === (['classic', 'minimal', 'vivid'].includes(style) ? style : 'classic');
+      });
+      updateWidgetDesignPreview();
+    }
+
+    function updateWidgetDesignPreview() {
+      document.querySelectorAll('[data-design-title]').forEach((title) => {
+        title.textContent = $("wName").value.trim() || "내 위젯";
+      });
+      const preview = $("wVisualPreview");
+      if (!preview) return;
+      const kind = $("wKind").value;
+      const examples = { last:['29.1','kWh','◈','#b18bff'], count:['23','대','▦','#54cbf3'], calculated:['1.51','','◉','#ec8bc5'], aggregate:['1.9','kW','ϟ','#54cbf3'], chart:['추이 차트','','⌁','#54cbf3'], psychrometric:['온도 · 습도','','◌','#2dd4d8'], power_distribution:['전력 분배','','◔','#54cbf3'], cctv:['카메라 화면','','▣','#54cbf3'] };
+      let [value, unit, icon, defaultColor] = examples[kind] || examples.last;
+      const live = widgetVisualPreviewData;
+      let actual = false;
+      if (live && live.kind === kind) {
+        let metric = kind === 'last' ? live.data?.devices?.flatMap(device => device.points || [])[0] : live.data;
+        let number = kind === 'count' ? metric?.count : metric?.value;
+        if (number != null && Number.isFinite(Number(number))) {
+          number = Number(number); unit = kind === 'count' ? '대' : (metric.unit || '');
+          if (['W','Wh'].includes(unit) && Math.abs(number) >= 1000) { number /= 1000; unit = unit === 'W' ? 'kW' : 'kWh'; }
+          value = number.toLocaleString('ko-KR', { maximumFractionDigits:2 }); actual = true;
+        }
+      }
+      $("wVisualPreviewNote").textContent = actual ? '위젯 미리보기 · 저장된 측정값' : '위젯 미리보기 · 예시 데이터';
+      $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
+      $("wVisualPreviewValue").textContent = value;
+      $("wVisualPreviewUnit").textContent = unit;
+      preview.querySelector('.widget-preview-icon').textContent = icon;
+      preview.dataset.style = selectedWidgetVisualStyle();
+      preview.style.setProperty('--preview-color', $("wColorCustom").checked ? $("wVisualColor").value : defaultColor);
+      $("wVisualColor").disabled = !$("wColorCustom").checked;
     }
 
     function updateWidgetPagePreview() {
@@ -7900,7 +8034,7 @@
       fillWidgetDeviceGroupPick();
       if ($("wAddDevice")) {
         const pointFirst = kind === "chart" || kind === "aggregate";
-        $("wAddDevice").textContent = pointFirst ? "장비 추가" : "장비·측정항목 추가";
+        $("wAddDevice").textContent = pointFirst ? "장비 추가" : "선택 추가";
         $("wAddDevice").disabled = !$("wPickDevice").value || (!pointFirst && !selectedLastDevicePoints().length);
       }
     }
@@ -7997,8 +8131,8 @@
         if ($("wKind")?.value !== "last" || Number($("wPickDevice")?.value) !== deviceId) return;
         const points = widgetSourcesForDevice(deviceId);
         grid.innerHTML = points.length ? points.map((point) => `
-          <label><input type="checkbox" data-last-point="${esc(point.pointName)}" ${point.ambiguous ? "disabled" : ""} />
-            <span><b>${esc(widgetPointLabel(point))}</b>${point.ambiguous ? '<small class="muted"> · 프로토콜 간 이름 중복 — 선택 불가</small>' : ""}</span>
+          <label title="${esc(widgetPointLabel(point))}"><input type="checkbox" data-last-point="${esc(point.pointName)}" ${point.ambiguous ? "disabled" : ""} />
+            <span><b>${esc(point.pointName)}</b><small>${esc(point.unit || '단위 없음')} · ${esc(String(point.protocol || '').toUpperCase())}${point.ambiguous ? ' · 이름 중복 — 선택 불가' : ''}</small></span>
           </label>`).join("") : '<div class="empty" style="grid-column:1/-1;padding:12px">이 장비에 활성 측정항목이 없습니다. 수집 설정을 확인하세요.</div>';
         wrap.style.display = "block";
         $("wAddDevice").disabled = true;
@@ -8035,9 +8169,9 @@
       if (label) {
         const kind = $("wKind")?.value;
         label.textContent = kind === "chart"
-          ? "2. 대상 장비 선택"
-          : kind === "aggregate" ? "2. 호환 장비 선택"
-          : kind === "last" ? "1. 장비·측정항목 추가" : "1. 장비 추가";
+          ? "대상 장비 선택"
+          : kind === "aggregate" ? "호환 장비 선택"
+          : kind === "last" ? "장비와 측정항목" : "장비 선택";
       }
       const isLast = $("wKind")?.value === "last";
       if (!state.widgetDeviceIds.length && !state.widgetDeviceGroupIds.length) {
@@ -8045,7 +8179,7 @@
         box.innerHTML = aggregate
           ? '<div class="empty" style="padding:12px">측정항목을 먼저 선택한 다음 호환 장비를 추가하세요.</div>'
           : isLast
-            ? '<div class="empty" style="padding:12px">장비를 고르고 측정항목을 하나 이상 선택한 뒤 「장비·측정항목 추가」를 누르세요.</div>'
+            ? '<div class="empty" style="padding:12px">추가한 장비와 측정항목이 여기에 표시됩니다.</div>'
             : '<div class="empty" style="padding:12px">아직 없음 — 위에서 장비를 고르고 「추가」</div>';
         return;
       }
@@ -8160,7 +8294,10 @@
     function suggestAggregatePoint(catalog, op) {
       const preferred = {
         usage: ["TOTAL_KWH", "KWH", "L1_KWH"],
+        usage_rank: ["TOTAL_KWH", "KWH", "L1_KWH"],
         power: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
+        power_rank: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
+        demand: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
       }[op] || [];
       for (const name of preferred) {
         if (catalog.some((p) => p.name === name)) return name;
@@ -8196,10 +8333,10 @@
       }
       const kind = $("wKind").value;
       const kindHints = {
-        last: "장비별 최신 측정값을 보여줍니다. 한 장비에서 여러 항목을 고를 수 있습니다.",
+        last: "측정항목마다 아이콘과 큰 숫자의 지표 카드로 표시합니다. 여러 장비와 측정항목을 함께 선택할 수 있습니다.",
         count: "등록된 장비 수를 전체·모델별·특정 모델로 집계합니다.",
         chart: "시간에 따른 값 변화를 보여줍니다. 장비나 모델을 고른 뒤 측정항목을 선택하세요.",
-        aggregate: "여러 장비의 전력(W 계열) 합계 또는 누적 에너지(Wh 계열) 사용량을 보여줍니다.",
+        aggregate: "전력과 사용량의 합계·순위 또는 최대수요전력을 표시합니다.",
         calculated: "별도로 수집 중인 사용자 계산 지표의 저장값을 보여줍니다.",
         psychrometric: "온도와 상대습도 측정값으로 공기 상태를 보여줍니다.",
         power_distribution: "그룹별 전력(W) 비중을 비교합니다. 서로 다른 전력원을 그룹에 묶으세요.",
@@ -8233,8 +8370,8 @@
       arrangeWidgetForm(kind);
       const pointStepLabel = $("wPointsBlock")?.querySelector(":scope > .muted");
       if (pointStepLabel) pointStepLabel.textContent = kind === "aggregate"
-        ? "1. 측정항목 선택"
-        : kind === "chart" ? "3. 측정항목 선택" : "2. 측정 항목 선택";
+        ? "집계할 측정항목"
+        : "표시할 측정항목";
       renderWidgetDevices();
       if (kind === "count") refreshCountModelPick();
       if (kind === "chart") {
@@ -8586,12 +8723,14 @@
         || (state.widgetPointCatalog || []).find((p) => p.name === pointName);
       if (!point || !$('wOp')) return;
       const type = String(point.dataPointType || '').toUpperCase();
-      const op = type === 'ENERGY' ? 'usage' : type === 'POWER' ? 'power' : '';
-      $('wOp').value = op;
-      $('wOpWrap').style.display = op ? 'none' : '';
+      const available = type === 'ENERGY' ? ['usage', 'usage_rank'] : type === 'POWER' ? ['power', 'power_rank', 'demand'] : [];
+      for (const option of $('wOp').options) option.hidden = !!option.value && !available.includes(option.value);
+      if (!available.includes($('wOp').value)) $('wOp').value = available[0] || '';
+      const op = $('wOp').value;
+      $('wOpWrap').style.display = '';
       const hint = $('wAggBlock')?.querySelector('.muted[style*="margin-top"]');
       if (hint) hint.textContent = op
-        ? `${type} 측정 항목이므로 ${op === 'usage' ? '사용량' : '전력 합'}으로 자동 집계합니다.`
+        ? `${type} 측정 항목에 맞는 집계 방식을 선택하세요. 최대수요전력은 15분 평균 합계의 최댓값입니다.`
         : 'POWER 또는 ENERGY 측정 항목을 선택하면 집계 방식이 자동 결정됩니다.';
     }
 
@@ -10703,11 +10842,11 @@
         if ($("wzModel").value) await loadWizardOptions(Number($("wzModel").value));
         else fillWizardProtocolSelect(null);
         $("bootStatus").innerHTML =
-          `<div class="readiness-head"><i></i><div><strong>운영 준비 완료</strong><small>기준 정보와 수집 구성을 정상적으로 불러왔습니다.</small></div></div>` +
-          `<div class="readiness-grid"><div><span>Locations</span><b>${state.flatLocations.length}개</b></div>` +
-          `<div><span>Models</span><b>${state.models.length}개</b></div>` +
-          `<div><span>Devices</span><b>${state.devices.length}대</b></div>` +
-          `<div><span>Code Groups</span><b>${state.codeGroups.length}개</b></div></div>`;
+          `<div class="readiness-head"><i></i><div><strong>정보 불러오기 완료</strong><small>위치·모델·장비·수집 설정을 불러왔습니다.</small></div></div>` +
+          `<div class="readiness-grid"><div><span>위치</span><b>${state.flatLocations.length}개</b></div>` +
+          `<div><span>장비 모델</span><b>${state.models.length}개</b></div>` +
+          `<div><span>장비</span><b>${state.devices.length}대</b></div>` +
+          `<div><span>코드 그룹</span><b>${state.codeGroups.length}개</b></div></div>`;
         $("wzHint").textContent = "내용을 확인한 뒤 등록하세요";
         toast("데이터를 불러왔습니다");
         log("부트 완료");
@@ -11626,176 +11765,8 @@
       }
     };
 
-    function renderLastPretty(data) {
-      if (!data) return "";
-      const devices = data.devices || [];
-      if (!devices.length) {
-        return `<div class="empty">${esc(data.error || "데이터 없음")}</div>`;
-      }
-      const unit = data.totalUnit ? " " + esc(data.totalUnit) : "";
-      const totalBlock = data.total != null ? `
-        <div class="card" style="margin:0 0 12px;box-shadow:none">
-          <div class="muted" style="font-size:12px;font-weight:650">전체 합</div>
-          <div style="font-size:28px;font-weight:800;margin-top:4px">${esc(data.total)}${unit}</div>
-        </div>` : "";
-      return totalBlock + devices.map((d) => `
-        <div class="ep-card">
-          <h3>${esc(d.deviceName)}</h3>
-          ${(d.points || []).map((p) => `
-            <div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)">
-              <span>${esc(p.pointName)}</span>
-              <b>${esc(p.value)}${p.unit ? " " + esc(p.unit) : ""}</b>
-            </div>`).join("") || '<div class="muted">포인트 없음</div>'}
-        </div>`).join("");
-    }
-
-    function renderCountPretty(data) {
-      if (!data) return '<div class="empty">결과 없음</div>';
-      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
-      const mode = data.countMode || "by_model";
-      const modeLabel = { total: "전체", by_model: "모델별", model: "특정 모델" }[mode] || mode;
-      if (mode === "total") {
-        return `<div class="card" style="margin:0;box-shadow:none">
-          <h3 style="margin:0 0 8px">${esc(data.widgetName || "")} <span class="muted mono">#${data.widgetId}</span></h3>
-          <div class="muted">${esc(modeLabel)} · enabled 장비</div>
-          <div style="font-size:32px;font-weight:800;margin:8px 0">${data.count ?? 0}</div>
-        </div>`;
-      }
-      const rows = (data.byModel || []).map((m) => `
-        <div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
-          <span><b>${esc(m.modelName)}</b>
-            <span class="muted">${esc(m.manufacturer || "")}</span>
-            <span class="muted mono">#${m.modelId}</span>
-          </span>
-          <b>${m.count}</b>
-        </div>`).join("") || '<div class="muted">0</div>';
-      return `
-        <div class="card" style="margin:0;box-shadow:none">
-          <h3 style="margin:0 0 8px">${esc(data.widgetName || "")}
-            <span class="muted mono">#${data.widgetId}</span>
-          </h3>
-          <div class="muted">${esc(modeLabel)}${mode === "model" && data.countModelId ? ` · model #${data.countModelId}` : ""}</div>
-          <div style="font-size:28px;font-weight:800;margin:6px 0">${data.count ?? 0}</div>
-          ${mode !== "total" ? `<div class="muted" style="font-size:12px;font-weight:650;margin-bottom:4px">모델별</div>${rows}` : ""}
-        </div>`;
-    }
-
-    function renderAggregatePretty(data) {
-      if (!data) return '<div class="empty">결과 없음</div>';
-      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
-      const presetLabel = ({
-        usage: "사용량",
-        power: "전력 합",
-        pue: "계산 지표",
-      })[data.aggregatePreset] || data.aggregatePreset || "";
-      const rangeLabel = ({
-        today: "오늘",
-        yesterday: "어제",
-        this_month: "이번 달",
-        last_month: "지난 달",
-        last_24h: "최근 24시간",
-        last_7d: "최근 7일",
-      })[data.rangePreset] || data.rangePreset || "";
-      const meta = [
-        presetLabel,
-        rangeLabel,
-        data.contributingDevices != null ? `장비 ${data.contributingDevices}` : "",
-      ].filter(Boolean).join(" · ");
-      const valueText = data.value == null ? "–" : data.value;
-      const unit = data.unit ? " " + esc(data.unit) : "";
-      const rows = (data.devices || []).map((d) => `
-        <div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
-          <span>
-            <b>${esc(d.deviceName || ("#" + d.deviceId))}</b>
-            ${d.role && d.role !== "default" ? `<span class="muted">${esc(d.role)}</span>` : ""}
-            <span class="muted mono">#${d.deviceId}</span>
-          </span>
-          <b>${d.value == null ? "–" : esc(d.value)}${unit}</b>
-        </div>`).join("") || '<div class="muted">장비별 값 없음</div>';
-      return `
-        <div class="card" style="margin:0;box-shadow:none">
-          <h3 style="margin:0 0 8px">${esc(data.widgetName || "")}
-            <span class="muted mono">#${data.widgetId}</span>
-          </h3>
-          <div class="muted">${esc(meta)}</div>
-          <div class="muted" style="font-size:12px;font-weight:650;margin-top:10px">전체</div>
-          <div style="font-size:32px;font-weight:800;margin:4px 0 10px">
-            ${esc(valueText)}${unit}
-          </div>
-          <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:4px">장비별</div>
-          ${rows}
-          <div class="muted mono" style="font-size:12px;margin-top:8px">${esc(data.start || "")} → ${esc(data.end || "")}</div>
-        </div>`;
-    }
-
-    function renderChartPretty(data) {
-      if (!data) return '<div class="empty">결과 없음</div>';
-      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
-      const series = data.series || [];
-      const meta = [
-        data.chartScope || "",
-        data.seriesMode || "",
-        data.rangePreset || "",
-        data.window || "",
-      ].filter(Boolean).join(" · ");
-      const rows = series.map((s) => {
-        const pts = s.points || [];
-        const last = pts.length ? pts[pts.length - 1] : null;
-        const lastVal = last && last.value != null ? last.value : "–";
-        return `
-          <div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
-            <span>
-              <b>${esc(s.label || s.key || "")}</b>
-              ${s.pointName ? `<span class="muted">${esc(s.pointName)}</span>` : ""}
-              <span class="muted">${pts.length} pts</span>
-            </span>
-            <b>${esc(lastVal)}${data.unit ? " " + esc(data.unit) : ""}</b>
-          </div>`;
-      }).join("") || '<div class="muted">시리즈 없음</div>';
-      return `
-        <div class="card" style="margin:0;box-shadow:none">
-          <h3 style="margin:0 0 8px">${esc(data.widgetName || "")}
-            <span class="muted mono">#${data.widgetId}</span>
-          </h3>
-          <div class="muted">${esc(meta)} · 시리즈 ${series.length}개</div>
-          <div style="margin-top:8px">${rows}</div>
-        </div>`;
-    }
-
-    function renderPsychrometricPretty(data) {
-      const timeLabels = data.timeLabels || [];
-      const temp = (data.data || []).find((item) => item.label === "TEMP_AVG") || { values: [], unit: "°C" };
-      const hum = (data.data || []).find((item) => item.label === "HUM_AVG") || { values: [], unit: "%" };
-      const rows = timeLabels.map((time, index) => `<tr><td>${esc(new Date(time).toLocaleString())}</td>`
-        + `<td>${temp.values?.[index] == null ? "–" : `${esc(temp.values[index])} ${esc(temp.unit || "°C")}`}</td>`
-        + `<td>${hum.values?.[index] == null ? "–" : `${esc(hum.values[index])} ${esc(hum.unit || "%")}`}</td></tr>`).join("");
-      return `<div class="card" style="margin:0;box-shadow:none"><h3 style="margin:0 0 8px">${esc(data.title || "Psychrometric Chart")}</h3>`
-        + `<div class="muted">InfluxDB 최근 5개 시간 평균 + 최신 평균</div>`
-        + `<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>시간</th><th>TEMP_AVG</th><th>HUM_AVG</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="muted">Influx 데이터 없음</td></tr>'}</tbody></table></div></div>`;
-    }
-
-    function formatPowerW(value) {
-      if (value == null) return "–";
-      const number = Number(value);
-      return Math.abs(number) >= 1000 ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW` : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
-    }
-
-    function renderPowerDistributionPretty(data) {
-      if (!data) return '<div class="empty">결과 없음</div>';
-      if (data.error) return `<div class="empty">${esc(data.error)}</div>`;
-      const groups = (data.groups || []).map((group) => {
-        const rows = (group.sources || []).map((source) => `<div class="row" style="justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)">`
-          + `<span>${esc(source.deviceName || `#${source.deviceId}`)} · ${esc(source.pointName)}</span><b>${esc(formatPowerW(source.powerW))}</b></div>`).join("");
-        return `<div class="pick-item" style="display:block;border-left:4px solid ${esc(group.color || "#38BDF8")}">`
-          + `<div class="row" style="justify-content:space-between"><b>${esc(group.name)}</b><b>${esc(formatPowerW(group.powerW))}</b></div>`
-          + `<div class="muted" style="font-size:12px;margin:3px 0">${group.ratio == null ? "비율 계산 불가" : `${esc(group.ratio)}%`}${group.complete ? "" : " · 일부 데이터 없음"}</div>${rows}</div>`;
-      }).join("");
-      return `<div class="card" style="margin:0;box-shadow:none"><h3 style="margin:0 0 8px">${esc(data.title || "전력 분배")}</h3>`
-        + `<div class="muted">${data.complete ? "모든 W 단위 POWER 최신값" : "일부 소스 데이터 없음 — 전체·비율은 계산하지 않음"}</div>`
-        + `<div style="font-size:30px;font-weight:800;margin:8px 0">${esc(formatPowerW(data.totalPowerW))}</div>${groups}</div>`;
-    }
-
     function clearWidgetForm(keepPage) {
+      widgetVisualPreviewData = null;
       const page = keepPage ? $("wCreatePage").value : null;
       state.editingWidgetId = null;
       state.editingLayout = null;
@@ -11815,6 +11786,9 @@
       $("wCancelEdit").style.display = "none";
       $("wDeleteEdit").style.display = "none";
       $("wName").value = "";
+      $("wColorCustom").checked = false;
+      $("wVisualColor").value = "#54cbf3";
+      setWidgetVisualStyle("classic");
       $("wDeviceSearch").value = "";
       $("wPointSearch").value = "";
       $("wCatalogSearch").value = "";
@@ -11857,7 +11831,7 @@
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
         $("wFormTitle").textContent = `위젯 수정 #${w.id}`;
-        $("wCreate").textContent = "저장 (PUT)";
+        $("wCreate").textContent = "변경 저장";
         $("wCancelEdit").style.display = "";
         $("wDeleteEdit").style.display = "";
         $("wDeleteEdit").dataset.id = String(w.id);
@@ -11867,7 +11841,19 @@
           $("wPage").value = w.pageCode;
         }
         $("wName").value = w.name || "";
+        $("wColorCustom").checked = !!w.visualColor;
+        $("wVisualColor").value = w.visualColor || "#54cbf3";
+        setWidgetVisualStyle(w.visualStyle || "classic");
         $("wKind").value = w.queryKind || "last";
+        widgetVisualPreviewData = null;
+        updateWidgetDesignPreview();
+        const previewEndpoints = { last:'last', count:'count', calculated:'calculated', aggregate:'aggregate' };
+        const previewEndpoint = previewEndpoints[w.queryKind];
+        if (previewEndpoint) api(`/api/manager/query/${previewEndpoint}?widgetId=${encodeURIComponent(w.id)}`).then((data) => {
+          if (state.editingWidgetId !== w.id) return;
+          widgetVisualPreviewData = { kind:w.queryKind, data };
+          updateWidgetDesignPreview();
+        }).catch(() => {});
         state.cctvCameraIds = (w.cctvCameras || []).map((camera) => Number(camera.id)).filter(Number.isFinite);
         if (w.queryKind === "cctv") await loadCctvCameras();
         if (w.countMode) $("wCountMode").value = w.countMode;
@@ -11953,177 +11939,8 @@
       if (state.editingWidgetId === id) {
         clearWidgetForm(true);
       }
-      $("wLastOut").innerHTML = "";
       toast(`위젯 #${id} 삭제됨`);
       refreshWidgetPages($("wPage").value);
-    }
-
-    async function loadWidgets() {
-      const pageCode = $("wPage").value;
-      if (!pageCode) return;
-      const widgets = await api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`);
-      $("wBody").innerHTML = (widgets || []).map((w) => {
-        let queryBtn = `<button type="button" class="ghost" disabled title="미지원">조회</button>`;
-        if (w.queryKind === "count") {
-          queryBtn = `<button type="button" class="ghost" data-count="${w.id}">개수</button>`;
-        } else if (w.queryKind === "last") {
-          queryBtn = `<button type="button" class="ghost" data-last="${w.id}">최신값</button>`;
-        } else if (w.queryKind === "chart") {
-          queryBtn = `<button type="button" class="ghost" data-chart="${w.id}">차트</button>`;
-        } else if (w.queryKind === "aggregate") {
-          queryBtn = `<button type="button" class="ghost" data-agg="${w.id}">집계</button>`;
-        } else if (w.queryKind === "calculated") {
-          queryBtn = `<button type="button" class="ghost" data-pue="${w.id}">계산값</button>`;
-        } else if (w.queryKind === "psychrometric") {
-          queryBtn = `<button type="button" class="ghost" data-psychrometric="${w.id}">습공기선</button>`;
-        } else if (w.queryKind === "power_distribution") {
-          queryBtn = `<button type="button" class="ghost" data-power-distribution="${w.id}">전력 분배</button>`;
-        }
-        const chartMeta = w.queryKind === "chart"
-          ? `<div class="muted">${esc(w.chartScope || "devices")} · ${esc(w.chartSeriesMode || "per_device")} · ${esc(w.chartRangePreset || "")} · ${esc(w.chartWindow || "")}</div>`
-          : w.queryKind === "aggregate"
-            ? `<div class="muted">${esc(({
-                usage: "사용량",
-                power: "전력 합",
-                pue: "계산 지표",
-              })[w.op] || w.op || "")}${w.aggregateRangePreset ? " · " + esc(({
-                today: "오늘",
-                yesterday: "어제",
-                this_month: "이번 달",
-                last_month: "지난 달",
-                last_24h: "최근 24시간",
-                last_7d: "최근 7일",
-              })[w.aggregateRangePreset] || w.aggregateRangePreset) : ""}</div>`
-            : w.queryKind === "calculated"
-              ? `<div class="muted">계산 지표 #${esc(w.pueDefinitionId || "–")} · ${esc(w.pueRangePreset || "last_24h")} · 최신 ${esc(w.pueFreshnessMinutes || 15)}분</div>`
-              : w.queryKind === "psychrometric"
-                ? `<div class="muted">온도·상대습도 소스 ${esc((w.psychrometricSources || []).length)}개 · 최근 5개 평균</div>`
-                : w.queryKind === "power_distribution"
-                  ? `<div class="muted">전력 그룹 ${esc((w.powerDistributionGroups || []).length)}개 · W 단위 최신값 합계</div>`
-              : "";
-        const targetCell = w.queryKind === "count"
-          ? '<span class="muted">전체 enabled</span>'
-          : w.queryKind === "cctv"
-            ? (w.cctvCameras || []).map((camera) => esc(camera.name)).join(", ") || "–"
-          : w.queryKind === "last"
-            ? (w.lastSources || []).map((source) =>
-              `#${esc(source.deviceId)}: ${esc((source.pointNames || []).join(", "))}`).join("<br>") || "–"
-          : w.queryKind === "chart" && (w.chartScope || "devices") === "models"
-            ? ((w.modelIds || []).join(", ") || "–")
-            : w.queryKind === "calculated"
-              ? `계산 지표 #${esc(w.pueDefinitionId || "–")}`
-              : w.queryKind === "psychrometric"
-                ? `소스 ${(w.psychrometricSources || []).length}개`
-                : w.queryKind === "power_distribution"
-                  ? (w.powerDistributionGroups || []).map((group) =>
-                    `${esc(group.name)}: ${(group.sources || []).length}개`).join("<br>") || "–"
-              : ((w.deviceIds || []).join(", ") || "–");
-        return `
-        <tr>
-          <td><b>${esc(w.name)}</b><div class="muted mono">#${w.id}</div></td>
-          <td>${esc(w.queryKind)}${w.queryKind === "count"
-            ? `<div class="muted">${esc(w.countMode || "by_model")}${w.countModelId != null ? " · model#" + w.countModelId : ""}</div>`
-            : chartMeta}</td>
-          <td>${w.enabled ? '<span class="chip ok">ON</span>' : '<span class="chip">OFF</span>'}</td>
-          <td class="mono">${targetCell}</td>
-          <td class="actions">
-            <div class="action-btns">
-            ${queryBtn}
-            <button type="button" class="ghost" data-edit="${w.id}" data-role-gate="admin">수정</button>
-            <button type="button" class="danger" data-delete="${w.id}" data-name="${esc(w.name)}" data-role-gate="admin">삭제</button>
-            <button type="button" class="ghost" data-en="${w.id}" data-v="${w.enabled ? "0" : "1"}" data-role-gate="admin">${w.enabled ? "끄기" : "켜기"}</button>
-            </div>
-          </td>
-        </tr>`;
-      }).join("") || `<tr><td colspan="5"><div class="empty">이 페이지에 위젯이 없습니다</div></td></tr>`;
-      $("wBody").querySelectorAll("[data-last]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/last?widgetId=${btn.dataset.last}&lookbackHours=24`);
-            $("wLastOut").innerHTML = renderLastPretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-count]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/count?widgetId=${btn.dataset.count}`);
-            $("wLastOut").innerHTML = renderCountPretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-chart]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/chart?widgetId=${btn.dataset.chart}`);
-            $("wLastOut").innerHTML = renderChartPretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-agg]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const w = (await api(`/api/manager/widgets/${btn.dataset.agg}`));
-            const range = w.aggregateRangePreset || "today";
-            const data = await api(`/api/manager/query/aggregate?widgetId=${btn.dataset.agg}&rangePreset=${encodeURIComponent(range)}`);
-            $("wLastOut").innerHTML = renderAggregatePretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-psychrometric]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/psychrometric?widgetId=${btn.dataset.psychrometric}`);
-            $("wLastOut").innerHTML = renderPsychrometricPretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-power-distribution]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/power-distribution?widgetId=${btn.dataset.powerDistribution}`);
-            $("wLastOut").innerHTML = renderPowerDistributionPretty(data);
-          } catch (e) {
-            $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`;
-          }
-        };
-      });
-      $("wBody").querySelectorAll("[data-pue]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            const data = await api(`/api/manager/query/calculated?widgetId=${btn.dataset.pue}`);
-            renderPueResult(data, true);
-            $("wLastOut").innerHTML = $("pueResult").innerHTML;
-          } catch (e) { $("wLastOut").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
-        };
-      });
-      $("wBody").querySelectorAll("[data-edit]").forEach((btn) => {
-        btn.onclick = () => startEditWidget(Number(btn.dataset.edit));
-      });
-      $("wBody").querySelectorAll("[data-delete]").forEach((btn) => {
-        btn.onclick = () => deleteWidget(Number(btn.dataset.delete), btn.dataset.name).catch((e) => toast(e.message, true));
-      });
-      $("wBody").querySelectorAll("[data-en]").forEach((btn) => {
-        btn.onclick = async () => {
-          try {
-            await api(`/api/manager/widgets/${btn.dataset.en}/enabled`, {
-              method: "PATCH",
-              body: JSON.stringify({ enabled: btn.dataset.v === "1" }),
-            });
-            await loadWidgets();
-          } catch (e) { toast(e.message, true); }
-        };
-      });
     }
 
     async function loadPueDefinitions() {
@@ -12295,18 +12112,6 @@
       $("pueRatioSummary").textContent = complete
         ? `공식 완성: ${$("pueFormula").value} · 아래 ‘공식 검사’를 눌러 확인하세요.`
         : `${assigned}/${aliases.length}개 배치 · 위쪽 ${state.calculatedRatioTop.length}개 · 아래쪽 ${state.calculatedRatioBottom.length}개 (양쪽에 모두 항목이 필요합니다)`;
-    }
-
-    function renderPueResult(data, fromInflux = false) {
-      const value = data.value == null ? "계산 불가" : Number(data.value).toFixed(4);
-      const previous = data.calculationStatus === "PREVIOUS_VERSION";
-      const statusLabel = { OK: "정상", MISSING_DATA: "계산 결과 없음", STALE_DATA: "저장값 오래됨", PREVIOUS_VERSION: "이전 설정 결과 · 새 수집 대기" }[data.calculationStatus] || data.calculationStatus;
-      const savedAt = data.dataStatus?.latestCollectedAt ? new Date(data.dataStatus.latestCollectedAt).toLocaleString("ko-KR") : "";
-      $("pueResult").innerHTML = `<div class="stats"><div class="stat"><div class="k">계산 결과</div><div class="v">${esc(value)} ${esc(data.unit || "")}</div></div></div>`
-        + `<p class="muted">${fromInflux ? "같은 수집 회차에 읽은 값으로 계산한 InfluxDB 저장 결과" : "계산 결과"} · 상태: ${esc(statusLabel)} · 기간: ${esc(data.rangePreset)}</p>`
-        + (previous ? `<div class="muted">이전 결과 저장: ${esc(savedAt)} · 저장 당시 단위 정보 없음</div>` : "")
-        + `<div class="muted mono">${previous ? "현재 공식(새 결과 대기): " : ""}${esc(data.formula || "")}</div>`
-        + (Object.keys(data.inputs || {}).length ? `<div class="muted" style="margin-top:8px">입력값: ${Object.entries(data.inputs).map(([alias, input]) => `${esc(alias)}=${esc(input)}`).join(" · ")}</div>` : "");
     }
 
     function psychrometricSources(role) {
@@ -12649,7 +12454,7 @@
     }
     renderPueGroups();
 
-    // Keep legacy form state in the DOM, but show its editors directly over the board.
+    // Show the widget and calculated-metric dialogs directly over the board.
     document.body.append($("wEditorBackdrop"), $("wEditorCard"), $("metricBackdrop"), $("calculatedMetricCard"));
     $("metricClose").onclick = closeCalculatedMetrics;
     $("metricBackdrop").onclick = closeCalculatedMetrics;
@@ -12657,38 +12462,23 @@
       if (event.key === "Escape" && $("calculatedMetricCard").classList.contains("open")) closeCalculatedMetrics();
     });
 
-    $("wReload").onclick = () => loadWidgets().catch((e) => toast(e.message, true));
-    $("wOpenEditor").onclick = () => openWidgetEditor();
     $("wDeviceSearch").addEventListener("input", () => fillWidgetDevicePick());
     $("wPointSearch").addEventListener("input", () => filterWidgetPointLabels("wPickDevicePoints", "wPointSearch"));
     $("wCatalogSearch").addEventListener("input", () => filterWidgetPointLabels("wPointGrid", "wCatalogSearch"));
     $("wCloseEditor").onclick = () => closeWidgetEditor();
     $("wEditPageLayout").onclick = openPageLayoutEditor;
     $("wCreatePage").addEventListener("change", () => {
-      if (Number($("wEditorCard").dataset.step) === 3) updateWidgetPagePreview();
+      if ($("wEditorCard").querySelector(".widget-preview-details")?.open) updateWidgetPagePreview();
     });
+    $("wName").addEventListener("input", updateWidgetDesignPreview);
+    $("wEditorCard").addEventListener("change", (event) => {
+      if (event.target.matches('input[name="wVisualStyle"], #wColorCustom, #wVisualColor, #wKind')) updateWidgetDesignPreview();
+    });
+    $("wVisualColor").addEventListener("input", updateWidgetDesignPreview);
     $("wEditorBackdrop").onclick = () => closeWidgetEditor();
-    $("wStepBack").onclick = () => showWidgetEditorStep(Number($("wEditorCard").dataset.step) - 1);
-    $("wStepNext").onclick = () => {
-      try {
-        const step = Number($("wEditorCard").dataset.step);
-        validateWidgetEditorStep(step);
-        showWidgetEditorStep(step + 1);
-      } catch (error) { toast(error.message, true); }
-    };
-    $("wEditorCard").querySelectorAll("[data-widget-step-nav]").forEach((button) => {
-      button.onclick = () => {
-        const target = Number(button.dataset.widgetStepNav);
-        try {
-          for (let step = Number($("wEditorCard").dataset.step); step < target; step++) validateWidgetEditorStep(step);
-          showWidgetEditorStep(target);
-        } catch (error) { toast(error.message, true); }
-      };
-    });
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && $("wEditorCard").classList.contains("open")) closeWidgetEditor();
     });
-    $("wPage").addEventListener("change", () => loadWidgets().catch(() => {}));
     $("wAddDevice").onclick = () => addWidgetDevice(Number($("wPickDevice").value));
     $("wAddDeviceGroup").onclick = async () => {
       const id = Number($("wPickDeviceGroup").value);
@@ -12757,6 +12547,8 @@
 
     $("wCreate").onclick = async () => {
       try {
+        validateWidgetEditorStep(1);
+        validateWidgetEditorStep(2);
         const kind = $("wKind").value;
         const name = $("wName").value.trim();
         if (!name) throw new Error("표시 이름을 입력하세요");
@@ -12764,6 +12556,7 @@
         if (kind === "cctv") {
           if (!state.cctvCameraIds.length) throw new Error("표시할 CCTV를 한 대 이상 선택하세요");
           const cctvBody = {
+            visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
             pageCode: $("wCreatePage").value,
             name,
             enabled: state.editingWidgetId ? state.editingEnabled : true,
@@ -12792,6 +12585,7 @@
             throw new Error("각 전력 그룹에 W 단위 POWER 소스를 하나 이상 추가하세요");
           }
           const powerBody = {
+            visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
             pageCode: $("wCreatePage").value,
             name,
             enabled: state.editingWidgetId ? state.editingEnabled : true,
@@ -12823,6 +12617,7 @@
             throw new Error("온도 소스와 상대습도 소스를 각각 하나 이상 추가하세요");
           }
           const psychBody = {
+            visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
             pageCode: $("wCreatePage").value,
             name,
             enabled: state.editingWidgetId ? state.editingEnabled : true,
@@ -12895,9 +12690,10 @@
           throw new Error("특정 모델 모드에서는 모델을 선택하세요");
         }
 
-        const layoutH = kind === "chart" ? 16 : 8;
+        const layoutH = kind === "chart" ? 16 : kind === "last" ? 6 : 8;
         const body = {
           pageCode: $("wCreatePage").value,
+          visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
           name,
           enabled: state.editingWidgetId ? state.editingEnabled : true,
           dataFreshnessMinutes: Number($("wDataFreshnessMinutes").value) || 15,

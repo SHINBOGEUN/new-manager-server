@@ -148,7 +148,7 @@ public class DevicePageSceneItem extends BaseEntity {
         if (modelKey == null || !java.util.Set.of("RACK", "PDU", "CRAC", "UPS", "SENSOR", "GENERIC", "CHILLER", "SWITCH", "SERVER",
                 "MACHINE", "CONVEYOR", "TANK", "TABLE", "WALL", "WALL_CONCRETE", "WALL_GLASS", "WALL_GLASS_CLEAR", "WALL_PANEL",
                 "DOOR", "DOOR_DOUBLE", "DOOR_SLIDING", "WINDOW", "WINDOW_DOUBLE", "CEILING", "CEILING_CLEAR", "FLOOR", "LIGHT", "PIPE", "STAIR",
-                "SR_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
+                "SR_RACK", "SR_DOUBLE_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
                 "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR").contains(modelKey)
                 && !modelKey.matches("USR_[A-Z0-9]{24}")) {
             throw new IllegalArgumentException("Unsupported modelKey");

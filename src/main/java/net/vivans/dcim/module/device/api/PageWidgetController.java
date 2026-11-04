@@ -140,6 +140,16 @@ public class PageWidgetController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/visual-style")
+    @Operation(summary = "위젯 디자인 변경")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> setVisualStyle(
+            @PathVariable Integer id, @Valid @RequestBody WidgetVisualStyleRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.setVisualStyle(id, request.style())));
+    }
+
+    public record WidgetVisualStyleRequest(@jakarta.validation.constraints.NotBlank String style) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/layout")
     @Operation(summary = "위젯 2D 배치 저장", description = "드래그 후 grid 좌표·크기만 저장합니다.")
     public ResponseEntity<ApiResponse<PageWidgetResponse>> replaceLayout(

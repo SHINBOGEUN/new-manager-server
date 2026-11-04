@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 import { prepareShowroomObject, showroomDisplaySize, SHOWROOM_MODELS, setShowroomModels, showroomModelByKey, showroomModelUrl } from '../../main/resources/static/showroom-models.js';
 import { GLTFLoader } from '../../main/resources/static/vendor/three/loaders/GLTFLoader.js';
 import * as THREE from '../../main/resources/static/vendor/three/three.module.js';
 
 test('each showroom model has a unique key and a complete GLB 2 file', async () => {
-  assert.equal(SHOWROOM_MODELS.length, 20);
+  assert.equal(SHOWROOM_MODELS.length, 21);
   assert.equal(new Set(SHOWROOM_MODELS.map((model) => model.key)).size, SHOWROOM_MODELS.length);
   for (const model of SHOWROOM_MODELS) {
     const bytes = await readFile(new URL(`../../main/resources/static/scene-assets/showroom/${encodeURIComponent(model.file)}`, import.meta.url));
@@ -14,8 +15,34 @@ test('each showroom model has a unique key and a complete GLB 2 file', async () 
     assert.equal(bytes.readUInt32LE(4), 2, model.file);
     assert.equal(bytes.readUInt32LE(8), bytes.length, model.file);
     assert.ok(model.width > 0 && model.height > 0 && model.depth > 0);
-    assert.equal(showroomModelUrl(model), `/scene-assets/showroom/${encodeURIComponent(model.file)}`);
+    assert.equal(showroomModelUrl(model), `/scene-assets/showroom/${encodeURIComponent(model.file)}${model.key === 'SR_DOUBLE_RACK' ? '?asset=20261103b' : ''}`);
   }
+});
+
+test('double door rack has independent left and right doors', async () => {
+  const model = SHOWROOM_MODELS.find((entry) => entry.key === 'SR_DOUBLE_RACK');
+  const bytes = await readFile(new URL(`../../main/resources/static/scene-assets/showroom/${model.file}`, import.meta.url));
+  const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  const left = gltf.scene.getObjectByName('front_door_left'), right = gltf.scene.getObjectByName('front_door_right');
+  assert.ok(left && right && left !== right);
+  const leftBounds = new THREE.Box3().setFromObject(left), rightBounds = new THREE.Box3().setFromObject(right);
+  assert.ok(!leftBounds.isEmpty() && !rightBounds.isEmpty());
+  assert.ok(leftBounds.getCenter(new THREE.Vector3()).x < rightBounds.getCenter(new THREE.Vector3()).x);
+  gltf.scene.updateMatrixWorld(true);
+  const throughVent = new THREE.Raycaster(new THREE.Vector3(-.208, .615, 2), new THREE.Vector3(0, 0, -1));
+  assert.equal(throughVent.intersectObject(left, true).length, 0, 'closed vent must not block the view into the rack');
+  const sceneCode = await readFile(new URL('../../main/resources/static/page-scene-3d.js', import.meta.url), 'utf8');
+  const start = sceneCode.indexOf('function attachRackDoorPivots('), end = sceneCode.indexOf('\nfunction ', start + 10);
+  const context = {THREE}; vm.createContext(context);
+  vm.runInContext(`${sceneCode.slice(start,end)}\nglobalThis.attachDoors=attachRackDoorPivots;`, context);
+  const scene = new THREE.Scene(); scene.add(gltf.scene); scene.updateMatrixWorld(true);
+  const beforeLeft = leftBounds.getCenter(new THREE.Vector3()), beforeRight = rightBounds.getCenter(new THREE.Vector3());
+  const hinges = context.attachDoors(gltf.scene, scene);
+  assert.equal(hinges.length, 2);
+  for (const hinge of hinges) hinge.pivot.rotation.y = hinge.direction * 1.2;
+  scene.updateMatrixWorld(true);
+  assert.ok(new THREE.Box3().setFromObject(left).getCenter(new THREE.Vector3()).z > beforeLeft.z);
+  assert.ok(new THREE.Box3().setFromObject(right).getCenter(new THREE.Vector3()).z > beforeRight.z);
 });
 
 test('in-row frame and distribution panel render as separate 3D assets', async () => {
@@ -65,6 +92,12 @@ test('Three.js loads the dedicated server rack instead of the cooler model', asy
   const door = gltf.scene.getObjectByName('Inrow_Cooling_Rack_Front_Door');
   assert.ok(door, 'server rack front door must be separately selectable');
   assert.ok(!new THREE.Box3().setFromObject(door).isEmpty(), 'server rack front door has visible geometry');
+  const code = await readFile(new URL('../../main/resources/static/page-scene-3d.js', import.meta.url), 'utf8');
+  const start = code.indexOf('function attachRackDoorPivots('), end = code.indexOf('\nfunction ', start + 10);
+  const context = {THREE}; vm.createContext(context);
+  vm.runInContext(`${code.slice(start,end)}\nglobalThis.attachDoors=attachRackDoorPivots;`, context);
+  const oldRack = gltf.scene.clone(true), oldScene = new THREE.Scene(); oldScene.add(oldRack); oldScene.updateMatrixWorld(true);
+  assert.equal(context.attachDoors(oldRack,oldScene).length, 1, 'existing rack remains supported');
   const scene = new THREE.Scene(); scene.add(gltf.scene); scene.updateMatrixWorld(true);
   const doorBox = new THREE.Box3().setFromObject(door), before = doorBox.getCenter(new THREE.Vector3());
   const hinge = new THREE.Group(); hinge.position.set(doorBox.max.x, before.y, before.z); scene.add(hinge);

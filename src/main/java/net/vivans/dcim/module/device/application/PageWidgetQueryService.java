@@ -101,6 +101,10 @@ public class PageWidgetQueryService {
 
     @Transactional
     public PageWidgetResponse createWidget(PageWidgetCreateRequest request) {
+        return applyVisualStyle(createWidgetContent(request), request.visualStyle(), request.visualColor());
+    }
+
+    private PageWidgetResponse createWidgetContent(PageWidgetCreateRequest request) {
         CommonCode pageCode = widgetSupport.findPageCode(request.pageCode());
         if (pageWidgetRepository.existsByPageCodeIdAndName(pageCode.getId(), request.name().trim())) {
             throw new ConflictException(DUPLICATE_NAME_MESSAGE);
@@ -176,26 +180,30 @@ public class PageWidgetQueryService {
 
     @Transactional
     public PageWidgetResponse createPsychrometricWidget(PageWidgetPsychrometricCreateRequest request) {
-        return psychrometricWidgetHandler.create(request);
+        return applyVisualStyle(psychrometricWidgetHandler.create(request), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updatePsychrometricWidget(Integer id, PageWidgetPsychrometricUpdateRequest request) {
-        return psychrometricWidgetHandler.update(id, request);
+        return applyVisualStyle(psychrometricWidgetHandler.update(id, request), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse createPowerDistributionWidget(PageWidgetPowerDistributionCreateRequest request) {
-        return powerDistributionWidgetHandler.create(request);
+        return applyVisualStyle(powerDistributionWidgetHandler.create(request), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updatePowerDistributionWidget(Integer id, PageWidgetPowerDistributionUpdateRequest request) {
-        return powerDistributionWidgetHandler.update(id, request);
+        return applyVisualStyle(powerDistributionWidgetHandler.update(id, request), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updateWidget(Integer id, PageWidgetUpdateRequest request) {
+        return applyVisualStyle(updateWidgetContent(id, request), request.visualStyle(), request.visualColor());
+    }
+
+    private PageWidgetResponse updateWidgetContent(Integer id, PageWidgetUpdateRequest request) {
         PageWidget widget = widgetSupport.findWidget(id);
         String name = request.name().trim();
         widgetSupport.updatePage(widget, request.pageCode(), name);
@@ -281,6 +289,21 @@ public class PageWidgetQueryService {
     public PageWidgetResponse setEnabled(Integer id, PageWidgetEnabledRequest request) {
         PageWidget widget = widgetSupport.findWidget(id);
         widget.setEnabled(request.enabled());
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse setVisualStyle(Integer id, String style) {
+        PageWidget widget = widgetSupport.findWidget(id);
+        widget.changeVisualStyle(style);
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    private PageWidgetResponse applyVisualStyle(PageWidgetResponse response, String style, String color) {
+        if (style == null && color == null) return response;
+        PageWidget widget = widgetSupport.findWidget(response.id());
+        if (style != null) widget.changeVisualStyle(style);
+        if (color != null) widget.changeVisualColor(color);
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 

@@ -57,6 +57,25 @@ public class PageWidget extends BaseEntity {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "visual_style", nullable = false, length = 16)
+    private String visualStyle = "classic";
+
+    @Column(name = "visual_color", length = 7)
+    private String visualColor;
+
+    public void changeVisualColor(String color) {
+        if (color == null || color.isBlank()) { this.visualColor = null; return; }
+        if (!color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("색상은 #RRGGBB 형식이어야 합니다");
+        this.visualColor = color.toUpperCase(java.util.Locale.ROOT);
+    }
+
+    public void changeVisualStyle(String style) {
+        if (style == null || !Set.of("classic", "minimal", "vivid").contains(style)) {
+            throw new IllegalArgumentException("지원하지 않는 위젯 디자인입니다");
+        }
+        this.visualStyle = style;
+    }
+
     @Column(name = "data_freshness_minutes", nullable = false)
     private int dataFreshnessMinutes = DEFAULT_DATA_FRESHNESS_MINUTES;
 

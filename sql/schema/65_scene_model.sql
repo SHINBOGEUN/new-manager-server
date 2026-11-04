@@ -41,12 +41,13 @@ INSERT IGNORE INTO `scene_model`
   ('SR_PDU_VERTICAL', '세로형 PDU', 'pdu_rack_vertical.glb', 'pdu_rack_vertical.glb', .1, 1.6, .1),
   ('SR_GPU_SERVER', 'GPU 서버 (4U 예시)', 'gpu_server_rack.glb', 'gpu_server_rack.glb', .482, .178, .72),
   ('SR_DRAGINO_TH', 'Dragino 온습도 센서', 'dragino_temperature_humidity.glb', 'dragino_temperature_humidity.glb', .068, .12, .027),
-  ('SR_DRAGINO_DOOR', 'Dragino 도어 센서', 'dragino_door_contact.glb', 'dragino_door_contact.glb', .13, .10, .03);
+  ('SR_DRAGINO_DOOR', 'Dragino 도어 센서', 'dragino_door_contact.glb', 'dragino_door_contact.glb', .13, .10, .03),
+  ('SR_DOUBLE_RACK', '서버 랙 (양문형)', 'rack_double_door.glb', 'rack_double_door.glb', .9, 2.35, .9);
 
 UPDATE `scene_model` SET `category` = CASE
   WHEN `model_key` IN ('SR_DRAGINO_TH', 'SR_DRAGINO_DOOR') THEN '센서'
   WHEN `model_key` IN ('SR_INROW_MOLD', 'SR_WALL_COIL') THEN '프레임·구조물'
-  WHEN `model_key` IN ('SR_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER') THEN '랙·서버'
+  WHEN `model_key` IN ('SR_RACK', 'SR_DOUBLE_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER') THEN '랙·서버'
   WHEN `model_key` IN ('SR_INROW', 'SR_IMMERSION', 'SR_DLC_CDU') THEN '냉각 설비'
   WHEN `model_key` IN ('SR_INROW_PANEL', 'SR_RDC', 'SR_PDU_RACK', 'SR_PDU_VERTICAL') THEN '전력 설비'
   ELSE `category` END

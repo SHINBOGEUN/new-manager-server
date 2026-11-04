@@ -47,6 +47,9 @@ class SceneModuleSecurityTest {
         mvc.perform(get("/scene-group-lock.js")).andExpect(status().isOk());
         mvc.perform(get("/rack-widget-layout.js")).andExpect(status().isOk());
         mvc.perform(get("/rack-widget-chart.js")).andExpect(status().isOk());
+        mvc.perform(get("/ops-navigation.js")).andExpect(status().isOk());
+        mvc.perform(get("/ops-workspace.css")).andExpect(status().isOk());
+        mvc.perform(get("/analysis.html")).andExpect(status().isOk());
         mvc.perform(get("/rack-door-attachment.js")).andExpect(status().isOk());
         mvc.perform(get("/rack-scene-display.js")).andExpect(status().isOk());
         mvc.perform(get("/api/manager/scene-security-check")).andExpect(status().isUnauthorized());

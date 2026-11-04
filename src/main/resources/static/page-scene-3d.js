@@ -2,7 +2,7 @@ import * as THREE from "/vendor/three/three.module.js?v=20261022d";
 import { OrbitControls } from "/vendor/three/controls/OrbitControls.js";
 import { floorRect, floorRectsOverlap, floorBatchPositions, wallBatchGrid, keyboardMoveDelta, snapFloorPosition, wallCornerCandidates } from "/floor-placement.js?v=20261028ae";
 import { GLTFLoader } from "/vendor/three/loaders/GLTFLoader.js";
-import { prepareShowroomObject, showroomDisplaySize, showroomFramePreviewSize, showroomModelByKey, showroomModelUrl } from "/showroom-models.js?v=20261103b";
+import { prepareShowroomObject, showroomDisplaySize, showroomFramePreviewSize, showroomModelByKey, showroomModelUrl } from "/showroom-models.js?v=20261103d";
 import { allowsInrowInteriorOverlap, fitEquipmentInsideFrame, fitFrameAroundEquipment, inrowFrameScale, isEquipmentFrameKey, isFrameEquipmentItem, resizedInrowFrame } from "/inrow-placement.js?v=20261029b";
 import { setGroupLockState, rackDetailAction } from "/scene-group-lock.js?v=20261101b";
 
@@ -179,6 +179,33 @@ function makeRoom(scene, flat = false) {
 
 function isColorableRack(item) {
   return item?.itemType === "RACK" || (/^SR_.*RACK$/.test(item?.modelKey || "") && item.modelKey !== "SR_PDU_RACK");
+}
+
+// Doors named front_door_left/right have separate hinges; a single front_door
+// keeps the existing right-hand opening behavior.
+function attachRackDoorPivots(searchRoot, parent) {
+  const doors = [];
+  searchRoot.traverse((node) => {
+    if (/front[_\s-]*door(?:[_\s-]*(?:left|right))?(?:[.\s_-]\d+)?$/i.test(node.name || "")) doors.push(node);
+  });
+  if (!doors.length) return [];
+  parent.updateMatrixWorld(true);
+  const inverse = parent.matrixWorld.clone().invert(), pivots = [];
+  for (const door of doors) {
+    const bounds = new THREE.Box3();
+    door.traverse((node) => {
+      if (!node.isMesh || !node.geometry) return;
+      if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+      if (node.geometry.boundingBox) bounds.union(node.geometry.boundingBox.clone().applyMatrix4(inverse.clone().multiply(node.matrixWorld)));
+    });
+    if (bounds.isEmpty()) continue;
+    const left = /[_\s-]left$/i.test(door.name || "");
+    const pivot = new THREE.Group();
+    pivot.position.set(left ? bounds.min.x : bounds.max.x, (bounds.min.y + bounds.max.y) / 2, (bounds.min.z + bounds.max.z) / 2);
+    parent.add(pivot); parent.updateMatrixWorld(true); pivot.attach(door);
+    pivots.push({ pivot, direction: left ? -1 : 1 });
+  }
+  return pivots;
 }
 
 function applyRackColor(group, color) {
@@ -2459,22 +2486,9 @@ function mount(container, page, options = {}) {
     });
     if (bounds.isEmpty()) return;
     const dimensions = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
-    if (!rack.userData.sensorDoorPivot) {
-      let frontDoor = null;
-      rack.traverse((node) => { if (!frontDoor && /front[_\s-]*door/i.test(node.name || "")) frontDoor = node; });
-      if (frontDoor) {
-        const doorBounds = new THREE.Box3();
-        frontDoor.traverse((node) => {
-          if (!node.isMesh || !node.geometry) return;
-          if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
-          if (node.geometry.boundingBox) doorBounds.union(node.geometry.boundingBox.clone().applyMatrix4(inverse.clone().multiply(node.matrixWorld)));
-        });
-        if (!doorBounds.isEmpty()) {
-          const corner = new THREE.Vector3(doorBounds.max.x, (doorBounds.min.y + doorBounds.max.y) / 2, (doorBounds.min.z + doorBounds.max.z) / 2);
-          const pivot = new THREE.Group(); pivot.position.copy(corner); rack.add(pivot); rack.updateMatrixWorld(true); pivot.attach(frontDoor);
-          rack.userData.sensorDoorPivot = pivot; rack.userData.sensorDoorAngle = 0;
-        }
-      }
+    if (!rack.userData.sensorDoorPivots?.length) {
+      rack.userData.sensorDoorPivots = attachRackDoorPivots(rack, rack);
+      if (rack.userData.sensorDoorPivots.length) rack.userData.sensorDoorAngle = 0;
     }
     rack.userData.sensorDoorTarget = typeof layout.doorOpen === "boolean" ? (layout.doorOpen ? 1.95 : 0) : null;
     const overlay = new THREE.Group(); overlay.name = "rack-asset-overlay"; overlay.userData.sceneKind = "SENSOR";
@@ -2602,8 +2616,8 @@ function mount(container, page, options = {}) {
     updateWalking(deltaSeconds);
     if (options.editing && now - lastOverlapUpdate > 350) { updateFloorOverlapIndicators(); lastOverlapUpdate = now; }
     for (const group of itemGroups.values()) {
-      const pivot = group.userData.sensorDoorPivot, target = group.userData.sensorDoorTarget;
-      if (pivot && typeof target === "number") { group.userData.sensorDoorAngle += (target - group.userData.sensorDoorAngle) * (1 - Math.exp(-7 * deltaSeconds)); pivot.rotation.y = group.userData.sensorDoorAngle; }
+      const pivots = group.userData.sensorDoorPivots, target = group.userData.sensorDoorTarget;
+      if (pivots?.length && typeof target === "number") { group.userData.sensorDoorAngle += (target - group.userData.sensorDoorAngle) * (1 - Math.exp(-7 * deltaSeconds)); for (const door of pivots) door.pivot.rotation.y = door.direction * group.userData.sensorDoorAngle; }
     }
     controls.update();
     if (selectionBox && selectedItem) {
@@ -2989,7 +3003,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
   for (const x of [-.96, -.02]) box(.045, 2.3, .05, x, 1.17, 0, frame, hinge);
   for (const y of [.04, 2.3]) box(.96, .045, .05, -.49, y, 0, frame, hinge);
   const openDoorAngle = 1.95;
-  let doorOpen = true, actualDoorHinge = null, doorAngle = openDoorAngle, doorLastFrame = null; hinge.rotation.y = doorAngle;
+  let doorOpen = true, actualDoorHinge = null, actualDoorHinges = [], doorAngle = openDoorAngle, doorLastFrame = null; hinge.rotation.y = doorAngle;
   const doorAttachments = new THREE.Group(); scene.add(doorAttachments);
   updateDoorAttachmentTransform(doorAttachments, hinge.position, doorAngle);
   const rackModelKey = options.modelKey && options.modelKey !== "RACK" ? options.modelKey : "SR_RACK";
@@ -3008,16 +3022,11 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
       wrapper.scale.set(1 / Math.max(size.x, .001), 2.35 / Math.max(size.y, .001), 1 / Math.max(size.z, .001));
       object.position.set(-center.x, -bounds.min.y, -center.z);
       scene.add(wrapper); scene.updateMatrixWorld(true);
-      let frontDoor = null;
-      object.traverse((node) => { if (!frontDoor && /front[_\s-]*door/i.test(node.name || "")) frontDoor = node; });
-      if (frontDoor) {
-        const doorBounds = new THREE.Box3().setFromObject(frontDoor);
-        if (!doorBounds.isEmpty()) {
-          const pivot = new THREE.Group();
-          pivot.position.set(doorBounds.max.x, (doorBounds.min.y + doorBounds.max.y) / 2, (doorBounds.min.z + doorBounds.max.z) / 2);
-          scene.add(pivot); scene.updateMatrixWorld(true); pivot.attach(frontDoor);
-          actualDoorHinge = pivot; actualDoorHinge.rotation.y = doorAngle; hinge.visible = false;
-        }
+      actualDoorHinges = attachRackDoorPivots(object, scene);
+      if (actualDoorHinges.length) {
+        actualDoorHinge = (actualDoorHinges.find((door) => door.direction === 1) || actualDoorHinges[0]).pivot;
+        for (const door of actualDoorHinges) door.pivot.rotation.y = door.direction * doorAngle;
+        hinge.visible = false;
       }
       if (!actualDoorHinge) options.onError?.("이 랙 모델에는 분리된 전면 문이 없어 기본 문을 표시합니다.");
       fallbackRack.visible = false;
@@ -3174,7 +3183,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     const target = doorOpen ? openDoorAngle : 0;
     doorAngle += (target - doorAngle) * (1 - Math.exp(-7 * dt));
     if (Math.abs(target - doorAngle) < .001) doorAngle = target;
-    hinge.rotation.y = doorAngle; if (actualDoorHinge) actualDoorHinge.rotation.y = doorAngle;
+    hinge.rotation.y = doorAngle; for (const door of actualDoorHinges) door.pivot.rotation.y = door.direction * doorAngle;
     updateDoorAttachmentTransform(doorAttachments, actualDoorHinge?.position || hinge.position, doorAngle);
     if (selectedPlacement) selectedBounds.box.setFromObject(selectedPlacement.holder);
     controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(tick);

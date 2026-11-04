@@ -2,7 +2,10 @@ package net.vivans.dcim.module.device.domain.model;
 
 public enum PageWidgetOp {
     usage,
-    power;
+    power,
+    usage_rank,
+    power_rank,
+    demand;
 
     public static PageWidgetOp from(String raw) {
         if (raw == null || raw.isBlank()) {
@@ -11,7 +14,7 @@ public enum PageWidgetOp {
         try {
             return valueOf(raw.trim());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("op must be usage or power");
+            throw new IllegalArgumentException("unsupported aggregate op");
         }
     }
 }
