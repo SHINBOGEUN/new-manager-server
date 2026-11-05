@@ -563,6 +563,17 @@ function makeSensor(item, valueText) {
   return group;
 }
 
+// A device linked to an equipment model supplies its own readings, not a physical sensor.
+function makeAttachmentMarker(item, host, valueText) {
+  if (host?.itemType === "EQUIPMENT" && showroomModelByKey(host.modelKey)?.deviceLinkable) {
+    const group = new THREE.Group();
+    group.userData.sceneItem = item;
+    group.userData.sceneKind = "SENSOR";
+    return group;
+  }
+  return makeSensor(item, valueText);
+}
+
 function findItemKey(item) { return item.id != null ? `db-${item.id}` : item.clientKey; }
 
 function mount(container, page, options = {}) {
@@ -961,7 +972,7 @@ function mount(container, page, options = {}) {
     if (!parent) continue;
     const pair = devicesByPoint.get(`${item.deviceId}|${item.pointName}`);
     const valueText = pair?.point?.value == null ? "—" : `${Number(pair.point.value).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}${pair.point.unit ? ` ${pair.point.unit}` : ""}`;
-    const group = makeSensor(item, valueText); group.position.set(Number(item.x || 0), Number(item.y || 1.8), Number(item.z || 0)); parent.add(group);
+    const group = makeAttachmentMarker(item, parent.userData.sceneItem, valueText); group.position.set(Number(item.x || 0), Number(item.y || 1.8), Number(item.z || 0)); parent.add(group);
     itemGroups.set(findItemKey(item), group);
   }
   for (const item of items.filter((entry) => entry.itemType === "DEVICE")) {
@@ -970,7 +981,7 @@ function mount(container, page, options = {}) {
     const device = devicesById.get(item.deviceId);
     const summary = (device?.points || []).filter((point) => point.value != null).slice(0, 2)
       .map((point) => `${point.pointName} ${Number(point.value).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}${point.unit ? ` ${point.unit}` : ""}`).join(" · ");
-    const group = makeSensor(item, summary || "최신값 없음");
+    const group = makeAttachmentMarker(item, parent.userData.sceneItem, summary || "최신값 없음");
     group.position.set(Number(item.x || 0), Number(item.y || 1.8), Number(item.z || 0));
     parent.add(group); itemGroups.set(findItemKey(item), group);
   }
@@ -993,8 +1004,21 @@ function mount(container, page, options = {}) {
   };
   const ro = new ResizeObserver(resize); ro.observe(container); resize();
   const intersect = (event, objects) => {
-    const rect = renderer.domElement.getBoundingClientRect(); pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1); raycaster.setFromCamera(pointer, camera);
-    return raycaster.intersectObjects(objects, true);
+    // Use the current viewport and world transforms, including changes since the last frame.
+    resize(); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return [];
+    pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObjects(objects, true).filter(({object}) => {
+      // Labels, heat overlays and hidden parts are not selectable equipment surfaces.
+      if (!object.isMesh) return false;
+      for (let node = object; node && node !== scene; node = node.parent) {
+        if (!node.visible || node.name === "rack-asset-overlay" || node.isSprite) return false;
+      }
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      return materials.some(material => material?.visible && (!material.transparent || material.opacity > .01));
+    });
   };
   function localWallPoint(event, wall) {
     const wallGroup = itemGroups.get(findItemKey(wall));
@@ -2460,10 +2484,9 @@ function mount(container, page, options = {}) {
     if (walking || placement || areaSelectMode || areaMoveMode || wholeSceneMoveMode) return;
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     const item = hit && nearestSceneItemRoot(hit.object)?.userData?.sceneItem;
-    if (options.editing && item?.itemType === "EQUIPMENT" && showroomModelByKey(item.modelKey)?.deviceLinkable) {
+    if (item?.itemType === "EQUIPMENT" && showroomModelByKey(item.modelKey)?.deviceLinkable) {
       event.preventDefault();
-      if (item.locked) options.onHint?.("잠긴 설비는 잠금 해제 후 장비를 연결할 수 있습니다.");
-      else options.onDeviceLink?.(structuredClone(item));
+      options.onDeviceLink?.(structuredClone(item));
       return;
     }
     if (item?.modelKey === "SR_INROW_PANEL") { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
@@ -2845,6 +2868,9 @@ function mount(container, page, options = {}) {
       const siblings = items.filter((item) => item.itemType === "DEVICE" && (item.parentId != null
         ? host.id != null && Number(item.parentId) === Number(host.id)
         : item.parentClientKey === parentKey));
+      if (host.itemType === "EQUIPMENT" && showroomModelByKey(host.modelKey)?.deviceLinkable && items.some((item) => ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? host.id != null && Number(item.parentId) === Number(host.id) : item.parentClientKey === parentKey))) {
+        options.onHint?.("이 설비에는 장비 한 대만 연결할 수 있습니다."); return false;
+      }
       const x = (siblings.length - (siblings.length ? (siblings.length - 1) / 2 : 0)) * .24;
       const item = { id: null, clientKey: makeKey(), parentId: host.id ?? null,
         parentClientKey: host.id != null ? `db-${host.id}` : host.clientKey, itemType: "DEVICE",
@@ -2852,7 +2878,7 @@ function mount(container, page, options = {}) {
         x: THREE.MathUtils.clamp(x, -.36, .36), y: 1.05, z: .49, rotationY: 0 };
       const summary = (device.points || []).filter((point) => point.value != null).slice(0, 2)
         .map((point) => `${point.pointName} ${point.value}${point.unit ? ` ${point.unit}` : ""}`).join(" · ");
-      const marker = makeSensor(item, summary || "최신값 없음"); marker.position.set(item.x, item.y, item.z);
+      const marker = makeAttachmentMarker(item, host, summary || "최신값 없음"); marker.position.set(item.x, item.y, item.z);
       itemGroups.get(parentKey)?.add(marker); items.push(item); itemGroups.set(item.clientKey, marker);
       options.onChange?.(items); options.onHint?.(`${device.deviceName}을(를) ${host.label}에 부착했습니다. 저장을 눌러 반영하세요.`);
       return true;

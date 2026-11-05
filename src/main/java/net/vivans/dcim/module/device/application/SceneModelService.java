@@ -43,6 +43,11 @@ public class SceneModelService {
                 sceneItemRepository.existsByModelKey(model.getKey()) || rackPlacements.existsBySceneModelKey(model.getKey()) || modelPlacements.existsBySceneModelKey(model.getKey()))).toList();
     }
 
+    public java.util.Set<String> deviceLinkableKeys() {
+        return repository.findAllByDeviceLinkableTrue().stream().map(SceneModel::getKey)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     public boolean usable(String key) {
         return repository.existsById(key);
     }

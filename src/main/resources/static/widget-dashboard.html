@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261105b" />
+  <link rel="alternate icon" href="/favicon.ico?v=20261105b" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -93,7 +95,7 @@
 .widget-data-table td small { color:var(--muted); }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261104a"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261105e"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -692,6 +694,41 @@
     .page-scene-asset-dock button { display:flex; min-height:48px; flex-direction:column; align-items:center; justify-content:center; gap:4px; margin:0; padding:7px; border:1px solid #29485a; border-radius:8px; color:#d8edf5; background:#112331; cursor:pointer; font-size:12px; font-weight:700; }
     .page-scene-asset-dock button:hover { border-color:#39c9ed; background:#173b4d; }
     .page-scene-asset-modal { width:min(1060px,calc(100vw - 32px)); max-width:none; max-height:min(86vh,820px); padding:18px; overflow:hidden; border:1px solid #3b6274; border-radius:14px; color:#e5f4fa; background:#0d1a28; box-shadow:0 20px 70px #000b; }
+    .scene-device-detail-dialog { width:min(1120px,calc(100vw - 32px)); max-width:none; max-height:calc(100vh - 32px); margin:auto; padding:0; overflow:auto; border:1px solid #345269; border-radius:14px; color:var(--text); background:var(--panel); box-shadow:0 24px 70px #0009; }
+    .scene-device-detail-dialog::backdrop { background:rgba(2,8,14,.76); backdrop-filter:blur(3px); }
+    .scene-device-detail-body { display:grid; grid-template-columns:minmax(240px, 2fr) minmax(300px, 3fr); gap:16px; padding:16px; }
+    .scene-device-detail-stage { min-height:420px; position:relative; overflow:hidden; border:1px solid var(--line); border-radius:10px; background:#101b29; }
+    .scene-device-detail-stage canvas { width:100%; height:100%; display:block; }
+    .scene-device-detail-stage .asset-model-error { position:absolute; inset:0; display:grid; place-items:center; padding:20px; color:var(--muted); text-align:center; }
+    .scene-device-detail-side { min-width:0; display:flex; flex-direction:column; gap:14px; }
+    .scene-device-detail-card { padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2); }
+    .scene-device-detail-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; max-height:420px; overflow:auto; }
+    .scene-device-detail-value { min-width:0; padding:11px; border:1px solid var(--line); border-radius:8px; background:var(--panel); }
+    .scene-device-detail-value small { display:block; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+    .scene-device-detail-value strong { display:block; margin-top:5px; font-size:17px; color:var(--accent); overflow-wrap:anywhere; }
+    .scene-device-detail-status { color:var(--muted); font-size:11px; line-height:1.5; }
+    @media(max-width:700px) { .scene-device-detail-body { grid-template-columns:1fr; } .scene-device-detail-stage { min-height:260px; } }
+    .scene-device-link-dialog { width:min(520px,calc(100vw - 32px)); max-width:none; max-height:min(80vh,640px); margin:auto; padding:0; overflow:auto; border:1px solid #345269; border-radius:14px; color:var(--text); background:var(--panel); box-shadow:0 24px 70px #0009; }
+    .scene-device-link-dialog::backdrop { background:rgba(2,8,14,.72); backdrop-filter:blur(3px); }
+    .scene-device-link-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:18px 20px; border-bottom:1px solid var(--line); }
+    .scene-device-link-head h3 { margin:0; font-size:16px; line-height:1.4; overflow-wrap:anywhere; }
+    .scene-device-link-head p { margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.5; }
+    .scene-device-link-close { flex:none; width:32px; height:32px; padding:0; font-size:19px; }
+    .scene-device-link-content { padding:18px 20px; }
+    .scene-device-link-section-title { display:flex; justify-content:space-between; margin-bottom:9px; color:var(--text); font-size:12px; font-weight:700; }
+    .scene-device-link-section-title span { color:var(--muted); font-weight:500; }
+    .scene-device-link-list { display:grid; gap:7px; max-height:220px; overflow:auto; }
+    .scene-device-link-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel-2); font-size:12px; }
+    .scene-device-link-row span { min-width:0; overflow-wrap:anywhere; }
+    .scene-device-link-row button { flex:none; padding:5px 9px; font-size:11px; }
+    .scene-device-link-empty { padding:18px 10px; text-align:center; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:12px; }
+    .scene-device-link-add { margin-top:18px; }
+    .scene-device-link-controls { display:flex; gap:8px; }
+    .scene-device-link-controls select { flex:1; min-width:0; }
+    .scene-device-link-controls button { flex:none; }
+    .scene-device-link-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; border-top:1px solid var(--line); background:var(--panel-2); }
+    .scene-device-link-foot span { color:var(--muted); font-size:11px; line-height:1.5; }
+    @media (max-width:480px) { .scene-device-link-head,.scene-device-link-content { padding:14px; } .scene-device-link-foot { padding:10px 14px; } .scene-device-link-controls { flex-direction:column; } }
     .page-scene-asset-modal::backdrop { background:rgba(2,8,14,.72); backdrop-filter:blur(3px); }
     .page-scene-asset-modal .scene-modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
     .page-scene-asset-modal h3 { margin:0; font-size:16px; }
@@ -1840,41 +1877,105 @@
             onLockedRack: () => {
               window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
             },
-            onDeviceLink: (host) => {
-              if (!state.pageVisualizationEditMode || consoleAuth()?.getRole?.() !== "ADMIN") return;
+            onDeviceLink: function openDeviceLink(host, forceConnection = false) {
+              const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN";
               const key = findSceneItemKey(host), scene = state.pageScene3dApi;
-              const dialog = document.createElement("dialog");
-              dialog.className = "scene-asset-modal";
-              const title = document.createElement("h3"); title.textContent = `${host.label || "설비"} · 장비 연결`;
-              const note = document.createElement("p"); note.className = "muted"; note.textContent = "이 페이지에 등록된 장비를 연결하세요. 도면 저장을 눌러 변경사항을 저장합니다.";
-              const content = document.createElement("div");
-              const close = document.createElement("button"); close.type = "button"; close.textContent = "닫기"; close.onclick = () => dialog.close();
-              const draw = () => {
-                const current = scene.getItems();
-                const linked = current.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key);
+              if (!scene) return;
+              const linkedNow = scene.getItems().filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key);
+              if (!forceConnection && linkedNow.length === 1 && window.parent.openSceneEquipmentWidgets) {
+                const item = linkedNow[0], device = devices.find((d) => Number(d.deviceId) === Number(item.deviceId)) || item;
+                window.parent.openSceneEquipmentWidgets(host, device, editing, () => openDeviceLink(host, true)); return;
+              }
+              const dialog = document.createElement("dialog"); dialog.className = "scene-device-detail-dialog";
+              dialog.setAttribute("aria-label", `${host.label || "설비"} 상세`);
+              const header = document.createElement("div"); header.className = "scene-device-link-head";
+              const heading = document.createElement("div"), title = document.createElement("h3"), note = document.createElement("p");
+              title.textContent = host.label || "설비 상세";
+              note.textContent = editing ? "연결할 장비를 설정하고 측정값을 확인하세요." : "연결된 장비의 최신 측정값입니다.";
+              heading.append(title, note);
+              const close = document.createElement("button"); close.type = "button"; close.className = "scene-device-link-close ghost"; close.textContent = "×"; close.setAttribute("aria-label", "닫기"); close.onclick = () => dialog.close();
+              header.append(heading, close);
+              const layout = document.createElement("div"); layout.className = "scene-device-detail-body";
+              const modelStage = document.createElement("div"); modelStage.className = "scene-device-detail-stage";
+              const side = document.createElement("div"); side.className = "scene-device-detail-side";
+              const connection = document.createElement("div"); connection.className = "scene-device-detail-card";
+              const measurement = document.createElement("div"); measurement.className = "scene-device-detail-card";
+              layout.append(modelStage, side); side.append(connection, measurement);
+              const footer = document.createElement("div"); footer.className = "scene-device-link-foot";
+              const notice = document.createElement("span"); notice.textContent = editing ? "연결 변경은 3D 편집 화면에서 저장해야 반영됩니다." : "측정값은 15초마다 갱신됩니다.";
+              const done = document.createElement("button"); done.type = "button"; done.textContent = "닫기"; done.onclick = () => dialog.close(); footer.append(notice, done);
+              dialog.append(header, layout, footer); document.body.append(dialog);
+              let viewer = null, timer = null, requestSequence = 0;
+              const attachedItems = () => scene.getItems().filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key);
+              const refreshValues = async () => {
+                const sequence = ++requestSequence, linked = attachedItems();
+                const deviceId = linked.length ? String(linked[0].deviceId) : "";
+                if (measurement.dataset.deviceId !== deviceId || !measurement.firstChild) {
+                  measurement.dataset.deviceId = deviceId;
+                  measurement.replaceChildren();
+                  const label = document.createElement("div"); label.className = "scene-device-link-section-title"; label.textContent = "최신 측정값"; measurement.append(label);
+                  const status = document.createElement("p"); status.className = "scene-device-detail-status"; status.textContent = linked.length ? "측정값을 불러오는 중입니다." : "연결된 장비가 없습니다."; measurement.append(status);
+                }
+                const message = measurement.querySelector(".scene-device-detail-status");
+                if (!linked.length) return;
+                try {
+                  const data = await api(`/api/manager/device-pages/${encodeURIComponent(page.pageCode)}/measurements?lookbackHours=24`, {cache:"no-store"});
+                  if (!dialog.open || sequence !== requestSequence) return;
+                  const device = (data.devices || []).find((entry) => Number(entry.deviceId) === Number(linked[0].deviceId));
+                  const points = device?.points || [];
+                  message.textContent = device ? `${device.deviceName || "연결 장비"} · 최근 24시간의 마지막 값` : "연결된 장비의 측정값을 찾을 수 없습니다.";
+                  measurement.querySelector(".scene-device-detail-values")?.remove();
+                  if (!points.length) return;
+                  const grid = document.createElement("div"); grid.className = "scene-device-detail-values";
+                  for (const point of points) {
+                    const card = document.createElement("div"); card.className = "scene-device-detail-value";
+                    const name = document.createElement("small"); name.textContent = point.pointName;
+                    const value = document.createElement("strong"); value.textContent = point.value == null ? "—" : `${formatValue(point.value)}${point.unit ? ` ${point.unit}` : ""}`;
+                    card.append(name, value); grid.append(card);
+                  }
+                  measurement.append(grid);
+                } catch (error) { if (dialog.open && sequence === requestSequence) message.textContent = `측정값 조회 실패: ${error.message}`; }
+              };
+              const drawConnection = () => {
+                const current = scene.getItems(), linked = attachedItems();
                 const used = new Set(current.filter((item) => ["DEVICE", "SENSOR"].includes(item.itemType)).map((item) => Number(item.deviceId)));
                 const available = devices.filter((device) => !used.has(Number(device.deviceId)));
-                content.replaceChildren();
-                const list = document.createElement("div");
+                connection.replaceChildren();
+                const listTitle = document.createElement("div"); listTitle.className = "scene-device-link-section-title";
+                const listLabel = document.createElement("strong"); listLabel.textContent = "연결된 장비";
+                const count = document.createElement("span"); count.textContent = `${linked.length} / 1대`; listTitle.append(listLabel, count); connection.append(listTitle);
+                const list = document.createElement("div"); list.className = "scene-device-link-list";
                 for (const item of linked) {
-                  const row = document.createElement("div"); row.className = "scene-editor-actions";
+                  const row = document.createElement("div"); row.className = "scene-device-link-row";
                   const label = document.createElement("span"); label.textContent = devices.find((device) => Number(device.deviceId) === Number(item.deviceId))?.deviceName || item.label || `장비 #${item.deviceId}`;
-                  const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "연결 해제";
-                  remove.onclick = () => { if (scene.removeItem(findSceneItemKey(item))) draw(); };
-                  row.append(label, remove); list.append(row);
+                  row.append(label);
+                  if (editing) { const remove = document.createElement("button"); remove.type = "button"; remove.className = "danger"; remove.textContent = "연결 해제"; remove.disabled = !!host.locked; remove.onclick = () => { if (scene.removeItem(findSceneItemKey(item))) { drawConnection(); refreshValues(); } }; row.append(remove); }
+                  list.append(row);
                 }
-                if (!linked.length) list.textContent = "연결된 장비가 없습니다.";
-                const select = document.createElement("select"); select.setAttribute("aria-label", "연결할 장비");
-                select.append(new Option(available.length ? "연결할 장비 선택" : "연결 가능한 장비 없음", ""));
-                available.forEach((device) => select.append(new Option(device.deviceName, String(device.deviceId))));
-                const add = document.createElement("button"); add.type = "button"; add.textContent = "장비 연결"; add.disabled = !available.length;
-                add.onclick = () => { if (select.value && scene.attachDevice(key, { deviceId: Number(select.value) })) draw(); };
-                const actions = document.createElement("div"); actions.className = "scene-editor-actions"; actions.append(select, add);
-                content.append(list, actions);
+                if (!linked.length) { const empty = document.createElement("div"); empty.className = "scene-device-link-empty"; empty.textContent = "아직 연결된 장비가 없습니다."; list.append(empty); }
+                connection.append(list);
+                if (linked.length > 1) { const warning = document.createElement("p"); warning.className = "scene-device-detail-status"; warning.textContent = "기존에 여러 장비가 연결되어 있습니다. 한 대만 남겨 주세요."; connection.append(warning); }
+                if (editing && !linked.length) {
+                  const addSection = document.createElement("div"); addSection.className = "scene-device-link-add";
+                  const addTitle = document.createElement("div"); addTitle.className = "scene-device-link-section-title"; addTitle.textContent = "장비 연결";
+                  const select = document.createElement("select"); select.setAttribute("aria-label", "연결할 장비");
+                  select.append(new Option(available.length ? "연결할 장비를 선택하세요" : "연결 가능한 장비가 없습니다", ""));
+                  available.forEach((device) => select.append(new Option(device.deviceName, String(device.deviceId)))); select.disabled = !available.length || !!host.locked;
+                  const add = document.createElement("button"); add.type = "button"; add.textContent = "연결"; add.disabled = true;
+                  select.onchange = () => { add.disabled = !select.value; };
+                  add.onclick = () => { if (select.value && scene.attachDevice(key, {deviceId:Number(select.value)})) { dialog.close(); openDeviceLink(host); } };
+                  const actions = document.createElement("div"); actions.className = "scene-device-link-controls"; actions.append(select, add); addSection.append(addTitle, actions); connection.append(addSection);
+                }
+                if (editing && host.locked) { const locked = document.createElement("p"); locked.className = "scene-device-detail-status"; locked.textContent = "잠긴 설비입니다. 연결을 변경하려면 먼저 잠금을 해제하세요."; connection.append(locked); }
               };
-              dialog.append(title, note, content, close); stage.append(dialog);
-              dialog.addEventListener("close", () => dialog.remove(), { once:true });
-              draw(); dialog.showModal();
+              dialog.addEventListener("close", () => { requestSequence++; clearInterval(timer); viewer?.dispose(); dialog.remove(); }, {once:true});
+              drawConnection(); dialog.showModal(); refreshValues(); timer = setInterval(refreshValues, 15000);
+              Promise.all([import("/showroom-models.js?v=20261103d"), import("/asset-model-preview.js?v=20261105c")]).then(([catalog, preview]) => {
+                if (!dialog.open) return;
+                const model = catalog.showroomModelByKey(host.modelKey);
+                if (!model) { modelStage.textContent = "3D 모델을 찾을 수 없습니다."; return; }
+                viewer = preview.mount(modelStage, catalog.showroomModelUrl(model), model.file || "model.glb", {frontView:true, prepare:(object) => catalog.prepareShowroomObject(model, object)});
+              }).catch((error) => { if (dialog.open) modelStage.textContent = `3D 모델을 불러오지 못했습니다: ${error.message}`; });
             },
             onPanelDetail: (panel) => {
               const key = findSceneItemKey(panel);

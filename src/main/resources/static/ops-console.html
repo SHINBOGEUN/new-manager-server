@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261105b" />
+  <link rel="alternate icon" href="/favicon.ico?v=20261105b" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -93,8 +95,8 @@
 .widget-data-table td small { color:var(--muted); }
 
   </style>
-  <script src="/rack-widget-layout.js?v=20261103b"></script>
-  <script src="/rack-widget-chart.js?v=20261103a"></script>
+  <script src="/rack-widget-layout.js?v=20261105d"></script>
+  <script src="/rack-widget-chart.js?v=20261105f"></script>
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
     :root {
@@ -1701,6 +1703,26 @@
     #rackPreviewModal .rack-chart-tooltip strong { display:block; margin-bottom:3px; color:#bdd1de; }
     #rackPreviewModal .rack-chart-tooltip-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; }
     #rackPreviewModal .rack-metric-time { display:block; margin-top:7px; color:#819bad; font-size:10px; line-height:1.4; }
+    /* Detail widgets keep readable typography and dedicate most of each card to data. */
+    #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { padding:12px 14px; background:linear-gradient(150deg,#111e2d,#0d1722); border-color:#293c4c; box-shadow:inset 0 1px #ffffff05; }
+    #rackPreviewModal [data-rack-fit-content] { min-height:0; }
+    #rackPreviewModal .rack-metric-content { display:flex; flex-direction:column; height:100%; min-height:0; gap:8px; }
+    #rackPreviewModal .rack-metric-title { flex:none; margin:0; font-size:12px; letter-spacing:.025em; line-height:1.4; }
+    #rackPreviewModal .rack-metric-content--value { justify-content:center; gap:5px; }
+    #rackPreviewModal .rack-metric-content--value .rack-metric-title { color:#a9c2d2; font-weight:600; }
+    #rackPreviewModal .rack-metric-value { font-size:clamp(30px,2.5vw,44px); font-weight:750; line-height:1.1; letter-spacing:-.035em; font-variant-numeric:tabular-nums; }
+    #rackPreviewModal .rack-metric-value small { font-size:.45em; font-weight:600; letter-spacing:0; color:#9dcad6; }
+    #rackPreviewModal .rack-chart { flex:1 1 0; min-height:150px; }
+    #rackPreviewModal .rack-metric-time { display:none; }
+    #rackPreviewModal .rack-metric-legend { display:flex; flex-wrap:wrap; justify-content:center; gap:6px 14px; margin:0; flex:none; }
+    #rackPreviewModal .rack-metric-legend-row { flex:0 1 auto; font-size:11px; gap:5px; }
+    #rackPreviewModal .rack-metric-legend-label { flex:0 1 auto; }
+    #rackPreviewModal .rack-metric-donut-group { display:flex; flex-direction:column; align-items:center; flex:1; min-height:0; gap:8px; }
+    #rackPreviewModal .rack-metric-donut { width:180px; height:180px; max-width:100%; flex:none; margin:0 auto; box-shadow:none; }
+    #rackPreviewModal .rack-metric-pie .rack-metric-donut-center { visibility:hidden; }
+    #rackPreviewModal .rack-metric-donuts { flex:1; min-height:0; flex-wrap:nowrap; align-items:center; }
+    #rackPreviewModal .rack-chart-series { stroke-width:2.2; }
+    #rackPreviewModal [data-rack-widget-layout] { max-height:calc(100dvh - 155px); overflow:auto; scrollbar-width:thin; }
     html[data-theme="light"] #rackPreviewModal .rack-widget-view-card, html[data-theme="light"] #rackPreviewModal .rack-widget-layout-card { background:linear-gradient(145deg,#fff,#f1f7fa); border-color:#d2e2e9; color:#19394a; box-shadow:0 8px 24px rgba(25,67,86,.07); }
     html[data-theme="light"] #rackPreviewModal .rack-metric-title, html[data-theme="light"] #rackPreviewModal .rack-metric-legend-value { color:#19394a; }
     html[data-theme="light"] #rackPreviewModal .rack-metric-caption, html[data-theme="light"] #rackPreviewModal .rack-metric-legend-row, html[data-theme="light"] #rackPreviewModal .rack-metric-time, html[data-theme="light"] #rackPreviewModal .rack-metric-donut-heading { color:#527080; }
@@ -1754,6 +1776,25 @@
     html[data-theme="light"] #rackPreviewModal .rack-model-grid button.is-selected, html[data-theme="light"] #rackPreviewModal .rack-install-entry.is-selected { background:#e0f4f7; border-color:#2e9eb1; }
     html[data-theme="light"] #rackPreviewModal .rack-selected-editor { background:#e7f6f8; border-color:#78bbc9; }
     @media (max-width:900px) { #rackPreviewModal .rack-detail-stage { position:relative; height:min(55dvh,480px); } #rackPreviewModal .rack-preview-body.is-rack-layout-edit { overflow:auto; } }
+    #rackPreviewModal .rack-preview:has(.is-rack-widget-view), #rackPreviewModal .rack-preview:has(.is-rack-layout-edit) { height:calc(100dvh - 40px); }
+    #rackPreviewModal .rack-preview-body.is-rack-widget-view, #rackPreviewModal .rack-preview-body.is-rack-layout-edit { flex:1; min-height:0; overflow:hidden; }
+    #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack { height:100%; min-height:0; align-items:stretch; }
+    #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-stage { height:100%; min-height:0; }
+    #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack > div:last-child { height:100%; min-height:0; overflow:hidden; }
+    #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal .is-rack-widget-view [data-rack-widgets] { max-height:none; overflow:hidden; }
+    #rackPreviewModal .rack-widget-layout { min-height:0; outline:none; }
+    #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { container-type:size; padding:clamp(6px,2cqw,12px) 12px; }
+    #rackPreviewModal .rack-metric-content--value .rack-metric-title { font-size:clamp(9px,17cqh,12px); }
+    #rackPreviewModal .rack-metric-value { font-size:clamp(20px,44cqh,44px); }
+    #rackPreviewModal .rack-metric-content { gap:5px; }
+    #rackPreviewModal .rack-chart { min-height:0; }
+    #rackPreviewModal .rack-widget-layout-card .rack-metric-title { padding-right:76px; }
+    #rackPreviewModal .rack-widget-layout-card .rack-widget-drag-handle { right:52px; }
+    #rackPreviewModal .rack-widget-delete { position:absolute; right:7px; top:7px; z-index:3; padding:3px 7px; border:1px solid #744356; border-radius:5px; background:#322331; color:#ffb5c1; font-size:11px; line-height:1.4; }
+    #rackPreviewModal .rack-widget-delete:hover { background:#703047; color:#fff; }
+    @media(max-width:900px) {
+      #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack { grid-template-columns:1fr; grid-template-rows:minmax(120px,2fr) minmax(0,3fr); gap:10px; }
+    }
     @media (max-width:600px) { #rackPreviewModal { padding:8px; } #rackPreviewModal .rack-preview { max-height:calc(100dvh - 16px); } #rackPreviewModal .rack-preview-head { padding:13px 15px; } #rackPreviewModal .rack-preview-body { padding:12px; } #rackPreviewModal .rack-detail-tabs { width:100%; } #rackPreviewModal .rack-detail-tabs button { flex:1; padding:7px; } }
 
     .alarm-notifications { position:relative; }
@@ -2908,15 +2949,16 @@
               <button type="button" class="primary" id="wPowerGroupAdd">그룹 추가</button>
               <button type="button" class="ghost" id="wPowerNewDeviceGroup">＋ 새 장비 그룹</button>
             </div>
-            <p class="muted" style="font-size:11px;margin:8px 0">선택한 그룹의 장비를 가져옵니다. 위젯에 저장된 장비 목록은 그룹 변경 시 자동으로 바뀌지 않으므로, 변경 후 위젯을 수정해 주세요.</p>
+            <p class="muted" style="font-size:11px;margin:8px 0">그룹의 장비를 모두 가져옵니다. W 전력 항목이 없는 장비는 합계에서 제외됩니다. 항목이 하나면 자동 선택하고, 여러 개면 장비별로 선택하세요. 저장 후 그룹 구성이 바뀌면 위젯을 다시 수정해야 합니다.</p>
             <div id="wPowerGroupList" class="pick-list"></div>
-            <div class="muted" style="font-size:12px;font-weight:650;margin:12px 0 6px">그룹에 전력 소스 추가</div>
+            <div id="wPowerLegacySources">
+            <div class="muted" style="font-size:12px;font-weight:650;margin:12px 0 6px">기존 위젯의 전력 소스 수정</div>
             <div class="row">
               <select id="wPowerGroupPick" style="flex:1;min-width:130px"><option value="">그룹 선택</option></select>
               <select id="wPowerDevice" style="flex:1;min-width:150px"><option value="">장비 선택</option></select>
               <select id="wPowerPoint" style="flex:1;min-width:150px" disabled><option value="">장비 먼저 선택</option></select>
               <button type="button" class="primary" id="wPowerSourceAdd" disabled>소스 추가</button>
-            </div>
+            </div></div>
           </div>
 
           <div data-widget-stage="3" role="group" aria-labelledby="wDesignLabel">
@@ -3761,6 +3803,7 @@
       widgetItDeviceIds: [],
       widgetModelIds: [],
       widgetSources: [],
+      widgetAllSources: [],
       widgetSourcesLoaded: false,
       widgetPointCatalog: [], // [{name, unit, models:[]}]
       widgetPointNamesByModel: new Map(),
@@ -6670,11 +6713,12 @@
       return '';
     }
     let rackDetailViewer = null, rackDetailPageCode = "", rackDetailModelKey = "RACK", rackDetailColor = null, rackDetailEditing = false;
-    async function setupRackWidgets(code, body, editing) {
+    async function setupRackWidgets(code, body, editing, baseOverride = null) {
       const panel = body.querySelector('[data-rack-widgets]');
       if (!panel) return;
+      body.classList.toggle('is-rack-widget-view', !editing);
       try {
-        const base = `/api/manager/assets/racks/${encodeURIComponent(code)}`;
+        const base = baseOverride || `/api/manager/assets/racks/${encodeURIComponent(code)}`;
         let [widgets, sources, devices] = await Promise.all([api(`${base}/widgets`), api(`${base}/widget-sources`), api(`${base}/widgets/devices`)]);
         if (!panel.isConnected) return;
         sources = sources.filter((source) => !source.ambiguous);
@@ -6708,19 +6752,20 @@
         const colors = ['#40d6ff','#a478ff','#52ca61','#ff9e44','#f2688b','#ded462','#65d1b0','#afb8c9'];
         const renderRackWidget = (w, storedEntries) => {
             const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(pdus.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
-            const label = (entry) => sourceLabel(sourceFor(entry.source) || entry.source);
+            const label = (entry) => { const source = sourceFor(entry.source) || entry.source; return `${baseOverride ? '' : `${source.deviceName || `장비 ${source.deviceId}`} · `}${source.pointName}`; };
             const value = (entry) => entry.value == null ? '—' : Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
             const legendRow = (color, name, reading = '') => `<div class="rack-metric-legend-row"><span class="rack-metric-dot" style="--series-color:${color}"></span><span class="rack-metric-legend-label" title="${esc(name)}">${esc(name)}</span>${reading ? `<span class="rack-metric-legend-value">${esc(reading)}</span>` : ''}</div>`;
             const chartMarkup = (series, gapMs = 0) => `<div class="rack-chart" data-rack-chart="${esc(JSON.stringify({series,gapMs}))}"></div>`;
             let content = '';
-            if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(sourceFor(entry.source)?.unit || '')}</small></div><div class="rack-metric-caption">${esc(label(entry))}</div>` : '—'; }
+            if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(sourceFor(entry.source)?.unit || '')}</small></div>` : '—'; }
             else if (w.type === 'PATH_BALANCE' || w.type === 'PHASE_BALANCE') {
               const donut = (group, heading, names, center) => {
+                const palette = center ? colors : ['#52ca61', '#edf4f6'];
                 const complete = group.every((e) => e && e.value != null && Number.isFinite(e.value) && e.value >= 0);
                 const sum = complete ? group.reduce((n,e) => n + e.value, 0) : 0; let offset = 0;
-                const stops = group.map((e,j) => { const start = offset; offset += sum ? e.value / sum * 100 : 0; return `${colors[j % colors.length]} ${start}% ${offset}%`; });
-                const graph = complete && sum > 0 ? `<div class="rack-metric-donut" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${center ? `${(sum/group.length).toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>평균</small>` : `${sum.toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>합계</small>`}</div></div>` : '<p class="rack-metric-caption">데이터 없음 또는 합계 0</p>';
-                const legend = group.map((e,j) => legendRow(colors[j % colors.length], names[j], `${complete && sum > 0 ? `${(e.value/sum*100).toFixed(1)}%` : '—'}  ·  ${e ? value(e) : '—'} ${e ? sourceFor(e.source)?.unit || '' : ''}`)).join('');
+                const stops = group.map((e,j) => { const start = offset; offset += sum ? e.value / sum * 100 : 0; return `${palette[j % palette.length]} ${start}% ${offset}%`; });
+                const graph = complete && sum > 0 ? `<div class="rack-metric-donut ${center ? '' : 'rack-metric-pie'}" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${center ? `${(sum/group.length).toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>평균</small>` : `${sum.toLocaleString('ko-KR',{maximumFractionDigits:2})} ${esc(sourceFor(group[0].source)?.unit || '')}<small>합계</small>`}</div></div>` : '<p class="rack-metric-caption">데이터 없음 또는 합계 0</p>';
+                const legend = group.map((e,j) => legendRow(palette[j % palette.length], names[j], complete && sum > 0 ? `${(e.value/sum*100).toFixed(1)}%` : '—')).join('');
                 return `<div class="rack-metric-donut-group">${heading ? `<strong class="rack-metric-donut-heading">${heading}</strong>` : ''}${graph}<div class="rack-metric-legend">${legend}</div></div>`;
               };
               const phaseHeading = (group) => { const d = pdus.find((item) => item.deviceId === group[0]?.source?.deviceId); return esc(d ? `${d.deviceName}${d.pathCode ? ` · ${d.pathCode} 경로` : ''}` : 'PDU'); };
@@ -6748,14 +6793,27 @@
               content = samples.length ? chartMarkup(series) : '<p class="rack-metric-caption">최근 24시간 측정 이력이 없습니다.</p>';
               content += `<div class="rack-metric-legend">${entries.map((e,j) => legendRow(colors[j % colors.length],label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
             }
-            return `<div class="rack-metric-title">${esc(w.title)}</div>${content}`;
+            return `<div class="rack-metric-content rack-metric-content--${esc(w.type.toLowerCase())}"><div class="rack-metric-title">${esc(w.title.replace(/ · (snmp|modbus|mqtt)$/i, ''))}</div>${content}</div>`;
         };
-        const viewportGrid = () => window.RackWidgetLayout.viewportGrid(widgets, body.querySelector('[data-rack-3d]')?.clientHeight || 720);
+        const viewportGrid = () => {
+          const style = getComputedStyle(body);
+          const bodyHeight = body.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+          const stageHeight = body.querySelector('[data-rack-3d]')?.clientHeight || 720;
+          return window.RackWidgetLayout.viewportGrid(widgets, Math.max(1, Math.min(stageHeight, bodyHeight || stageHeight) - 2));
+        };
         const fitWidgetContent = (card) => {
-          const content = card.querySelector('[data-rack-fit-content]'); if (!content || !card.isConnected) return;
-          content.style.zoom = '1';
-          const style = getComputedStyle(card), available = card.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
-          if (available > 0 && content.scrollHeight > available) content.style.zoom = String(Math.max(.1, Math.min(1, available / content.scrollHeight)));
+          // Keep type and charts at their natural size instead of zooming the whole card out.
+          const content = card.querySelector('[data-rack-fit-content]');
+          if (!content) return;
+          content.style.removeProperty('zoom');
+          const titleHeight = content.querySelector('.rack-metric-title')?.offsetHeight || 20;
+          for (const donut of content.querySelectorAll('.rack-metric-donut')) {
+            const group = donut.closest('.rack-metric-donut-group') || content;
+            const legendHeight = group.querySelector('.rack-metric-legend')?.offsetHeight || 20;
+            const headingHeight = group.querySelector('.rack-metric-donut-heading')?.offsetHeight || 0;
+            const diameter = Math.max(40, Math.min(group.clientWidth - 8, content.clientHeight - titleHeight - legendHeight - headingHeight - 26));
+            donut.style.width = `${diameter}px`; donut.style.height = `${diameter}px`;
+          }
         };
         const mountRackCharts = (root) => {
           for (const chart of root.querySelectorAll('[data-rack-chart]')) {
@@ -6783,13 +6841,13 @@
             if (widgets.some((w) => !widgetReady(w))) return toast('위젯 제목과 측정 항목을 모두 확인하세요.', true);
             const duplicate = rackWidgetDuplicateMessage(widgets); if (duplicate) return toast(duplicate, true);
             const button = event.currentTarget; button.disabled = true;
-            try { const collapsedState = widgets.map((widget) => collapsedWidgets.has(widget)); widgets = await api(`${base}/widgets`, {method:'PUT', body:JSON.stringify(widgets)}); collapsedWidgets.clear(); widgets.forEach((widget, index) => { if (collapsedState[index]) collapsedWidgets.add(widget); }); draw(); drawLayout(); if (!layoutPanel.hidden) refreshPreview(); toast('랙 위젯 설정과 위치를 저장했습니다.'); }
+            try { const collapsedState = widgets.map((widget) => collapsedWidgets.has(widget)); widgets = await api(`${base}/widgets`, {method:'PUT', body:JSON.stringify(widgets)}); collapsedWidgets.clear(); widgets.forEach((widget, index) => { if (collapsedState[index]) collapsedWidgets.add(widget); }); draw(); drawLayout(); if (!layoutPanel.hidden) refreshPreview(); toast('위젯 설정과 위치를 저장했습니다.'); }
             catch (error) { toast(error.message, true); } finally { if (button.isConnected) button.disabled = false; }
           };
           const draw = () => {
-            panel.innerHTML = `<div class="rack-widget-editor-head"><div><h3>위젯 설정</h3><span class="muted">이 랙에 연결된 장비의 측정 항목을 선택하세요.</span></div><button type="button" data-widget-add>+ 위젯 추가</button></div><div data-widget-rows></div><button type="button" class="primary" data-widget-save>위젯 설정 저장</button>`;
+            panel.innerHTML = `<div class="rack-widget-editor-head"><div><h3>위젯 설정</h3><span class="muted">${baseOverride ? '이 설비에 연결된 장비' : '이 랙에 연결된 장비'}의 측정 항목을 선택하세요.</span></div><button type="button" data-widget-add>+ 위젯 추가</button></div><div data-widget-rows></div><button type="button" class="primary" data-widget-save>위젯 설정 저장</button>`;
             const rows = panel.querySelector('[data-widget-rows]');
-            if (!widgets.length) rows.innerHTML = '<div class="rack-widget-card muted">위젯을 추가해 랙의 데이터를 표시하세요.</div>';
+            if (!widgets.length) rows.innerHTML = `<div class="rack-widget-card muted">위젯을 추가해 ${baseOverride ? "설비" : "랙"} 데이터를 표시하세요.</div>`;
             widgets.forEach((widget, index) => {
               const row = document.createElement('div'); row.className = 'rack-widget-card';
               const isCollapsed = collapsedWidgets.has(widget);
@@ -6854,6 +6912,7 @@
           const drawLayout = () => {
             if (!layoutPanel) return;
             assignWidgetPositions();
+            window.RackWidgetChart?.dispose(layoutPanel);
             layoutPanel.innerHTML = `<div class="rack-widget-layout" data-layout-grid aria-label="위젯 위치 편집 영역"></div>`;
             const grid = layoutPanel.querySelector('[data-layout-grid]');
             const {rows:rowCount, rowHeight, gap} = viewportGrid();
@@ -6869,7 +6928,7 @@
               let previewHtml = `<strong>${esc(widget.title || '이름 없는 위젯')}</strong><p class="muted">${widgetReady(widget) ? '실제 데이터를 불러오는 중입니다.' : '위젯 설정에서 측정 항목을 선택하세요.'}</p>`;
               if (widgetReady(widget) && preview?.error) previewHtml = `<strong>${esc(widget.title)}</strong><p class="muted">미리보기 실패: ${esc(preview.error)}</p>`;
               else if (widgetReady(widget) && preview?.values) { try { previewHtml = renderRackWidget(widget, preview.values); } catch (error) { previewHtml = `<strong>${esc(widget.title)}</strong><p class="muted">미리보기를 표시할 수 없습니다.</p>`; } }
-              card.innerHTML = `<div data-preview-content data-rack-fit-content>${previewHtml}</div><button type="button" class="rack-widget-drag-handle" data-move aria-label="위젯 이동" title="드래그하여 이동">⠿</button><span class="rack-widget-resize-handle" data-resize role="button" tabindex="0" aria-label="위젯 크기 조절" title="드래그하여 크기 조절"></span>`;
+              card.innerHTML = `<div data-preview-content data-rack-fit-content>${previewHtml}</div><button type="button" class="rack-widget-drag-handle" data-move aria-label="위젯 이동" title="드래그하여 이동">⠿</button><button type="button" class="rack-widget-delete" data-layout-remove aria-label="위젯 삭제">삭제</button><span class="rack-widget-resize-handle" data-resize role="button" tabindex="0" aria-label="위젯 크기 조절" title="드래그하여 크기 조절"></span>`;
               mountRackCharts(card);
               const start = (event, resizing) => {
                 if (event.button !== 0) return;
@@ -6896,6 +6955,15 @@
                   drawLayout();
                 };
                 handle.addEventListener('pointermove', move); handle.addEventListener('pointerup', finish); handle.addEventListener('pointercancel', finish);
+              };
+              const remove = card.querySelector('[data-layout-remove]');
+              remove.onpointerdown = (event) => event.stopPropagation();
+              remove.onclick = (event) => {
+                event.preventDefault(); event.stopPropagation();
+                const index = widgets.indexOf(widget); if (index < 0) return;
+                widgets.splice(index, 1); collapsedWidgets.delete(widget);
+                draw(); drawLayout();
+                toast('위젯을 삭제했습니다. 위치 저장을 누르면 반영됩니다.');
               };
               card.querySelector('[data-move]').onpointerdown = (event) => start(event, false);
               card.querySelector('[data-resize]').onpointerdown = (event) => start(event, true);
@@ -6940,13 +7008,14 @@
         const renderWidgetView = (values) => {
           if (!panel.isConnected) return;
           const {rows:rowCount, rowHeight, gap} = viewportGrid();
+          window.RackWidgetChart?.dispose(panel);
           panel.innerHTML = `<div data-rack-widget-view-grid style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(${rowCount},${rowHeight}px);gap:${gap}px">${widgets.map((w, i) => `<div class="rack-detail-info rack-widget-view-card" style="grid-column:${w.layoutX + 1} / span ${w.layoutW};grid-row:${w.layoutY + 1} / span ${w.layoutH};margin:0;min-width:0;min-height:0;box-sizing:border-box"><div data-rack-fit-content>${renderRackWidget(w, values[i] || [])}</div></div>`).join('')}</div>`;
           mountRackCharts(panel);
           panel.querySelectorAll('.rack-widget-view-card').forEach((card) => requestAnimationFrame(() => fitWidgetContent(card)));
         };
         const update = async () => {
           if (!panel.isConnected) return;
-          if (!widgets.length) { panel.innerHTML = '<p class="muted">설정된 랙 위젯이 없습니다. 편집 모드의 위젯 설정에서 추가하세요.</p>'; return; }
+          if (!widgets.length) { panel.innerHTML = '<p class="muted">설정된 위젯이 없습니다. 편집 모드의 위젯 설정에서 추가하세요.</p>'; return; }
           latestViewValues = await api(`${base}/widgets/values`); if (panel.isConnected) renderWidgetView(latestViewValues);
         };
         const stage = body.querySelector('[data-rack-3d]');
@@ -6956,10 +7025,42 @@
         }
         await update();
         const refresh = setInterval(() => { if (!panel.isConnected) return clearInterval(refresh); update().catch((error) => { if (panel.isConnected) panel.textContent = `위젯 조회 실패: ${error.message}`; }); }, 30000);
-      } catch (error) { if (panel.isConnected) { panel.textContent = `랙 위젯을 불러오지 못했습니다: ${error.message}`; const layout = body.querySelector('[data-rack-widget-layout]'); if (layout) layout.textContent = `랙 위젯을 불러오지 못했습니다: ${error.message}`; } }
+      } catch (error) { if (panel.isConnected) { panel.textContent = `위젯을 불러오지 못했습니다: ${error.message}`; const layout = body.querySelector('[data-rack-widget-layout]'); if (layout) layout.textContent = `위젯을 불러오지 못했습니다: ${error.message}`; } }
     }
+    window.openSceneEquipmentWidgets = function(host, device, editing, openConnection) {
+      if (!device || !Number.isSafeInteger(Number(device.deviceId))) return;
+      editing = !!editing && state.role === 'ADMIN';
+      rackDetailViewer?.dispose(); rackDetailViewer = null;
+      $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
+      const body = $("rackPreviewBody");
+      $("rackPreviewTitle").textContent = host.label || '설비 상세';
+      $("rackPreviewMeta").textContent = `${editing ? '설비 편집' : '설비 모니터링'} · ${device.deviceName || device.label || '연결 장비'}`;
+      body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section></div></div>`;
+      const connection = body.querySelector('[data-equipment-connection]');
+      const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
+      const change = document.createElement('button'); change.type = 'button'; change.textContent = '장비 연결 변경'; change.disabled = !!host.locked; change.onclick = () => { closeRackPreview(); openConnection(); }; connection.append(change);
+      if (host.locked) { const hint = document.createElement('p'); hint.className = 'muted'; hint.textContent = '연결을 변경하려면 설비 잠금을 해제하세요.'; connection.append(hint); }
+      const stage = body.querySelector('[data-rack-3d]');
+      if (editing) {
+        const tools = document.createElement('div'); tools.className = 'rack-layout-tools'; tools.dataset.rackLayoutTools = ''; tools.hidden = true;
+        tools.innerHTML = '<button type="button" data-layout-back>위젯 설정</button><button type="button" class="primary" data-layout-save disabled>위치 저장</button>'; stage.append(tools);
+        const tabs = body.querySelector('[data-equipment-tabs]'), panel = body.querySelector('[data-rack-widgets]'), layout = body.querySelector('[data-rack-widget-layout]');
+        const select = (tab) => { connection.hidden = tab !== 'connection'; panel.hidden = tab !== 'widgets'; layout.hidden = tab !== 'layout'; tabs.hidden = tab === 'layout'; tools.hidden = tab !== 'layout'; body.classList.toggle('is-rack-layout-edit', tab === 'layout'); tabs.querySelectorAll('button').forEach(b => b.classList.toggle('primary', b.dataset.equipTab === tab)); if (tab === 'layout') layout.dispatchEvent(new Event('rack-layout-open')); };
+        tabs.querySelectorAll('button').forEach(b => b.onclick = () => select(b.dataset.equipTab)); tools.querySelector('[data-layout-back]').onclick = () => select('widgets');
+      }
+      $("rackPreviewModal").classList.add('open'); $("rackPreviewModal").setAttribute('aria-hidden','false');
+      setupRackWidgets('', body, editing, `/api/manager/assets/scene-devices/${Number(device.deviceId)}`);
+      const canvas = body.querySelector('[data-equipment-canvas]');
+      Promise.all([import('/showroom-models.js?v=20261103d'), import('/asset-model-preview.js?v=20261105c')]).then(([catalog, preview]) => {
+        if (!canvas.isConnected || !$("rackPreviewModal").classList.contains('open')) return;
+        const model = catalog.showroomModelByKey(host.modelKey);
+        if (!model) { canvas.textContent = '3D 모델을 찾을 수 없습니다.'; return; }
+        rackDetailViewer = preview.mount(canvas, catalog.showroomModelUrl(model), model.file || 'model.glb', {frontView:true, prepare:(object) => catalog.prepareShowroomObject(model, object)});
+      }).catch(error => { if (canvas.isConnected) canvas.textContent = `3D 모델을 불러오지 못했습니다: ${error.message}`; });
+    };
     function openPanelFromScene(label, pageCode, deviceIds) {
       rackDetailViewer?.dispose(); rackDetailViewer = null;
+      $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
       $("rackPreviewTitle").textContent = label;
       $("rackPreviewMeta").textContent = "분전반 내부 예시 · 실제 설비 상태를 나타내는 조작 화면이 아닙니다.";
       $("rackPreviewBody").innerHTML = `<div class="rack-detail-layout"><div class="rack-detail-stage"><div class="rack-detail-tools"><button type="button" data-panel-door>문 닫기</button></div><div data-panel-canvas style="width:100%;height:100%;position:absolute;inset:0"></div></div><div class="rack-detail-info"><b>연결 장비 최신 측정값</b><div data-panel-values class="muted">${deviceIds.length ? "측정값을 불러오는 중입니다." : "도면에서 분전반에 장비를 연결하면 이곳에 측정값이 표시됩니다."}</div></div></div>`;
@@ -7019,6 +7120,7 @@
       const layout = state.rackLayouts.find((item) => item.rackLocationCode === rackLocationCode);
       if (!layout) return;
       rackDetailViewer?.dispose(); rackDetailViewer = null;
+      $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
       const placements = (layout.placements || []).filter(Boolean);
       const capacity = Number(layout.rackUCapacity) || 0;
       const unitItems = placements.filter((item) => item.mountType === "RACK_U" && item.uPosition && item.uHeight && capacity);
@@ -7247,7 +7349,9 @@
     }
 
     function closeRackPreview() {
+      window.RackWidgetChart?.dispose($("rackPreviewBody"));
       rackDetailViewer?.dispose(); rackDetailViewer = null;
+      $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
       rackDetailPageCode = ""; rackDetailModelKey = "RACK"; rackDetailColor = null; rackDetailEditing = false;
       $("rackPreviewModal").classList.remove("open");
       $("rackPreviewModal").setAttribute("aria-hidden", "true");
@@ -8117,7 +8221,8 @@
       ]);
       if ($("wCreatePage").value !== pageCode) return [];
       state.widgetPageDeviceIds = new Set((deviceIds || []).map(Number));
-      state.widgetSources = (sources || []).filter((source) => state.widgetPageDeviceIds.has(Number(source.deviceId)));
+      state.widgetAllSources = sources || [];
+      state.widgetSources = state.widgetAllSources.filter((source) => state.widgetPageDeviceIds.has(Number(source.deviceId)));
       state.widgetSourcesLoaded = true;
       return state.widgetSources;
     }
@@ -8471,8 +8576,8 @@
       if (kind === "psychrometric" && (!state.psychrometricTemperatureSources.length
           || !state.psychrometricHumiditySources.length)) throw new Error("온도와 습도 소스를 각각 추가하세요");
       if (kind === "power_distribution" && (state.powerDistributionGroups.length < 2
-          || state.powerDistributionGroups.some((group) => !group.sources.length))) {
-        throw new Error("전력 그룹을 2개 이상 만들고 각 그룹에 측정항목을 추가하세요");
+          || state.powerDistributionGroups.some((group) => !group.sources.length || group.unresolved?.length))) {
+        throw new Error("전력 그룹을 2개 이상 선택하고 각 그룹에 합산할 W 전력 항목이 있는지 확인하세요. 여러 항목이 있는 장비는 하나를 선택해야 합니다.");
       }
       if (kind === "count" && $("wCountMode").value === "model" && !$("wCountModel").value) {
         throw new Error("집계할 모델을 선택하세요");
@@ -12860,7 +12965,7 @@
       powerPreviewTimer = setTimeout(async () => {
         const resolved = await Promise.all(groups.map(async (group) => {
           const sources = await Promise.all(group.sources.map(async (source) => {
-            const definition = state.widgetSources.find((item) => Number(item.deviceId) === Number(source.deviceId) && item.pointName === source.pointName && !item.ambiguous);
+            const definition = state.widgetAllSources.find((item) => Number(item.deviceId) === Number(source.deviceId) && item.pointName === source.pointName && !item.ambiguous);
             const device = state.devices.find((item) => Number(item.id) === Number(source.deviceId));
             let powerW = null;
             if (definition) try {
@@ -12885,19 +12990,48 @@
       schedulePowerDistributionPreview();
       const box = $("wPowerGroupList");
       if (!box) return;
+      $("wPowerLegacySources").hidden = !state.powerDistributionGroups.some((group) => !group.sourceGroupId);
       box.innerHTML = state.powerDistributionGroups.length
         ? state.powerDistributionGroups.map((group, groupIndex) => {
           const sources = group.sources.map((source, sourceIndex) => {
             const device = state.devices.find((item) => Number(item.id) === Number(source.deviceId));
+            const alternatives = group.sourceGroupId ? [...new Set(state.widgetAllSources.filter((point) => Number(point.deviceId) === Number(source.deviceId) && !point.ambiguous && String(point.dataPointType || "").toUpperCase() === "POWER" && String(point.unit || "").trim().toUpperCase() === "W").map((point) => point.pointName))] : [];
+            const pointControl = alternatives.length > 1
+              ? `<select data-power-change="${groupIndex}" data-power-source-index="${sourceIndex}" aria-label="${esc(device?.name || `장비 #${source.deviceId}`)} 전력 항목">${alternatives.map((point) => `<option value="${esc(point)}" ${point === source.pointName ? 'selected' : ''}>${esc(point)} · W</option>`).join('')}</select>`
+              : `<span><b>${esc(source.pointName)}</b> <span class="muted">W</span></span>`;
             return `<div class="row" style="justify-content:space-between;padding:4px 0;border-top:1px solid var(--line)">`
-              + `<span>${esc(device?.name || `장비 #${source.deviceId}`)} · <b>${esc(source.pointName)}</b> <span class="muted">W</span></span>`
-              + `<button type="button" class="danger small" data-power-source-remove="${groupIndex}" data-power-source-index="${sourceIndex}">제거</button></div>`;
-          }).join("") || '<div class="muted" style="font-size:12px;margin-top:5px">아래에서 W 단위 POWER 소스를 하나 이상 추가하세요.</div>';
+              + `<span>${esc(device?.name || `장비 #${source.deviceId}`)}</span>${pointControl}`
+              + (group.sourceGroupId ? '' : `<button type="button" class="danger small" data-power-source-remove="${groupIndex}" data-power-source-index="${sourceIndex}">제거</button>`) + `</div>`;
+          }).join("");
+          const unresolved = (group.unresolved || []).map((device) => `<div class="row" style="justify-content:space-between;padding:5px 0;border-top:1px solid var(--line)"><span>${esc(device.name)} · ${device.enabled ? '전력 항목 확인 필요' : '사용 중지된 장비'}</span>${device.candidates.length ? `<select data-power-resolve="${groupIndex}" data-device-id="${device.id}" aria-label="${esc(device.name)} 전력 항목"><option value="">전력 항목 선택</option>${device.candidates.map((point) => `<option value="${esc(point)}">${esc(point)} · W</option>`).join('')}</select>` : '<span class="muted">사용 가능한 W 측정항목 없음</span>'}</div>`).join("");
+          const excluded = (group.excluded || []).map((device) => `<div class="row muted" style="justify-content:space-between;padding:5px 0;border-top:1px solid var(--line);font-size:12px"><span>${esc(device.name)}</span><span>W 전력 항목 없음 · 합계 제외</span></div>`).join("");
+          const memberCount = group.sources.length + (group.unresolved || []).length + (group.excluded || []).length;
           return `<div class="pick-item" style="display:block;border-left:4px solid ${esc(group.color || POWER_GROUP_COLORS[groupIndex % POWER_GROUP_COLORS.length])}">`
-            + `<div class="row" style="justify-content:space-between"><b>${esc(group.name)}</b>`
-            + `<button type="button" class="danger small" data-power-group-remove="${groupIndex}">그룹 제거</button></div>${sources}</div>`;
+            + `<div class="row" style="justify-content:space-between"><b>${esc(group.name)} · ${memberCount}대${(group.excluded || []).length ? ` · ${(group.excluded || []).length}대 제외` : ''}</b>`
+            + `<button type="button" class="danger small" data-power-group-remove="${groupIndex}">그룹 제거</button></div>${sources}${unresolved}${excluded}${!sources && !unresolved && !excluded ? '<div class="muted" style="font-size:12px;margin-top:5px">전력 측정항목이 없습니다.</div>' : ''}</div>`;
         }).join("")
         : '<div class="muted" style="font-size:12px">IT Power, Cooling Power처럼 전력 그룹을 두 개 이상 추가하세요.</div>';
+      box.querySelectorAll("[data-power-change]").forEach((select) => {
+        select.onchange = () => {
+          const group = state.powerDistributionGroups[Number(select.dataset.powerChange)];
+          const source = group.sources[Number(select.dataset.powerSourceIndex)];
+          if (state.powerDistributionGroups.some((item) => item.sources.some((other) => other !== source && Number(other.deviceId) === Number(source.deviceId) && other.pointName === select.value))) {
+            select.value = source.pointName; return toast("다른 그룹에서 이미 사용 중인 전력 항목입니다", true);
+          }
+          source.pointName = select.value;
+          schedulePowerDistributionPreview();
+        };
+      });
+      box.querySelectorAll("[data-power-resolve]").forEach((select) => {
+        select.onchange = () => {
+          if (!select.value) return;
+          const group = state.powerDistributionGroups[Number(select.dataset.powerResolve)];
+          const id = Number(select.dataset.deviceId), pointName = select.value;
+          if (state.powerDistributionGroups.some((item) => item.sources.some((source) => Number(source.deviceId) === id && source.pointName === pointName))) { select.value = ""; return toast("다른 그룹에서 이미 사용 중인 전력 항목입니다", true); }
+          group.sources.push({deviceId:id, pointName}); group.unresolved = group.unresolved.filter((item) => item.id !== id);
+          renderPowerDistributionGroups();
+        };
+      });
       document.querySelectorAll("[data-power-group-remove]").forEach((button) => {
         button.onclick = () => {
           state.powerDistributionGroups.splice(Number(button.dataset.powerGroupRemove), 1);
@@ -12926,20 +13060,26 @@
       const selectedGroup = state.deviceGroups.find((group) => Number(group.id) === Number($("wPowerExistingGroup").value) && group.enabled);
       if (!selectedGroup) return toast("사용할 장비 그룹을 선택하세요", true);
       if (state.powerDistributionGroups.some((group) => group.name.toLowerCase() === selectedGroup.name.toLowerCase())) return toast("이미 추가한 그룹입니다", true);
-      const sources = [], omitted = [];
-      for (const device of selectedGroup.devices || []) {
-        const candidates = widgetSourcesForDevice(device.id).filter((source) => !source.ambiguous && String(source.dataPointType || "").toUpperCase() === "POWER" && String(source.unit || "").trim().toUpperCase() === "W");
-        const unique = [...new Map(candidates.map((source) => [source.pointName, source])).values()];
-        if (unique.length !== 1) { omitted.push(device.name); continue; }
-        if (state.powerDistributionGroups.some((group) => group.sources.some((source) => Number(source.deviceId) === Number(device.id) && source.pointName === unique[0].pointName))) { omitted.push(device.name); continue; }
-        sources.push({deviceId:Number(device.id), pointName:unique[0].pointName});
+      if (!state.widgetSourcesLoaded) return toast("장비 측정항목을 불러오는 중입니다. 잠시 후 다시 선택하세요", true);
+      const sources = [], unresolved = [], excluded = [];
+      const members = selectedGroup.devices || [];
+      if (!members.length) return toast("선택한 장비 그룹에 장비가 없습니다", true);
+      for (const device of members) {
+        const powerPoints = state.widgetAllSources.filter((source) => Number(source.deviceId) === Number(device.id) && String(source.dataPointType || "").toUpperCase() === "POWER" && String(source.unit || "").trim().toUpperCase() === "W");
+        if (!powerPoints.length) { excluded.push({id:Number(device.id), name:device.name}); continue; }
+        const unique = [...new Map(powerPoints.filter((source) => !source.ambiguous).map((source) => [source.pointName, source])).values()];
+        const chosen = unique.length === 1 ? unique[0] : null;
+        const duplicate = chosen && state.powerDistributionGroups.some((group) => group.sources.some((source) => Number(source.deviceId) === Number(device.id) && source.pointName === chosen.pointName));
+        if (!device.enabled || !chosen || duplicate) { unresolved.push({id:Number(device.id), name:device.name, enabled:device.enabled, candidates:device.enabled ? unique.map((source) => source.pointName) : []}); continue; }
+        sources.push({deviceId:Number(device.id), pointName:chosen.pointName});
       }
-      state.powerDistributionGroups.push({name:selectedGroup.name, color:$("wPowerGroupColor").value || POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length], sources});
+      state.powerDistributionGroups.push({name:selectedGroup.name, sourceGroupId:selectedGroup.id, color:$("wPowerGroupColor").value || POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length], sources, unresolved, excluded});
       $("wPowerGroupColor").value = POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length];
       renderPowerDistributionGroups(); fillPowerDistributionPicks();
       $("wPowerGroupPick").value = String(state.powerDistributionGroups.length - 1);
-      if (omitted.length) toast(`${sources.length}대 추가 · ${omitted.join(", ")}의 측정항목은 직접 확인해 추가하세요`, true);
-      else toast(`${selectedGroup.name} 그룹 장비 ${sources.length}대를 추가했습니다`);
+      if (unresolved.length) toast(`${members.length}대 중 ${unresolved.length}대의 전력 항목을 확인하세요${excluded.length ? ` · ${excluded.length}대 합계 제외` : ""}`, true);
+      else if (!sources.length) toast(`${selectedGroup.name} 그룹에 합산할 W 전력 항목이 없습니다`, true);
+      else toast(`${selectedGroup.name} 그룹 장비 ${sources.length}대 추가${excluded.length ? ` · ${excluded.length}대 합계 제외` : ""}`);
     }
 
     function addPowerDistributionSource() {
