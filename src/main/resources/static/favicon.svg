@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>SPATIVIA</title>
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7cf5ef"/><stop offset="1" stop-color="#27c8f4"/></linearGradient>
+    <linearGradient id="bottom" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2fc4ef"/><stop offset="1" stop-color="#5075ef"/></linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="#101c31"/>
+  <path d="M49 18 32 8 13 19v12l19 11 9-5-18-10 9-5 17 10Z" fill="url(#top)"/>
+  <path d="m15 46 17 10 19-11V33L32 22l-9 5 18 10-9 5-17-10Z" fill="url(#bottom)"/>
+</svg>

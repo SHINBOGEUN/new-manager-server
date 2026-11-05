@@ -36,7 +36,7 @@ function parseObj(source) {
   return geometry;
 }
 
-export function mount(container, sourceUrl, originalName = "") {
+export function mount(container, sourceUrl, originalName = "", options = {}) {
   previews.get(container)?.dispose();
   container.replaceChildren();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -64,7 +64,9 @@ export function mount(container, sourceUrl, originalName = "") {
     camera.updateProjectionMatrix();
   };
   const observer = new ResizeObserver(resize); observer.observe(container); resize();
-  fetch(sourceUrl).then(async (response) => {
+  const requestUrl = new URL(sourceUrl, location.href);
+  const token = requestUrl.origin === location.origin && requestUrl.pathname.startsWith("/api/") ? window.dcimModelToken?.() : null;
+  fetch(sourceUrl, token ? {headers:{Authorization:`Bearer ${token}`}} : {}).then(async (response) => {
     if (!response.ok) throw new Error("3D 파일을 불러오지 못했습니다.");
     if (/\.glb$/i.test(originalName)) return (await new GLTFLoader().parseAsync(await response.arrayBuffer(), "")).scene;
     const source = await response.text();
@@ -73,12 +75,21 @@ export function mount(container, sourceUrl, originalName = "") {
     return new THREE.Mesh(geometry, material);
   }).then((object) => {
     if (disposed) return;
-    modelRoot = object; scene.add(object);
+    modelRoot = options.prepare ? options.prepare(object) : object; scene.add(modelRoot);
+    object = modelRoot;
     const bounds = new THREE.Box3().setFromObject(object);
     if (bounds.isEmpty()) throw new Error("3D 모델에 표시할 형상이 없습니다.");
     const size = bounds.getSize(new THREE.Vector3()), center = bounds.getCenter(new THREE.Vector3());
     const radius = Math.max(size.x, size.y, size.z, .2);
-    camera.position.copy(center).add(new THREE.Vector3(radius * 1.9, radius * 1.4, radius * 2.3));
+    if (options.frontView) {
+      // Fit the front-facing model to both dimensions of the available viewport.
+      const halfFov = THREE.MathUtils.degToRad(camera.fov / 2);
+      const aspect = Math.max(camera.aspect, 0.01);
+      const fitDistance = Math.max(size.y / (2 * Math.tan(halfFov)), size.x / (2 * Math.tan(halfFov) * aspect));
+      camera.position.copy(center).add(new THREE.Vector3(0, 0, size.z / 2 + fitDistance * 1.12));
+    } else {
+      camera.position.copy(center).add(new THREE.Vector3(radius * 1.9, radius * 1.4, radius * 2.3));
+    }
     camera.near = Math.max(.01, radius / 1000); camera.far = radius * 100; camera.updateProjectionMatrix();
     controls.target.copy(center); controls.minDistance = radius * .7; controls.maxDistance = radius * 12; controls.update();
   }).catch((error) => {

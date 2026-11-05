@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                 .requestMatchers("/", "/index.html", "/analysis.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html", "/page-scene-3d.js", "/floor-placement.js", "/inrow-placement.js", "/scene-group-lock.js", "/asset-model-preview.js", "/vendor/three/**").permitAll()
                 .requestMatchers("/scene-assets/showroom/**", "/showroom-models.js", "/rack-widget-layout.js", "/rack-widget-chart.js", "/rack-door-attachment.js", "/rack-scene-display.js", "/ops-navigation.js", "/ops-workspace.css").permitAll()
+                .requestMatchers("/favicon.svg", "/favicon.ico").permitAll()
                 .requestMatchers("/ws/mqtt-monitor").permitAll()
                 .requestMatchers("/ws/alarms").permitAll()
                 .anyRequest()

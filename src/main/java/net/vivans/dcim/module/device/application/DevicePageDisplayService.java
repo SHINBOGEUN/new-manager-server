@@ -145,11 +145,18 @@ public class DevicePageDisplayService {
                 }
             }
         }
+        Set<String> singleDeviceModels = sceneModelService.deviceLinkableKeys();
+        Map<String, Integer> equipmentDeviceCounts = new HashMap<>();
         for (DevicePageDisplayUpdateRequest.SceneItem item : request.items()) {
             if (item.parentClientKey() == null || item.parentClientKey().isBlank()) continue;
             DevicePageDisplayUpdateRequest.SceneItem host = sceneItemsByKey.get(item.parentClientKey());
             if (host == null || itemOrder.get(item.parentClientKey()) >= itemOrder.get(item.clientKey())) {
                 throw new IllegalArgumentException("A child scene item must reference an earlier host in the submitted scene");
+            }
+            if ("EQUIPMENT".equals(host.itemType()) && singleDeviceModels.contains(host.modelKey())
+                    && Set.of("DEVICE", "SENSOR").contains(item.itemType())
+                    && equipmentDeviceCounts.merge(item.parentClientKey(), 1, Integer::sum) > 1) {
+                throw new IllegalArgumentException("이 설비에는 장비 한 대만 연결할 수 있습니다");
             }
             boolean opening = "EQUIPMENT".equals(item.itemType()) && isWallOpening(item.modelKey());
             if (opening) {

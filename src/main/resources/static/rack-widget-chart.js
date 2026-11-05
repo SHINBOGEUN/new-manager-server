@@ -12,7 +12,7 @@
       const values = cleaned.filter((item) => item.unit === unit).flatMap((item) => item.samples.map((point) => point.value));
       const low = Math.min(...values), high = Math.max(...values);
       const pad = high === low ? Math.max(Math.abs(high) * .1, 1) : (high - low) * .1;
-      return { unit, min: low - pad, max: high + pad };
+      return { unit, min: low >= 0 ? Math.max(0, low - pad) : low - pad, max: high + pad };
     });
     return { series: cleaned, axes, start: Math.min(...all.map((p) => p.time)), end: Math.max(...all.map((p) => p.time)) };
   }
@@ -24,21 +24,24 @@
     return node;
   }
 
-  function mount(container, series, options = {}) {
+  function render(container, series, options = {}) {
     const data = prepare(series);
     if (!data) { container.textContent = '선택한 기간에 수집된 데이터가 없습니다.'; return; }
     container.replaceChildren();
-    const svg = svgElement('svg', { viewBox: '0 0 640 280', preserveAspectRatio: 'none', role: 'img', 'aria-label': '시간별 측정값 그래프' });
-    const left = 65, right = Math.max(180, 620 - Math.max(0, data.axes.length - 1) * 62), top = 25, bottom = 240;
+    const width = Math.max(240, container.clientWidth || 640), height = Math.max(60, container.clientHeight || 240);
+    // Match SVG coordinates to actual pixels so axis text is never stretched or flattened.
+    const svg = svgElement('svg', { viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none', role: 'img', 'aria-label': '시간별 측정값 그래프' });
+    const left = 55, right = Math.max(left + 60, width - 16 - Math.max(0, data.axes.length - 1) * 58), top = 24, bottom = height - 28;
     const timeRange = Math.max(data.end - data.start, 1);
     const x = (time) => left + (time - data.start) / timeRange * (right - left);
     const y = (point, axis) => bottom - (point.value - axis.min) / (axis.max - axis.min) * (bottom - top);
     data.axes.forEach((axis, index) => {
-      const side = index === 0 ? left : right + (index - 1) * 62, anchor = index === 0 ? 'end' : 'start', dx = index === 0 ? -7 : 7;
+      const side = index === 0 ? left : right + (index - 1) * 58, anchor = index === 0 ? 'end' : 'start', dx = index === 0 ? -7 : 7;
       {
         svg.append(svgElement('text', { x: side + dx, y: 13, 'text-anchor': anchor, class: 'rack-chart-axis-unit' }, axis.unit || '값'));
-        for (let i = 0; i <= 4; i++) {
-          const pos = bottom - i * (bottom - top) / 4, v = axis.min + i * (axis.max - axis.min) / 4;
+        const ticks = height < 150 ? 2 : 4;
+        for (let i = 0; i <= ticks; i++) {
+          const pos = bottom - i * (bottom - top) / ticks, v = axis.min + i * (axis.max - axis.min) / ticks;
           if (index === 0) svg.append(svgElement('line', { x1: left, x2: right, y1: pos, y2: pos, class: 'rack-chart-grid' }));
           svg.append(svgElement('text', { x: side + dx, y: pos + 4, 'text-anchor': anchor, class: 'rack-chart-tick' }, v.toLocaleString('ko-KR', { maximumFractionDigits: 2 })));
         }
@@ -47,7 +50,7 @@
     for (let i = 0; i <= 4; i++) {
       const pos = left + i * (right - left) / 4, time = data.start + timeRange * i / 4;
       svg.append(svgElement('line', { x1: pos, x2: pos, y1: top, y2: bottom, class: 'rack-chart-grid' }));
-      svg.append(svgElement('text', { x: pos, y: 261, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle', class: 'rack-chart-tick' }, new Date(time).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })));
+      svg.append(svgElement('text', { x: pos, y: bottom + 22, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle', class: 'rack-chart-tick' }, new Date(time).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })));
     }
     data.series.forEach((item) => {
       const axis = data.axes.find((a) => a.unit === item.unit); if (!axis) return;
@@ -64,7 +67,7 @@
     const tooltip = document.createElement('div'); tooltip.className = 'rack-chart-tooltip'; tooltip.hidden = true;
     const timestamps = [...new Set(data.series.flatMap((item) => item.samples.map((point) => point.time)))].sort((a,b) => a-b);
     hit.addEventListener('pointermove', (event) => {
-      const rect = svg.getBoundingClientRect(), px = (event.clientX - rect.left) / rect.width * 640;
+      const rect = svg.getBoundingClientRect(), px = (event.clientX - rect.left) / rect.width * width;
       const wanted = data.start + Math.max(0, Math.min(1, (px - left) / (right - left))) * timeRange;
       let lo = 0, hi = timestamps.length - 1;
       while (lo < hi) { const mid = Math.floor((lo + hi) / 2); if (timestamps[mid] < wanted) lo = mid + 1; else hi = mid; }
@@ -82,5 +85,25 @@
     hit.addEventListener('pointerleave', () => { tooltip.hidden = true; crosshair.setAttribute('visibility', 'hidden'); });
     container.append(svg, tooltip);
   }
-  global.RackWidgetChart = { prepare, mount };
+  const mounted = new WeakMap();
+  function dispose(root) {
+    const targets = [root, ...Array.from(root.querySelectorAll?.('[data-rack-chart]') || [])];
+    for (const target of targets) {
+      const current = mounted.get(target); current?.disconnect(); mounted.delete(target);
+    }
+  }
+  function mount(container, series, options = {}) {
+    dispose(container);
+    render(container, series, options);
+    if (typeof ResizeObserver === 'undefined') return;
+    let width = container.clientWidth, height = container.clientHeight;
+    const observer = new ResizeObserver(() => {
+      if (!container.isConnected) return;
+      if (container.clientWidth === width && container.clientHeight === height) return;
+      width = container.clientWidth; height = container.clientHeight;
+      if (width && height) render(container, series, options);
+    });
+    observer.observe(container); mounted.set(container, observer);
+  }
+  global.RackWidgetChart = { prepare, mount, dispose };
 })(globalThis);

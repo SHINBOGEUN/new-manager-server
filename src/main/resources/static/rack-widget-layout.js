@@ -17,7 +17,10 @@
     for (const widget of widgets) {
       const current = rect(widget);
       if (valid(current) && positioned.every((p) => !overlaps(current, p))) { positioned.push(current); continue; }
-      const old = {x:Number.isInteger(widget.gridX) ? widget.gridX * 6 : 0, y:Number.isInteger(widget.gridY) ? widget.gridY * 4 : 0, w:widget.width === 2 ? 12 : 6, h:4};
+      const legacy = Number.isInteger(widget.gridX) && Number.isInteger(widget.gridY);
+      const old = {x:legacy ? widget.gridX * 6 : 0, y:legacy ? widget.gridY * 4 : 0,
+        w:legacy ? (widget.width === 2 ? 12 : 6) : ['TREND','POWER_TREND'].includes(widget.type) ? 12 : widget.type === 'VALUE' ? 4 : widget.width === 2 ? 12 : 6,
+        h:legacy || !widget.type ? 4 : widget.type === 'VALUE' ? 3 : 8};
       deferred.push({widget, old, hadPosition:Number.isInteger(widget.gridX) && Number.isInteger(widget.gridY)});
     }
     for (const item of deferred) {

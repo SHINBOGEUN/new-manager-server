@@ -176,6 +176,73 @@ public class RackWidgetService {
     public List<List<WidgetValue>> preview(String code, List<Widget> widgets) {
         return valuesFor(widgets, validateForRack(code, widgets));
     }
+    public List<DeviceMeasurementSourceCatalog.Source> equipmentSources(int deviceId) {
+        return catalog.availableSources(Set.of(deviceId));
+    }
+    public List<RackWidgetDevice> equipmentDevices(int deviceId) {
+        var available = equipmentSources(deviceId);
+        return jdbc.query("SELECT d.id,d.name,m.name,t.code,p.code,p.name FROM devices d JOIN device_model m ON m.id=d.model_id JOIN common_code t ON t.id=m.device_type_id LEFT JOIN common_code p ON p.id=d.path_code_id WHERE d.id=?", (rs,n) -> {
+            boolean three = available.stream().filter(s -> !s.ambiguous() && "A".equalsIgnoreCase(s.unit())).map(s -> s.protocol().toLowerCase(Locale.ROOT)).distinct().anyMatch(protocol -> List.of("L1_AMP","L2_AMP","L3_AMP").stream().allMatch(point -> available.stream().anyMatch(s -> !s.ambiguous() && s.protocol().equalsIgnoreCase(protocol) && s.pointName().equalsIgnoreCase(point) && "A".equalsIgnoreCase(s.unit()))));
+            return new RackWidgetDevice(rs.getInt(1),rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),three);
+        }, deviceId);
+    }
+    @Transactional
+    public List<Widget> equipmentGet(int deviceId) {
+        var rows = jdbc.query("SELECT widgets_json FROM scene_device_widget_config WHERE device_id=?", (rs,n) -> rs.getString(1), deviceId);
+        if (rows.isEmpty()) {
+            var defaults = defaultEquipmentWidgets(equipmentSources(deviceId));
+            // Sources can be configured later; do not persist an empty automatic configuration.
+            if (defaults.isEmpty()) return defaults;
+            try {
+                jdbc.update("INSERT IGNORE INTO scene_device_widget_config(device_id,widgets_json) VALUES (?,?)", deviceId, mapper.writeValueAsString(defaults));
+                // Another editor may have saved a custom configuration during initialization.
+                rows = jdbc.query("SELECT widgets_json FROM scene_device_widget_config WHERE device_id=?", (rs,n) -> rs.getString(1), deviceId);
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("기본 위젯을 생성할 수 없습니다", e); }
+        }
+        try { return mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {}); }
+        catch (Exception e) { throw new IllegalStateException("설비 위젯 설정을 읽을 수 없습니다", e); }
+    }
+    static List<Widget> defaultEquipmentWidgets(List<DeviceMeasurementSourceCatalog.Source> available) {
+        var valid = available.stream().filter(s -> !s.ambiguous()).sorted(Comparator
+                .comparing(DeviceMeasurementSourceCatalog.Source::pointName)
+                .thenComparing(DeviceMeasurementSourceCatalog.Source::protocol)).toList();
+        var defaults = new ArrayList<Widget>();
+        for (var source : valid.stream().limit(20).toList()) {
+            String name = source.pointName();
+            if (name.length() > 60) name = name.substring(0, 60);
+            defaults.add(new Widget(name + " · " + source.protocol(), "VALUE", 1, List.of(toSource(source))));
+        }
+        var categories = new LinkedHashMap<String, List<Source>>();
+        for (var source : valid) {
+            String type = Objects.toString(source.dataPointType(), "").toUpperCase(Locale.ROOT);
+            String unit = Objects.toString(source.unit(), "").strip().toUpperCase(Locale.ROOT);
+            String category = type.equals("TEMPERATURE") || unit.equals("°C") ? "온도 추이"
+                    : type.equals("HUMIDITY") ? "습도 추이"
+                    : Set.of("W", "KW", "MW").contains(unit) ? "전력 추이"
+                    : Set.of("A", "MA", "KA").contains(unit) ? "전류 추이" : null;
+            if (category != null) {
+                var sources = categories.computeIfAbsent(category, ignored -> new ArrayList<>());
+                if (sources.size() < 8) sources.add(toSource(source));
+            }
+        }
+        categories.forEach((name, sources) -> defaults.add(new Widget(name, "TREND", 2, List.copyOf(sources))));
+        return List.copyOf(defaults);
+    }
+    private List<DeviceMeasurementSourceCatalog.Source> validateEquipment(int deviceId, List<Widget> widgets) {
+        var valid = equipmentSources(deviceId);
+        validateWidgets(widgets, valid);
+        validateRackAssignments(widgets, equipmentDevices(deviceId).stream().collect(java.util.stream.Collectors.toMap(RackWidgetDevice::deviceId, d -> d)));
+        return valid;
+    }
+    @Transactional
+    public List<Widget> equipmentSave(int deviceId, List<Widget> widgets) {
+        validateEquipment(deviceId, widgets);
+        try { jdbc.update("INSERT INTO scene_device_widget_config(device_id,widgets_json) VALUES (?,?) ON DUPLICATE KEY UPDATE widgets_json=VALUES(widgets_json)", deviceId, mapper.writeValueAsString(widgets)); }
+        catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalArgumentException("위젯 설정을 저장할 수 없습니다", e); }
+        return widgets;
+    }
+    public List<List<WidgetValue>> equipmentValues(int deviceId) { return valuesFor(equipmentGet(deviceId), equipmentSources(deviceId)); }
+    public List<List<WidgetValue>> equipmentPreview(int deviceId, List<Widget> widgets) { return valuesFor(widgets, validateEquipment(deviceId, widgets)); }
     private List<List<WidgetValue>> valuesFor(List<Widget> widgets, List<DeviceMeasurementSourceCatalog.Source> valid) {
         Instant queryTime = Instant.now();
         return widgets.stream().map(w -> w.sources().stream().map(s -> {
