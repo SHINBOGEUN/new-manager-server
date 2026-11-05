@@ -6,6 +6,93 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261103a"></script>
+  <script>
+(function (global) {
+  'use strict';
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  function render(columns, sources, data) {
+    const results = new Map((data?.devices || []).map((device) => [Number(device.deviceId), device]));
+    const rows = (sources || []).map((source) => {
+      const device = results.get(Number(source.deviceId));
+      const points = new Map((device?.points || []).map((point) => [point.pointName, point]));
+      return `<tr><th scope="row">${esc(source.deviceName || device?.deviceName || `장비 #${source.deviceId}`)}</th>${columns.map((column) => {
+        const point = points.get(column.pointName);
+        const number = point?.value == null ? null : Number(point.value);
+        const value = number == null || !Number.isFinite(number) ? '—' : number.toLocaleString('ko-KR', { maximumFractionDigits:3 });
+        return `<td>${esc(value)}${number != null && Number.isFinite(number) && point?.unit ? ` <small>${esc(point.unit)}</small>` : ''}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    return `<div class="widget-table-scroll"><table class="widget-data-table"><thead><tr><th scope="col">장비</th>${columns.map((column) => `<th scope="col">${esc(column.label)}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${columns.length + 1}">선택한 장비가 없습니다.</td></tr>`}</tbody></table></div>`;
+  }
+  global.WidgetTable = { render };
+})(globalThis);
+
+  </script>
+  <script>
+(function (global) {
+  'use strict';
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const formatValue = value => Number(value).toLocaleString('ko-KR', {maximumFractionDigits:2});
+    function formatPowerW(value) {
+      if (value == null) return "–";
+      const number = Number(value);
+      return Math.abs(number) >= 1000
+        ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW`
+        : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
+    }
+
+    function renderPowerDistributionBody(data) {
+      if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
+      const groups = data.groups || [];
+      const colors = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#22d3ee", "#f97316", "#a3e635"];
+      const resolved = groups.map((group, index) => ({ ...group, color: group.color || colors[index % colors.length] }));
+      const conic = resolved.length && data.complete
+        ? `conic-gradient(${resolved.map((group, index) => `${group.color} ${resolved.slice(0, index).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}% ${resolved.slice(0, index + 1).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}%`).join(", ")})`
+        : "conic-gradient(#334155 0 100%)";
+      const groupRows = resolved.map((group) => {
+        const ratio = group.ratio == null ? 0 : Number(group.ratio);
+        const details = (group.sources || []).map((source) => `<div class="series-row"><div>${escapeHtml(source.deviceName || `#${source.deviceId}`)} · ${escapeHtml(source.pointName)}</div><div class="val">${formatPowerW(source.powerW)}</div></div>`).join("");
+        return `<div><div class="power-group-head"><span class="power-group-name"><i class="power-group-dot" style="background:${escapeHtml(group.color)}"></i><b>${escapeHtml(group.name)}</b></span>`
+          + `<span><b>${formatPowerW(group.powerW)}</b> <span class="meta">${group.ratio == null ? "–" : `${formatValue(group.ratio)}%`}</span></span></div>`
+          + `<div class="power-group-bar"><i style="width:${Math.max(0, Math.min(100, ratio))}%;background:${escapeHtml(group.color)}"></i></div>`
+          + (group.complete ? "" : '<div class="meta" style="margin-top:3px">일부 데이터 없음</div>')
+          + `<details><summary class="meta">장비별 상세</summary>${details}</details></div>`;
+      }).join("");
+      return `<div class="power-distribution"><div class="power-donut" style="background:${conic}"><div class="power-donut-center">TOTAL POWER<b>${formatPowerW(data.totalPowerW)}</b></div></div>`
+        + `<div class="power-groups">${groupRows}</div></div>`
+        + (!data.complete ? '<div class="meta">누락된 소스가 있어 전체 전력·비율은 계산하지 않습니다.</div>' : "");
+    }
+
+  global.PowerDistributionWidget = { render: renderPowerDistributionBody };
+})(globalThis);
+
+  </script>
+  <style>
+    .power-distribution { display: flex; gap: 18px; align-items: center; min-height: 150px; }
+    .power-donut { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 50%; position: relative; }
+    .power-donut::after { content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--card, #121a29); }
+    .power-donut-center { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: var(--muted); }
+    .power-donut-center b { color: var(--text); font-size: 18px; margin-top: 3px; }
+    .power-groups { flex: 1; min-width: 0; display: grid; gap: 9px; }
+    .power-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
+    .power-group-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+    .power-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+    .power-group-bar { height: 5px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+    .power-group-bar i { display: block; height: 100%; border-radius: inherit; }
+    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }
+
+  </style>
+  <style>
+.widget-table-scroll { width:100%; height:100%; min-height:100px; overflow:auto; }
+.widget-data-table { width:100%; border-collapse:collapse; color:var(--text); font-size:12px; text-align:left; }
+.widget-data-table th, .widget-data-table td { padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+.widget-data-table thead th { position:sticky; top:0; z-index:1; background:var(--panel-2,var(--surface2)); color:var(--muted); }
+.widget-data-table tbody tr:nth-child(even) { background:rgba(128,158,190,.06); }
+.widget-data-table tbody th { font-weight:650; }
+.widget-data-table td { color:var(--accent); font-variant-numeric:tabular-nums; }
+.widget-data-table td small { color:var(--muted); }
+
+  </style>
   <script src="/rack-widget-layout.js?v=20261103b"></script>
   <script src="/rack-widget-chart.js?v=20261103a"></script>
   <style>
@@ -846,7 +933,15 @@
     input[type="checkbox"],input[type="radio"] { min-height:auto; accent-color:var(--accent); }
     input[type="color"] { padding:4px; }
     .device-pick-box { background:#0d1522 !important; border-color:#31415a !important; }
-    .page-device-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; max-height:min(62vh,680px); overflow:auto; padding:2px; }
+    .page-device-list { display:block; max-height:min(62vh,680px); overflow:auto; padding:2px; }
+    .page-device-group { margin-bottom:10px; border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+    .page-device-group-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; background:var(--surface-2, #182538); }
+    .page-device-group-title { min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:7px; font-size:13px; }
+    .page-device-group-title small { color:var(--muted); font-size:11px; }
+    .page-device-group-actions { display:flex; flex:none; gap:5px; }
+    .page-device-group-actions button { padding:5px 8px; font-size:11px; }
+    .page-device-group-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding:8px; }
+    @media (max-width:800px) { .page-device-group-grid { grid-template-columns:1fr; } .page-device-group-head { flex-wrap:wrap; } }
     .page-device-list .pick-item { justify-content:flex-start; cursor:pointer; margin:0; min-width:0; }
     .page-device-list .pick-item span { min-width:0; }
     @media (max-width:800px) { .page-device-list { grid-template-columns:1fr; } }
@@ -1252,6 +1347,12 @@
     .workspace-table-card > .workspace-table-scroll { flex:1 1 auto; min-height:0; max-height:none; overflow:auto; border-top:1px solid var(--line); }
     .workspace-table-card > .workspace-table-scroll table { margin:0; }
     .workspace-table-scroll thead { position:sticky; top:0; z-index:2; }
+    #tab-users .workspace-table-scroll table { width:100%; min-width:760px; table-layout:auto; }
+    #tab-users .workspace-table-scroll th, #tab-users .workspace-table-scroll td { white-space:nowrap; vertical-align:middle; }
+    #tab-users .user-identity { display:flex; align-items:baseline; gap:8px; }
+    #tab-users .user-identity .muted { font-size:11px; }
+    #tab-users .actions .row { flex-wrap:nowrap; }
+
 
     #tab-devices.panel.active { overflow:hidden; scrollbar-gutter:auto; }
     #tab-assets.panel.active, #tab-rack-overview.panel.active, #tab-lora-collection-status.panel.active { display:flex; flex-direction:column; overflow:hidden; }
@@ -1281,6 +1382,10 @@
     #tab-collection-status > .workspace-table-card { padding:10px 12px; }
     #tab-collection-status #csGeneratedAt { margin:5px 0 !important; }
     #tab-collection-status #csBody td { padding:5px 9px; }
+    #tab-collection-status .collection-device-table { min-width:1180px; table-layout:fixed; }
+    #tab-collection-status .collection-device-table :is(th,td) { vertical-align:middle; overflow-wrap:anywhere; }
+    #tab-collection-status .collection-device-table .chip { white-space:nowrap; }
+    #tab-collection-status #csBody td:nth-child(6) > b { white-space:nowrap; }
     body:has(#tab-collection-status.active) .workspace-context { gap:5px; margin-bottom:8px; }
     body:has(#tab-collection-status.active) .workspace-nav { padding-bottom:6px; }
     body:has(#tab-collection-status.active) .workspace-hint { display:none; }
@@ -1420,6 +1525,15 @@
     .widget-design-option[data-style=minimal] b { color:var(--text); }
     .widget-design-option[data-style=vivid] .widget-design-sample { background:linear-gradient(140deg,#16435b,#101929); border-color:#317eaa; box-shadow:0 0 10px #18bfff22; }
     .widget-design-option[data-style=vivid] b { color:#4edbff; text-shadow:0 0 10px #18bfff66; }
+    .power-preview-widget { --card:#121a29; margin-top:10px; padding:12px; border:1px solid #317eaa; border-top:2px solid var(--accent); border-radius:10px; background:#121a29; color:#e7edf8; }
+    .power-preview-head { margin-bottom:10px; font-size:13px; font-weight:700; }
+    .power-preview-widget .power-distribution { min-height:120px; gap:10px; }
+    .power-preview-widget .power-donut { width:88px; height:88px; flex-basis:88px; }
+    .power-preview-widget .power-donut::after { inset:20px; }
+    .power-preview-widget .power-donut-center { font-size:9px; }
+    .power-preview-widget .power-donut-center b { font-size:12px; }
+    .power-preview-widget .power-group-head { font-size:11px; }
+    .power-preview-widget .meta { color:var(--muted); font-size:10px; }
     .widget-preview-card { --preview-color:#54cbf3; display:flex; align-items:center; gap:14px; min-height:105px; margin-top:10px; padding:16px; border:1px solid color-mix(in srgb,var(--preview-color) 20%,#34445b); border-top:2px solid var(--preview-color); border-radius:10px; background:color-mix(in srgb,var(--preview-color) 6%,#121a29); color:#e7edf8; }
     .widget-preview-card[data-style=minimal] { border:0; border-left:2px solid var(--preview-color); border-radius:0; background:#121a29; }
     .widget-preview-card[data-style=vivid] { background:linear-gradient(135deg,color-mix(in srgb,var(--preview-color) 10%,#121a29),#121a29); }
@@ -1518,6 +1632,8 @@
     /* Existing standalone tools are full-height pages in the same navigation. */
     .embedded-page.panel.active { display:flex; flex-direction:column; min-height:0; padding:0; overflow:hidden !important; }
     .embedded-page iframe { display:block; flex:1 1 auto; width:100%; min-height:0; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+    /* Monitoring canvases use the available space around the embedded board. */
+    body.is-authed .content:has(> .widget-display-page.active) { padding:4px; }
     .widget-display-page.panel.active { gap:0; }
     .widget-display-page iframe { border:0; border-radius:8px; background:#090f19; }
     body.external-view .log-bar { display:none; }
@@ -1652,6 +1768,7 @@
     .alarm-notice-footer { width:100%; margin-top:8px; }
   </style>
   <link rel="stylesheet" href="/ops-workspace.css?v=20261103a">
+<style>#wVisualPreview[hidden],#wTablePreview[hidden],#wTableEditor[hidden],#wTableOptions[hidden],#wPowerPreview[hidden]{display:none!important}</style>
 </head>
 <body>
   <header class="top">
@@ -2145,7 +2262,8 @@
           <button type="button" class="ghost" id="csReload">새로고침</button>
         </div>
         <div class="muted" id="csGeneratedAt" style="margin:12px 0 8px;font-size:12px"></div>
-        <div class="table-wrap workspace-table-scroll"><table>
+        <div class="table-wrap workspace-table-scroll"><table class="collection-device-table">
+          <colgroup><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:13%"><col style="width:33%"></colgroup>
           <thead><tr><th>장비</th><th>위치 / 모델</th><th>프로토콜</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 3개</span></th></tr></thead>
           <tbody id="csBody"></tbody>
         </table></div>
@@ -2517,7 +2635,7 @@
           <button type="button" class="ghost" id="pdClearAll" data-role-gate="admin" disabled>전체 해제</button>
           <label class="row" style="font-size:12px;cursor:pointer"><input type="checkbox" id="pdOnlySelected" />선택한 장비만</label>
         </div>
-        <p class="muted" style="font-size:11px;margin:-4px 0 10px">전체 선택·해제는 검색 결과가 아닌 이 페이지의 전체 장비에 적용됩니다. 선택 저장을 눌러야 반영됩니다.</p>
+        <p class="muted" style="font-size:11px;margin:-4px 0 10px">전체 선택·해제는 모든 장비에, 모델별 버튼은 검색 결과와 관계없이 해당 모델의 모든 장비에 적용됩니다. 선택 저장을 눌러야 반영됩니다.</p>
         <div id="pdDeviceList" class="page-device-list"><div class="empty">페이지를 선택하면 장비 목록이 나타납니다.</div></div>
       </div>
       <div class="card" style="margin-top:12px">
@@ -2638,6 +2756,14 @@
               <div class="muted" style="font-size:12px;margin-top:5px">여러 항목을 선택해 추가하세요. 다른 장비도 이어서 추가할 수 있습니다.</div>
             </div>
             <div id="wDeviceList" class="pick-list"></div>
+            <div id="wTableOptions" style="margin-top:14px">
+              <label><input type="checkbox" id="wTableEnabled"> 테이블로 표시</label>
+              <div id="wTableEditor" hidden>
+                <p class="muted" style="font-size:12px">장비를 추가한 뒤 표시할 열을 선택하고 이름과 순서를 정하세요.</p>
+                <div id="wTableColumns"></div>
+                <div class="muted" style="font-size:11px;margin-top:6px">선택한 장비의 같은 이름의 측정 항목이 한 열에 표시됩니다.</div>
+              </div>
+            </div>
           </div>
 
           <div id="wModelBlock" data-widget-stage="2" style="margin-top:14px;display:none">
@@ -2726,6 +2852,7 @@
               <label class="field full">계산 정의
                 <select id="wPueDefinition"><option value="">계산 지표를 먼저 만드세요</option></select>
               </label>
+              <div class="full row" style="justify-content:flex-end;margin-top:-4px"><button type="button" class="ghost" id="wAddCalculatedMetric">＋ 계산 지표 만들기</button></div>
               <label class="field">조회 기간
                 <select id="wPueRangePreset">
                   <option value="last_24h" selected>최근 24시간</option><option value="today">오늘</option>
@@ -2776,10 +2903,12 @@
               POWER 데이터 유형이며 InfluxDB에 W 단위로 저장되는 측정항목만 등록할 수 있습니다. 모든 그룹의 최신값 합으로 전체 전력과 비율을 계산합니다.
             </div>
             <div class="row">
-              <input id="wPowerGroupName" style="flex:1;min-width:140px" placeholder="예: IT Power" />
+              <select id="wPowerExistingGroup" aria-label="기존 장비 그룹" style="flex:1;min-width:180px"><option value="">장비 그룹 선택</option></select>
               <input id="wPowerGroupColor" type="color" value="#38BDF8" title="그룹 표시 색상" style="width:46px;padding:3px" />
               <button type="button" class="primary" id="wPowerGroupAdd">그룹 추가</button>
+              <button type="button" class="ghost" id="wPowerNewDeviceGroup">＋ 새 장비 그룹</button>
             </div>
+            <p class="muted" style="font-size:11px;margin:8px 0">선택한 그룹의 장비를 가져옵니다. 위젯에 저장된 장비 목록은 그룹 변경 시 자동으로 바뀌지 않으므로, 변경 후 위젯을 수정해 주세요.</p>
             <div id="wPowerGroupList" class="pick-list"></div>
             <div class="muted" style="font-size:12px;font-weight:650;margin:12px 0 6px">그룹에 전력 소스 추가</div>
             <div class="row">
@@ -2800,6 +2929,8 @@
             <div class="widget-color-control"><label><input id="wColorCustom" type="checkbox" /> 색상 직접 지정</label><input id="wVisualColor" type="color" value="#54cbf3" aria-label="위젯 강조 색상" disabled /></div>
             <div id="wVisualPreviewNote" class="muted" style="font-size:11px;margin-top:16px">위젯 미리보기 · 예시 데이터</div>
             <div id="wVisualPreview" class="widget-preview-card" data-style="classic"><span class="widget-preview-icon" aria-hidden="true">◈</span><div><small id="wVisualPreviewTitle">내 위젯</small><strong id="wVisualPreviewValue">29.1</strong><em id="wVisualPreviewUnit">kWh</em></div></div>
+            <div id="wPowerPreview" class="power-preview-widget" hidden><div class="power-preview-head" id="wPowerPreviewTitle"></div><div id="wPowerPreviewBody"></div></div>
+            <div id="wTablePreview" hidden><strong id="wTablePreviewTitle"></strong><div id="wTablePreviewBody" style="max-height:260px;min-height:120px;overflow:auto;margin-top:8px"></div></div>
           </div>
           <div id="wDataFreshnessBlock" class="fields" data-widget-stage="3" style="margin-top:14px">
             <label class="field">데이터 최신성 기준 (분)
@@ -3410,6 +3541,16 @@
         </div>
       </div>
     </section>
+
+    <dialog id="pageDeviceQuickDialog" aria-labelledby="pageDeviceQuickTitle" style="width:min(860px,calc(100vw - 32px));max-height:calc(100vh - 32px);padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)">
+      <div class="entity-dialog-content">
+        <div class="row" style="justify-content:space-between;align-items:center"><div><h2 id="pageDeviceQuickTitle" style="margin:0">표시 장비 설정</h2><p class="muted" style="margin:5px 0 0;font-size:12px">이 페이지에 표시할 장비를 선택하세요.</p></div><button id="pageDeviceQuickClose" type="button" class="ghost" aria-label="닫기">닫기 ×</button></div>
+        <div class="row" style="margin:16px 0 10px"><input id="pageDeviceQuickSearch" type="search" placeholder="장비 이름·모델·위치 검색" aria-label="장비 검색" style="flex:1;min-width:180px"><button id="pageDeviceQuickAll" type="button" class="ghost">전체 선택</button><button id="pageDeviceQuickNone" type="button" class="ghost">전체 해제</button></div>
+        <div id="pageDeviceQuickCount" class="muted" style="font-size:12px;margin-bottom:8px"></div><p class="muted" style="font-size:11px;margin:0 0 8px">전체 선택은 모든 장비에, 모델별 버튼은 검색 결과와 관계없이 해당 모델 전체에 적용됩니다.</p>
+        <div id="pageDeviceQuickList" class="page-device-list" style="max-height:min(52vh,520px)"></div>
+        <div class="row" style="justify-content:flex-end;margin-top:16px"><button id="pageDeviceQuickSave" type="button" class="primary">선택 저장</button></div>
+      </div>
+    </dialog>
 
     <!-- USERS -->
 
@@ -4197,6 +4338,10 @@
         const code = String(event.data.rackLocationCode || "").trim();
         if (!code) return;
         openRackFromScene(code).catch((error) => toast(`랙 상세 조회 실패: ${error.message}`, true));
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:page-device-settings") {
+        if (state.role === "ADMIN") openQuickPageDevices(String(event.data.pageCode || sourceFrame.dataset.pageKey || ""), sourceFrame).catch((error) => toast(error.message, true));
         return;
       }
       if (event.data?.type === "dcim:dashboard:add-widget") {
@@ -7655,6 +7800,24 @@
       $("pdDisplaySave").disabled = state.role !== "ADMIN" || !ready || !state.pageDisplayDirty || hasUnsavedPageDeviceSelection();
     }
 
+    function pageDeviceModelKey(device) {
+      return device.modelId != null ? `id:${device.modelId}` : `name:${device.modelName || "미지정"}`;
+    }
+    function renderGroupedPageDevices(visible, all, selected, attribute, canEdit) {
+      const groups = new Map();
+      for (const device of visible) {
+        const key = pageDeviceModelKey(device);
+        if (!groups.has(key)) groups.set(key, {key, name:device.modelName || "모델 미지정", manufacturer:device.manufacturer || "", visible:[]});
+        groups.get(key).visible.push(device);
+      }
+      return [...groups.values()].sort((a,b) => a.name.localeCompare(b.name, "ko") || a.key.localeCompare(b.key)).map((group) => {
+        const members = all.filter((device) => pageDeviceModelKey(device) === group.key);
+        const count = members.filter((device) => selected.has(Number(device.id))).length;
+        const rows = group.visible.map((device) => `<label class="pick-item"><input type="checkbox" data-${attribute}-device="${Number(device.id)}" ${selected.has(Number(device.id)) ? "checked" : ""} ${canEdit ? "" : "disabled"}><span><b>${esc(device.name || "이름 없음")}</b><span class="muted" style="font-size:12px"> · #${Number(device.id)} · ${esc(device.locationNodeName || device.locationNodeCode || "위치 없음")}${device.enabled ? "" : " · 사용 중지"}</span></span></label>`).join("");
+        return `<section class="page-device-group"><div class="page-device-group-head"><div class="page-device-group-title"><strong>${esc(group.name)}</strong>${group.manufacturer ? `<small>${esc(group.manufacturer)}</small>` : ""}<small>${count} / ${members.length}대 선택${group.visible.length !== members.length ? ` · ${group.visible.length}대 표시` : ""}</small></div><div class="page-device-group-actions"><button type="button" class="ghost" data-${attribute}-model-select="${esc(group.key)}" ${!canEdit || count === members.length ? "disabled" : ""}>모델 전체 선택</button><button type="button" class="ghost" data-${attribute}-model-clear="${esc(group.key)}" ${!canEdit || count === 0 ? "disabled" : ""}>해제</button></div></div><div class="page-device-group-grid">${rows}</div></section>`;
+      }).join("");
+    }
+
     function renderPageDeviceCandidates() {
       const list = $("pdDeviceList");
       if (state.pageDeviceLoadedCode !== $("pdPage").value || !state.pageDeviceLoadedCode) {
@@ -7670,14 +7833,14 @@
         return label.toLocaleLowerCase().includes(search);
       });
       const scrollTop = list.scrollTop;
-      list.innerHTML = devices.length ? devices.map((device) => `
-        <label class="pick-item">
-          <input type="checkbox" data-pd-device="${Number(device.id)}"
-            ${state.pageDeviceIds.has(Number(device.id)) ? "checked" : ""}
-            ${state.role === "ADMIN" ? "" : "disabled"} />
-          <span><b>${esc(device.name)}</b><span class="muted" style="font-size:12px"> · #${Number(device.id)} · ${esc(device.modelName)} · ${esc(device.locationNodeName || device.locationNodeCode || "위치 없음")}${device.enabled ? "" : " · 사용 중지"}</span></span>
-        </label>`).join("")
+      list.innerHTML = devices.length ? renderGroupedPageDevices(devices, state.pageDeviceCatalog, state.pageDeviceIds, "pd", state.role === "ADMIN")
         : `<div class="empty">${state.pageDeviceCatalog.length ? "검색 조건에 맞는 장비가 없습니다." : "등록된 장비가 없습니다."}</div>`;
+      list.querySelectorAll("[data-pd-model-select], [data-pd-model-clear]").forEach((button) => button.addEventListener("click", () => {
+        const key = button.dataset.pdModelSelect ?? button.dataset.pdModelClear;
+        const selecting = button.dataset.pdModelSelect != null;
+        state.pageDeviceCatalog.filter((device) => pageDeviceModelKey(device) === key).forEach((device) => selecting ? state.pageDeviceIds.add(Number(device.id)) : state.pageDeviceIds.delete(Number(device.id)));
+        renderPageDeviceCandidates(); renderPageDeviceDisplayEditor();
+      }));
       list.scrollTop = scrollTop;
       list.querySelectorAll("input[data-pd-device]").forEach((input) => {
         input.addEventListener("change", () => {
@@ -7685,8 +7848,7 @@
           if (input.checked) state.pageDeviceIds.add(id);
           else state.pageDeviceIds.delete(id);
           renderPageDeviceDisplayEditor();
-          if ($("pdOnlySelected").checked) renderPageDeviceCandidates();
-          else updatePageDeviceSelectionSummary();
+          renderPageDeviceCandidates();
         });
       });
       updatePageDeviceSelectionSummary();
@@ -7728,6 +7890,75 @@
       }
       return devices;
     }
+
+    const quickPageDevices = { code:"", frame:null, devices:[], selected:new Set(), saved:new Set(), busy:false };
+    function quickPageDevicesDirty() {
+      return quickPageDevices.selected.size !== quickPageDevices.saved.size || [...quickPageDevices.selected].some((id) => !quickPageDevices.saved.has(id));
+    }
+    function renderQuickPageDevices() {
+      const search = $("pageDeviceQuickSearch").value.trim().toLocaleLowerCase();
+      const devices = quickPageDevices.devices.filter((device) => `${device.name || ""} ${device.modelName || ""} ${device.locationNodeName || device.locationNodeCode || ""} ${device.id}`.toLocaleLowerCase().includes(search));
+      $("pageDeviceQuickCount").textContent = `${quickPageDevices.selected.size}대 선택 · 전체 ${quickPageDevices.devices.length}대${quickPageDevicesDirty() ? " · 저장 전" : ""}`;
+      const list = $("pageDeviceQuickList");
+      const scrollTop = list.scrollTop;
+      list.innerHTML = devices.length ? renderGroupedPageDevices(devices, quickPageDevices.devices, quickPageDevices.selected, "quick", !quickPageDevices.busy) : '<div class="empty">검색 결과가 없습니다.</div>';
+      list.scrollTop = scrollTop;
+      $("pageDeviceQuickSave").disabled = quickPageDevices.busy || !quickPageDevicesDirty();
+      $("pageDeviceQuickAll").disabled = quickPageDevices.busy;
+      $("pageDeviceQuickNone").disabled = quickPageDevices.busy;
+    }
+    async function openQuickPageDevices(code, frame) {
+      if (!code) throw new Error("페이지를 확인할 수 없습니다.");
+      const dialog = $("pageDeviceQuickDialog");
+      if (dialog.open) return;
+      quickPageDevices.code = code; quickPageDevices.frame = frame; quickPageDevices.busy = true;
+      $("pageDeviceQuickTitle").textContent = `${(state.codes.DEVICE_PAGE || []).find((page) => String(page.code).toLowerCase() === code.toLowerCase())?.name || code} · 표시 장비`;
+      $("pageDeviceQuickSearch").value = ""; $("pageDeviceQuickCount").textContent = "장비를 불러오는 중입니다.";
+      $("pageDeviceQuickList").innerHTML = '<div class="empty">장비를 불러오는 중입니다.</div>';
+      $("pageDeviceQuickSave").disabled = true; dialog.showModal();
+      try {
+        const [ids, devices] = await Promise.all([api(`/api/manager/device-pages/${encodeURIComponent(code)}/devices`), fetchPageDeviceCatalog()]);
+        quickPageDevices.devices = devices; quickPageDevices.selected = new Set((ids || []).map(Number)); quickPageDevices.saved = new Set(quickPageDevices.selected); quickPageDevices.busy = false;
+        renderQuickPageDevices();
+      } catch (error) { quickPageDevices.busy = false; dialog.close(); throw error; }
+    }
+    function closeQuickPageDevices() {
+      if (quickPageDevices.busy) return;
+      if (quickPageDevicesDirty() && !confirm("저장하지 않은 장비 선택을 취소할까요?")) return;
+      $("pageDeviceQuickDialog").close();
+    }
+    $("pageDeviceQuickClose").onclick = closeQuickPageDevices;
+    $("pageDeviceQuickDialog").addEventListener("cancel", (event) => { event.preventDefault(); closeQuickPageDevices(); });
+    $("pageDeviceQuickSearch").oninput = renderQuickPageDevices;
+    $("pageDeviceQuickList").addEventListener("change", (event) => {
+      const input = event.target.closest("input[data-quick-device]"); if (!input) return;
+      const id = Number(input.dataset.quickDevice); if (input.checked) quickPageDevices.selected.add(id); else quickPageDevices.selected.delete(id);
+      renderQuickPageDevices();
+    });
+    $("pageDeviceQuickList").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-quick-model-select], [data-quick-model-clear]");
+      if (!button || quickPageDevices.busy) return;
+      const key = button.dataset.quickModelSelect ?? button.dataset.quickModelClear;
+      const selecting = button.dataset.quickModelSelect != null;
+      quickPageDevices.devices.filter((device) => pageDeviceModelKey(device) === key).forEach((device) => selecting ? quickPageDevices.selected.add(Number(device.id)) : quickPageDevices.selected.delete(Number(device.id)));
+      renderQuickPageDevices();
+    });
+    $("pageDeviceQuickAll").onclick = () => { quickPageDevices.selected = new Set(quickPageDevices.devices.map((device) => Number(device.id))); renderQuickPageDevices(); };
+    $("pageDeviceQuickNone").onclick = () => { quickPageDevices.selected.clear(); renderQuickPageDevices(); };
+    $("pageDeviceQuickSave").onclick = async () => {
+      if (quickPageDevices.busy || !quickPageDevicesDirty()) return;
+      quickPageDevices.busy = true; renderQuickPageDevices();
+      try {
+        const ids = [...quickPageDevices.selected].sort((a,b) => a-b);
+        const saved = await api(`/api/manager/device-pages/${encodeURIComponent(quickPageDevices.code)}/devices`, {method:"PUT", body:JSON.stringify({deviceIds:ids})});
+        quickPageDevices.selected = new Set((saved || []).map(Number)); quickPageDevices.saved = new Set(quickPageDevices.selected);
+        const frame = quickPageDevices.frame; $("pageDeviceQuickDialog").close();
+        if (frame?.dataset.loaded === "true" && !frame.contentWindow?.dcimHasUnsavedChanges?.()) frame.contentWindow?.postMessage({type:"dcim:dashboard:reload"}, location.origin);
+        if (state.pageDeviceLoadedCode?.toLowerCase() === quickPageDevices.code.toLowerCase() && !hasUnsavedPageDeviceChanges()) loadPageDeviceEditor(true).catch((error) => toast(error.message, true));
+        toast(`${quickPageDevices.selected.size}대의 페이지 장비 선택을 저장했습니다`);
+      } catch (error) { toast(`장비 선택을 저장하지 못했습니다: ${error.message}`, true); }
+      finally { quickPageDevices.busy = false; if ($("pageDeviceQuickDialog").open) renderQuickPageDevices(); }
+    };
 
     let pageDeviceLoadSequence = 0;
     async function loadPageDeviceEditor(refreshCatalog = false) {
@@ -7871,6 +8102,7 @@
         if (state.editingDeviceGroupId === id) state.editingDeviceGroupId = null;
         await loadDeviceGroups();
         await loadDevices();
+        fillPowerExistingGroups();
         resetDeviceGroupForm();
         toast("장비 그룹을 삭제했습니다");
       } catch (e) { toast(e.message, true); }
@@ -7982,6 +8214,70 @@
     }
 
     let widgetVisualPreviewData = null;
+    let widgetTableColumns = [];
+    let widgetTablePreviouslyEnabled = false;
+    let widgetTablePreviewSequence = 0;
+    let widgetTablePreviewTimer;
+    function scheduleWidgetTablePreview() {
+      clearTimeout(widgetTablePreviewTimer);
+      widgetTablePreviewSequence++;
+      widgetTablePreviewTimer = setTimeout(refreshWidgetTablePreview, 250);
+    }
+
+    function selectedTableColumns() {
+      return widgetTableColumns.filter((column) => column.enabled).map(({pointName, label}) => ({pointName, label:label.trim()}));
+    }
+    function renderWidgetTableEditor() {
+      const available = [...new Set(state.lastWidgetSources.flatMap((source) => source.pointNames || []))];
+      widgetTableColumns = widgetTableColumns.filter((column) => available.includes(column.pointName));
+      available.forEach((pointName) => { if (!widgetTableColumns.some((column) => column.pointName === pointName)) widgetTableColumns.push({pointName, label:pointName, enabled:!widgetTablePreviouslyEnabled}); });
+      const enabled = $('wKind').value === 'last' && $('wTableEnabled').checked;
+      $('wTableOptions').hidden = $('wKind').value !== 'last';
+      $('wTableEditor').hidden = !enabled;
+      $('wVisualPreview').hidden = enabled || $('wKind').value === 'power_distribution';
+      $('wTablePreview').hidden = !enabled;
+      $('wPowerPreview').hidden = $('wKind').value !== 'power_distribution';
+      const box = $('wTableColumns'); box.replaceChildren();
+      if (!widgetTableColumns.length) box.textContent = '장비와 측정 항목을 먼저 추가하세요.';
+      widgetTableColumns.forEach((column, index) => {
+        const row = document.createElement('div'); row.className = 'row'; row.style.marginBottom = '6px';
+        const check = document.createElement('input'); check.type = 'checkbox'; check.checked = column.enabled; check.setAttribute('aria-label', `${column.pointName} 표시`);
+        check.onchange = () => { column.enabled = check.checked; scheduleWidgetTablePreview(); };
+        const name = document.createElement('span'); name.textContent = column.pointName; name.style.minWidth = '110px';
+        const label = document.createElement('input'); label.value = column.label; label.maxLength = 100; label.placeholder = '열 이름'; label.style.flex = '1'; label.setAttribute('aria-label', `${column.pointName} 열 이름`);
+        label.oninput = () => { column.label = label.value; scheduleWidgetTablePreview(); };
+        const up = document.createElement('button'); up.type = 'button'; up.textContent = '↑'; up.disabled = index === 0;
+        up.onclick = () => { [widgetTableColumns[index - 1], widgetTableColumns[index]] = [widgetTableColumns[index], widgetTableColumns[index - 1]]; renderWidgetTableEditor(); };
+        const down = document.createElement('button'); down.type = 'button'; down.textContent = '↓'; down.disabled = index === widgetTableColumns.length - 1;
+        down.onclick = () => { [widgetTableColumns[index + 1], widgetTableColumns[index]] = [widgetTableColumns[index], widgetTableColumns[index + 1]]; renderWidgetTableEditor(); };
+        row.append(check, name, label, up, down); box.append(row);
+      });
+      if (enabled) scheduleWidgetTablePreview();
+      else widgetTablePreviewSequence++;
+    }
+
+    async function refreshWidgetTablePreview() {
+      const seq = ++widgetTablePreviewSequence;
+      if ($('wKind').value !== 'last' || !$('wTableEnabled').checked) return;
+      const columns = selectedTableColumns();
+      $('wTablePreviewTitle').textContent = $('wName').value.trim() || '내 위젯';
+      $('wVisualPreviewNote').textContent = '테이블 미리보기 · 선택한 장비 최대 5대의 최근 측정값';
+      const selected = state.lastWidgetSources.slice(0, 5).map((source) => ({...source, deviceName:state.devices.find((device) => Number(device.id) === Number(source.deviceId))?.name}));
+      $('wTablePreviewBody').innerHTML = window.WidgetTable.render(columns, selected, {devices:[]});
+      const devices = await Promise.all(selected.map(async (device) => {
+        const points = await Promise.all(columns.filter((column) => device.pointNames.includes(column.pointName)).map(async (column) => {
+          const source = state.widgetSources.find((item) => Number(item.deviceId) === Number(device.deviceId) && item.pointName === column.pointName && !item.ambiguous);
+          if (!source) return null;
+          try {
+            const params = new URLSearchParams({deviceId:String(device.deviceId),pointName:column.pointName,protocol:source.protocol});
+            const value = await api(`/api/manager/widgets/sources/preview?${params}`);
+            return value ? {pointName:column.pointName, value:value.value, unit:source.unit || ''} : null;
+          } catch (_) { return null; }
+        }));
+        return {deviceId:device.deviceId, points:points.filter(Boolean)};
+      }));
+      if (seq === widgetTablePreviewSequence && $('wTableEnabled').checked) $('wTablePreviewBody').innerHTML = window.WidgetTable.render(columns, selected, {devices});
+    }
     function selectedWidgetVisualStyle() {
       return document.querySelector('input[name="wVisualStyle"]:checked')?.value || "classic";
     }
@@ -7999,7 +8295,18 @@
       });
       const preview = $("wVisualPreview");
       if (!preview) return;
+      if ($('wKind').value === 'last' && $('wTableEnabled').checked) {
+        $('wTablePreviewTitle').textContent = $('wName').value.trim() || '내 위젯';
+        return;
+      }
       const kind = $("wKind").value;
+      $('wPowerPreview').hidden = kind !== 'power_distribution';
+      preview.hidden = kind === 'power_distribution';
+      if (kind === 'power_distribution') {
+        $('wPowerPreviewTitle').textContent = $('wName').value.trim() || '내 위젯';
+        $('wVisualColor').disabled = !$('wColorCustom').checked;
+        return;
+      }
       const examples = { last:['29.1','kWh','◈','#b18bff'], count:['23','대','▦','#54cbf3'], calculated:['1.51','','◉','#ec8bc5'], aggregate:['1.9','kW','ϟ','#54cbf3'], chart:['추이 차트','','⌁','#54cbf3'], psychrometric:['온도 · 습도','','◌','#2dd4d8'], power_distribution:['전력 분배','','◔','#54cbf3'], cctv:['카메라 화면','','▣','#54cbf3'] };
       let [value, unit, icon, defaultColor] = examples[kind] || examples.last;
       const live = widgetVisualPreviewData;
@@ -8013,7 +8320,7 @@
           value = number.toLocaleString('ko-KR', { maximumFractionDigits:2 }); actual = true;
         }
       }
-      $("wVisualPreviewNote").textContent = actual ? '위젯 미리보기 · 저장된 측정값' : '위젯 미리보기 · 예시 데이터';
+      $("wVisualPreviewNote").textContent = actual ? '위젯 미리보기 · 첫 번째 항목의 최근 측정값' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
       $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
       $("wVisualPreviewValue").textContent = value;
       $("wVisualPreviewUnit").textContent = unit;
@@ -8021,6 +8328,25 @@
       preview.dataset.style = selectedWidgetVisualStyle();
       preview.style.setProperty('--preview-color', $("wColorCustom").checked ? $("wVisualColor").value : defaultColor);
       $("wVisualColor").disabled = !$("wColorCustom").checked;
+    }
+
+    let widgetPreviewSequence = 0;
+    async function refreshSelectedLatestPreview() {
+      const sequence = ++widgetPreviewSequence;
+      if ($("wKind").value !== "last") return;
+      const selected = state.lastWidgetSources[0];
+      const pointName = selected?.pointNames?.[0];
+      const source = state.widgetSources.find((item) => Number(item.deviceId) === Number(selected?.deviceId) && item.pointName === pointName && !item.ambiguous);
+      widgetVisualPreviewData = null;
+      updateWidgetDesignPreview();
+      if (!source) return;
+      try {
+        const query = new URLSearchParams({ deviceId: String(source.deviceId), pointName, protocol: source.protocol });
+        const point = await api(`/api/manager/widgets/sources/preview?${query}`);
+        if (sequence !== widgetPreviewSequence || $("wKind").value !== "last") return;
+        widgetVisualPreviewData = { kind: "last", data: { devices: [{ points: [{ ...point, unit: source.unit || "" }] }] } };
+        updateWidgetDesignPreview();
+      } catch (_) { /* Keep the preview marked as an example when data is unavailable. */ }
     }
 
     function updateWidgetPagePreview() {
@@ -8068,6 +8394,7 @@
         if ($("wPickDevice")?.value) loadDevicePointPicker();
         refreshWidgetPoints();
       }).catch((error) => toast("측정항목을 불러오지 못했습니다: " + error.message, true));
+      loadDeviceGroups().then(() => fillPowerExistingGroups()).catch((error) => toast(`장비 그룹을 불러오지 못했습니다: ${error.message}`, true));
       $("wKind").focus();
     }
 
@@ -8081,7 +8408,9 @@
       openWidgetEditor();
     }
 
-    function openCalculatedMetrics() {
+    let metricReturnToWidgetEditor = false;
+    function openCalculatedMetrics(fromWidgetEditor = false) {
+      metricReturnToWidgetEditor = fromWidgetEditor === true;
       closeWidgetEditor();
       $("metricBackdrop").classList.add("open");
       $("calculatedMetricCard").classList.add("open");
@@ -8093,6 +8422,13 @@
       $("metricBackdrop").classList.remove("open");
       $("calculatedMetricCard").classList.remove("open");
       $("calculatedMetricCard").setAttribute("aria-hidden", "true");
+      if (metricReturnToWidgetEditor) {
+        metricReturnToWidgetEditor = false;
+        $("wEditorBackdrop").classList.add("open");
+        $("wEditorCard").classList.add("open");
+        $("wEditorCard").setAttribute("aria-hidden", "false");
+        $("wPueDefinition").focus();
+      }
     }
 
     function refreshWidgetPages(pageCode) {
@@ -8379,6 +8715,8 @@
           state.widgetDeviceIds = state.widgetDeviceIds.filter((x) => x !== id);
           if ($("wKind")?.value === "last") {
             state.lastWidgetSources = state.lastWidgetSources.filter((source) => Number(source.deviceId) !== id);
+            refreshSelectedLatestPreview();
+            renderWidgetTableEditor();
           }
           renderWidgetDevices();
           fillWidgetDevicePick();
@@ -8565,6 +8903,7 @@
       }
 
       if (kind === "power_distribution") {
+        fillPowerExistingGroups();
         state.widgetPointCatalog = [];
         state.widgetPointNamesByModel = new Map();
         renderPowerDistributionGroups();
@@ -8923,6 +9262,8 @@
           return;
         }
         state.lastWidgetSources.push({ deviceId: id, pointNames });
+        refreshSelectedLatestPreview();
+        renderWidgetTableEditor();
         syncLastWidgetDeviceIds();
         renderWidgetDevices();
         fillWidgetDevicePick();
@@ -10253,8 +10594,8 @@
       $("userSummary").textContent = `${users.length}명 · ADMIN ${users.filter((user) => user.role === "ADMIN").length}명 · USER ${users.filter((user) => user.role === "USER").length}명 · GUEST ${users.filter((user) => user.role === "GUEST").length}명`;
       $("userBody").innerHTML = users.length ? users.map((user) => `
         <tr>
-          <td><b>${esc(user.username)}</b><div class="muted mono" style="font-size:11px">#${user.id}</div></td>
-          <td><select data-user-role="${user.id}" style="min-width:96px">${userRoleOptions(user.role || "USER")}</select><div style="margin-top:5px"><span class="chip ${userRoleClass(user.role)}">${esc(user.role || "USER")}</span></div></td>
+          <td><div class="user-identity"><b>${esc(user.username)}</b><span class="muted mono">#${user.id}</span></div></td>
+          <td><select data-user-role="${user.id}" style="min-width:96px">${userRoleOptions(user.role || "USER")}</select></td>
           <td><input type="password" data-user-password="${user.id}" autocomplete="new-password" placeholder="변경 시 8자 이상" style="min-width:150px" /></td>
           <td class="muted">${esc(formatUserDate(user.createdDt))}</td>
           <td class="muted">${esc(formatUserDate(user.updatedDt))}</td>
@@ -11297,7 +11638,7 @@
       if (!name) return toast("그룹명을 입력하세요", true);
       try {
         const id = state.editingDeviceGroupId;
-        await api(id ? `/api/manager/device-groups/${id}` : "/api/manager/device-groups", {
+        const savedGroup = await api(id ? `/api/manager/device-groups/${id}` : "/api/manager/device-groups", {
           method: id ? "PUT" : "POST",
           body: JSON.stringify({
             name,
@@ -11311,6 +11652,7 @@
         state.editingDeviceGroupId = null;
         await loadDeviceGroups();
         await loadDevices();
+        fillPowerExistingGroups(savedGroup.id);
         resetDeviceGroupForm();
       } catch (e) { toast(e.message, true); }
     };
@@ -11996,6 +12338,11 @@
     };
 
     function clearWidgetForm(keepPage) {
+      widgetPreviewSequence++;
+      widgetTablePreviewSequence++;
+      widgetTableColumns = [];
+      widgetTablePreviouslyEnabled = false;
+      $('wTableEnabled').checked = false;
       widgetVisualPreviewData = null;
       const page = keepPage ? $("wCreatePage").value : null;
       state.editingWidgetId = null;
@@ -12037,6 +12384,7 @@
       if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
       if (page) $("wCreatePage").value = page;
       renderWidgetDevices();
+      renderWidgetTableEditor();
       renderWidgetDeviceGroups();
       if ($("wDevicePointPick")) $("wDevicePointPick").style.display = "none";
       if ($("wPickDevicePoints")) $("wPickDevicePoints").innerHTML = "";
@@ -12102,6 +12450,12 @@
           deviceId: Number(source.deviceId),
           pointNames: [...(source.pointNames || [])],
         }));
+        let storedColumns = null;
+        try { storedColumns = w.tableColumnsJson ? JSON.parse(w.tableColumnsJson) : null; } catch (_) { storedColumns = null; }
+        widgetTablePreviouslyEnabled = w.queryKind === "last" && Array.isArray(storedColumns) && storedColumns.length > 0;
+        $('wTableEnabled').checked = widgetTablePreviouslyEnabled;
+        widgetTableColumns = widgetTablePreviouslyEnabled ? storedColumns.map((column) => ({...column, enabled:true})) : [];
+        renderWidgetTableEditor();
         state.widgetDeviceIds = w.queryKind === "last" && state.lastWidgetSources.length
           ? state.lastWidgetSources.map((source) => source.deviceId)
           : [...(w.deviceIds || [])];
@@ -12490,7 +12844,45 @@
       }
     }
 
+    let powerPreviewSequence = 0;
+    let powerPreviewTimer;
+    function schedulePowerDistributionPreview() {
+      clearTimeout(powerPreviewTimer);
+      const sequence = ++powerPreviewSequence;
+      if ($("wKind").value !== "power_distribution") return;
+      $("wPowerPreview").hidden = false;
+      $("wVisualPreview").hidden = true;
+      $("wVisualPreviewNote").textContent = "전력 분배 미리보기 · 선택한 장비의 최근 측정값";
+      $("wPowerPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
+      const groups = state.powerDistributionGroups.map((group) => ({...group, sources:group.sources.map((source) => ({...source}))}));
+      if (!groups.length) { $("wPowerPreviewBody").innerHTML = '<div class="muted" style="padding:20px 0;font-size:12px">전력 그룹과 소스를 추가하면 미리보기가 표시됩니다.</div>'; return; }
+      $("wPowerPreviewBody").innerHTML = '<div class="muted" style="padding:20px 0;font-size:12px">최근 측정값을 불러오는 중입니다.</div>';
+      powerPreviewTimer = setTimeout(async () => {
+        const resolved = await Promise.all(groups.map(async (group) => {
+          const sources = await Promise.all(group.sources.map(async (source) => {
+            const definition = state.widgetSources.find((item) => Number(item.deviceId) === Number(source.deviceId) && item.pointName === source.pointName && !item.ambiguous);
+            const device = state.devices.find((item) => Number(item.id) === Number(source.deviceId));
+            let powerW = null;
+            if (definition) try {
+              const params = new URLSearchParams({deviceId:String(source.deviceId), pointName:source.pointName, protocol:definition.protocol});
+              const point = await api(`/api/manager/widgets/sources/preview?${params}`);
+              if (point?.value != null && Number.isFinite(Number(point.value))) powerW = Number(point.value);
+            } catch (_) { /* Missing data remains unavailable. */ }
+            return {...source, deviceName:device?.name || definition?.deviceName, powerW};
+          }));
+          const complete = sources.length > 0 && sources.every((source) => source.powerW != null);
+          return {...group, sources, complete, powerW:complete ? sources.reduce((sum, source) => sum + source.powerW, 0) : null};
+        }));
+        if (sequence !== powerPreviewSequence || $("wKind").value !== "power_distribution") return;
+        const complete = resolved.length >= 2 && resolved.every((group) => group.complete);
+        const totalPowerW = complete ? resolved.reduce((sum, group) => sum + group.powerW, 0) : null;
+        const data = {complete, totalPowerW, groups:resolved.map((group) => ({...group, ratio:complete && totalPowerW !== 0 ? Math.round(group.powerW / totalPowerW * 10000) / 100 : null}))};
+        $("wPowerPreviewBody").innerHTML = window.PowerDistributionWidget.render(data);
+      }, 250);
+    }
+
     function renderPowerDistributionGroups() {
+      schedulePowerDistributionPreview();
       const box = $("wPowerGroupList");
       if (!box) return;
       box.innerHTML = state.powerDistributionGroups.length
@@ -12523,22 +12915,31 @@
       });
     }
 
+    function fillPowerExistingGroups(selectedId = "") {
+      const select = $("wPowerExistingGroup");
+      const old = selectedId || select.value;
+      fillSelect(select, state.deviceGroups.filter((group) => group.enabled), (group) => `<option value="${group.id}">${esc(group.name)} · ${(group.devices || []).length}대</option>`, "장비 그룹 선택");
+      if ([...select.options].some((option) => option.value === String(old))) select.value = String(old);
+    }
+
     function addPowerDistributionGroup() {
-      const name = $("wPowerGroupName").value.trim();
-      if (!name) return toast("전력 그룹 이름을 입력하세요", true);
-      if (state.powerDistributionGroups.some((group) => group.name.toLowerCase() === name.toLowerCase())) {
-        return toast("같은 전력 그룹 이름이 이미 있습니다", true);
+      const selectedGroup = state.deviceGroups.find((group) => Number(group.id) === Number($("wPowerExistingGroup").value) && group.enabled);
+      if (!selectedGroup) return toast("사용할 장비 그룹을 선택하세요", true);
+      if (state.powerDistributionGroups.some((group) => group.name.toLowerCase() === selectedGroup.name.toLowerCase())) return toast("이미 추가한 그룹입니다", true);
+      const sources = [], omitted = [];
+      for (const device of selectedGroup.devices || []) {
+        const candidates = widgetSourcesForDevice(device.id).filter((source) => !source.ambiguous && String(source.dataPointType || "").toUpperCase() === "POWER" && String(source.unit || "").trim().toUpperCase() === "W");
+        const unique = [...new Map(candidates.map((source) => [source.pointName, source])).values()];
+        if (unique.length !== 1) { omitted.push(device.name); continue; }
+        if (state.powerDistributionGroups.some((group) => group.sources.some((source) => Number(source.deviceId) === Number(device.id) && source.pointName === unique[0].pointName))) { omitted.push(device.name); continue; }
+        sources.push({deviceId:Number(device.id), pointName:unique[0].pointName});
       }
-      state.powerDistributionGroups.push({
-        name,
-        color: $("wPowerGroupColor").value || POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length],
-        sources: [],
-      });
-      $("wPowerGroupName").value = "";
+      state.powerDistributionGroups.push({name:selectedGroup.name, color:$("wPowerGroupColor").value || POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length], sources});
       $("wPowerGroupColor").value = POWER_GROUP_COLORS[state.powerDistributionGroups.length % POWER_GROUP_COLORS.length];
-      renderPowerDistributionGroups();
-      fillPowerDistributionPicks();
+      renderPowerDistributionGroups(); fillPowerDistributionPicks();
       $("wPowerGroupPick").value = String(state.powerDistributionGroups.length - 1);
+      if (omitted.length) toast(`${sources.length}대 추가 · ${omitted.join(", ")}의 측정항목은 직접 확인해 추가하세요`, true);
+      else toast(`${selectedGroup.name} 그룹 장비 ${sources.length}대를 추가했습니다`);
     }
 
     function addPowerDistributionSource() {
@@ -12563,6 +12964,14 @@
     $("wPsychTemperatureAdd")?.addEventListener("click", () => addPsychrometricSource("temperature"));
     $("wPsychHumidityAdd")?.addEventListener("click", () => addPsychrometricSource("humidity"));
     $("wPowerGroupAdd")?.addEventListener("click", addPowerDistributionGroup);
+    $("wPowerNewDeviceGroup")?.addEventListener("click", async () => {
+      try {
+        await loadDeviceGroups();
+        resetDeviceGroupForm();
+        $("dgDialog").showModal();
+        $("dgName").focus();
+      } catch (error) { toast(`장비 그룹을 불러오지 못했습니다: ${error.message}`, true); }
+    });
     $("wPowerDevice")?.addEventListener("change", loadPowerDistributionPointPick);
     $("wPowerPoint")?.addEventListener("change", () => { $("wPowerSourceAdd").disabled = !$("wPowerPoint").value; });
     $("wPowerSourceAdd")?.addEventListener("click", addPowerDistributionSource);
@@ -12641,6 +13050,10 @@
         toast(`계산 지표 #${saved.id}${editingId ? "을 수정했습니다" : "을 만들었습니다"}`);
         clearPueForm();
         await loadPueDefinitions();
+        if (metricReturnToWidgetEditor) {
+          $("wPueDefinition").value = String(saved.id);
+          closeCalculatedMetrics();
+        }
       } catch (e) { toast(e.message, true); }
     });
     $("pueEditCancel")?.addEventListener("click", () => clearPueForm());
@@ -12696,12 +13109,14 @@
     $("wDeviceSearch").addEventListener("input", () => fillWidgetDevicePick());
     $("wPointSearch").addEventListener("input", () => filterWidgetPointLabels("wPickDevicePoints", "wPointSearch"));
     $("wCatalogSearch").addEventListener("input", () => filterWidgetPointLabels("wPointGrid", "wCatalogSearch"));
+    $("wAddCalculatedMetric").onclick = () => openCalculatedMetrics(true);
     $("wCloseEditor").onclick = () => closeWidgetEditor();
     $("wEditPageLayout").onclick = openPageLayoutEditor;
     $("wCreatePage").addEventListener("change", () => {
       if ($("wEditorCard").querySelector(".widget-preview-details")?.open) updateWidgetPagePreview();
     });
     $("wName").addEventListener("input", updateWidgetDesignPreview);
+    $('wTableEnabled').addEventListener('change', renderWidgetTableEditor);
     $("wEditorCard").addEventListener("change", (event) => {
       if (event.target.matches('input[name="wVisualStyle"], #wColorCustom, #wVisualColor, #wKind')) updateWidgetDesignPreview();
     });
@@ -12752,6 +13167,7 @@
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
+      renderWidgetTableEditor();
       state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
       state.widgetPointCatalog = [];
@@ -12891,6 +13307,10 @@
         if (kind === "last" && !lastSources.length) {
           throw new Error("장비마다 측정항목을 하나 이상 선택해 추가하세요");
         }
+        const tableColumns = kind === 'last' && $('wTableEnabled').checked ? selectedTableColumns() : null;
+        if (tableColumns && (!tableColumns.length || tableColumns.length > 30 || tableColumns.some((column) => !column.label))) {
+          throw new Error('테이블 열을 1~30개 선택하고 각 열 이름을 입력하세요');
+        }
         if ((kind === "last" || kind === "chart") && (!pointNames || !pointNames.length)) {
           throw new Error("측정 항목을 하나 이상 선택하세요");
         }
@@ -12921,7 +13341,7 @@
           throw new Error("특정 모델 모드에서는 모델을 선택하세요");
         }
 
-        const layoutH = kind === "chart" ? 16 : kind === "last" ? 6 : 8;
+        const layoutH = kind === "chart" ? 16 : tableColumns ? 12 : kind === "last" ? 6 : 8;
         const body = {
           pageCode: $("wCreatePage").value,
           visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
@@ -12950,17 +13370,11 @@
           layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: layoutH },
         };
 
-        let saved;
-        if (state.editingWidgetId) {
-          saved = await api(`/api/manager/widgets/${state.editingWidgetId}`, {
-            method: "PUT",
-            body: JSON.stringify(body),
-          });
-          toast("위젯을 저장했습니다");
-        } else {
-          saved = await api("/api/manager/widgets", { method: "POST", body: JSON.stringify(body) });
-          toast("위젯을 만들었습니다");
-        }
+        const wasEditing = !!state.editingWidgetId;
+        const useTableEndpoint = !!tableColumns || widgetTablePreviouslyEnabled;
+        const url = wasEditing ? `/api/manager/widgets/${state.editingWidgetId}${useTableEndpoint ? '/table' : ''}` : `/api/manager/widgets${useTableEndpoint ? '/table' : ''}`;
+        const saved = await api(url, { method:wasEditing ? 'PUT' : 'POST', body:JSON.stringify(useTableEndpoint ? {widget:body, columns:tableColumns} : body) });
+        toast(wasEditing ? "위젯을 저장했습니다" : "위젯을 만들었습니다");
         $("wOut").textContent = JSON.stringify(saved, null, 2);
         $("wPage").value = body.pageCode;
         clearWidgetForm(false);

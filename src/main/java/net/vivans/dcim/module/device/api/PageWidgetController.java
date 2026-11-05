@@ -41,6 +41,29 @@ public class PageWidgetController {
 
     private final PageWidgetQueryService pageWidgetQueryService;
 
+    public record TableColumnsRequest(List<PageWidgetQueryService.TableColumn> columns) {}
+    public record TableCreateRequest(@jakarta.validation.constraints.NotNull @Valid PageWidgetCreateRequest widget, List<PageWidgetQueryService.TableColumn> columns) {}
+    public record TableUpdateRequest(@jakarta.validation.constraints.NotNull @Valid PageWidgetUpdateRequest widget, List<PageWidgetQueryService.TableColumn> columns) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/table")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> createTableWidget(@Valid @RequestBody TableCreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.createTableWidget(request.widget(), request.columns())));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}/table")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> updateTableWidget(@PathVariable Integer id, @Valid @RequestBody TableUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.updateTableWidget(id, request.widget(), request.columns())));
+    }
+
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/table-columns")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> setTableColumns(@PathVariable Integer id, @RequestBody TableColumnsRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.setTableColumns(id, request.columns())));
+    }
+
     @GetMapping("/pages")
     @Operation(summary = "위젯 페이지 목록")
     public ResponseEntity<ApiResponse<List<PageWidgetPageResponse>>> getPages() {

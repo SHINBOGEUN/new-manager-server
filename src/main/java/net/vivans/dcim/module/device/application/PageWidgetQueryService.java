@@ -292,6 +292,43 @@ public class PageWidgetQueryService {
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
     }
 
+    public record TableColumn(String pointName, String label) {}
+
+    @Transactional
+    public PageWidgetResponse createTableWidget(PageWidgetCreateRequest request, List<TableColumn> columns) {
+        if (columns == null) throw new IllegalArgumentException("테이블 열을 선택하세요");
+        PageWidgetResponse created = createWidget(request);
+        return setTableColumns(created.id(), columns);
+    }
+
+    @Transactional
+    public PageWidgetResponse updateTableWidget(Integer id, PageWidgetUpdateRequest request, List<TableColumn> columns) {
+        updateWidget(id, request);
+        return setTableColumns(id, columns);
+    }
+
+
+    @Transactional
+    public PageWidgetResponse setTableColumns(Integer id, List<TableColumn> columns) {
+        PageWidget widget = widgetSupport.findWidget(id);
+        if (columns == null) {
+            widget.setTableColumnsJson(null);
+        } else {
+            if (widget.getQueryKind() != PageWidgetQueryKind.last || columns.isEmpty() || columns.size() > 30)
+                throw new IllegalArgumentException("테이블에는 최신값 측정 항목을 1~30개 선택하세요");
+            var available = widget.lastSourceDefinitions().stream().flatMap(source -> source.pointNames().stream()).collect(java.util.stream.Collectors.toSet());
+            var seen = new java.util.HashSet<String>();
+            for (var column : columns) {
+                if (column == null || column.pointName() == null || !available.contains(column.pointName()) || !seen.add(column.pointName())
+                        || column.label() == null || column.label().isBlank() || column.label().length() > 100)
+                    throw new IllegalArgumentException("테이블 열 이름과 측정 항목을 확인하세요");
+            }
+            try { widget.setTableColumnsJson(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(columns)); }
+            catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalArgumentException("테이블 열을 저장할 수 없습니다", e); }
+        }
+        return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
     @Transactional
     public PageWidgetResponse setVisualStyle(Integer id, String style) {
         PageWidget widget = widgetSupport.findWidget(id);

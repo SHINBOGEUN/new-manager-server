@@ -6,6 +6,93 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script>
+(function (global) {
+  'use strict';
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  function render(columns, sources, data) {
+    const results = new Map((data?.devices || []).map((device) => [Number(device.deviceId), device]));
+    const rows = (sources || []).map((source) => {
+      const device = results.get(Number(source.deviceId));
+      const points = new Map((device?.points || []).map((point) => [point.pointName, point]));
+      return `<tr><th scope="row">${esc(source.deviceName || device?.deviceName || `장비 #${source.deviceId}`)}</th>${columns.map((column) => {
+        const point = points.get(column.pointName);
+        const number = point?.value == null ? null : Number(point.value);
+        const value = number == null || !Number.isFinite(number) ? '—' : number.toLocaleString('ko-KR', { maximumFractionDigits:3 });
+        return `<td>${esc(value)}${number != null && Number.isFinite(number) && point?.unit ? ` <small>${esc(point.unit)}</small>` : ''}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+    return `<div class="widget-table-scroll"><table class="widget-data-table"><thead><tr><th scope="col">장비</th>${columns.map((column) => `<th scope="col">${esc(column.label)}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${columns.length + 1}">선택한 장비가 없습니다.</td></tr>`}</tbody></table></div>`;
+  }
+  global.WidgetTable = { render };
+})(globalThis);
+
+  </script>
+  <script>
+(function (global) {
+  'use strict';
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const formatValue = value => Number(value).toLocaleString('ko-KR', {maximumFractionDigits:2});
+    function formatPowerW(value) {
+      if (value == null) return "–";
+      const number = Number(value);
+      return Math.abs(number) >= 1000
+        ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW`
+        : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
+    }
+
+    function renderPowerDistributionBody(data) {
+      if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
+      const groups = data.groups || [];
+      const colors = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#22d3ee", "#f97316", "#a3e635"];
+      const resolved = groups.map((group, index) => ({ ...group, color: group.color || colors[index % colors.length] }));
+      const conic = resolved.length && data.complete
+        ? `conic-gradient(${resolved.map((group, index) => `${group.color} ${resolved.slice(0, index).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}% ${resolved.slice(0, index + 1).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}%`).join(", ")})`
+        : "conic-gradient(#334155 0 100%)";
+      const groupRows = resolved.map((group) => {
+        const ratio = group.ratio == null ? 0 : Number(group.ratio);
+        const details = (group.sources || []).map((source) => `<div class="series-row"><div>${escapeHtml(source.deviceName || `#${source.deviceId}`)} · ${escapeHtml(source.pointName)}</div><div class="val">${formatPowerW(source.powerW)}</div></div>`).join("");
+        return `<div><div class="power-group-head"><span class="power-group-name"><i class="power-group-dot" style="background:${escapeHtml(group.color)}"></i><b>${escapeHtml(group.name)}</b></span>`
+          + `<span><b>${formatPowerW(group.powerW)}</b> <span class="meta">${group.ratio == null ? "–" : `${formatValue(group.ratio)}%`}</span></span></div>`
+          + `<div class="power-group-bar"><i style="width:${Math.max(0, Math.min(100, ratio))}%;background:${escapeHtml(group.color)}"></i></div>`
+          + (group.complete ? "" : '<div class="meta" style="margin-top:3px">일부 데이터 없음</div>')
+          + `<details><summary class="meta">장비별 상세</summary>${details}</details></div>`;
+      }).join("");
+      return `<div class="power-distribution"><div class="power-donut" style="background:${conic}"><div class="power-donut-center">TOTAL POWER<b>${formatPowerW(data.totalPowerW)}</b></div></div>`
+        + `<div class="power-groups">${groupRows}</div></div>`
+        + (!data.complete ? '<div class="meta">누락된 소스가 있어 전체 전력·비율은 계산하지 않습니다.</div>' : "");
+    }
+
+  global.PowerDistributionWidget = { render: renderPowerDistributionBody };
+})(globalThis);
+
+  </script>
+  <style>
+    .power-distribution { display: flex; gap: 18px; align-items: center; min-height: 150px; }
+    .power-donut { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 50%; position: relative; }
+    .power-donut::after { content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--card, #121a29); }
+    .power-donut-center { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: var(--muted); }
+    .power-donut-center b { color: var(--text); font-size: 18px; margin-top: 3px; }
+    .power-groups { flex: 1; min-width: 0; display: grid; gap: 9px; }
+    .power-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
+    .power-group-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+    .power-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+    .power-group-bar { height: 5px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
+    .power-group-bar i { display: block; height: 100%; border-radius: inherit; }
+    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }
+
+  </style>
+  <style>
+.widget-table-scroll { width:100%; height:100%; min-height:100px; overflow:auto; }
+.widget-data-table { width:100%; border-collapse:collapse; color:var(--text); font-size:12px; text-align:left; }
+.widget-data-table th, .widget-data-table td { padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+.widget-data-table thead th { position:sticky; top:0; z-index:1; background:var(--panel-2,var(--surface2)); color:var(--muted); }
+.widget-data-table tbody tr:nth-child(even) { background:rgba(128,158,190,.06); }
+.widget-data-table tbody th { font-weight:650; }
+.widget-data-table td { color:var(--accent); font-variant-numeric:tabular-nums; }
+.widget-data-table td small { color:var(--muted); }
+
+  </style>
   <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261104a"></script>
   <style>
     :root {
@@ -70,6 +157,8 @@
     .widget-item.disabled h3 > span, .widget-item.disabled .meta { opacity: .55; }
     .widget-item { cursor:pointer; }
     .widget-item.is-list-selected { border-color:#4ad9ff; background:color-mix(in srgb,#4ad9ff 12%,var(--panel)); box-shadow:inset 3px 0 #4ad9ff; }
+    body.edit-mode .widget-item.is-row-selected { border-color:#4ad9ff; background:color-mix(in srgb,#4ad9ff 16%,var(--panel)); box-shadow:inset 3px 0 #4ad9ff; }
+    body.edit-mode .widget-item.is-row-selected h3 > span::after { content:'✓ 선택됨'; display:inline-block; margin-left:7px; padding:2px 6px; border-radius:8px; color:#052332; background:#51e5ff; font-size:10px; font-weight:800; white-space:nowrap; }
     .widget-size-pick { display:none; align-items:center; gap:7px; margin:8px 0 0; color:var(--muted); font-size:11px; cursor:pointer; }
     body.edit-mode .widget-size-pick { display:flex; }
     .widget-size-pick input { width:15px; height:15px; margin:0; accent-color:var(--accent); }
@@ -133,6 +222,9 @@
       border-bottom-color: var(--line);
       background: rgba(61,156,240,.08);
     }
+    .layout-save-status { display:inline-flex; align-items:center; padding:6px 10px; border:1px solid #2b755c; border-radius:8px; color:#a6f0cf; background:#0c3029; font-size:12px; font-weight:700; white-space:nowrap; }
+    .layout-save-status[hidden] { display:none; }
+    .layout-save-status.is-error { color:#ffd4d9; border-color:#a54754; background:#42202a; }
     .card-head-tools { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
     .chart-series-select { font-size: 11px; padding: 4px 8px; min-width: 92px; background: var(--panel-2); }
     body.edit-mode .card-head:active { cursor: grabbing; }
@@ -162,6 +254,14 @@
       border-radius: 4px 0 8px 0;
       clip-path: polygon(100% 0, 100% 100%, 0 100%);
     }
+    .resize-w { top:18px; left:0; width:8px; bottom:18px; cursor:ew-resize; opacity:.55; }
+    .resize-n { left:18px; top:0; height:8px; right:18px; cursor:ns-resize; opacity:.55; }
+    .resize-nw,.resize-ne,.resize-sw { width:16px; height:16px; opacity:.9; }
+    .resize-nw { left:0; top:0; cursor:nwse-resize; }
+    .resize-ne { right:0; top:0; cursor:nesw-resize; }
+    .resize-sw { left:0; bottom:0; cursor:nesw-resize; }
+    body.edit-mode .board > .card.row-selected { outline:4px solid #32e6ff; outline-offset:-4px; box-shadow:0 0 0 3px #27d9fa,0 0 25px #24c8f9aa; }
+    body.edit-mode .board > .card.row-selected::after { content:'✓ 선택됨'; position:absolute; z-index:6; top:9px; right:10px; padding:5px 11px; border-radius:20px; color:#052332; background:#51e5ff; font-size:12px; font-weight:800; box-shadow:0 2px 8px #0008; pointer-events:none; }
     .card-body { padding: 8px 12px 12px; overflow: auto; flex: 1; min-height: 0; }
     .card h2 { margin: 0; font-size: 14px; flex: 1; }
     /* Operational cards share the same quiet surface and compact title strip. */
@@ -305,18 +405,6 @@
     }
     .psychrometric-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; color: var(--muted); }
     .psychrometric-legend b { color: var(--text); }
-    .power-distribution { display: flex; gap: 18px; align-items: center; min-height: 150px; }
-    .power-donut { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 50%; position: relative; }
-    .power-donut::after { content: ""; position: absolute; inset: 28px; border-radius: 50%; background: var(--card); }
-    .power-donut-center { position: absolute; z-index: 1; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 11px; color: var(--muted); }
-    .power-donut-center b { color: var(--text); font-size: 18px; margin-top: 3px; }
-    .power-groups { flex: 1; min-width: 0; display: grid; gap: 9px; }
-    .power-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; }
-    .power-group-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-    .power-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
-    .power-group-bar { height: 5px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
-    .power-group-bar i { display: block; height: 100%; border-radius: inherit; }
-    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }
     .empty { color: var(--muted); padding: 40px 12px; text-align: center; }
     .placeholder {
       grid-column: span 12; background: rgba(255,255,255,.02); border: 1px dashed var(--line);
@@ -535,7 +623,7 @@
     body.display-only .card { user-select:text; }
     /* The editor previews the same full-width grid as the fixed display pages. */
     body.embedded-board .board-toolbar { display:none !important; }
-    body.embedded-board .board-wrap { width:100%; height:100%; padding:0; overflow:auto; }
+    body.embedded-board .board-wrap { width:100%; height:100%; padding:0; overflow:auto; scrollbar-gutter:auto; }
     body.embedded-board .board { min-width:0; min-height:100%; padding:0; background:none; }
     body.embedded-board aside { display:none; }
     body.embedded-board.edit-mode .board { background-image:linear-gradient(to right,rgba(42,53,68,.42) 1px,transparent 1px),linear-gradient(to bottom,rgba(42,53,68,.42) 1px,transparent 1px); }
@@ -718,6 +806,17 @@
     body.fixed-page-view:is(.edit-mode,.widget-workspace) > .dashboard-header { position:relative; top:auto; right:auto; width:100%; max-width:none; margin:0; background:var(--panel); border-bottom:1px solid var(--line); pointer-events:auto; }
     body.fixed-page-view:is(.edit-mode,.widget-workspace) .dashboard-actions { max-width:100%; border:0; border-radius:0; box-shadow:none; background:transparent; }
     body.fixed-page-view:is(.edit-mode,.widget-workspace) .workspace-guide { display:none; }
+    /* Keep the widget toolbar in one stable row while the list opens or closes. */
+    body.fixed-page-view.widget-workspace.drawer-open > .dashboard-header { max-width:none; }
+    body.widget-workspace .dashboard-actions > :not(#addWidgetBtn):not(#drawerBtn):not(#editBtn):not(#closeWidgetWorkspaceBtn):not(#layoutSaveStatus) { display:none !important; }
+    body.widget-workspace .dashboard-actions { position:relative; flex-wrap:nowrap; justify-content:flex-end; gap:8px; }
+    body.widget-workspace #addWidgetBtn { order:1; }
+    body.widget-workspace #drawerBtn { order:2; }
+    body.widget-workspace #editBtn { order:3; }
+    body.widget-workspace #closeWidgetWorkspaceBtn { order:4; }
+    body.widget-workspace #layoutSaveStatus { position:absolute; z-index:75; top:calc(100% + 6px); right:8px; box-shadow:0 5px 18px #0006; pointer-events:none; }
+    @media (max-width:520px) { body.widget-workspace .dashboard-actions { gap:4px; } body.widget-workspace .dashboard-actions button { padding:6px; font-size:11px; } }
+
     body.page-scene-fullscreen.widget-workspace #pageVisualization { grid-template-rows:0 minmax(0,1fr); }
     body.page-scene-fullscreen.widget-workspace .page-visualization-head { display:none; }
     .page-layout-empty { padding:22px; color:#9bb0c8; text-align:center; }
@@ -831,15 +930,16 @@
         <button id="metricsBtn" class="ghost" type="button" style="display:none">계산 지표</button>
         <button id="reloadBtn" class="ghost" type="button">↻ 새로고침</button>
         <button id="editBtn" type="button" aria-pressed="false" aria-describedby="workspaceGuide" title="카드 상단을 끌어 이동하고 가장자리로 크기를 조절합니다">배치 편집</button>
+        <span id="layoutSaveStatus" class="layout-save-status" role="status" aria-live="polite" hidden></span>
         <button id="cancelEditBtn" class="ghost" type="button" style="display:none">편집 취소</button>
-        <button id="closeWidgetWorkspaceBtn" class="ghost" type="button" style="display:none">위젯 편집 종료</button>
+        <button id="closeWidgetWorkspaceBtn" class="ghost" type="button" style="display:none">편집 종료</button>
         <button id="drawerBtn" class="ghost" type="button" style="display:none" aria-expanded="false" aria-controls="widgetDrawer">위젯 목록</button>
         <button id="controlsBtn" class="ghost" type="button" aria-expanded="false" aria-controls="dashboardControls">표시 설정</button>
         <button id="logBtn" class="ghost" type="button" aria-expanded="false" aria-controls="log">로그</button>
         <a href="/ops-console.html">운영 콘솔 ↗</a>
       </div>
     </div>
-    <p id="workspaceGuide" class="workspace-guide" role="status"><span class="when-viewing"><strong>배치 변경</strong> · 배치 편집 → 카드 상단으로 이동·가장자리로 크기 조절 → 변경 저장</span><span class="when-editing"><strong>배치 편집 중</strong> · 카드 상단을 끌어 이동하세요. 완료 후 변경 저장을 누르거나 편집 취소로 돌아갑니다.</span></p>
+    <p id="workspaceGuide" class="workspace-guide" role="status"><span class="when-viewing"><strong>배치 변경</strong> · 위젯 편집 → 카드 상단으로 이동·가장자리로 크기 조절 → 변경 저장</span><span class="when-editing"><strong>배치 편집 중</strong> · 카드 상단을 끌어 이동하세요. 완료 후 변경 저장을 누르거나 편집 취소로 돌아갑니다.</span></p>
     <section id="dashboardControls" class="dashboard-controls">
       <div class="control-group">
         <p class="control-group-title">데이터 연결</p>
@@ -859,7 +959,7 @@
   <main id="widgetMain">
     <aside id="widgetDrawer" aria-label="위젯 목록">
       <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div><button type="button" id="closeWidgetDrawerBtn" class="ghost" aria-label="위젯 목록 접기" title="위젯 목록 접기">접기 ‹</button></div>
-      <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>배치 편집을 누른 뒤 카드 상단이나 가장자리를 끌어 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 내용 수정은 배치 편집을 마친 뒤 이용하세요.</p></details>
+      <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>카드 상단이나 가장자리를 끌어 위치와 크기를 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 위치와 크기는 변경 저장을 눌러 반영합니다.</p></details>
       <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">도면에서 위젯을 클릭해 선택하세요.</span><button id="applySizeMatchBtn" type="button" disabled>한 줄로 채우기</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
@@ -1421,7 +1521,8 @@
             })
           : Promise.resolve(null),
       ]);
-      state.widgets = widgets || [];
+      const drafts = state.editMode ? new Map(state.widgets.filter((widget) => widget._draftLayout).map((widget) => [Number(widget.id), widget._draftLayout])) : new Map();
+      state.widgets = (widgets || []).map((widget) => drafts.has(Number(widget.id)) ? {...widget, _draftLayout:drafts.get(Number(widget.id))} : widget);
       state.devices = devicePage?.content || [];
       state.models = models?.content || models || [];
       try {
@@ -1463,6 +1564,10 @@
           defaultView.onclick = () => state.pageScene3dApi?.saveViewAsDefault?.();
           tools.append(defaultView);
         }
+        const deviceSettings = document.createElement("button"); deviceSettings.type = "button";
+        deviceSettings.textContent = "표시 장비 설정";
+        deviceSettings.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:page-device-settings", pageCode:page.pageCode }, location.origin);
+        tools.append(deviceSettings);
         const edit = document.createElement("button"); edit.type="button"; edit.className="page-edit-icon";
         edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
         edit.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
@@ -2111,20 +2216,21 @@
       if (state.sizeMatchWidgetIds.includes(id)) state.sizeMatchWidgetIds = state.sizeMatchWidgetIds.filter((item) => item !== id);
       else state.sizeMatchWidgetIds.push(id);
       $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => card.classList.toggle("row-selected", state.sizeMatchWidgetIds.includes(Number(card.dataset.widgetId))));
+      $("widgetList").querySelectorAll(".widget-item").forEach((item) => item.classList.toggle("is-row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.id))));
       updateSizeMatchTools();
     }
-    function selectWidgetFromList(id) {
+    function selectWidgetFromList(id, {scrollBoard = true, scrollList = false} = {}) {
       selectedListWidgetId = Number(id);
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
         const selected = Number(item.dataset.id) === selectedListWidgetId;
         item.classList.toggle('is-list-selected', selected);
-        if (selected) item.setAttribute('aria-current', 'true'); else item.removeAttribute('aria-current');
+        if (selected) { item.setAttribute('aria-current', 'true'); if (scrollList && document.body.classList.contains('drawer-open')) item.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'}); } else item.removeAttribute('aria-current');
       });
       const board = $('board');
       board.querySelectorAll('.card[data-widget-id]').forEach((card) => {
         const selected = Number(card.dataset.widgetId) === selectedListWidgetId;
         card.classList.toggle('is-list-selected', selected);
-        if (selected) card.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' });
+        if (selected && scrollBoard) card.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' });
       });
     }
 
@@ -2184,7 +2290,7 @@
             ? ` · ${escapeHtml(w.op || "")}${w.aggregateRangePreset ? " · " + escapeHtml(w.aggregateRangePreset) : ""}`
             : "";
         return `
-        <article class="widget-item ${w.enabled ? "" : "disabled"} ${Number(w.id) === selectedListWidgetId ? "is-list-selected" : ""}" data-id="${w.id}" tabindex="0" ${Number(w.id) === selectedListWidgetId ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
+        <article class="widget-item ${w.enabled ? "" : "disabled"} ${Number(w.id) === selectedListWidgetId ? "is-list-selected" : ""} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? "is-row-selected" : ""}" data-id="${w.id}" tabindex="0" ${Number(w.id) === selectedListWidgetId ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
           <h3>
             <span>${escapeHtml(w.name)}</span>
             <label class="switch" title="이 페이지에 위젯 표시">
@@ -2196,7 +2302,7 @@
           ${canManage ? `<label class="widget-style-choice">디자인 <select data-widget-style="${w.id}" ${state.saving ? "disabled" : ""} aria-label="${escapeHtml(w.name)} 디자인"><option value="classic" ${(w.visualStyle || 'classic') === 'classic' ? 'selected' : ''}>클래식</option><option value="minimal" ${w.visualStyle === 'minimal' ? 'selected' : ''}>미니멀</option><option value="vivid" ${w.visualStyle === 'vivid' ? 'selected' : ''}>비비드</option></select></label>` : ""}
           <div class="widget-actions">
             <button type="button" class="ghost" data-edit-scroll="${w.id}" ${w.enabled ? "" : "disabled"} title="표시 중인 위젯으로 이동">위치 찾기</button>
-            ${boardView && canManage ? `<button type="button" class="ghost" data-edit-widget="${w.id}" ${state.editMode ? "disabled" : ""}>수정</button>` : ""}
+            ${boardView && canManage ? `<button type="button" class="ghost" data-edit-widget="${w.id}" ${state.saving ? "disabled" : ""}>수정</button>` : ""}
             ${canManage ? `<button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}" ${state.saving ? "disabled" : ""}>삭제</button>` : ""}
           </div>
         </article>`;
@@ -2518,36 +2624,6 @@
       } catch (err) {
         return { title: widget.name, error: err.message, groups: [] };
       }
-    }
-
-    function formatPowerW(value) {
-      if (value == null) return "–";
-      const number = Number(value);
-      return Math.abs(number) >= 1000
-        ? `${(number / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} kW`
-        : `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} W`;
-    }
-
-    function renderPowerDistributionBody(data) {
-      if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
-      const groups = data.groups || [];
-      const colors = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#22d3ee", "#f97316", "#a3e635"];
-      const resolved = groups.map((group, index) => ({ ...group, color: group.color || colors[index % colors.length] }));
-      const conic = resolved.length && data.complete
-        ? `conic-gradient(${resolved.map((group, index) => `${group.color} ${resolved.slice(0, index).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}% ${resolved.slice(0, index + 1).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}%`).join(", ")})`
-        : "conic-gradient(#334155 0 100%)";
-      const groupRows = resolved.map((group) => {
-        const ratio = group.ratio == null ? 0 : Number(group.ratio);
-        const details = (group.sources || []).map((source) => `<div class="series-row"><div>${escapeHtml(source.deviceName || `#${source.deviceId}`)} · ${escapeHtml(source.pointName)}</div><div class="val">${formatPowerW(source.powerW)}</div></div>`).join("");
-        return `<div><div class="power-group-head"><span class="power-group-name"><i class="power-group-dot" style="background:${escapeHtml(group.color)}"></i><b>${escapeHtml(group.name)}</b></span>`
-          + `<span><b>${formatPowerW(group.powerW)}</b> <span class="meta">${group.ratio == null ? "–" : `${formatValue(group.ratio)}%`}</span></span></div>`
-          + `<div class="power-group-bar"><i style="width:${Math.max(0, Math.min(100, ratio))}%;background:${escapeHtml(group.color)}"></i></div>`
-          + (group.complete ? "" : '<div class="meta" style="margin-top:3px">일부 데이터 없음</div>')
-          + `<details><summary class="meta">장비별 상세</summary>${details}</details></div>`;
-      }).join("");
-      return `<div class="power-distribution"><div class="power-donut" style="background:${conic}"><div class="power-donut-center">TOTAL POWER<b>${formatPowerW(data.totalPowerW)}</b></div></div>`
-        + `<div class="power-groups">${groupRows}</div></div>`
-        + (!data.complete ? '<div class="meta">누락된 소스가 있어 전체 전력·비율은 계산하지 않습니다.</div>' : "");
     }
 
     function renderCctvBody(widget) {
@@ -3197,6 +3273,7 @@
         let subExtra = "";
         let cardClass = "card";
         let dataStatus = null;
+        try {
         if (w.queryKind === "count") {
           const count = state.countByWidget.get(w.id);
           if (count && !count.error && count.countMode === "total") {
@@ -3209,8 +3286,15 @@
         } else if (w.queryKind === "last") {
           const last = state.lastByWidget.get(w.id);
           dataStatus = last?.dataStatus;
-          body = renderLastBody(last, w.name);
-          cardClass = "card last-card";
+          let columns = null;
+          try { columns = w.tableColumnsJson ? JSON.parse(w.tableColumnsJson) : null; } catch (_) { columns = null; }
+          if (Array.isArray(columns) && columns.length && window.WidgetTable) {
+            body = last?.error ? `<div class="empty">${escapeHtml(last.error)}</div>` : window.WidgetTable.render(columns, w.lastSources || [], last);
+            cardClass = "card table-card";
+          } else {
+            body = renderLastBody(last, w.name);
+            cardClass = "card last-card";
+          }
         } else if (w.queryKind === "chart") {
           const chart = state.chartByWidget.get(w.id);
           dataStatus = chart?.dataStatus;
@@ -3238,7 +3322,7 @@
         } else if (w.queryKind === "power_distribution") {
           const distribution = state.powerDistributionByWidget.get(w.id);
           dataStatus = distribution?.dataStatus;
-          body = renderPowerDistributionBody(distribution);
+          body = window.PowerDistributionWidget.render(distribution);
           subExtra = " · W 단위 최신값 분배";
         } else if (w.queryKind === "cctv") {
           body = renderCctvBody(w);
@@ -3246,6 +3330,11 @@
           cardClass = "card cctv-card";
         } else {
           body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
+        }
+        } catch (error) {
+          console.error(`위젯 #${w.id} 표시 오류`, error);
+          body = `<div class="empty">위젯을 표시하지 못했습니다. ${escapeHtml(error.message || "화면을 새로고침해 주세요.")}</div>`;
+          cardClass = "card";
         }
         const trendAvailable = trendAvailability(w);
         if (trendAvailable) cardClass += " trend-card trend-available";
@@ -3264,6 +3353,11 @@
               ${chartHeadTools}
             </div>
             <div class="card-body">${body}</div>
+            <div class="resize-handle resize-n" data-resize="n" title="위쪽 크기 조절"></div>
+            <div class="resize-handle resize-w" data-resize="w" title="왼쪽 크기 조절"></div>
+            <div class="resize-handle resize-nw" data-resize="nw" title="왼쪽 위 크기 조절"></div>
+            <div class="resize-handle resize-ne" data-resize="ne" title="오른쪽 위 크기 조절"></div>
+            <div class="resize-handle resize-sw" data-resize="sw" title="왼쪽 아래 크기 조절"></div>
             <div class="resize-handle resize-e" data-resize="e" title="가로 크기"></div>
             <div class="resize-handle resize-s" data-resize="s" title="세로 크기"></div>
             <div class="resize-handle resize-se" data-resize="se" title="크기 조절"></div>
@@ -3296,11 +3390,31 @@
         else board.insertBefore(card, cursor);
       });
       boardOverlays.forEach((overlay) => board.appendChild(overlay));
+      fitWidgetBoardHeight();
       bindEditHandlers();
       bindChartCardHandlers();
       mountCctvWidgets();
       mountChartInstances();
       drawPsychrometricCanvases();
+    }
+
+    // Use remaining viewport height when the existing layout already nearly fills it.
+    // Keep its grid coordinates and deliberate gaps unchanged.
+    function fitWidgetBoardHeight() {
+      const board = $("board");
+      if (!board) return;
+      board.style.removeProperty("--row-h");
+      if (!fixedPageView || ["PLAN_2D", "SCENE_3D"].includes(state.pageVisualization?.viewMode)) return;
+      const layouts = state.widgets.filter((widget) => widget.enabled).map(widgetLayout).filter(Boolean);
+      if (!layouts.length) return;
+      const rows = Math.max(...layouts.map((layout) => layout.gridY + layout.h));
+      const viewportHeight = board.parentElement.clientHeight;
+      const gap = parseFloat(getComputedStyle(board).rowGap) || 6;
+      const naturalHeight = rows * 24 + Math.max(0, rows - 1) * gap;
+      if (rows > 0 && viewportHeight > naturalHeight && naturalHeight >= viewportHeight * .65) {
+        const rowHeight = Math.min(40, (viewportHeight - Math.max(0, rows - 1) * gap) / rows);
+        board.style.setProperty("--row-h", `${Math.max(24, rowHeight)}px`);
+      }
     }
 
     function bindChartCardHandlers() {
@@ -3368,16 +3482,15 @@
         return alignWidgetLayout(snap, d.id);
       }
       const { gap, stepX, stepY } = boardMetrics();
-      let w = d.layout.w;
-      let h = d.layout.h;
-      if (d.resizeMode === "e" || d.resizeMode === "se") {
-        w = Math.max(1, Math.round((live.width + gap) / stepX));
-        w = Math.min(COLS - d.layout.gridX, w);
-      }
-      if (d.resizeMode === "s" || d.resizeMode === "se") {
-        h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
-      }
-      return { gridX: d.layout.gridX, gridY: d.layout.gridY, w, h };
+      const mode = d.resizeMode;
+      const right = d.layout.gridX + d.layout.w;
+      const bottom = d.layout.gridY + d.layout.h;
+      let gridX = d.layout.gridX, gridY = d.layout.gridY, w = d.layout.w, h = d.layout.h;
+      if (mode.includes("w")) { gridX = Math.max(0, Math.min(right - 1, Math.round(live.left / stepX))); w = right - gridX; }
+      if (mode.includes("e")) w = Math.max(1, Math.min(COLS - gridX, Math.round((live.width + gap) / stepX)));
+      if (mode.includes("n")) { gridY = Math.max(0, Math.min(bottom - 1, Math.round(live.top / stepY))); h = bottom - gridY; if (h > 80) { h = 80; gridY = bottom - h; } }
+      if (mode.includes("s")) h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
+      return { gridX, gridY, w, h };
     }
 
     function alignWidgetLayout(layout, movingId) {
@@ -3447,6 +3560,7 @@
         card.addEventListener("click", (event) => {
           if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
           toggleRowSelection(card.dataset.widgetId);
+          selectWidgetFromList(card.dataset.widgetId, {scrollBoard:false, scrollList:true});
         });
       });
       $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
@@ -3528,15 +3642,12 @@
         left = Math.max(0, Math.min(boardW - width, left));
         top = Math.max(0, top);
       } else {
-        if (d.resizeMode === "e" || d.resizeMode === "se") {
-          width = d.origin.width + dx;
-        }
-        if (d.resizeMode === "s" || d.resizeMode === "se") {
-          height = d.origin.height + dy;
-        }
-        const maxW = boardW - left;
-        width = Math.max(stepX * 0.5, Math.min(maxW, width));
-        height = Math.max(20, height);
+        const mode = d.resizeMode;
+        const right = d.origin.left + d.origin.width, bottom = d.origin.top + d.origin.height;
+        if (mode.includes("w")) { left = Math.max(0, Math.min(right - stepX * .5, d.origin.left + dx)); width = right - left; }
+        if (mode.includes("e")) width = Math.max(stepX * .5, Math.min(boardW - left, d.origin.width + dx));
+        if (mode.includes("n")) { top = Math.max(0, Math.min(bottom - 20, d.origin.top + dy)); height = bottom - top; }
+        if (mode.includes("s")) height = Math.max(20, d.origin.height + dy);
       }
       return { left, top, width, height };
     }
@@ -3593,11 +3704,23 @@
       await refreshBoard(false);
     }
 
+    let layoutSaveStatusTimer;
+    function showLayoutSaveStatus(message, isError = false, persistent = false) {
+      clearTimeout(layoutSaveStatusTimer);
+      const status = $("layoutSaveStatus");
+      status.textContent = message;
+      status.classList.toggle("is-error", isError);
+      status.hidden = false;
+      if (!persistent) layoutSaveStatusTimer = setTimeout(() => { status.hidden = true; }, 4500);
+    }
+
     async function saveLayoutEdits() {
       if (state.saving) return;
       const changed = state.widgets.filter(hasWidgetLayoutChanges);
-      if (!changed.length) return setEditMode(false);
+      if (!changed.length) { showLayoutSaveStatus("저장할 변경 사항이 없습니다"); if (!widgetWorkspaceRequested) setEditMode(false); return; }
       state.saving = true;
+      showLayoutSaveStatus("배치를 저장하고 있습니다…", false, true);
+      $("editBtn").textContent = "저장 중…";
       $("editBtn").disabled = true;
       $("cancelEditBtn").disabled = true;
       $("pageCode").disabled = true;
@@ -3614,7 +3737,9 @@
           savedCount++;
         }
         log(`배치 변경 ${savedCount}개 저장 완료`);
-        setEditMode(false);
+        showLayoutSaveStatus(`✓ 위젯 ${savedCount}개 배치 저장 완료`);
+        if (widgetWorkspaceRequested) { renderWidgetList(); await refreshBoard(false); }
+        else setEditMode(false);
         if (!widgetWorkspaceRequested && embeddedInConsole && window.parent !== window) {
           window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
         }
@@ -3622,12 +3747,14 @@
         renderWidgetList();
         await refreshBoard(false);
         log(`배치 저장 실패: ${error.message}`);
+        showLayoutSaveStatus(`저장 실패 · ${savedCount}개 저장됨`, true);
         alert(`배치 저장에 실패했습니다. ${savedCount}개는 저장됐고 나머지 변경은 편집 화면에 남아 있습니다.\n${error.message}`);
       } finally {
         state.saving = false;
         $("editBtn").disabled = false;
+        $("editBtn").textContent = state.editMode ? "변경 저장" : "배치 편집";
         $("cancelEditBtn").disabled = false;
-        $("pageCode").disabled = false;
+        $("pageCode").disabled = fixedPageView || fixedAnalysisPage;
       }
     }
 
@@ -3636,7 +3763,7 @@
       $("drawerBtn").setAttribute("aria-expanded", String(open));
       $("drawerBtn").classList.toggle("active", open);
       $("drawerBtn").title = open ? "위젯 목록 접기" : "위젯 목록 열기";
-      requestAnimationFrame(() => drawPsychrometricCanvases());
+      requestAnimationFrame(() => { fitWidgetBoardHeight(); drawPsychrometricCanvases(); });
     }
 
     function setEditMode(on) {
@@ -3662,8 +3789,8 @@
       document.body.classList.toggle("edit-mode", on);
       setWidgetDrawerOpen(on);
       $("drawerBtn").style.display = (boardView || fixedPageView || on) ? "inline-flex" : "none";
-      $("addWidgetBtn").disabled = on;
-      $("metricsBtn").disabled = on;
+      $("addWidgetBtn").disabled = on && !widgetWorkspaceRequested;
+      $("metricsBtn").disabled = on && !widgetWorkspaceRequested;
       $("editBtn").classList.toggle("active", on);
       $("editBtn").textContent = on ? "변경 저장" : "배치 편집";
       $("editBtn").setAttribute("aria-pressed", String(on));
@@ -3841,14 +3968,15 @@
       renderWidgetList();
     });
     $("addWidgetBtn").addEventListener("click", () => {
-      if ((!boardView && !fixedPageView) || consoleAuth()?.getRole?.() !== "ADMIN" || !$("pageCode").value || state.editMode) return;
+      if ((!boardView && !fixedPageView) || consoleAuth()?.getRole?.() !== "ADMIN" || !$("pageCode").value || (state.editMode && !widgetWorkspaceRequested)) return;
       window.parent.postMessage({ type: "dcim:dashboard:add-widget", pageCode: $("pageCode").value }, location.origin);
     });
     $("metricsBtn").addEventListener("click", () => {
-      if (boardView && !state.editMode) window.parent.postMessage({ type: "dcim:dashboard:calculated-metrics" }, location.origin);
+      if (boardView && (!state.editMode || widgetWorkspaceRequested)) window.parent.postMessage({ type: "dcim:dashboard:calculated-metrics" }, location.origin);
     });
     $("cancelEditBtn").addEventListener("click", () => {
       setEditMode(false);
+      if (widgetWorkspaceRequested) setEditMode(true);
       if (layoutEditRequested && embeddedInConsole && window.parent !== window) {
         window.parent.postMessage({ type: "dcim:dashboard:layout-cancelled", pageCode: $("pageCode").value }, location.origin);
       }
@@ -3876,11 +4004,12 @@
       $("logBtn").setAttribute("aria-expanded", String(document.body.classList.contains("log-open")));
     });
     window.addEventListener("message", (event) => {
-      if ((!displayOnlyPage && !boardView) || !state.dashboardReady || !$("pageCode").value || state.editMode || event.origin !== location.origin
+      if ((!displayOnlyPage && !boardView) || !state.dashboardReady || !$("pageCode").value || (state.editMode && !widgetWorkspaceRequested) || event.origin !== location.origin
           || event.source !== window.parent || event.data?.type !== "dcim:dashboard:reload") return;
       reload().catch((error) => log("페이지 새로고침 실패: " + error.message));
     });
     window.addEventListener("resize", () => {
+      fitWidgetBoardHeight();
       drawPsychrometricCanvases();
     });
 
@@ -3903,7 +4032,7 @@
         state.dashboardReady = true;
         if (widgetWorkspaceRequested && consoleAuth()?.getRole?.() === "ADMIN") {
           $("closeWidgetWorkspaceBtn").style.display = "inline-flex";
-          setWidgetDrawerOpen(true);
+          setEditMode(true);
         }
         if (layoutEditRequested && consoleAuth()?.getRole?.() === "ADMIN") setEditMode(true);
       }).catch((error) => {
