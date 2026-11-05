@@ -63,6 +63,11 @@ public class PageWidget extends BaseEntity {
     @Column(name = "visual_color", length = 7)
     private String visualColor;
 
+    @Column(name = "table_columns_json", columnDefinition = "TEXT")
+    private String tableColumnsJson;
+
+    public void setTableColumnsJson(String value) { this.tableColumnsJson = value; }
+
     public void changeVisualColor(String color) {
         if (color == null || color.isBlank()) { this.visualColor = null; return; }
         if (!color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("색상은 #RRGGBB 형식이어야 합니다");
