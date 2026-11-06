@@ -139,7 +139,12 @@ if [[ " ${services[*]} " == *" manager-server "* ]]; then
   fi
 
   manager_networks=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{println $name}}{{end}}' dcim_new_manager_server)
-  mapfile -t database_candidates < <(docker ps --format '{{.ID}} {{.Image}}' | awk 'tolower($0) ~ /(mariadb|mysql)/ {print $1}')
+  mapfile -t database_candidates < <(
+    while IFS= read -r candidate; do
+      image=$(docker inspect -f '{{.Config.Image}}' "$candidate")
+      if [[ "${image,,}" == *mariadb* || "${image,,}" == *mysql* ]]; then printf '%s\n' "$candidate"; fi
+    done < <(docker ps -q)
+  )
   shared_database_containers=()
   host_matched_database_containers=()
   for database_container in "${database_candidates[@]}"; do
