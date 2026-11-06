@@ -121,65 +121,65 @@ for index in "${!jars[@]}"; do
   }
 done
 
-# This additive catalog migration is included only in Manager deployments.
-# Apply it before the new Manager starts so its discovery endpoints can use the table.
+# Apply the additive catalog migration through the Manager's configured DB endpoint.
+# This avoids guessing which database container belongs to the Manager.
 if [[ " ${services[*]} " == *" manager-server "* ]]; then
   migration="$incoming/gpu_agent_catalog.sql"
   [[ -s "$migration" ]] || { echo 'Missing GPU agent catalog migration' >&2; exit 1; }
-  # The database may be managed by a separate Compose project. Select it through
-  # the Manager container's actual network and configured datasource host.
   manager_env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' dcim_new_manager_server)
-  database_host=$(awk -F= '$1 == "MARIADB_HOST" || $1 == "MYSQL_HOST" || $1 == "DB_HOST" { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env")
+  manager_env_value() {
+    awk -F= -v key="$1" '$1 == key { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env"
+  }
+
+  datasource_url=$(manager_env_value SPRING_DATASOURCE_URL)
+  database_host=$(manager_env_value MARIADB_HOST)
+  [[ -n "$database_host" ]] || database_host=$(manager_env_value MYSQL_HOST)
+  [[ -n "$database_host" ]] || database_host=$(manager_env_value DB_HOST)
   if [[ -z "$database_host" ]]; then
-    datasource_url=$(awk -F= '$1 == "SPRING_DATASOURCE_URL" { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env")
     database_host=$(sed -nE 's#^jdbc:(mariadb|mysql)://([^/:?]+).*#\2#p' <<< "$datasource_url")
   fi
 
-  manager_networks=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{println $name}}{{end}}' dcim_new_manager_server)
-  mapfile -t database_candidates < <(docker ps --format '{{.ID}} {{.Image}}' | awk 'tolower($0) ~ /(mariadb|mysql)/ {print $1}')
-  shared_database_containers=()
-  host_matched_database_containers=()
-  for database_container in "${database_candidates[@]}"; do
-    database_networks=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$database_container")
-    shared_network=
-    while IFS= read -r network; do
-      [[ -n "$network" ]] || continue
-      if grep -Fxq -- "$network" <<< "$manager_networks"; then
-        shared_network=$network
-        break
-      fi
-    done <<< "$database_networks"
-    [[ -n "$shared_network" ]] || continue
-    shared_database_containers+=("$database_container")
+  database_port=$(manager_env_value MARIADB_PORT)
+  [[ -n "$database_port" ]] || database_port=$(manager_env_value MYSQL_PORT)
+  [[ -n "$database_port" ]] || database_port=$(manager_env_value DB_PORT)
+  if [[ -z "$database_port" ]]; then
+    database_port=$(sed -nE 's#^jdbc:(mariadb|mysql)://[^/:?]+:([0-9]+).*#\2#p' <<< "$datasource_url")
+  fi
+  [[ -n "$database_port" ]] || database_port=3306
 
-    if [[ -n "$database_host" ]]; then
-      database_aliases=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{range $network.Aliases}}{{println .}}{{end}}{{println $network.IPAddress}}{{end}}' "$database_container")
-      if grep -Fxiq -- "$database_host" <<< "$database_aliases"; then
-        host_matched_database_containers+=("$database_container")
-      fi
-    fi
-  done
-
-  if (( ${#host_matched_database_containers[@]} == 1 )); then
-    database_container=${host_matched_database_containers[0]}
-  elif (( ${#host_matched_database_containers[@]} > 1 )); then
-    echo 'Manager database host matches multiple MariaDB/MySQL containers on its Docker network' >&2
-    exit 1
-  elif (( ${#shared_database_containers[@]} == 1 )); then
-    database_container=${shared_database_containers[0]}
-  else
-    echo 'Could not uniquely identify the MariaDB/MySQL container reachable by Manager' >&2
-    exit 1
+  database_name=$(manager_env_value MARIADB_DATABASE)
+  [[ -n "$database_name" ]] || database_name=$(manager_env_value MYSQL_DATABASE)
+  [[ -n "$database_name" ]] || database_name=$(manager_env_value DB_NAME)
+  if [[ -z "$database_name" ]]; then
+    database_name=$(sed -nE 's#^jdbc:(mariadb|mysql)://[^/]+/([^?]+).*#\2#p' <<< "$datasource_url")
   fi
 
-  docker exec -i "$database_container" sh -c '
-    db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
-    user=${MARIADB_USER:-${MYSQL_USER:-}}
-    pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}
-    [ -n "$db" ] && [ -n "$user" ] && [ -n "$pass" ] || exit 40
-    if command -v mariadb >/dev/null 2>&1; then client=mariadb; elif command -v mysql >/dev/null 2>&1; then client=mysql; else exit 41; fi
-    exec "$client" --protocol=socket --user="$user" --password="$pass" "$db"
-  ' < "$migration"
+  database_user=$(manager_env_value DB_USER)
+  [[ -n "$database_user" ]] || database_user=$(manager_env_value MARIADB_USER)
+  [[ -n "$database_user" ]] || database_user=$(manager_env_value MYSQL_USER)
+  [[ -n "$database_user" ]] || database_user=$(manager_env_value SPRING_DATASOURCE_USERNAME)
+  database_password=$(manager_env_value DB_PASS)
+  [[ -n "$database_password" ]] || database_password=$(manager_env_value MARIADB_PASSWORD)
+  [[ -n "$database_password" ]] || database_password=$(manager_env_value MYSQL_PASSWORD)
+  [[ -n "$database_password" ]] || database_password=$(manager_env_value SPRING_DATASOURCE_PASSWORD)
+
+  [[ -n "$database_host" && -n "$database_name" && -n "$database_user" ]] || {
+    echo 'Could not read the Manager database endpoint and user from its runtime configuration' >&2
+    exit 1
+  }
+  [[ "$database_port" =~ ^[0-9]+$ ]] || { echo 'Invalid Manager database port' >&2; exit 1; }
+  [[ "$database_host" != *$'\n'* && "$database_name" != *$'\n'* && "$database_user" != *$'\n'* && "$database_password" != *$'\n'* ]] || {
+    echo 'Unexpected newline in Manager database configuration' >&2
+    exit 1
+  }
+
+  docker image inspect mariadb:11.4 >/dev/null 2>&1 || docker pull mariadb:11.4 >/dev/null
+  {
+    printf '%s\n' "$database_password"
+    cat "$migration"
+  } | docker run --rm --network container:dcim_new_manager_server -i --entrypoint sh mariadb:11.4 \
+      -c 'IFS= read -r MYSQL_PWD; export MYSQL_PWD; exec mariadb --protocol=tcp --connect-timeout=15 -h "$1" -P "$2" -u "$3" "$4"' \
+      sh "$database_host" "$database_port" "$database_user" "$database_name"
   echo 'GPU agent catalog migration applied'
 fi
 
