@@ -126,13 +126,53 @@ done
 if [[ " ${services[*]} " == *" manager-server "* ]]; then
   migration="$incoming/gpu_agent_catalog.sql"
   [[ -s "$migration" ]] || { echo 'Missing GPU agent catalog migration' >&2; exit 1; }
-  mapfile -t database_containers < <(docker ps --filter "label=com.docker.compose.project=$project" --format '{{.ID}} {{.Image}}' \
-    | awk 'tolower($0) ~ /(mariadb|mysql)/ {print $1}')
-  (( ${#database_containers[@]} == 1 )) || {
-    echo 'Expected exactly one MariaDB/MySQL container in the deployment Compose project' >&2
+  # The database may be managed by a separate Compose project. Select it through
+  # the Manager container's actual network and configured datasource host.
+  manager_env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' dcim_new_manager_server)
+  database_host=$(awk -F= '$1 == "MARIADB_HOST" || $1 == "MYSQL_HOST" || $1 == "DB_HOST" { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env")
+  if [[ -z "$database_host" ]]; then
+    datasource_url=$(awk -F= '$1 == "SPRING_DATASOURCE_URL" { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env")
+    database_host=$(sed -nE 's#^jdbc:(mariadb|mysql)://([^/:?]+).*#\2#p' <<< "$datasource_url")
+  fi
+
+  manager_networks=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{println $name}}{{end}}' dcim_new_manager_server)
+  mapfile -t database_candidates < <(docker ps --format '{{.ID}} {{.Image}}' | awk 'tolower($0) ~ /(mariadb|mysql)/ {print $1}')
+  shared_database_containers=()
+  host_matched_database_containers=()
+  for database_container in "${database_candidates[@]}"; do
+    database_networks=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{println $name}}{{end}}' "$database_container")
+    shared_network=
+    while IFS= read -r network; do
+      [[ -n "$network" ]] || continue
+      if grep -Fxq -- "$network" <<< "$manager_networks"; then
+        shared_network=$network
+        break
+      fi
+    done <<< "$database_networks"
+    [[ -n "$shared_network" ]] || continue
+    shared_database_containers+=("$database_container")
+
+    if [[ -n "$database_host" ]]; then
+      database_aliases=$(docker inspect -f '{{range $name, $network := .NetworkSettings.Networks}}{{range $network.Aliases}}{{println .}}{{end}}{{println $network.IPAddress}}{{end}}' "$database_container")
+      if grep -Fxiq -- "$database_host" <<< "$database_aliases"; then
+        host_matched_database_containers+=("$database_container")
+      fi
+    fi
+  done
+
+  if (( ${#host_matched_database_containers[@]} == 1 )); then
+    database_container=${host_matched_database_containers[0]}
+  elif (( ${#host_matched_database_containers[@]} > 1 )); then
+    echo 'Manager database host matches multiple MariaDB/MySQL containers on its Docker network' >&2
     exit 1
-  }
-  docker exec -i "${database_containers[0]}" sh -c '
+  elif (( ${#shared_database_containers[@]} == 1 )); then
+    database_container=${shared_database_containers[0]}
+  else
+    echo 'Could not uniquely identify the MariaDB/MySQL container reachable by Manager' >&2
+    exit 1
+  fi
+
+  docker exec -i "$database_container" sh -c '
     db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
     user=${MARIADB_USER:-${MYSQL_USER:-}}
     pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}
