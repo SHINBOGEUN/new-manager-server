@@ -54,6 +54,16 @@
     }
     data.series.forEach((item) => {
       const axis = data.axes.find((a) => a.unit === item.unit); if (!axis) return;
+      if (options.style === 'bar') {
+        const seriesIndex = data.series.indexOf(item), count = data.series.length;
+        const barWidth = Math.max(1, Math.min(14, (right - left) / Math.max(1, item.samples.length) / count * .8));
+        const baseline = y({value: Math.max(axis.min, Math.min(0, axis.max))}, axis);
+        for (const point of item.samples) {
+          const py = y(point, axis), px = x(point.time) + (seriesIndex - (count - 1) / 2) * barWidth;
+          svg.append(svgElement('rect', {x:px - barWidth / 2, y:Math.min(py,baseline), width:barWidth, height:Math.max(1,Math.abs(py-baseline)), fill:item.color}));
+        }
+        return;
+      }
       let path = '', previous = null;
       for (const point of item.samples) {
         const split = previous == null || (options.gapMs && point.time - previous > options.gapMs);

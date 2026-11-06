@@ -19,6 +19,8 @@ import net.vivans.dcim.module.location.domain.model.LocationNode;
 import net.vivans.dcim.module.location.domain.repository.LocationNodeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ public class DevicePageDisplayService {
     private final DevicePageSceneItemRepository sceneItemRepository;
     private final LocationNodeRepository locationNodeRepository;
     private final SceneModelService sceneModelService;
+    private final JdbcTemplate jdbc;
 
     public DevicePageDisplayResponse get(String pageCode) {
         CommonCode page = findPage(pageCode);
@@ -177,6 +180,26 @@ public class DevicePageDisplayService {
         config.markLocationHierarchyInitialized();
         configRepository.save(config);
 
+        record HostLink(String key, String description) {}
+        Map<Integer, HostLink> oldLinks = new HashMap<>();
+        for (DevicePageSceneItem existing : sceneItemRepository.findAllForPage(page.getId())) {
+            if (existing.getDevice() != null && existing.getParent() != null && Set.of("DEVICE", "SENSOR").contains(existing.getItemType())) {
+                var host = existing.getParent();
+                oldLinks.put(existing.getDevice().getId(), new HostLink(host.getLocationNode() != null ? "location-" + host.getLocationNode().getCode() : "db-" + host.getId(), (host.getLocationNode() != null ? host.getLocationNode().getCode() : String.valueOf(host.getModelKey()) + " · " + String.valueOf(host.getLabel()) + " (#" + host.getId() + ")")));
+            }
+        }
+        Map<Integer, HostLink> newLinks = new HashMap<>();
+        for (var item : request.items()) {
+            if (item.deviceId() == null || item.parentClientKey() == null || !Set.of("DEVICE", "SENSOR").contains(item.itemType())) continue;
+            var host = sceneItemsByKey.get(item.parentClientKey());
+            if (host != null) newLinks.put(item.deviceId(), new HostLink(host.locationNodeCode() != null ? "location-" + host.locationNodeCode() : host.clientKey(), host.locationNodeCode() != null ? host.locationNodeCode() : String.valueOf(host.modelKey()) + " · " + String.valueOf(host.label()) + (host.clientKey().startsWith("db-") ? " (#" + host.clientKey().substring(3) + ")" : "")));
+        }
+        Set<Integer> changedDevices = new HashSet<>(oldLinks.keySet()); changedDevices.addAll(newLinks.keySet());
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        String actor = auth == null ? null : auth.getName();
+        for (Integer id : changedDevices) if (!java.util.Objects.equals(oldLinks.get(id) == null ? null : oldLinks.get(id).key(), newLinks.get(id) == null ? null : newLinks.get(id).key())) {
+            jdbc.update("INSERT INTO scene_device_connection_history(device_id,page_code,previous_host,current_host,actor_name) VALUES (?,?,?,?,?)", id, page.getCode(), oldLinks.get(id) == null ? null : oldLinks.get(id).description(), newLinks.get(id) == null ? null : newLinks.get(id).description(), actor);
+        }
         sceneItemRepository.deleteAllForPage(page.getId());
         sceneItemRepository.flush();
         Map<String, DevicePageSceneItem> savedByClientKey = new HashMap<>();

@@ -20,7 +20,8 @@ public class RackWidgetService {
     private final DeviceMeasurementSourceCatalog catalog;
     private final PointQuery pointQuery;
     public record Source(Integer deviceId, String pointName, String protocol) {}
-    public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) {
+    public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH, List<String> colors, String chartStyle) {
+        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, layoutX, layoutY, layoutW, layoutH, null, null); }
         public Widget(String title, String type, int width, List<Source> sources) { this(title, type, width, sources, null, null, null, null, null, null, null, null); }
         public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes) { this(title, type, width, sources, rangeHours, intervalMinutes, null, null, null, null, null, null); }
         public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, null, null, null, null); }
@@ -137,6 +138,8 @@ public class RackWidgetService {
         for (var w : widgets) {
             if (w == null || w.title() == null || w.title().isBlank() || w.title().length() > 80 || w.type() == null || !Set.of("VALUE", "PIE", "TREND", "PATH_BALANCE", "PHASE_BALANCE", "POWER_TREND").contains(w.type()) || (w.width() != 1 && w.width() != 2) || w.sources() == null || w.sources().isEmpty() || w.sources().size() > 8 || (w.type().equals("VALUE") && w.sources().size() != 1) || w.sources().stream().anyMatch(s -> !allowed(s, valid)))
                 throw new IllegalArgumentException("랙에 연결된 장비의 유효한 측정 항목을 선택하세요");
+            if (w.colors() != null && (w.colors().size() > 8 || w.colors().stream().anyMatch(c -> c == null || !c.matches("#[0-9a-fA-F]{6}")))) throw new IllegalArgumentException("위젯 색상이 유효하지 않습니다");
+            if (w.chartStyle() != null && !Set.of("line", "bar").contains(w.chartStyle())) throw new IllegalArgumentException("차트 표시 방식이 유효하지 않습니다");
             String title = w.title().strip();
             String sameName = names.putIfAbsent(title.toLowerCase(Locale.ROOT), title);
             if (sameName != null) throw new IllegalArgumentException("이미 존재하는 위젯 이름입니다: " + sameName);
