@@ -45,11 +45,14 @@ public class GpuAgentDiscoveryService {
     }
 
     @Transactional
-    public MqttIdentityLookupResponse approve(String uuid) {
+    public MqttIdentityLookupResponse approve(String uuid, String requestedName) {
         String id = UUID.fromString(uuid).toString();
         var rows = jdbc.queryForList("SELECT hostname FROM gpu_agent_discovery WHERE uuid=? AND status='PENDING' FOR UPDATE", id);
         if (rows.isEmpty()) throw new IllegalArgumentException("GPU agent is not pending");
-        var result = registration.register(id, (String) rows.get(0).get("hostname"));
+        if (requestedName != null && (requestedName.isBlank() || requestedName.strip().length() > 200)) {
+            throw new IllegalArgumentException("서버 이름은 1~200자로 입력하세요");
+        }
+        var result = registration.register(id, (String) rows.get(0).get("hostname"), requestedName);
         jdbc.update("UPDATE gpu_agent_discovery SET status='APPROVED',device_id=? WHERE uuid=?", result.deviceId(), id);
         return result;
     }
@@ -59,4 +62,3 @@ public class GpuAgentDiscoveryService {
         jdbc.update("UPDATE gpu_agent_discovery SET status='REJECTED' WHERE uuid=? AND status='PENDING'", UUID.fromString(uuid).toString());
     }
 }
-

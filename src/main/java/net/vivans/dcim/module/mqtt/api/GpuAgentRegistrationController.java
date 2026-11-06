@@ -27,12 +27,14 @@ public class GpuAgentRegistrationController {
 
     @PostMapping("/api/manager/gpu-agents/{uuid}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<?> approve(@PathVariable String uuid) { return ApiResponse.ok(service.approve(uuid)); }
+    public ApiResponse<?> approve(@PathVariable String uuid, @RequestBody(required = false) Approval request) {
+        return ApiResponse.ok(service.approve(uuid, request == null ? null : request.name()));
+    }
 
     @PostMapping("/api/manager/gpu-agents/{uuid}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> reject(@PathVariable String uuid) { service.reject(uuid); return ApiResponse.ok(); }
 
     public record Discovery(String uuid, String hostname, JsonNode metadata) {}
+    public record Approval(String name) {}
 }
-

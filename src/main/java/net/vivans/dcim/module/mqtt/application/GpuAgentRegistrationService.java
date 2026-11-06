@@ -23,7 +23,7 @@ public class GpuAgentRegistrationService {
     private final LocationNodeRepository locations;
 
     @Transactional
-    public synchronized MqttIdentityLookupResponse register(String externalId, String hostname) {
+    public synchronized MqttIdentityLookupResponse register(String externalId, String hostname, String requestedName) {
         String id = UUID.fromString(externalId).toString();
         var existing = identities.findByIdentityTypeAndNormalizedExternalId(MqttIdentityType.UUID, id);
         if (existing.isPresent()) {
@@ -38,14 +38,13 @@ public class GpuAgentRegistrationService {
                 .findFirst().orElseThrow(() -> new IllegalStateException("GPU agent catalog migration is required"));
         var location = locations.findByCode(Device.UNASSIGNED_LOCATION_CODE)
                 .orElseThrow(() -> new IllegalStateException("UNASSIGNED location is required"));
-        String name = hostname == null ? "GPU server" : hostname.strip();
+        String name = requestedName != null ? requestedName.strip() : hostname == null ? "GPU server" : hostname.strip();
         if (name.isEmpty()) name = "GPU server";
         name = name.substring(0, Math.min(name.length(), 200));
         // 같은 호스트명이거나 UUID 앞부분이 같아도 서로 다른 장비로 등록한다.
-        name += " (" + id + ")";
+        if (requestedName == null) name += " (" + id + ")";
         var device = devices.save(Device.create(model, location, name, "GPU agent automatic registration"));
         return MqttIdentityLookupResponse.from(identities.save(
                 DeviceMqttIdentity.create(device, MqttIdentityType.UUID, id, true)));
     }
 }
-

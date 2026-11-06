@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>SPATIVIA · 운영 콘솔</title>
-  <script src="/ops-navigation.js?v=20261103a"></script>
+  <script src="/ops-navigation.js?v=20261106-alarm-tabs"></script>
   <script>
 (function (global) {
   'use strict';
@@ -96,7 +96,7 @@
 
   </style>
   <script src="/rack-widget-layout.js?v=20261105d"></script>
-  <script src="/rack-widget-chart.js?v=20261105f"></script>
+  <script src="/rack-widget-chart.js?v=20261106-colors-bars"></script>
   <style>
     @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
     :root {
@@ -249,13 +249,16 @@
     .rack-stats .stat:nth-child(3) .v { color: #287b65; }
     .rack-stats .stat:nth-child(4) .v { color: #8b3a8d; }
     .rack-stats .stat:nth-child(5) .v { color: #b54708; }
-    .rack-overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); grid-auto-rows: max-content; gap: 20px; align-items: start; }
+    .rack-overview-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: max-content; gap: 10px; align-items: start; }
+    @media (max-width: 1400px) { .rack-overview-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @media (max-width: 1100px) { .rack-overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 850px) { .rack-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .rack-overview-card { min-width: 0; height: max-content; background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
     .rack-overview-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 11px 13px; background: #1d3655; color: #fff; }
     .rack-overview-head b { font-size: 15px; }
     .rack-overview-head small { display: block; color: #c7d7e8; margin-top: 2px; }
     .rack-overview-head .chip { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); color: #fff; white-space: nowrap; }
-    .rack-visual { display: grid; grid-template-columns: 82px minmax(220px, 1fr) 82px; gap: 8px; align-items: stretch; padding: 14px; min-height: 548px; }
+    .rack-visual { display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; gap: 5px; align-items: stretch; padding: 9px; min-height: 548px; }
     .rack-side { display: flex; flex-direction: column; gap: 5px; min-width: 0; border: 2px dashed transparent; border-radius: 8px; transition: background .12s, border-color .12s; }
     .rack-side.drop-active { border-color: #4e9ad5; background: #dcebfa; }
     .rack-side h4 { margin: 0 0 4px; font-size: 11px; color: var(--muted); text-align: center; }
@@ -1607,6 +1610,10 @@
     .wizard-dialog-head button { width:35px; height:35px; padding:0; font-size:20px; }
     .wizard-quick-dialog .field :is(input,select) { width:100%; }
     .entity-dialog-content { padding:22px; }
+    #deviceWizardDialog { width:min(1200px,calc(100vw - 32px)); max-width:none; max-height:calc(100vh - 32px); padding:18px; overflow:auto; border:1px solid var(--line); border-radius:14px; background:var(--surface); color:var(--text); }
+    #deviceWizardDialog::backdrop { background:rgba(1,9,18,.74); }
+    #deviceWizardDialog #tab-wizard.panel.active { display:block; overflow:visible; }
+    #deviceWizardDialog #tab-wizard > .card { margin:12px 0; overflow:visible; }
     .tree .device-leaf { padding-left:26px; cursor:pointer; }
     .tree .device-leaf .label { cursor:pointer; }
     .tree .device-leaf .label:active { cursor:pointer; }
@@ -2313,9 +2320,8 @@
 
     <!-- DEVICES -->
     <section class="panel" id="tab-alarms">
-      <h1 class="page-title">알람 · 임계값</h1>
-      <p class="page-desc">수집값 저장 직후 임계값을 검사하고, 수집 대상 장비의 데이터가 1시간 이상 없으면 알람을 기록합니다.</p>
-      <div class="alarm-layout">
+      <h1 class="page-title">알람 이력</h1>
+      <p class="page-desc">임계값과 수집 상태에 따른 알람 이력을 확인합니다.</p>
         <div class="card">
           <div class="row" style="justify-content:space-between"><h2 style="margin:0">알람 이력</h2><button type="button" class="ghost" id="alarmReload">새로고침</button></div>
           <div class="alarm-history-filters" style="margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2)">
@@ -2362,12 +2368,15 @@
           <div class="alarm-list" id="alarmList"><div class="muted">조회 중…</div></div>
           <div class="row" style="justify-content:space-between;margin-top:14px"><button type="button" class="ghost" id="alarmPrev">이전</button><span class="muted" id="alarmPageInfo">1 / 1</span><button type="button" class="ghost" id="alarmNext">다음</button></div>
         </div>
+    </section>
+    <section class="panel" id="tab-alarm-rules">
+      <h1 class="page-title">임계값 규칙</h1>
+      <p class="page-desc">장비의 측정 항목별 주의·위험 기준을 관리합니다.</p>
         <div class="card" data-role-gate="admin">
           <div class="row" style="justify-content:space-between"><h2 style="margin:0">임계값 규칙</h2><button type="button" class="primary" id="alarmRuleOpen">＋ 규칙 등록</button></div>
           <p class="muted">임계값 지원 측정항목만 등록할 수 있습니다. 장비·측정항목마다 규칙 하나를 만들고, 그 안에 주의·위험 기준값을 각각 설정합니다. 수정 시 열린 알람은 종료됩니다.</p>
           <div class="alarm-list" id="alarmRuleList"><div class="muted">조회 중…</div></div>
         </div>
-      </div>
     </section>
     <div class="alarm-modal" id="alarmRuleModal" aria-hidden="true">
       <div class="alarm-dialog" role="dialog" aria-modal="true" aria-labelledby="alarmRuleTitle">
@@ -2397,11 +2406,6 @@
     <section class="panel" id="tab-devices">
       <h1 class="page-title">장비 목록</h1>
       <p class="page-desc">장비를 찾아 선택하면 기본 정보·통신 설정·수집 연결을 한 화면에서 관리할 수 있습니다.</p>
-      <details class="card" id="gpuAgentPending" data-role-gate="admin" style="margin-bottom:12px">
-        <summary style="cursor:pointer;font-weight:700">GPU 에이전트 등록 대기</summary>
-        <p class="muted">설치된 PC를 확인한 후 승인하면 장비가 등록되고 다음 수집부터 저장됩니다.</p>
-        <div id="gpuAgentPendingList" class="muted">목록을 열면 조회합니다.</div>
-      </details>
       <div class="card device-directory">
         <div class="device-directory-head">
           <div><span class="eyebrow">DEVICE DIRECTORY</span><h2>등록 장비</h2><p>행을 선택하면 상세 작업창이 열립니다.</p></div>
@@ -2444,6 +2448,7 @@
             <button type="button" data-device-detail-tab="endpoint" role="tab" aria-selected="false">통신 설정</button>
             <button type="button" data-device-detail-tab="collection" role="tab" aria-selected="false">수집 연결</button>
             <button type="button" data-device-detail-tab="monitoring" role="tab" aria-selected="false">운영 감시</button>
+            <button type="button" data-device-detail-tab="history" role="tab" aria-selected="false">변경 이력</button>
           </div>
           <div class="device-detail-content">
           <section class="device-detail-section active" data-device-detail-panel="info" role="tabpanel">
@@ -2554,6 +2559,11 @@
             </div>
           </div>
           </section>
+          <section class="device-detail-section" data-device-detail-panel="history" role="tabpanel">
+            <div class="card"><h2>랙 배치 이력</h2><div id="deviceRackHistory" class="muted"></div></div>
+            <div class="card"><h2>도면 장비 연결 이력</h2><div id="deviceSceneHistory" class="muted"></div></div>
+            <div class="card"><h2>자산 변경 이력</h2><div id="deviceAssetHistory" class="muted"></div></div>
+          </section>
           </div>
         </div>
       </div>
@@ -2568,6 +2578,11 @@
     </section>
 
     <!-- DEVICE GROUPS -->
+    <section class="panel" id="tab-gpu-agent-pending">
+      <h1 class="page-title">GPU 에이전트 등록 대기</h1>
+      <p class="page-desc">설치된 PC를 확인한 후 승인하면 장비가 등록되고 다음 수집부터 저장됩니다.</p>
+      <div class="card" id="gpuAgentPendingList">등록 대기 목록을 불러오는 중입니다.</div>
+    </section>
     <section class="panel" id="tab-device-groups">
       <div class="row" style="justify-content:space-between;align-items:center"><h1 class="page-title" style="margin:0">장비 그룹</h1><button type="button" class="primary" id="dgAddOpen" data-role-gate="admin">+ 새 그룹</button></div>
       <p class="page-desc">위치와 별개로 장비를 여러 목적에 묶습니다. 예: IT 장비, Cooling 장비, A계통. 그룹을 삭제해도 장비는 삭제되지 않습니다.</p>
@@ -2667,9 +2682,17 @@
             <select id="pdPage"></select>
           </label>
           <button type="button" class="ghost" id="pdReload">새로고침</button>
+          <button type="button" class="ghost" id="pdRename" data-role-gate="admin">이름 변경</button>
+          <button type="button" class="primary" id="pdCreate" data-role-gate="admin">＋ 페이지 등록</button>
         </div>
         <p class="muted" style="font-size:12px;margin:10px 0 0">이 페이지의 장비 선택은 위젯과 별개이며, 페이지별 측정값 API에서 사용합니다.</p>
       </div>
+      <dialog class="wizard-quick-dialog" id="pdPageDialog" aria-labelledby="pdPageDialogTitle">
+        <div class="entity-dialog-content"><div class="wizard-dialog-head"><div><h2 id="pdPageDialogTitle">페이지 등록</h2><p>페이지 이름과 고유 코드를 설정합니다.</p></div><button type="button" class="ghost" data-entity-dialog-close aria-label="닫기">×</button></div>
+          <div class="fields"><label class="field full">페이지 이름<input id="pdPageName" maxlength="100" /></label><label class="field full">페이지 코드<input id="pdPageCode" maxlength="50" placeholder="예: SERVER_ROOM" /><small class="muted">영문, 숫자, 밑줄만 사용합니다. 등록 후 코드는 변경할 수 없습니다.</small></label></div>
+          <div class="wizard-dialog-actions"><button type="button" class="ghost" data-entity-dialog-close>취소</button><button type="button" class="primary" id="pdPageSubmit">저장</button></div>
+        </div>
+      </dialog>
       <div class="card" id="pdDeviceSelectionCard" style="margin-top:12px">
         <div class="row" style="justify-content:space-between;margin-bottom:12px">
           <div><h2 style="margin:0">표시할 장비</h2><div id="pdSelectionCount" class="muted" style="font-size:12px;margin-top:5px">페이지를 선택하세요.</div></div>
@@ -2898,6 +2921,7 @@
               <label class="field full">계산 정의
                 <select id="wPueDefinition"><option value="">계산 지표를 먼저 만드세요</option></select>
               </label>
+              <div class="full row"><span id="wPueUnitHint" class="muted">계산 지표를 선택하세요.</span><button type="button" class="ghost" id="wEditCalculatedMetric">계산 지표 · 단위 수정</button></div>
               <div class="full row" style="justify-content:flex-end;margin-top:-4px"><button type="button" class="ghost" id="wAddCalculatedMetric">＋ 계산 지표 만들기</button></div>
               <label class="field">조회 기간
                 <select id="wPueRangePreset">
@@ -3526,7 +3550,7 @@
           </div>
         </div>
         <div class="card">
-          <h2>매핑 항목 <span id="loraMpSelectedModel" class="muted mono"></span></h2>
+          <div class="row" style="justify-content:space-between"><h2>매핑 항목 <span id="loraMpSelectedModel" class="muted mono"></span></h2><button type="button" class="primary" id="loraMpOpen" data-role-gate="admin">＋ 매핑 등록</button></div>
           <div style="overflow:auto;max-height:320px">
             <table>
               <thead><tr><th>payload_field</th><th>point_name</th><th>데이터 유형</th><th>단위</th><th>scale</th><th>value_map</th><th>사용</th><th>작업</th></tr></thead>
@@ -3882,7 +3906,7 @@
       if (el.textContent.length > 8000) el.textContent = el.textContent.slice(0, 8000);
     }
 
-    const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor", "scene-models"]);
+    const ADMIN_ONLY_TABS = new Set(["wizard", "users", "mqtt-monitor", "scene-models", "gpu-agent-pending", "alarm-rules"]);
     const ADMIN_USER_TABS = new Set(["codes", "device-pages", "alarms"]);
 
     function canAccessTab(name) {
@@ -4230,13 +4254,17 @@
         details.className="workspace-advanced"; summary.textContent=advanced.some(([tab])=>tab===name) ? navigation.labelFor(name)+" ▾" : "연결 설정 · 진단 ▾";
         advanced.forEach(item=>menu.append(buttonFor(item))); details.append(summary,menu); nav.append(details);
       }
-      const hints={devices:"장비를 등록한 뒤 통신과 수집 연결을 확인하세요.",assets:"장비 자산과 랙의 설치 상태, 도면에서 사용할 3D 모델을 관리합니다.","collection-status":"수집 상태에서 문제가 있는 장비를 확인하고 작업 또는 연결 설정을 점검하세요.",locations:"운영에 필요한 위치, 장비 모델과 화면 표시 방식을 설정합니다."};
+      const hints={devices:"장비와 모델을 관리하고 GPU 에이전트 등록을 승인하세요.",assets:"장비 자산과 랙의 설치 상태, 도면에서 사용할 3D 모델을 관리합니다.","collection-status":"수집 상태에서 문제가 있는 장비를 확인하고 작업 또는 연결 설정을 점검하세요.",locations:"운영에 필요한 위치와 화면 표시 방식을 설정합니다."};
       $("workspaceHint").textContent=hints[group.key]||"";
       $("workspaceHint").hidden=!hints[group.key];
     }
 
     function goTab(name) {
       if (name === "widgets" || name === "widget-board") name = "dashboard-page";
+      if (name === "wizard" && state.token) {
+        if (!canAccessTab(name)) { toast("이 메뉴에 접근할 권한이 없습니다", true); return false; }
+        openDeviceWizardDialog(); return true;
+      }
       if (!window.OpsNavigation.groupFor(name) || !document.getElementById(`tab-${name}`)) {
         toast("이 화면을 찾을 수 없습니다.", true);
         return false;
@@ -4291,6 +4319,7 @@
         }
       }
       updatePageContext(name);
+      if (name === "gpu-agent-pending" && state.token) loadGpuAgentPending().catch(e => { $("gpuAgentPendingList").textContent = e.message; });
       if (name === "home" && state.token) loadHomeOverview().catch((e) => log("한눈에 보기 갱신 실패: " + e.message));
       scheduleHomeOverviewRefresh();
       document.body.classList.remove("side-open");
@@ -4310,6 +4339,7 @@
         loadCollectionJobHealth().catch((e) => toast(e.message, true));
       }
       if (name === "alarms" && state.token) loadAlarmPage().catch((e) => toast(e.message, true));
+      if (name === "alarm-rules" && state.token) loadAlarmRules().catch((e) => toast(e.message, true));
       if (name === "device-pages" && state.token) {
         fillPageDevicePageSelect();
         if (state.pageDeviceLoadedCode === $("pdPage").value) renderPageDeviceCandidates();
@@ -4320,6 +4350,20 @@
       if (name === "lora-model-mapping" && state.token) loadLoraModels().catch((e) => toast(e.message, true));
       if (name === "lora-collection-status" && state.token) loadLoraCollectionStatus().catch((e) => toast(e.message, true));
       return true;
+    }
+
+    function openDeviceWizardDialog() {
+      let dialog = $("deviceWizardDialog");
+      if (!dialog) {
+        dialog = document.createElement("dialog"); dialog.id = "deviceWizardDialog";
+        dialog.innerHTML = '<div class="row" style="justify-content:flex-end"><button type="button" class="ghost" aria-label="장비 등록 닫기">닫기 ×</button></div>';
+        document.body.append(dialog);
+        dialog.querySelector('button').onclick = () => dialog.close();
+        dialog.addEventListener('close', () => { const wizard = $("tab-wizard"), anchor = $("deviceWizardAnchor"); wizard.classList.remove('active'); if (anchor) anchor.replaceWith(wizard); });
+      }
+      if (dialog.open) return;
+      const wizard = $("tab-wizard"), anchor = document.createElement('span'); anchor.id = 'deviceWizardAnchor'; anchor.hidden = true;
+      wizard.before(anchor); dialog.append(wizard); wizard.classList.add('active'); dialog.showModal();
     }
 
     function restoreActiveTab() {
@@ -6056,8 +6100,8 @@
       return changed.join(" · ") || "변경된 자산 정보가 없습니다.";
     }
 
-    async function loadAssetHistory(deviceId) {
-      const out = $("assetHistory");
+    async function loadAssetHistory(deviceId, targetId = "assetHistory") {
+      const out = $(targetId);
       out.textContent = "변경 이력을 불러오는 중입니다.";
       try {
         const rows = await api(`/api/manager/assets/${deviceId}/history`);
@@ -6079,8 +6123,8 @@
       return action === "FLOOR" ? "바닥형" : "벽부형";
     }
 
-    async function loadAssetRackHistory(deviceId) {
-      const out = $("assetRackHistory");
+    async function loadAssetRackHistory(deviceId, targetId = "assetRackHistory") {
+      const out = $(targetId);
       out.textContent = "변경 이력을 불러오는 중입니다.";
       try {
         const rows = await api(`/api/manager/assets/${deviceId}/rack-history`);
@@ -6092,6 +6136,15 @@
           return `<div class="pick-item"><span><b>${actionName[row.action] || row.action}</b><div class="muted" style="font-size:12px">${esc(previous)} → ${esc(current)}</div></span><span class="muted" style="font-size:11px">${esc(time)}</span></div>`;
         }).join("")}</div>` : '<div class="muted">아직 Rack 배치 변경 이력이 없습니다.</div>';
       } catch (error) { out.textContent = error.message; }
+    }
+
+    async function loadDeviceSceneHistory(deviceId) {
+      const out = $("deviceSceneHistory"); out.textContent = "연결 이력을 불러오는 중입니다.";
+      try {
+        const rows = await api(`/api/manager/devices/${deviceId}/scene-history`);
+        if (state.selectedDeviceId !== deviceId) return;
+        out.innerHTML = rows.length ? `<div class="pick-list">${rows.map(row => `<div class="pick-item"><span><b>${esc(row.page_code)}</b><div class="muted">${esc(row.previous_host || '연결 없음')} → ${esc(row.current_host || '연결 없음')}</div></span><span class="muted">${esc(row.changed_at ? new Date(row.changed_at).toLocaleString('ko-KR') : '—')}${row.actor_name ? ` · ${esc(row.actor_name)}` : ''}</span></div>`).join('')}</div>` : '도면 연결 변경 이력이 없습니다.';
+      } catch (error) { out.textContent = `연결 이력을 불러오지 못했습니다: ${error.message}`; }
     }
 
     async function renderAssetImages(images) {
@@ -6756,16 +6809,18 @@
         };
         const colors = ['#40d6ff','#a478ff','#52ca61','#ff9e44','#f2688b','#ded462','#65d1b0','#afb8c9'];
         const renderRackWidget = (w, storedEntries) => {
+            const defaults = w.type === 'PATH_BALANCE' ? ['#52ca61', '#edf4f6'] : colors;
+            const paletteFor = (i) => /^#[0-9a-f]{6}$/i.test(w.colors?.[i] || '') ? w.colors[i] : defaults[i % defaults.length];
             const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(pdus.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
             const label = (entry) => { const source = sourceFor(entry.source) || entry.source; return `${baseOverride ? '' : `${source.deviceName || `장비 ${source.deviceId}`} · `}${source.pointName}`; };
             const value = (entry) => entry.value == null ? '—' : Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
             const legendRow = (color, name, reading = '') => `<div class="rack-metric-legend-row"><span class="rack-metric-dot" style="--series-color:${color}"></span><span class="rack-metric-legend-label" title="${esc(name)}">${esc(name)}</span>${reading ? `<span class="rack-metric-legend-value">${esc(reading)}</span>` : ''}</div>`;
-            const chartMarkup = (series, gapMs = 0) => `<div class="rack-chart" data-rack-chart="${esc(JSON.stringify({series,gapMs}))}"></div>`;
+            const chartMarkup = (series, gapMs = 0) => `<div class="rack-chart" data-rack-chart="${esc(JSON.stringify({series,gapMs,style:w.chartStyle || 'line'}))}"></div>`;
             let content = '';
             if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(sourceFor(entry.source)?.unit || '')}</small></div>` : '—'; }
             else if (w.type === 'PATH_BALANCE' || w.type === 'PHASE_BALANCE') {
               const donut = (group, heading, names, center) => {
-                const palette = center ? colors : ['#52ca61', '#edf4f6'];
+                const palette = Array.from({length: group.length}, (_, i) => paletteFor(i));
                 const complete = group.every((e) => e && e.value != null && Number.isFinite(e.value) && e.value >= 0);
                 const sum = complete ? group.reduce((n,e) => n + e.value, 0) : 0; let offset = 0;
                 const stops = group.map((e,j) => { const start = offset; offset += sum ? e.value / sum * 100 : 0; return `${palette[j % palette.length]} ${start}% ${offset}%`; });
@@ -6778,25 +6833,25 @@
               content = w.type === 'PATH_BALANCE' ? donut(entries.slice(0,2), '', ['A 경로','B 경로'], false) : `<div class="rack-metric-donuts">${donut(first,phaseHeading(first),['L1','L2','L3'],true)}${second.length ? donut(second,phaseHeading(second),['L1','L2','L3'],true) : ''}</div>`;
             } else if (w.type === 'POWER_TREND') {
               const unit = sourceFor(entries[0]?.source)?.unit || '';
-              const series = entries.slice(0, 2).map((e,j) => ({name:j ? 'B 경로' : 'A 경로', unit:sourceFor(e.source)?.unit || unit, color:colors[j], samples:e.samples || []}));
-              if (entries[2]) series.push({name:'전체 전력', unit:sourceFor(entries[2].source)?.unit || unit, color:colors[2], samples:entries[2].samples || []});
-              else { const b = new Map((entries[1]?.samples || []).map((p) => [p.time,p.value])); series.push({name:'전체 전력 (A+B)', unit, color:colors[2], samples:(entries[0]?.samples || []).filter((p) => b.has(p.time) && p.value != null && b.get(p.time) != null).map((p) => ({time:p.time,value:Number(p.value)+Number(b.get(p.time))}))}); }
+              const series = entries.slice(0, 2).map((e,j) => ({name:j ? 'B 경로' : 'A 경로', unit:sourceFor(e.source)?.unit || unit, color:paletteFor(j), samples:e.samples || []}));
+              if (entries[2]) series.push({name:'전체 전력', unit:sourceFor(entries[2].source)?.unit || unit, color:paletteFor(2), samples:entries[2].samples || []});
+              else { const b = new Map((entries[1]?.samples || []).map((p) => [p.time,p.value])); series.push({name:'전체 전력 (A+B)', unit, color:paletteFor(2), samples:(entries[0]?.samples || []).filter((p) => b.has(p.time) && p.value != null && b.get(p.time) != null).map((p) => ({time:p.time,value:Number(p.value)+Number(b.get(p.time))}))}); }
               const points = series.flatMap((s) => s.samples), vals = points.map((p) => p.value), times = points.map((p) => Date.parse(p.time));
               if (!points.length) content = '<p class="muted">선택한 기간에 수집된 데이터가 없습니다.</p>';
               else {
                 const start = Math.min(...times), end = Math.max(...times), gap = (w.intervalMinutes || 15) * 60 * 1000 * 1.5;
                 content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · ${w.intervalMinutes || 15}분 평균</small>`;
               }
-              content += `<div class="rack-metric-legend">${series.map((s,j) => legendRow(colors[j],s.name)).join('')}</div>`;
+              content += `<div class="rack-metric-legend">${series.map((s) => legendRow(s.color,s.name)).join('')}</div>`;
             } else if (w.type === 'PIE') {
               const total = entries.reduce((n, e) => n + (e.value != null && e.value > 0 ? e.value : 0), 0); let offset = 0;
-              const stops = entries.map((e, j) => { const start = offset; offset += total ? Math.max(0, e.value || 0) / total * 100 : 0; return `${colors[j % colors.length]} ${start}% ${offset}%`; });
-              content = `${total ? `<div class="rack-metric-donut" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${total.toLocaleString('ko-KR',{maximumFractionDigits:2})}<small>합계</small></div></div>` : '<p class="rack-metric-caption">표시할 양수 데이터가 없습니다.</p>'}<div class="rack-metric-legend">${entries.map((e,j) => legendRow(colors[j % colors.length],label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
+              const stops = entries.map((e, j) => { const start = offset; offset += total ? Math.max(0, e.value || 0) / total * 100 : 0; return `${paletteFor(j)} ${start}% ${offset}%`; });
+              content = `${total ? `<div class="rack-metric-donut" style="background:conic-gradient(${stops.join(',')})"><div class="rack-metric-donut-center">${total.toLocaleString('ko-KR',{maximumFractionDigits:2})}<small>합계</small></div></div>` : '<p class="rack-metric-caption">표시할 양수 데이터가 없습니다.</p>'}<div class="rack-metric-legend">${entries.map((e,j) => legendRow(paletteFor(j),label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
             } else {
               const samples = entries.flatMap((e) => e.samples || []);
-              const series = entries.map((e,j) => ({name:label(e),unit:sourceFor(e.source)?.unit || '',color:colors[j % colors.length],samples:e.samples || []}));
+              const series = entries.map((e,j) => ({name:label(e),unit:sourceFor(e.source)?.unit || '',color:paletteFor(j),samples:e.samples || []}));
               content = samples.length ? chartMarkup(series) : '<p class="rack-metric-caption">최근 24시간 측정 이력이 없습니다.</p>';
-              content += `<div class="rack-metric-legend">${entries.map((e,j) => legendRow(colors[j % colors.length],label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
+              content += `<div class="rack-metric-legend">${entries.map((e,j) => legendRow(paletteFor(j),label(e),`${value(e)} ${sourceFor(e.source)?.unit || ''}`)).join('')}</div>`;
             }
             return `<div class="rack-metric-content rack-metric-content--${esc(w.type.toLowerCase())}"><div class="rack-metric-title">${esc(w.title.replace(/ · (snmp|modbus|mqtt)$/i, ''))}</div>${content}</div>`;
         };
@@ -6825,7 +6880,7 @@
             try {
               const config = JSON.parse(chart.dataset.rackChart);
               if (!window.RackWidgetChart) throw new Error('차트 모듈을 불러오지 못했습니다.');
-              window.RackWidgetChart.mount(chart, config.series, {gapMs:config.gapMs});
+              window.RackWidgetChart.mount(chart, config.series, {gapMs:config.gapMs, style:config.style});
             } catch (error) { chart.textContent = `그래프를 표시하지 못했습니다: ${error.message}`; }
           }
         };
@@ -6909,7 +6964,18 @@
               row.querySelector('[data-search]').oninput = showSources;
               row.querySelector('[data-type]').onchange = (e) => { widget.type = e.target.value; widget.sources = widget.type === 'PHASE_BALANCE' ? defaultPhases() : ['PATH_BALANCE','POWER_TREND'].includes(widget.type) ? [powerForPath('A'),powerForPath('B')] : []; draw(); };
               row.querySelector('[data-remove]').onclick = () => { collapsedWidgets.delete(widget); widgets.splice(index, 1); draw(); drawLayout(); };
-              showSources(); showSpecial(); rows.append(row);
+              showSources(); showSpecial();
+              if (widget.type !== 'VALUE') {
+                const defaults = widget.type === 'PATH_BALANCE' ? ['#52ca61','#edf4f6'] : colors;
+                const count = widget.type === 'PATH_BALANCE' ? 2 : widget.type === 'PHASE_BALANCE' || widget.type === 'POWER_TREND' ? 3 : Math.max(1, widget.sources.length);
+                const labels = widget.type === 'PATH_BALANCE' ? ['A 경로','B 경로'] : widget.type === 'PHASE_BALANCE' ? ['L1','L2','L3'] : widget.type === 'POWER_TREND' ? ['A 경로','B 경로','전체 전력'] : widget.sources.map((source) => sourceLabel(sourceFor(source) || source));
+                const controls = document.createElement('div'); controls.className = 'rack-widget-card-grid'; controls.style.marginTop = '14px';
+                controls.innerHTML = `${['TREND','POWER_TREND'].includes(widget.type) ? `<label class="rack-widget-field">차트 방식<select data-chart-style><option value="line">선 그래프</option><option value="bar">막대 그래프</option></select></label>` : ''}${Array.from({length:count}, (_,i) => `<label class="rack-widget-field">${esc(labels[i] || `항목 ${i+1}`)} 색상<input type="color" data-series-color="${i}" value="${esc(widget.colors?.[i] || defaults[i % defaults.length])}"></label>`).join('')}`;
+                const style = controls.querySelector('[data-chart-style]'); if (style) { style.value = widget.chartStyle || 'line'; style.onchange = () => { widget.chartStyle = style.value; drawLayout(); }; }
+                controls.querySelectorAll('[data-series-color]').forEach((input) => input.oninput = () => { if (!widget.colors) widget.colors = Array.from({length:count}, (_,i) => defaults[i % defaults.length]); widget.colors[Number(input.dataset.seriesColor)] = input.value; drawLayout(); });
+                row.querySelector('[data-widget-body]').append(controls);
+              }
+              rows.append(row);
             });
             panel.querySelector('[data-widget-add]').onclick = () => { if (widgets.length >= 24) return toast('위젯은 최대 24개입니다.', true); widgets.forEach((widget) => collapsedWidgets.add(widget)); widgets.push({title:'새 위젯', type:'VALUE', width:1, sources:[]}); draw(); drawLayout(); };
             panel.querySelector('[data-widget-save]').onclick = save;
@@ -7040,7 +7106,7 @@
       const body = $("rackPreviewBody");
       $("rackPreviewTitle").textContent = host.label || '설비 상세';
       $("rackPreviewMeta").textContent = `${editing ? '설비 편집' : '설비 모니터링'} · ${device.deviceName || device.label || '연결 장비'}`;
-      body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section></div></div>`;
+      body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button><button type="button" data-equip-tab="history">연결 이력</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section><section data-equipment-history class="rack-detail-info" hidden></section></div></div>`;
       const connection = body.querySelector('[data-equipment-connection]');
       const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
       const change = document.createElement('button'); change.type = 'button'; change.textContent = '장비 연결 변경'; change.disabled = !!host.locked; change.onclick = () => { closeRackPreview(); openConnection(); }; connection.append(change);
@@ -7050,7 +7116,10 @@
         const tools = document.createElement('div'); tools.className = 'rack-layout-tools'; tools.dataset.rackLayoutTools = ''; tools.hidden = true;
         tools.innerHTML = '<button type="button" data-layout-back>위젯 설정</button><button type="button" class="primary" data-layout-save disabled>위치 저장</button>'; stage.append(tools);
         const tabs = body.querySelector('[data-equipment-tabs]'), panel = body.querySelector('[data-rack-widgets]'), layout = body.querySelector('[data-rack-widget-layout]');
-        const select = (tab) => { connection.hidden = tab !== 'connection'; panel.hidden = tab !== 'widgets'; layout.hidden = tab !== 'layout'; tabs.hidden = tab === 'layout'; tools.hidden = tab !== 'layout'; body.classList.toggle('is-rack-layout-edit', tab === 'layout'); tabs.querySelectorAll('button').forEach(b => b.classList.toggle('primary', b.dataset.equipTab === tab)); if (tab === 'layout') layout.dispatchEvent(new Event('rack-layout-open')); };
+        const history = body.querySelector('[data-equipment-history]');
+        const select = (tab) => { connection.hidden = tab !== 'connection'; panel.hidden = tab !== 'widgets'; layout.hidden = tab !== 'layout'; history.hidden = tab !== 'history'; tabs.hidden = tab === 'layout'; tools.hidden = tab !== 'layout'; body.classList.toggle('is-rack-layout-edit', tab === 'layout'); tabs.querySelectorAll('button').forEach(b => b.classList.toggle('primary', b.dataset.equipTab === tab)); if (tab === 'layout') layout.dispatchEvent(new Event('rack-layout-open'));
+          if (tab === 'history') { history.textContent = '연결 이력을 불러오는 중입니다.'; api(`/api/manager/devices/${Number(device.deviceId)}/scene-history`).then(rows => { if (!history.isConnected) return; history.innerHTML = rows.length ? `<h3>도면 연결 이력</h3><div class="pick-list">${rows.map(row => `<div class="pick-item"><span><b>${esc(row.page_code)}</b><div class="muted">${esc(row.previous_host || '연결 없음')} → ${esc(row.current_host || '연결 없음')}</div></span><span class="muted">${esc(row.changed_at ? new Date(row.changed_at).toLocaleString('ko-KR') : '—')}</span></div>`).join('')}</div>` : '연결 이력이 없습니다.'; }).catch(error => { history.textContent = `이력 조회 실패: ${error.message}`; }); }
+        };
         tabs.querySelectorAll('button').forEach(b => b.onclick = () => select(b.dataset.equipTab)); tools.querySelector('[data-layout-back]').onclick = () => select('widgets');
       }
       $("rackPreviewModal").classList.add('open'); $("rackPreviewModal").setAttribute('aria-hidden','false');
@@ -7162,17 +7231,26 @@
         selectedEditor = document.createElement('div'); selectedEditor.className = 'rack-detail-info rack-selected-editor'; selectedEditor.hidden = true; placementSection.prepend(selectedEditor);
         const layoutPanel = document.createElement('section'); layoutPanel.dataset.rackWidgetLayout = ''; layoutPanel.hidden = true; rackInfo.append(layoutPanel);
         const scenePanel = document.createElement('section'); scenePanel.dataset.rackSceneDisplay = ''; scenePanel.hidden = true; rackInfo.append(scenePanel);
+        const historyPanel = document.createElement('section'); historyPanel.className = 'rack-detail-info'; historyPanel.hidden = true; rackInfo.append(historyPanel);
         setupRackSceneDisplay(layout.rackLocationCode, scenePanel);
         const layoutTools = document.createElement('div'); layoutTools.className = 'rack-layout-tools'; layoutTools.dataset.rackLayoutTools = ''; layoutTools.hidden = true;
         layoutTools.innerHTML = '<button type="button" data-layout-back>위젯 설정</button><button type="button" class="primary" data-layout-save disabled>위치 저장</button>';
         stage.append(layoutTools);
         const tabs = document.createElement('div'); tabs.className = 'rack-detail-tabs'; tabs.setAttribute('aria-label', '랙 상세 메뉴');
-        tabs.innerHTML = '<button type="button" data-rack-tab="placement" class="primary">장비 배치</button><button type="button" data-rack-tab="widgets">위젯 설정</button><button type="button" data-rack-tab="layout">위젯 위치 설정</button><button type="button" data-rack-tab="scene">도면 표시</button>';
+        tabs.innerHTML = '<button type="button" data-rack-tab="placement" class="primary">장비 배치</button><button type="button" data-rack-tab="widgets">위젯 설정</button><button type="button" data-rack-tab="layout">위젯 위치 설정</button><button type="button" data-rack-tab="scene">도면 표시</button><button type="button" data-rack-tab="history">변경 이력</button>';
         placementSection.before(tabs); widgetPanel.hidden = true;
         selectRackTab = (tab) => {
           placementSection.hidden = tab !== 'placement';
           widgetPanel.hidden = tab !== 'widgets';
           scenePanel.hidden = tab !== 'scene';
+          historyPanel.hidden = tab !== 'history';
+          if (tab === 'history') {
+            historyPanel.textContent = '랙 배치 이력을 불러오는 중입니다.';
+            api(`/api/manager/assets/racks/${encodeURIComponent(layout.rackLocationCode)}/history`).then(rows => {
+              if (!historyPanel.isConnected) return;
+              historyPanel.innerHTML = rows.length ? `<h3>랙 배치 이력</h3><div class="pick-list">${rows.map(row => `<div class="pick-item"><span><b>${esc(row.device_name)}</b><div class="muted">${esc(rackHistoryPosition(row.previous_mount_type,row.previous_rack_location_code,row.previous_rack_side,row.previous_u_position,row.previous_u_height))} → ${esc(rackHistoryPosition(row.current_mount_type,row.current_rack_location_code,row.current_rack_side,row.current_u_position,row.current_u_height))}</div></span><span class="muted">${esc(row.created_dt ? new Date(row.created_dt).toLocaleString('ko-KR') : '—')}</span></div>`).join('')}</div>` : '랙 배치 이력이 없습니다.';
+            }).catch(error => { historyPanel.textContent = `이력 조회 실패: ${error.message}`; });
+          }
           layoutPanel.hidden = tab !== 'layout';
           tabs.hidden = tab === 'layout';
           $("rackPreviewBody").classList.toggle('is-rack-layout-edit', tab === 'layout');
@@ -7457,7 +7535,7 @@
           const bottom = Math.max(Number(item.uPosition) - 1, 0) / capacity * 100;
           return `<div class="rack-unit-device" ${item.deviceId ? `draggable="true" data-rack-overview-u-device-id="${Number(item.deviceId)}" data-rack-origin-code="${esc(layout.rackLocationCode)}"` : ''} style="background:${rackColor(item)};bottom:${bottom}%;height:${height}%" title="U${item.uPosition}–${item.lastU}: ${esc(item.deviceName)}"><b>${esc(item.deviceName)}</b><span>U${item.uPosition}–${item.lastU} · ${item.modelPlacementId ? '장비 미연결' : esc(item.assetCode || item.modelName || "")}</span></div>`;
         }).join("") : '<div class="rack-empty">U 장착 장비 없음</div>'}</div>` : '<div class="rack-frame no-capacity">Rack U 용량 미지정</div>';
-        return `<article class="rack-overview-card" data-rack-preview="${esc(layout.rackLocationCode)}" title="클릭하여 크게 보기">
+        return `<article class="rack-overview-card">
           <div class="rack-overview-head"><div><b>${esc(layout.rackLocationName)}</b><small>${esc(layout.rackLocationCode)}</small></div><span class="chip">${capacity ? `${used}/${capacity}U` : "용량 미지정"}</span></div>
           <div class="rack-visual">
             <div class="rack-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="LEFT"><h4>좌측</h4>${rackSideDevices(placements, "LEFT", layout.rackLocationCode) || '<div class="muted" style="font-size:10px;text-align:center">여기로 이동</div>'}</div>
@@ -7465,11 +7543,12 @@
             <div class="rack-side" data-rack-side-drop-code="${esc(layout.rackLocationCode)}" data-rack-side-drop-side="RIGHT"><h4>우측</h4>${rackSideDevices(placements, "RIGHT", layout.rackLocationCode) || '<div class="muted" style="font-size:10px;text-align:center">여기로 이동</div>'}</div>
           </div>
           ${rearDevices ? `<div class="rack-rear"><b>후면</b>${rearDevices}</div>` : ""}
-          <div class="rack-overview-foot"><span class="chip">여유 ${capacity ? Math.max(capacity - used, 0) : "–"}${capacity ? "U" : ""}</span><span class="chip">후면 ${rearCount}대</span><span class="chip">총 ${placements.length}대</span><button type="button" class="ghost" data-rack-open="${esc(layout.rackLocationCode)}">자산관리에서 상세 보기</button></div>
+          <div class="rack-overview-foot"><span class="chip">여유 ${capacity ? Math.max(capacity - used, 0) : "–"}${capacity ? "U" : ""}</span><span class="chip">후면 ${rearCount}대</span><span class="chip">총 ${placements.length}대</span><button type="button" class="primary" data-rack-preview="${esc(layout.rackLocationCode)}">상세 화면</button><button type="button" class="ghost" data-rack-open="${esc(layout.rackLocationCode)}">자산관리에서 상세 보기</button></div>
         </article>`;
       }).join("");
-      out.querySelectorAll("[data-rack-preview]").forEach((card) => card.onclick = (event) => {
-        if (!event.target.closest("button")) { rackDetailEditing = state.role === "ADMIN"; openRackPreview(card.dataset.rackPreview); }
+      out.querySelectorAll("[data-rack-preview]").forEach((button) => button.onclick = () => {
+        rackDetailEditing = state.role === "ADMIN";
+        openRackPreview(button.dataset.rackPreview);
       });
       out.querySelectorAll("[data-rack-open]").forEach((button) => button.onclick = async () => {
         const code = button.dataset.rackOpen;
@@ -7772,21 +7851,20 @@
       const entries = await api("/api/manager/gpu-agents/pending");
       list.innerHTML = entries.map((entry) => `<div class="row" style="justify-content:space-between;gap:10px;margin:8px 0">
         <span><b>${esc(entry.hostname)}</b> <span class="muted">${esc(entry.uuid)} · 최근 수신 ${esc(entry.last_seen || "—")}</span></span>
-        <span class="row"><button type="button" class="primary" data-gpu-action="approve" data-gpu-id="${esc(entry.uuid)}">승인</button>
+        <span class="row"><input type="text" data-gpu-name="${esc(entry.uuid)}" value="${esc(entry.hostname || '')}" maxlength="200" aria-label="등록할 서버 이름" placeholder="서버 이름" /><button type="button" class="primary" data-gpu-action="approve" data-gpu-id="${esc(entry.uuid)}">승인</button>
         <button type="button" class="ghost" data-gpu-action="reject" data-gpu-id="${esc(entry.uuid)}">거절</button></span></div>`).join("") || "등록 대기 중인 GPU 에이전트가 없습니다.";
       list.querySelectorAll("[data-gpu-action]").forEach(button => button.onclick = async () => {
         button.disabled = true;
         try {
-          await api(`/api/manager/gpu-agents/${encodeURIComponent(button.dataset.gpuId)}/${button.dataset.gpuAction}`, { method:"POST" });
+          const name = list.querySelector(`[data-gpu-name="${CSS.escape(button.dataset.gpuId)}"]`)?.value.trim();
+          if (button.dataset.gpuAction === "approve" && !name) { toast("등록할 서버 이름을 입력하세요.", true); button.disabled = false; return; }
+          await api(`/api/manager/gpu-agents/${encodeURIComponent(button.dataset.gpuId)}/${button.dataset.gpuAction}`, { method:"POST", ...(button.dataset.gpuAction === "approve" ? { body: JSON.stringify({name}) } : {}) });
           toast(button.dataset.gpuAction === "approve" ? "GPU 장비를 등록했습니다." : "등록을 거절했습니다.");
           await loadGpuAgentPending();
           await loadDevices();
         } catch (e) { toast(e.message, true); button.disabled = false; }
       });
     }
-    $("gpuAgentPending").addEventListener("toggle", () => {
-      if ($("gpuAgentPending").open) loadGpuAgentPending().catch(e => { $("gpuAgentPendingList").textContent = e.message; });
-    });
 
     let deviceListLoadSequence = 0;
     async function loadDevices() {
@@ -8142,6 +8220,31 @@
     $("pdReload").onclick = () => {
       if (hasUnsavedPageDeviceChanges() && !confirm("저장하지 않은 장비 선택 또는 보기 방식 변경을 버리고 다시 불러올까요?")) return;
       loadPageDeviceEditor(true).catch((e) => toast(e.message, true));
+    };
+    let editingPageCode = null;
+    function openPageDialog(editing) {
+      const page = editing ? (state.codes.DEVICE_PAGE || []).find(p => p.code === $("pdPage").value) : null;
+      if (editing && !page) return toast("먼저 페이지를 선택하세요.", true);
+      if (hasUnsavedPageDeviceChanges() && !confirm("저장하지 않은 화면 구성이 있습니다. 계속할까요?")) return;
+      editingPageCode = page;
+      $("pdPageDialogTitle").textContent = editing ? "페이지 이름 변경" : "페이지 등록";
+      $("pdPageName").value = page?.name || "";
+      $("pdPageCode").value = page?.code || "";
+      $("pdPageCode").readOnly = !!page;
+      $("pdPageDialog").showModal(); $("pdPageName").focus();
+    }
+    $("pdRename").onclick = () => openPageDialog(true);
+    $("pdCreate").onclick = () => openPageDialog(false);
+    $("pdPageSubmit").onclick = async () => {
+      const name = $("pdPageName").value.trim(), code = $("pdPageCode").value.trim();
+      const group = (state.codeGroups || []).find(g => g.groupKey === "DEVICE_PAGE");
+      if (!name || !/^[A-Za-z0-9_]+$/.test(code) || !group) return toast("페이지 이름과 영문·숫자·밑줄로 된 코드를 확인하세요.", true);
+      const button = $("pdPageSubmit"); button.disabled = true;
+      try {
+        await api(editingPageCode ? `/api/manager/common-codes/${editingPageCode.id}` : "/api/manager/common-codes", {method:editingPageCode ? "PUT" : "POST", body:JSON.stringify({groupId:group.id, code, name, sortOrder:editingPageCode?.sortOrder ?? 0})});
+        $("pdPageDialog").close(); await loadCodes(); fillPageDevicePageSelect(); $("pdPage").value = code;
+        renderPageNavigationSettings(); await loadPageDeviceEditor(); toast(editingPageCode ? "페이지 이름을 변경했습니다." : "페이지를 등록했습니다.");
+      } catch (error) { toast(error.message, true); } finally { button.disabled = false; }
     };
     $("pdSearch").addEventListener("input", renderPageDeviceCandidates);
     $("pdOnlySelected").addEventListener("change", renderPageDeviceCandidates);
@@ -9452,6 +9555,11 @@
         panel.classList.toggle("active", panel.dataset.deviceDetailPanel === name);
       });
       $("deviceDetailModal").querySelector(".device-detail-content").scrollTop = 0;
+      if (name === "history" && state.selectedDeviceId) {
+        loadAssetRackHistory(state.selectedDeviceId, "deviceRackHistory");
+        loadAssetHistory(state.selectedDeviceId, "deviceAssetHistory");
+        loadDeviceSceneHistory(state.selectedDeviceId);
+      }
     }
 
     function openDeviceDetail(device) {
@@ -10758,6 +10866,7 @@
         $("userCreatePassword").value = "";
         $("userCreateRole").value = "USER";
         toast("사용자를 등록했습니다");
+        $("userRegistrationDialog").close();
         await loadUsers();
       } catch (e) { toast(e.message, true); }
     }
@@ -11030,9 +11139,7 @@
 
     async function loadAlarmPage() {
       await loadAlarmFilterOptions();
-      const jobs = [loadAlarmEvents()];
-      if (state.role === "ADMIN") jobs.push(loadAlarmRules());
-      await Promise.all(jobs);
+      await loadAlarmEvents();
     }
 
     function setAlarmDefaultDateRange() {
@@ -11577,6 +11684,25 @@
     $("devFilterModel").addEventListener("change", () => loadDevices().catch((e) => toast(e.message, true)));
     $("devFilterGroup").addEventListener("change", () => loadDevices().catch((e) => toast(e.message, true)));
     $("assetReload").onclick = () => loadAssets().catch((e) => toast(e.message, true));
+    function installRegistrationDialog(id, buttonId, label, toolbar) {
+      const formCard = $(buttonId).closest('.card'), dialog = document.createElement('dialog');
+      dialog.id = id; dialog.className = 'wizard-quick-dialog';
+      const close = document.createElement('button'); close.type = 'button'; close.className = 'ghost'; close.textContent = '닫기 ×';
+      close.style.cssText = 'float:right;margin:12px'; close.onclick = () => dialog.close();
+      formCard.before(dialog); dialog.append(close, formCard);
+      const open = document.createElement('button'); open.type = 'button'; open.className = 'primary'; open.textContent = `＋ ${label}`; open.dataset.roleGate = 'admin';
+      open.onclick = () => { if (id === 'mqttRegistrationDialog') clearMqttSourceForm(); if (id === 'mqttIdentityDialog') clearLoraEndpointForm(); dialog.showModal(); };
+      toolbar.append(open); return dialog;
+    }
+    installRegistrationDialog('taskRegistrationDialog', 'taskCreate', '수집 작업 등록', $('taskReload').parentElement);
+    $('tab-tasks').querySelector('.task-page-layout').style.gridTemplateColumns = 'minmax(0,1fr)';
+    installRegistrationDialog('mqttRegistrationDialog', 'mqttSourceSave', '수집 소스 등록', $('mqttSourceReload').parentElement);
+    installRegistrationDialog('userRegistrationDialog', 'userCreate', '사용자 등록', $('userReload').parentElement);
+    installRegistrationDialog('mqttIdentityDialog', 'loraEpSave', '식별자 등록', $('loraEpReload').parentElement);
+    const mqttPointDialog = document.createElement('dialog'); mqttPointDialog.id = 'mqttPointDialog'; mqttPointDialog.className = 'wizard-quick-dialog';
+    const mqttPointClose = document.createElement('button'); mqttPointClose.type = 'button'; mqttPointClose.className = 'ghost'; mqttPointClose.textContent = '닫기 ×'; mqttPointClose.style.cssText = 'float:right;margin:12px'; mqttPointClose.onclick = () => mqttPointDialog.close();
+    $('loraMpFormBox').before(mqttPointDialog); mqttPointDialog.append(mqttPointClose, $('loraMpFormBox'));
+    $('loraMpOpen').onclick = () => { if (!state.selectedLoraModelId) return toast('모델을 먼저 선택하세요.', true); clearLoraMpForm(); $('loraMpFormBox').style.display = ''; mqttPointDialog.showModal(); };
     $("userReload").onclick = () => loadUsers().catch((e) => toast(e.message, true));
     $("userCreate").onclick = createUser;
     $("assetFilterName").addEventListener("input", () => loadAssets().catch((e) => toast(e.message, true)));
@@ -12462,6 +12588,7 @@
         });
         $("taskOut").textContent = JSON.stringify(created, null, 2);
         toast("수집 작업을 만들었습니다");
+        $("taskRegistrationDialog").close();
         await loadTasks();
       } catch (e) {
         $("taskOut").textContent = e.message;
@@ -12573,6 +12700,7 @@
         if (w.chartRangePreset) $("wChartRangePreset").value = w.chartRangePreset;
         if (w.chartWindow) $("wChartWindow").value = w.chartWindow;
         if (w.pueDefinitionId != null) $("wPueDefinition").value = String(w.pueDefinitionId);
+        updateCalculatedUnitHint();
         if (w.pueRangePreset) $("wPueRangePreset").value = w.pueRangePreset;
         if (w.pueFreshnessMinutes) $("wPueFreshnessMinutes").value = String(w.pueFreshnessMinutes);
         if (w.dataFreshnessMinutes) $("wDataFreshnessMinutes").value = String(w.dataFreshnessMinutes);
@@ -12669,6 +12797,7 @@
           `<option value="${definition.id}">${esc(definition.name)} · ${definition.collectionEnabled ? "수집 ON" : "수집 OFF"} · ${definition.deviceGroups?.length ? `그룹 ${definition.deviceGroups.length}개` : `소스 ${definition.sources.length}개`}</option>`,
           state.pueDefinitions.length ? "계산 지표 선택" : "계산 지표를 먼저 만드세요");
         if ([...select.options].some((option) => option.value === selected)) select.value = selected;
+        updateCalculatedUnitHint();
       }
       const body = $("pueDefinitionBody");
       if (!body) return;
@@ -13219,6 +13348,7 @@
         await loadPueDefinitions();
         if (metricReturnToWidgetEditor) {
           $("wPueDefinition").value = String(saved.id);
+          updateCalculatedUnitHint();
           closeCalculatedMetrics();
         }
       } catch (e) { toast(e.message, true); }
@@ -13277,6 +13407,13 @@
     $("wPointSearch").addEventListener("input", () => filterWidgetPointLabels("wPickDevicePoints", "wPointSearch"));
     $("wCatalogSearch").addEventListener("input", () => filterWidgetPointLabels("wPointGrid", "wCatalogSearch"));
     $("wAddCalculatedMetric").onclick = () => openCalculatedMetrics(true);
+    function updateCalculatedUnitHint() {
+      const definition = state.pueDefinitions.find(item => Number(item.id) === Number($("wPueDefinition").value));
+      $("wPueUnitHint").textContent = !definition ? "계산 지표를 선택하세요." : definition.resultUnit ? `결과 단위: ${definition.resultUnit}` : "결과 단위가 설정되지 않았습니다. 비율은 단위 없이 표시할 수 있습니다.";
+      $("wEditCalculatedMetric").disabled = !definition;
+    }
+    $("wPueDefinition").addEventListener("change", updateCalculatedUnitHint);
+    $("wEditCalculatedMetric").onclick = () => { const id = Number($("wPueDefinition").value); if (!id) return; openCalculatedMetrics(true); editPueDefinition(id); };
     $("wCloseEditor").onclick = () => closeWidgetEditor();
     $("wEditPageLayout").onclick = openPageLayoutEditor;
     $("wCreatePage").addEventListener("change", () => {
@@ -13712,6 +13849,7 @@
           $("mqttSourceFormTitle").textContent = `수집 소스 수정 #${source.id}`;
           $("mqttSourceSave").textContent = "저장";
           $("mqttSourceCancelEdit").style.display = "";
+          $("mqttRegistrationDialog").showModal();
         };
       });
       $("mqttSourceBody").querySelectorAll("[data-delete-source]").forEach((button) => {
@@ -13788,6 +13926,7 @@
           $("loraEpExternalId").value = ep.externalId || "";
           $("loraEpEnabled").value = String(ep.enabled);
           $("loraEpFormTitle").textContent = `식별자 수정 #${ep.id} · 장비 ID 유지`;
+          $("mqttIdentityDialog").showModal();
           $("loraEpSave").textContent = "저장";
           $("loraEpCancelEdit").style.display = "";
         };
@@ -13897,6 +14036,7 @@
           $("loraMpValueMap").value = p.valueMap || "";
           $("loraMpEnabled").value = String(p.enabled);
           $("loraMpFormTitle").textContent = `매핑 수정 #${p.id}`;
+          if (!mqttPointDialog.open) mqttPointDialog.showModal();
           $("loraMpSave").textContent = "저장";
           $("loraMpCancelEdit").style.display = "";
         };
@@ -14004,6 +14144,7 @@
           toast("MQTT 수집 소스를 등록했습니다");
         }
         clearMqttSourceForm();
+        $("mqttRegistrationDialog").close();
         await loadMqttSources();
       } catch (e) { toast(e.message, true); }
     };
@@ -14033,6 +14174,7 @@
           toast("식별자를 등록했습니다");
         }
         clearLoraEndpointForm();
+        $("mqttIdentityDialog").close();
         await loadLoraEndpoints();
       } catch (e) { toast(e.message, true); }
     };
@@ -14094,9 +14236,23 @@
           toast("매핑을 등록했습니다");
         }
         clearLoraMpForm();
+        mqttPointDialog.close();
         await loadLoraModelPoints(state.selectedLoraModelId);
       } catch (e) { toast(e.message, true); }
     };
+
+    // 등록·수정 요청 중에는 같은 버튼으로 중복 요청을 보내지 않습니다.
+    for (const id of ["userCreate", "taskCreate", "mqttSourceSave", "loraEpSave", "loraMpSave", "sceneModelSave", "pdPageSubmit"]) {
+      const button = $(id), handler = button?.onclick;
+      if (!button || typeof handler !== "function") continue;
+      button.onclick = async function (event) {
+        if (this.disabled) return;
+        const label = this.textContent;
+        this.disabled = true; this.textContent = "저장 중…";
+        try { await handler.call(this, event); }
+        finally { this.disabled = false; this.textContent = label; }
+      };
+    }
 
   </script>
 </body>
