@@ -124,6 +124,7 @@ jobs:
           services=()
           if [[ "$DEPLOY_MANAGER" == true ]]; then
             cp "manager/target/new-manager-server-${MANAGER_VERSION}.jar" bundle/manager.jar
+            cp manager/sql/migration/20261106_gpu_agent_catalog.sql bundle/gpu_agent_catalog.sql
             services+=(manager-server)
           fi
           if [[ "$DEPLOY_COLLECTOR" == true ]]; then
@@ -191,8 +192,9 @@ jobs:
           ssh_options=(-i "$HOME/.ssh/id_ed25519" -p "$CD_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes)
           target="$CD_USER@$CD_HOST"
           ssh "${ssh_options[@]}" "$target" "mkdir -p /dcim_new/backend/.cd-incoming/$RELEASE_ID"
+          files=(bundle/*.jar bundle/revisions.txt)
+          if [[ -f bundle/gpu_agent_catalog.sql ]]; then files+=(bundle/gpu_agent_catalog.sql); fi
           scp -i "$HOME/.ssh/id_ed25519" -P "$CD_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            bundle/*.jar \
-            bundle/revisions.txt \
-            "$target:/dcim_new/backend/.cd-incoming/$RELEASE_ID/"
+            "${files[@]}" "$target:/dcim_new/backend/.cd-incoming/$RELEASE_ID/"
           ssh "${ssh_options[@]}" "$target" "bash -s -- '$RELEASE_ID'" < bundle/deploy-three-services.sh
+

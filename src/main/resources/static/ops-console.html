@@ -2397,6 +2397,11 @@
     <section class="panel" id="tab-devices">
       <h1 class="page-title">장비 목록</h1>
       <p class="page-desc">장비를 찾아 선택하면 기본 정보·통신 설정·수집 연결을 한 화면에서 관리할 수 있습니다.</p>
+      <details class="card" id="gpuAgentPending" data-role-gate="admin" style="margin-bottom:12px">
+        <summary style="cursor:pointer;font-weight:700">GPU 에이전트 등록 대기</summary>
+        <p class="muted">설치된 PC를 확인한 후 승인하면 장비가 등록되고 다음 수집부터 저장됩니다.</p>
+        <div id="gpuAgentPendingList" class="muted">목록을 열면 조회합니다.</div>
+      </details>
       <div class="card device-directory">
         <div class="device-directory-head">
           <div><span class="eyebrow">DEVICE DIRECTORY</span><h2>등록 장비</h2><p>행을 선택하면 상세 작업창이 열립니다.</p></div>
@@ -7762,6 +7767,27 @@
       }
     }
 
+    async function loadGpuAgentPending() {
+      const list = $("gpuAgentPendingList");
+      const entries = await api("/api/manager/gpu-agents/pending");
+      list.innerHTML = entries.map((entry) => `<div class="row" style="justify-content:space-between;gap:10px;margin:8px 0">
+        <span><b>${esc(entry.hostname)}</b> <span class="muted">${esc(entry.uuid)} · 최근 수신 ${esc(entry.last_seen || "—")}</span></span>
+        <span class="row"><button type="button" class="primary" data-gpu-action="approve" data-gpu-id="${esc(entry.uuid)}">승인</button>
+        <button type="button" class="ghost" data-gpu-action="reject" data-gpu-id="${esc(entry.uuid)}">거절</button></span></div>`).join("") || "등록 대기 중인 GPU 에이전트가 없습니다.";
+      list.querySelectorAll("[data-gpu-action]").forEach(button => button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await api(`/api/manager/gpu-agents/${encodeURIComponent(button.dataset.gpuId)}/${button.dataset.gpuAction}`, { method:"POST" });
+          toast(button.dataset.gpuAction === "approve" ? "GPU 장비를 등록했습니다." : "등록을 거절했습니다.");
+          await loadGpuAgentPending();
+          await loadDevices();
+        } catch (e) { toast(e.message, true); button.disabled = false; }
+      });
+    }
+    $("gpuAgentPending").addEventListener("toggle", () => {
+      if ($("gpuAgentPending").open) loadGpuAgentPending().catch(e => { $("gpuAgentPendingList").textContent = e.message; });
+    });
+
     let deviceListLoadSequence = 0;
     async function loadDevices() {
       const loadSequence = ++deviceListLoadSequence;
@@ -11996,6 +12022,7 @@
           }),
         });
         toast("장비 정보를 저장했습니다");
+        closeDeviceDetail();
         await loadDevices();
         await refreshDeviceCounts();
         paintLocationTree();

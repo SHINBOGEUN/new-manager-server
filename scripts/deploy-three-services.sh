@@ -121,6 +121,28 @@ for index in "${!jars[@]}"; do
   }
 done
 
+# This additive catalog migration is included only in Manager deployments.
+# Apply it before the new Manager starts so its discovery endpoints can use the table.
+if [[ " ${services[*]} " == *" manager-server "* ]]; then
+  migration="$incoming/gpu_agent_catalog.sql"
+  [[ -s "$migration" ]] || { echo 'Missing GPU agent catalog migration' >&2; exit 1; }
+  mapfile -t database_containers < <(docker ps --filter "label=com.docker.compose.project=$project" --format '{{.ID}} {{.Image}}' \
+    | awk 'tolower($0) ~ /(mariadb|mysql)/ {print $1}')
+  (( ${#database_containers[@]} == 1 )) || {
+    echo 'Expected exactly one MariaDB/MySQL container in the deployment Compose project' >&2
+    exit 1
+  }
+  docker exec -i "${database_containers[0]}" sh -c '
+    db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
+    user=${MARIADB_USER:-${MYSQL_USER:-}}
+    pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}
+    [ -n "$db" ] && [ -n "$user" ] && [ -n "$pass" ] || exit 40
+    if command -v mariadb >/dev/null 2>&1; then client=mariadb; elif command -v mysql >/dev/null 2>&1; then client=mysql; else exit 41; fi
+    exec "$client" --protocol=socket --user="$user" --password="$pass" "$db"
+  ' < "$migration"
+  echo 'GPU agent catalog migration applied'
+fi
+
 mkdir -p "$app_dir/.cd-releases"
 mv "$incoming" "$release"
 mkdir "$release/previous"
@@ -203,3 +225,4 @@ done
 printf 'Deployed release %s: services=%s versions=%s commits=%s,%s,%s\n' \
   "$release_id" "${services[*]}" "${versions[*]}" "$manager_commit" "$collector_commit" "$sensor_data_commit"
 echo 'Unselected app services, MQTT, databases, InfluxDB, and legacy services were untouched'
+

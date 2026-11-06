@@ -32,7 +32,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         String apiKey = request.getHeader("X-Api-Key");
         String path = request.getRequestURI();
 
-        if (path.equals("/api/internal/alarms/measurements")) {
+        if (path.equals("/api/internal/alarms/measurements") || path.equals("/api/internal/gpu-agents/discover")) {
             if (!matchesKey(sensorDataApiKey, apiKey)) {
                 reject(response);
                 return;
@@ -99,3 +99,4 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         response.getWriter().write("{\"error\":\"Invalid API Key\"}");
     }
 }
+
