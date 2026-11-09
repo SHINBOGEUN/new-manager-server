@@ -319,7 +319,7 @@ public class PageWidgetQueryService {
             var available = widget.lastSourceDefinitions().stream().flatMap(source -> source.pointNames().stream()).collect(java.util.stream.Collectors.toSet());
             var seen = new java.util.HashSet<String>();
             for (var column : columns) {
-                if (column == null || column.pointName() == null || !available.contains(column.pointName()) || !seen.add(column.pointName())
+                if (column == null || column.pointName() == null || !(available.contains(column.pointName()) || "__collected_at".equals(column.pointName())) || !seen.add(column.pointName())
                         || column.label() == null || column.label().isBlank() || column.label().length() > 100)
                     throw new IllegalArgumentException("테이블 열 이름과 측정 항목을 확인하세요");
             }

@@ -144,6 +144,22 @@ public class AlarmQueryService {
         return new AlarmSummaryResponse(events.countOpenForSummary(includeAdmin), warningCount, criticalCount, latestOpen);
     }
 
+    public long countOpenForDevices(Authentication auth, List<Integer> deviceIds) {
+        requireReader(auth);
+        if (deviceIds == null || deviceIds.isEmpty()) return 0;
+        return events.countOpenForDevices(deviceIds, isAdmin(auth));
+    }
+
+    public Map<String, Object> openDeviceSummary(Authentication auth, List<Integer> deviceIds) {
+        requireReader(auth);
+        if (deviceIds == null || deviceIds.isEmpty()) return Map.of("openCount", 0, "deviceIds", List.of());
+        if (deviceIds.size() > 1000 || deviceIds.stream().anyMatch(id -> id == null || id < 1)) throw new IllegalArgumentException("장비 목록을 확인하세요");
+        var rows = events.findOpenDeviceIds(deviceIds, isAdmin(auth));
+        Set<Integer> affected = new HashSet<>();
+        for (Object[] row : rows) for (Object value : row) if (value instanceof Number number) affected.add(number.intValue());
+        return Map.of("openCount", rows.size(), "deviceIds", affected.stream().sorted().toList());
+    }
+
     public List<AlarmEventResponse> updates(Authentication auth, long afterId, int limit) {
         requireReader(auth);
         if (afterId < 0 || limit < 1 || limit > 100) throw new IllegalArgumentException("afterId/limit 값이 잘못되었습니다");

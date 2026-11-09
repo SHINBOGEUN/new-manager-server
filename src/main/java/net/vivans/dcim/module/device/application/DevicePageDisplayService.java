@@ -55,7 +55,7 @@ public class DevicePageDisplayService {
                         item.getLocationNode() == null ? null : item.getLocationNode().getCode(),
                         item.getPointName(), item.getLocationNode() == null ? item.getLabel() : item.getLocationNode().getName(),
                         item.getModelKey(), item.getX(), item.getY(),
-                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked(), item.getRackColor()))
+                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked(), item.getRackColor(), item.getPanelPhoto(), item.isPanelLayoutInitialized()))
                 .toList());
 
         // Import descendant location racks until the page's scene is next saved.
@@ -96,7 +96,7 @@ public class DevicePageDisplayService {
                     int row = rackIndex / 4;
                     items.add(new DevicePageDisplayResponse.SceneItem(
                             null, null, "RACK", null, rack.getCode(), null, rack.getName(), "RACK",
-                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false, null));
+                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false, null, null, false));
                 }
                 rackIndex++;
             }
@@ -134,7 +134,7 @@ public class DevicePageDisplayService {
             sceneItemsByKey.put(item.clientKey(), item);
             itemOrder.put(item.clientKey(), index);
             validateItem(item, devicesById);
-            if (("DEVICE".equals(item.itemType()) || "SENSOR".equals(item.itemType()))
+            if (("DEVICE".equals(item.itemType()) || "SENSOR".equals(item.itemType()) || "PANEL_COMPONENT".equals(item.itemType()))
                     && item.deviceId() != null && !attachedDeviceIds.add(item.deviceId())) {
                 throw new IllegalArgumentException("A device can only be attached once on a page");
             }
@@ -169,6 +169,9 @@ public class DevicePageDisplayService {
             } else if (("SENSOR".equals(item.itemType()) || "DEVICE".equals(item.itemType()))
                     && !Set.of("RACK", "EQUIPMENT").contains(host.itemType())) {
                 throw new IllegalArgumentException("An attached device must reference a rack or equipment host");
+            } else if ("PANEL_COMPONENT".equals(item.itemType())) {
+                if (!"SR_INROW_PANEL".equals(host.modelKey()) || !sceneModelService.panelInstallable(item.modelKey()))
+                    throw new IllegalArgumentException("분전반 설치가 가능한 모델만 배치할 수 있습니다");
             } else if (!Set.of("SENSOR", "DEVICE").contains(item.itemType())) {
                 throw new IllegalArgumentException("Only devices or wall openings can be attached to a host");
             }
@@ -182,7 +185,11 @@ public class DevicePageDisplayService {
 
         record HostLink(String key, String description) {}
         Map<Integer, HostLink> oldLinks = new HashMap<>();
+        Map<String, String> oldPanelPhotos = new HashMap<>();
+        Set<String> oldInitializedPanels = new HashSet<>();
         for (DevicePageSceneItem existing : sceneItemRepository.findAllForPage(page.getId())) {
+            if (existing.getPanelPhoto() != null) oldPanelPhotos.put("db-" + existing.getId(), existing.getPanelPhoto());
+            if (existing.isPanelLayoutInitialized()) oldInitializedPanels.add("db-" + existing.getId());
             if (existing.getDevice() != null && existing.getParent() != null && Set.of("DEVICE", "SENSOR").contains(existing.getItemType())) {
                 var host = existing.getParent();
                 oldLinks.put(existing.getDevice().getId(), new HostLink(host.getLocationNode() != null ? "location-" + host.getLocationNode().getCode() : "db-" + host.getId(), (host.getLocationNode() != null ? host.getLocationNode().getCode() : String.valueOf(host.getModelKey()) + " · " + String.valueOf(host.getLabel()) + " (#" + host.getId() + ")")));
@@ -225,6 +232,8 @@ public class DevicePageDisplayService {
             if (item.groupKey() != null && !isScalableEquipment(item)) throw new IllegalArgumentException("Only equipment can be grouped");
             saved.setGroupKey(item.groupKey());
             saved.setRackColor(item.rackColor());
+            saved.setPanelPhoto(item.panelPhoto() == null ? oldPanelPhotos.get(item.clientKey()) : item.panelPhoto());
+            saved.setPanelLayoutInitialized(item.panelLayoutInitialized() == null ? oldInitializedPanels.contains(item.clientKey()) : item.panelLayoutInitialized());
             saved.setGroupName(item.groupName());
             if (Boolean.TRUE.equals(item.locked()) && !isScalableEquipment(item)) throw new IllegalArgumentException("Only equipment can be locked");
             saved.setLocked(Boolean.TRUE.equals(item.locked()));
@@ -244,15 +253,15 @@ public class DevicePageDisplayService {
     }
 
     private void validateItem(DevicePageDisplayUpdateRequest.SceneItem item, Map<Integer, Device> devicesById) {
-        if (!Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE").contains(item.itemType())) {
+        if (!Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE", "PANEL_COMPONENT").contains(item.itemType())) {
             throw new IllegalArgumentException("Unsupported scene item type: " + item.itemType());
         }
         if (!Set.of("RACK", "PDU", "CRAC", "UPS", "SENSOR", "GENERIC", "CHILLER", "SWITCH", "SERVER",
                 "MACHINE", "CONVEYOR", "TANK", "TABLE", "WALL", "WALL_CONCRETE", "WALL_GLASS", "WALL_GLASS_CLEAR", "WALL_PANEL",
                 "DOOR", "DOOR_DOUBLE", "DOOR_SLIDING", "WINDOW", "WINDOW_DOUBLE", "CEILING", "CEILING_CLEAR", "FLOOR", "LIGHT", "PIPE", "STAIR",
                 "SR_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
-                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR").contains(item.modelKey())
-                && !("EQUIPMENT".equals(item.itemType()) && item.modelKey() != null
+                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR", "SR_ACCURA_2350_1P", "SR_ACCURA_2350_3P", "SR_PANEL_BREAKER", "SR_PANEL_BRANCH", "SR_PANEL_MAIN", "SR_PANEL_METER", "SR_PANEL_BUSBAR", "SR_PANEL_WIRE").contains(item.modelKey())
+                && !(Set.of("EQUIPMENT", "PANEL_COMPONENT").contains(item.itemType()) && item.modelKey() != null
                 && item.modelKey().matches("USR_[A-Z0-9]{24}") && sceneModelService.usable(item.modelKey()))) {
             throw new IllegalArgumentException("Unsupported scene model: " + item.modelKey());
         }
@@ -267,7 +276,7 @@ public class DevicePageDisplayService {
                 throw new IllegalArgumentException("A sensor marker must be placed on a rack");
             }
         } else if (item.parentClientKey() != null && !item.parentClientKey().isBlank()) {
-            if (!("DEVICE".equals(item.itemType()) || ("EQUIPMENT".equals(item.itemType()) && isWallOpening(item.modelKey())))) {
+            if (!("DEVICE".equals(item.itemType()) || "PANEL_COMPONENT".equals(item.itemType()) || ("EQUIPMENT".equals(item.itemType()) && isWallOpening(item.modelKey())))) {
                 throw new IllegalArgumentException("Only devices or wall openings can be attached to a parent item");
             }
         }

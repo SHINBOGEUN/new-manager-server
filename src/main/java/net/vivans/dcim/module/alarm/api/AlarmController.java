@@ -19,6 +19,7 @@ import java.util.Map;
 public class AlarmController {
     private final AlarmQueryService service;
     private final net.vivans.dcim.module.alarm.infrastructure.AlarmSocketTickets tickets;
+    private final net.vivans.dcim.module.device.application.DevicePageMeasurementService pageMeasurements;
 
     @GetMapping("/latest-id")
     public ApiResponse<Map<String, Long>> latestId(Authentication auth) {
@@ -28,6 +29,17 @@ public class AlarmController {
     @GetMapping("/summary")
     public ApiResponse<AlarmSummaryResponse> summary(Authentication auth) {
         return ApiResponse.ok(service.summary(auth));
+    }
+
+    @GetMapping("/page-summary")
+    public ApiResponse<Map<String, Long>> pageSummary(Authentication auth, @RequestParam String pageCode) {
+        service.requireReader(auth);
+        return ApiResponse.ok(Map.of("openCount", service.countOpenForDevices(auth, pageMeasurements.getDeviceIds(pageCode))));
+    }
+
+    @GetMapping("/device-summary")
+    public ApiResponse<Map<String, Object>> deviceSummary(Authentication auth, @RequestParam List<Integer> deviceIds) {
+        return ApiResponse.ok(service.openDeviceSummary(auth, deviceIds));
     }
 
     @GetMapping("/updates")

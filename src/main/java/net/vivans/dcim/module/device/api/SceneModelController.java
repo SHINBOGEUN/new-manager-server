@@ -18,6 +18,14 @@ import java.util.List;
 public class SceneModelController {
     private final SceneModelService service;
 
+    public record PanelInstallableRequest(@jakarta.validation.constraints.NotNull Boolean panelInstallable) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{key}/panel-installable")
+    public ResponseEntity<ApiResponse<SceneModelService.ModelResponse>> setPanelInstallable(@PathVariable String key, @jakarta.validation.Valid @RequestBody PanelInstallableRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(service.setPanelInstallable(key, request.panelInstallable())));
+    }
+
     public record DeviceLinkableRequest(@jakarta.validation.constraints.NotNull Boolean deviceLinkable) {}
 
     @PreAuthorize("hasRole('ADMIN')")

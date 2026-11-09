@@ -2,7 +2,7 @@ import * as THREE from "/vendor/three/three.module.js?v=20261022d";
 import { OrbitControls } from "/vendor/three/controls/OrbitControls.js";
 import { floorRect, floorRectsOverlap, floorBatchPositions, wallBatchGrid, keyboardMoveDelta, snapFloorPosition, wallCornerCandidates } from "/floor-placement.js?v=20261028ae";
 import { GLTFLoader } from "/vendor/three/loaders/GLTFLoader.js";
-import { prepareShowroomObject, showroomDisplaySize, showroomFramePreviewSize, showroomModelByKey, showroomModelUrl } from "/showroom-models.js?v=20261103d";
+import { prepareShowroomObject, showroomDisplaySize, showroomFramePreviewSize, showroomModelByKey, showroomModelUrl } from "/showroom-models.js?v=20261109paneledit";
 import { allowsInrowInteriorOverlap, fitEquipmentInsideFrame, fitFrameAroundEquipment, inrowFrameScale, isEquipmentFrameKey, isFrameEquipmentItem, resizedInrowFrame } from "/inrow-placement.js?v=20261029b";
 import { setGroupLockState, rackDetailAction } from "/scene-group-lock.js?v=20261101b";
 
@@ -2484,12 +2484,12 @@ function mount(container, page, options = {}) {
     if (walking || placement || areaSelectMode || areaMoveMode || wholeSceneMoveMode) return;
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     const item = hit && nearestSceneItemRoot(hit.object)?.userData?.sceneItem;
+    if (item?.modelKey === "SR_INROW_PANEL") { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
     if (item?.itemType === "EQUIPMENT" && showroomModelByKey(item.modelKey)?.deviceLinkable) {
       event.preventDefault();
       options.onDeviceLink?.(structuredClone(item));
       return;
     }
-    if (item?.modelKey === "SR_INROW_PANEL") { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
     const action = rackDetailAction(item);
     if (action === "ignore") return;
     event.preventDefault();
@@ -2638,10 +2638,44 @@ function mount(container, page, options = {}) {
     }
     rack.add(overlay);
   }
+  const problemMarkers = new Map();
+  let problemDeviceIds = new Set(), lastProblemPositionUpdate = 0;
+  const problemCanvas = document.createElement('canvas'); problemCanvas.width = problemCanvas.height = 64;
+  const problemContext = problemCanvas.getContext('2d');
+  const problemGradient = problemContext.createRadialGradient(32, 32, 3, 32, 32, 31);
+  problemGradient.addColorStop(0, '#fff2f2'); problemGradient.addColorStop(.23, '#ff3344'); problemGradient.addColorStop(1, 'rgba(255,20,30,0)');
+  problemContext.fillStyle = problemGradient; problemContext.fillRect(0, 0, 64, 64);
+  const problemTexture = new THREE.CanvasTexture(problemCanvas);
+  const problemMaterial = new THREE.SpriteMaterial({map:problemTexture, transparent:true, depthTest:false, depthWrite:false});
+  function syncProblemMarkers() {
+    const affected = new Set();
+    for (const item of items) {
+      if (!item.deviceId || !problemDeviceIds.has(Number(item.deviceId))) continue;
+      const parentKey = item.parentId != null ? `db-${item.parentId}` : item.parentClientKey;
+      const group = itemGroups.get(parentKey || findItemKey(item)); if (group) affected.add(group);
+    }
+    for (const group of itemGroups.values()) {
+      if ((group.userData.rackLayout?.placements || []).some(entry => entry.deviceId && problemDeviceIds.has(Number(entry.deviceId)))) affected.add(group);
+    }
+    for (const [group, sprite] of problemMarkers) if (!affected.has(group) || !group.parent) { scene.remove(sprite); problemMarkers.delete(group); }
+    for (const group of affected) if (!problemMarkers.has(group)) {
+      const sprite = new THREE.Sprite(problemMaterial); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
+      scene.add(sprite); problemMarkers.set(group, sprite);
+    }
+    lastProblemPositionUpdate = 0;
+  }
   const animate = (now = performance.now()) => {
     if (destroyed) return;
     const deltaSeconds = Math.min(.05, Math.max(0, (now - lastFrameTime) / 1000));
     lastFrameTime = now;
+    problemMaterial.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
+    if (problemMarkers.size && now - lastProblemPositionUpdate > 350) {
+      for (const [group, sprite] of problemMarkers) {
+        const bounds = new THREE.Box3().setFromObject(group);
+        if (!bounds.isEmpty()) { bounds.getCenter(sprite.position); sprite.position.y = bounds.max.y + .35; }
+      }
+      lastProblemPositionUpdate = now;
+    }
     updateWalking(deltaSeconds);
     if (options.editing && now - lastOverlapUpdate > 350) { updateFloorOverlapIndicators(); lastOverlapUpdate = now; }
     for (const group of itemGroups.values()) {
@@ -2657,6 +2691,7 @@ function mount(container, page, options = {}) {
     renderer.render(scene, camera); raf = requestAnimationFrame(animate);
   }; animate();
   const api = {
+    setProblemDevices(deviceIds) { problemDeviceIds = new Set((deviceIds || []).map(Number)); syncProblemMarkers(); },
     setRackLayout(locationCode, layout) {
       for (const item of items.filter((entry) => entry.locationNodeCode === locationCode)) {
         const key = findItemKey(item), group = itemGroups.get(key);
@@ -2669,6 +2704,7 @@ function mount(container, page, options = {}) {
         }
         renderRackLayout(key, layout);
       }
+      syncProblemMarkers();
     },
     setGroupLocked(groupKey, locked) {
       if (!groupKey || typeof locked !== "boolean") return false;
@@ -3005,9 +3041,28 @@ function mount(container, page, options = {}) {
       options.onHint?.(`도면 항목 ${count}개를 모두 지웠습니다. 실제 위치 정보와 장비 데이터는 삭제되지 않습니다. 반영하려면 저장을 누르세요.`);
       return count;
     },
+    setPanelComponents(hostKey, components, photo) {
+      const host = items.find((item) => findItemKey(item) === hostKey && item.modelKey === "SR_INROW_PANEL");
+      if (!host || host.locked) return false;
+      if (components.some((component) => !showroomModelByKey(component.modelKey)?.panelInstallable)) {
+        options.onHint?.("분전반 설치 설정이 해제된 모델이 있습니다."); return false;
+      }
+      if (photo !== undefined) host.panelPhoto = photo || null;
+      host.panelLayoutInitialized = true;
+      const belongs = (item) => item.itemType === "PANEL_COMPONENT" && (item.parentId != null ? host.id != null && Number(item.parentId) === Number(host.id) : item.parentClientKey === hostKey);
+      items = items.filter((item) => !belongs(item));
+      for (const component of components) {
+        const model = showroomModelByKey(component.modelKey);
+        items.push({ id:component.id ?? null, clientKey:component.clientKey || makeKey(), parentId:host.id ?? null,
+          parentClientKey:host.id != null ? `db-${host.id}` : host.clientKey, itemType:"PANEL_COMPONENT",
+          deviceId:component.deviceId || null, pointName:null, label:model.label, modelKey:model.key,
+          x:THREE.MathUtils.clamp(Number(component.x) || 0, -.48, .48), y:THREE.MathUtils.clamp(Number(component.y) || 1, .1, 2.1), z:-.06, rotationY:Number(component.rotationY) || 0, sizeX:Number(component.sizeX) || 4, sizeY:Number(component.sizeY) || 4, sizeZ:Number(component.sizeZ) || 4 });
+      }
+      options.onChange?.(items); return true;
+    },
     setWalking,
     getItems() { return structuredClone(items); },
-    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); renderer.dispose(); container.replaceChildren(); },
+    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
   };
   views.set(container, api); return api;
 }
@@ -3224,12 +3279,12 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     dispose() { disposed = true; cancelAnimationFrame(raf); observer.disconnect(); controls.dispose(); renderer.domElement.removeEventListener("dblclick", click); renderer.domElement.removeEventListener("pointerdown", onPduDown, true); renderer.domElement.removeEventListener("pointermove", onPduMove, true); renderer.domElement.removeEventListener("pointerup", onPduUp, true); renderer.domElement.removeEventListener("pointercancel", onPduUp, true); scene.traverse((node) => { if (node.userData.rackSharedModel) return; node.geometry?.dispose(); if (node.material && node.material !== deviceMaterial) { node.material.map?.dispose(); node.material.dispose(); } }); deviceMaterial.dispose(); renderer.dispose(); container.replaceChildren(); } };
 }
 
-function mountPanelDetail(container) {
+function mountPanelDetail(container, components = [], models = [], options = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setClearColor(0x0b1724);
   renderer.outputColorSpace = THREE.SRGBColorSpace; container.replaceChildren(renderer.domElement);
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(38, 1, .01, 100);
-  camera.position.set(2.9, 2.2, 4.4);
+  camera.position.set(0, 1.1, 4.4);
   scene.add(new THREE.HemisphereLight(0xe0efff, 0x1f2c3a, 2.2));
   const light = new THREE.DirectionalLight(0xffffff, 2.4); light.position.set(3, 6, 5); scene.add(light);
   const controls = new OrbitControls(camera, renderer.domElement); controls.target.set(0, 1.1, 0); controls.enableDamping = true;
@@ -3238,26 +3293,109 @@ function mountPanelDetail(container) {
   const add = (w,h,d,x,y,z,mat=0,parent=scene) => { const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),materials[mat]); mesh.position.set(x,y,z); parent.add(mesh); return mesh; };
   add(1.2,2.2,.12,0,1.1,-.3,1); add(.07,2.2,.65,-.56,1.1,0); add(.07,2.2,.65,.56,1.1,0);
   add(1.18,.07,.65,0,2.17,0); add(1.18,.07,.65,0,.035,0);
-  // Main breaker, meter, busbars and two rows of circuit breakers are illustrative.
-  add(.37,.31,.13,-.20,1.53,-.16,2); add(.09,.16,.06,-.20,1.53,-.065,3);
-  add(.36,.23,.12,.28,1.83,-.16,0); add(.28,.15,.02,.28,1.84,-.09,7);
-  for (let i=0;i<4;i++) { const x=-.40+i*.12; add(.065,.29,.04,x,1.94,-.19,4); add(.035,.08,.035,x,1.95,-.15,3); }
-  for (let i=0;i<4;i++) { const x=-.40+i*.12; add(.06,.30,.04,x,1.14,-.19,4); }
-  for (let side=0;side<2;side++) for (let i=0;i<5;i++) {
-    const x=side ? .25 : -.25, y=.23+i*.17;
-    add(.34,.14,.12,x,y,-.15,2); add(.10,.06,.05,x,y,-.065,3);
-    add(.025,.015,.015,x+.03,y,-.035,i%2 ? 6 : 4);
+  const componentHolders = [];
+  let selectedComponentIndex = null;
+  const selectedBounds = new THREE.Box3Helper(new THREE.Box3(), 0x39e4ff);
+  selectedBounds.visible = false; selectedBounds.material.depthTest = false; selectedBounds.renderOrder = 30; scene.add(selectedBounds);
+  function selectComponent(index, notify = true) {
+    selectedComponentIndex = Number.isInteger(index) && index >= 0 && index < components.length ? index : null;
+    const holder = componentHolders.find((entry) => entry.userData.componentIndex === selectedComponentIndex);
+    selectedBounds.visible = !!holder;
+    if (holder) selectedBounds.box.setFromObject(holder.children[0]);
+    if (notify) options.onSelect?.(selectedComponentIndex);
   }
-  const cable = (points,color) => { const curve=new THREE.CatmullRomCurve3(points.map((p)=>new THREE.Vector3(...p))); const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,24,.012,8,false),materials[color]); scene.add(mesh); };
-  for (let i=0;i<4;i++) cable([[-.38+i*.12,2.14,-.21],[-.38+i*.12,2.02,-.16],[-.38+i*.12,1.84,-.15]], i===3 ? 5 : 3);
-  for (let i=0;i<5;i++) cable([[-.43,.23+i*.17,-.1],[-.52,.23+i*.17,.02],[-.53,.18+i*.17,.23]], i%2 ? 7 : 4);
+  for (const [index, component] of components.entries()) {
+    const model = models.find((entry) => entry.key === component.modelKey);
+    if (!model) continue;
+    loadShowroomModel(model).then((gltf) => {
+      if (disposed) return;
+      const object = prepareShowroomObject(model, gltf.scene.clone(true));
+      object.traverse((node) => { node.userData.panelSharedModel = true; });
+      const bounds = new THREE.Box3().setFromObject(object);
+      if (bounds.isEmpty()) return;
+      const center = bounds.getCenter(new THREE.Vector3()), size = bounds.getSize(new THREE.Vector3());
+      object.position.sub(center);
+      const holder = new THREE.Group(); holder.add(object);
+      holder.scale.set(model.width / Math.max(size.x,.001) * (Number(component.sizeX) || 4) / 4, model.height / Math.max(size.y,.001) * (Number(component.sizeY) || 4) / 4, model.depth / Math.max(size.z,.001) * (Number(component.sizeZ) || 4) / 4);
+      holder.rotation.z = THREE.MathUtils.degToRad(Number(component.rotationY) || 0);
+      holder.position.set(Number(component.x) || 0, Number(component.y) || 1, .04); scene.add(holder);
+      if (options.editing) {
+        const hit = new THREE.Mesh(new THREE.BoxGeometry(Math.max(size.x, .09 / holder.scale.x), Math.max(size.y, .12 / holder.scale.y), Math.max(size.z, .03 / holder.scale.z)), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false}));
+        holder.add(hit);
+      }
+      holder.userData.componentIndex = index; componentHolders.push(holder);
+      if (selectedComponentIndex === index) selectComponent(index, false);
+    }).catch((error) => console.warn("분전반 모델 로딩 실패", error));
+  }
   const hinge = new THREE.Group(); hinge.position.set(.59,0,.33); scene.add(hinge);
   add(1.15,2.16,.07,-.58,1.1,0,0,hinge); add(.025,.20,.04,-1.06,1.10,.055,3,hinge);
   let open=true, disposed=false; hinge.rotation.y=-1.32;
+  const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2(), dragPlane = new THREE.Plane(new THREE.Vector3(0,0,1), -.04), hitPoint = new THREE.Vector3();
+  const guideMaterial = new THREE.LineBasicMaterial({color:0x52e6ff, transparent:true, opacity:.9, depthTest:false});
+  const verticalGuide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.06,.18),new THREE.Vector3(0,2.14,.18)]), guideMaterial);
+  const horizontalGuide = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-.52,0,.18),new THREE.Vector3(.52,0,.18)]), guideMaterial);
+  verticalGuide.visible = horizontalGuide.visible = false; verticalGuide.renderOrder = horizontalGuide.renderOrder = 40; scene.add(verticalGuide,horizontalGuide);
+  let dragging = null;
+  const positionRay = (event) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+  };
+  const down = (event) => {
+    if (event.button !== 0) return;
+    positionRay(event);
+    const selectableHolders = options.canSelect ? componentHolders.filter((holder) => options.canSelect(holder.userData.componentIndex)) : componentHolders;
+    const hit = raycaster.intersectObjects(selectableHolders, true)[0];
+    if (!hit || !raycaster.ray.intersectPlane(dragPlane, hitPoint)) return;
+    let holder = hit.object;
+    while (holder && holder.userData.componentIndex == null) holder = holder.parent;
+    if (!holder) return;
+    selectComponent(holder.userData.componentIndex);
+    if (!options.editing) return;
+    dragging = {holder, pointerId:event.pointerId, dx:holder.position.x-hitPoint.x, dy:holder.position.y-hitPoint.y};
+    controls.enabled = false; renderer.domElement.setPointerCapture(event.pointerId);
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  const move = (event) => {
+    if (!dragging || event.pointerId !== dragging.pointerId) return;
+    positionRay(event);
+    if (raycaster.ray.intersectPlane(dragPlane, hitPoint)) {
+      let x = THREE.MathUtils.clamp(hitPoint.x + dragging.dx, -.48, .48), y = THREE.MathUtils.clamp(hitPoint.y + dragging.dy, .1, 2.1);
+      verticalGuide.visible = horizontalGuide.visible = false;
+      if (!event.altKey) {
+        const nearest = (axis, value) => {
+          let result = null, distance = .025;
+          for (let i = 0; i < components.length; i++) {
+            if (i === dragging.holder.userData.componentIndex) continue;
+            const candidate = Number(components[i][axis]);
+            if (Number.isFinite(candidate) && Math.abs(candidate - value) < distance) { result = candidate; distance = Math.abs(candidate - value); }
+          }
+          return result;
+        };
+        const alignedX = nearest('x', x), alignedY = nearest('y', y);
+        x = alignedX === null ? Math.round(x * 100) / 100 : alignedX;
+        y = alignedY === null ? Math.round(y * 100) / 100 : alignedY;
+        if (alignedX !== null) { verticalGuide.position.x = x; verticalGuide.visible = true; }
+        if (alignedY !== null) { horizontalGuide.position.y = y; horizontalGuide.visible = true; }
+      }
+      dragging.holder.position.set(x, y, .04);
+      selectedBounds.box.setFromObject(dragging.holder.children[0]);
+      options.onMove?.(dragging.holder.userData.componentIndex, x, y);
+    }
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  const up = (event) => {
+    if (!dragging || event.pointerId !== dragging.pointerId) return;
+    dragging = null; controls.enabled = true; verticalGuide.visible = horizontalGuide.visible = false;
+    if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  renderer.domElement.addEventListener('pointerdown', down, true); renderer.domElement.addEventListener('pointermove', move, true);
+  renderer.domElement.addEventListener('pointerup', up, true); renderer.domElement.addEventListener('pointercancel', up, true);
   const resize=()=>{const r=container.getBoundingClientRect();if(r.width&&r.height){renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();}};
   const observer=new ResizeObserver(resize); observer.observe(container); resize();
   let raf; const animate=()=>{if(disposed)return;controls.update();renderer.render(scene,camera);raf=requestAnimationFrame(animate);}; animate();
-  return { toggleDoor(){open=!open;hinge.rotation.y=open?-1.32:0;return open;}, dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();controls.dispose();scene.traverse((node)=>node.geometry?.dispose());materials.forEach((material)=>material.dispose());renderer.dispose();container.replaceChildren();} };
+  return { selectComponent(index){selectComponent(index);}, toggleDoor(){open=!open;hinge.rotation.y=open?-1.32:0;return open;}, dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();controls.dispose();renderer.domElement.removeEventListener('pointerdown',down,true);renderer.domElement.removeEventListener('pointermove',move,true);renderer.domElement.removeEventListener('pointerup',up,true);renderer.domElement.removeEventListener('pointercancel',up,true);scene.traverse((node)=>{if(node.userData.panelSharedModel)return;node.geometry?.dispose();if(node.material && !materials.includes(node.material)){node.material.map?.dispose();node.material.dispose();}});materials.forEach((material)=>material.dispose());renderer.dispose();container.replaceChildren();} };
 }
 
 window.DcimRoomScene3D = { mount, mountRackDetail, mountPanelDetail, renderModelThumbnails, renderBuiltinThumbnails,

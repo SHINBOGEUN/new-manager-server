@@ -43,6 +43,25 @@ public class DeviceModbusReadingQueryService {
                 .toList();
     }
 
+    public record TargetReading(Integer id, Integer sourceDeviceId, String sourceDeviceName,
+                                Integer endpointId, String host, int port, boolean endpointEnabled,
+                                int unitId, int address, String pointName, String registerType,
+                                String dataType, String byteOrder, Double scale, boolean enabled) {}
+
+    public List<TargetReading> getTargetReadings(Integer deviceId) {
+        findDevice(deviceId);
+        return readingRepository.findAllByTargetDeviceIdOrderByIdAsc(deviceId).stream().map(reading -> {
+            var endpoint = reading.getEndpointModbus().getEndpoint();
+            var point = reading.getPoint();
+            return new TargetReading(reading.getId(), endpoint.getDevice().getId(), endpoint.getDevice().getName(),
+                    endpoint.getId(), endpoint.getHost(), endpoint.getPort(), endpoint.isEnabled(),
+                    reading.getUnitId(), reading.getAddress(), reading.getPointName(),
+                    point.getRegisterType().name(), point.getDataType().name(),
+                    point.getByteOrder() == null ? null : point.getByteOrder().name(), point.getScale(),
+                    reading.isEnabled() && point.isEnabled());
+        }).toList();
+    }
+
     public DeviceModbusReadingResponse getReading(Integer deviceId, Integer endpointId, Integer readingId) {
         validateReadingSource(deviceId, endpointId);
         return DeviceModbusReadingResponse.from(findReading(readingId, endpointId));

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `scene_model` (
   `rack_u_installable` tinyint(1) NOT NULL DEFAULT 0,
   `rack_attachment_installable` tinyint(1) NOT NULL DEFAULT 0,
   `device_linkable` tinyint(1) NOT NULL DEFAULT 0,
+  `panel_installable` tinyint(1) NOT NULL DEFAULT 0,
   `rack_installable` tinyint(1) NOT NULL DEFAULT 0 COMMENT '랙에 설치 가능한 3D 모델 여부',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6),
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
@@ -43,10 +44,18 @@ INSERT IGNORE INTO `scene_model`
   ('SR_GPU_SERVER', 'GPU 서버 (4U 예시)', 'gpu_server_rack.glb', 'gpu_server_rack.glb', .482, .178, .72),
   ('SR_DRAGINO_TH', 'Dragino 온습도 센서', 'dragino_temperature_humidity.glb', 'dragino_temperature_humidity.glb', .068, .12, .027),
   ('SR_DRAGINO_DOOR', 'Dragino 도어 센서', 'dragino_door_contact.glb', 'dragino_door_contact.glb', .13, .10, .03),
-  ('SR_DOUBLE_RACK', '서버 랙 (양문형)', 'rack_double_door.glb', 'rack_double_door.glb', .9, 2.35, .9);
+  ('SR_DOUBLE_RACK', '서버 랙 (양문형)', 'rack_double_door.glb', 'rack_double_door.glb', .9, 2.35, .9),
+  ('SR_ACCURA_2350_1P', 'ACCURA 2350 단상', 'accura_2350_1p.glb', 'accura_2350_1p.glb', .045, .105, .045),
+  ('SR_ACCURA_2350_3P', 'ACCURA 2350 3상', 'accura_2350_3p.glb', 'accura_2350_3p.glb', .060, .105, .045),
+  ('SR_PANEL_BREAKER', '분전반 차단기', 'panel_breaker_3p.glb', 'panel_breaker_3p.glb', .095, .11, .075),
+  ('SR_PANEL_BRANCH', '분전반 분기 차단기', 'panel_breaker_3p.glb', 'panel_breaker_3p.glb', .34, .14, .12),
+  ('SR_PANEL_MAIN', '분전반 메인 차단기', 'panel_main_breaker.glb', 'panel_main_breaker.glb', .37, .31, .13),
+  ('SR_PANEL_METER', '분전반 계기', 'panel_meter.glb', 'panel_meter.glb', .36, .23, .12),
+  ('SR_PANEL_BUSBAR', '분전반 부스바', 'panel_busbar.glb', 'panel_busbar.glb', .06, .29, .04),
+  ('SR_PANEL_WIRE', '분전반 배선', 'panel_wire.glb', 'panel_wire.glb', .08, .13, .012);
 
 UPDATE `scene_model` SET `category` = CASE
-  WHEN `model_key` IN ('SR_DRAGINO_TH', 'SR_DRAGINO_DOOR') THEN '센서'
+  WHEN `model_key` IN ('SR_DRAGINO_TH', 'SR_DRAGINO_DOOR', 'SR_ACCURA_2350_1P', 'SR_ACCURA_2350_3P') THEN '센서'
   WHEN `model_key` IN ('SR_INROW_MOLD', 'SR_WALL_COIL') THEN '프레임·구조물'
   WHEN `model_key` IN ('SR_RACK', 'SR_DOUBLE_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER') THEN '랙·서버'
   WHEN `model_key` IN ('SR_INROW', 'SR_IMMERSION', 'SR_DLC_CDU') THEN '냉각 설비'
@@ -60,3 +69,4 @@ WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_GPU_SERVER', 'SR_DLC
 UPDATE `scene_model` SET `rack_u_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_GPU_SERVER','SR_DLC_SERVER','SR_PDU_RACK');
 UPDATE `scene_model` SET `rack_attachment_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_PDU_VERTICAL','SR_DRAGINO_TH','SR_DRAGINO_DOOR');
 UPDATE `scene_model` SET `device_linkable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_RDC','SR_IMMERSION','SR_RDC_RACK');
+UPDATE `scene_model` SET `panel_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_ACCURA_2350_1P','SR_ACCURA_2350_3P','SR_PANEL_BREAKER','SR_PANEL_BRANCH','SR_PANEL_MAIN','SR_PANEL_METER','SR_PANEL_BUSBAR','SR_PANEL_WIRE');

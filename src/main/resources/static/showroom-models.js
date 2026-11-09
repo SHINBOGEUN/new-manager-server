@@ -20,9 +20,17 @@ export const SHOWROOM_MODELS = [
   { key: 'SR_PDU_VERTICAL', label: '세로형 PDU', file: 'pdu_rack_vertical.glb', width: .1, height: 1.6, depth: .1 },
   { key: 'SR_DRAGINO_TH', label: 'Dragino 온습도 센서', file: 'dragino_temperature_humidity.glb', width: .068, height: .12, depth: .027 },
   { key: 'SR_DRAGINO_DOOR', label: 'Dragino 도어 센서', file: 'dragino_door_contact.glb', width: .13, height: .10, depth: .03 },
+  { key: 'SR_ACCURA_2350_1P', label: 'ACCURA 2350 단상', file: 'accura_2350_1p.glb', width: .045, height: .105, depth: .045 },
+  { key: 'SR_ACCURA_2350_3P', label: 'ACCURA 2350 3상', file: 'accura_2350_3p.glb', width: .060, height: .105, depth: .045 },
+  { key: 'SR_PANEL_BREAKER', label: '분전반 차단기', file: 'panel_breaker_3p.glb', width: .095, height: .11, depth: .075 },
+  { key: 'SR_PANEL_BRANCH', label: '분전반 분기 차단기', file: 'panel_breaker_3p.glb', width: .34, height: .14, depth: .12 },
+  { key: 'SR_PANEL_MAIN', label: '분전반 메인 차단기', file: 'panel_main_breaker.glb', width: .37, height: .31, depth: .13 },
+  { key: 'SR_PANEL_METER', label: '분전반 계기', file: 'panel_meter.glb', width: .36, height: .23, depth: .12 },
+  { key: 'SR_PANEL_BUSBAR', label: '분전반 부스바', file: 'panel_busbar.glb', width: .06, height: .29, depth: .04 },
+  { key: 'SR_PANEL_WIRE', label: '분전반 배선', file: 'panel_wire.glb', width: .08, height: .13, depth: .012 },
   { key: 'SR_GPU_SERVER', label: 'GPU 서버 (4U 예시)', file: 'gpu_server_rack.glb', width: .482, height: .178, depth: .72 },
 ].map((model) => ({ ...model, category: (
-  ['SR_DRAGINO_TH', 'SR_DRAGINO_DOOR'].includes(model.key) ? '센서' :
+  ['SR_DRAGINO_TH', 'SR_DRAGINO_DOOR', 'SR_ACCURA_2350_1P', 'SR_ACCURA_2350_3P'].includes(model.key) ? '센서' :
   ['SR_INROW_MOLD', 'SR_WALL_COIL'].includes(model.key) ? '프레임·구조물' :
   ['SR_RACK', 'SR_DOUBLE_RACK', 'SR_INROW_RACK', 'SR_DLC_RACK', 'SR_OCP_RACK', 'SR_RDC_RACK', 'SR_ORV3_RACK', 'SR_HAC_RACK', 'SR_DLC_SERVER', 'SR_GPU_SERVER'].includes(model.key) ? '랙·서버' :
   ['SR_INROW', 'SR_IMMERSION', 'SR_DLC_CDU'].includes(model.key) ? '냉각 설비' : '전력 설비'
@@ -34,7 +42,8 @@ export const setShowroomModels = (models) => {
 export const showroomModelByKey = (key) => catalogModels.find((model) => model.key === key);
 export const showroomModelUrl = (model) => {
   const url = model.url || `/scene-assets/showroom/${encodeURIComponent(model.file)}`;
-  return model.key === 'SR_DOUBLE_RACK' ? `${url}${url.includes('?') ? '&' : '?'}asset=20261103b` : url;
+  const assetVersion = model.key === 'SR_DOUBLE_RACK' ? '20261103b' : model.key === 'SR_DLC_CDU' ? '20261109a' : null;
+  return assetVersion ? `${url}${url.includes('?') ? '&' : '?'}asset=${assetVersion}` : url;
 };
 
 // The source RDC asset includes two unfolded side panels. In the room layout

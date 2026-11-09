@@ -92,6 +92,32 @@ public class DevicePageSceneItem extends BaseEntity {
     @Column(name = "rack_color", length = 7)
     private String rackColor;
 
+    @jakarta.persistence.Lob
+    @Column(name = "panel_photo", columnDefinition = "LONGTEXT")
+    private String panelPhoto;
+
+    @Column(name = "panel_layout_initialized", nullable = false)
+    private boolean panelLayoutInitialized;
+
+    public void setPanelLayoutInitialized(boolean value) {
+        if (value && !"SR_INROW_PANEL".equals(modelKey)) throw new IllegalArgumentException("Panel layout requires a panel");
+        this.panelLayoutInitialized = value;
+    }
+
+    public void setPanelPhoto(String value) {
+        if (value == null || value.isBlank()) { this.panelPhoto = null; return; }
+        if (!"SR_INROW_PANEL".equals(modelKey) || !"EQUIPMENT".equals(itemType)
+                || value.length() > 1_500_000 || !value.startsWith("data:image/jpeg;base64,")) {
+            throw new IllegalArgumentException("Invalid panel photo");
+        }
+        try {
+            byte[] bytes = java.util.Base64.getDecoder().decode(value.substring("data:image/jpeg;base64,".length()));
+            if (bytes.length < 4 || (bytes[0] & 255) != 255 || (bytes[1] & 255) != 216 || (bytes[bytes.length-2] & 255) != 255 || (bytes[bytes.length-1] & 255) != 217)
+                throw new IllegalArgumentException("Invalid JPEG image");
+        } catch (IllegalArgumentException error) { throw new IllegalArgumentException("Invalid panel photo", error); }
+        this.panelPhoto = value;
+    }
+
     public void setRackColor(String color) {
         if (color == null || color.isBlank()) { this.rackColor = null; return; }
         if (!("RACK".equals(itemType) || (modelKey != null && modelKey.matches("SR_.*RACK") && !"SR_PDU_RACK".equals(modelKey)))
@@ -141,7 +167,7 @@ public class DevicePageSceneItem extends BaseEntity {
     public void update(DevicePageSceneItem parent, Device device, LocationNode locationNode, String itemType, String pointName,
                        String label, String modelKey, double x, double y, double z, double rotationY,
                        double sizeX, double sizeY, double sizeZ) {
-        if (itemType == null || !java.util.Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE").contains(itemType)) {
+        if (itemType == null || !java.util.Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE", "PANEL_COMPONENT").contains(itemType)) {
             throw new IllegalArgumentException("Unsupported itemType");
         }
         if (label == null || label.isBlank() || label.length() > 120) throw new IllegalArgumentException("Invalid label");
@@ -149,7 +175,7 @@ public class DevicePageSceneItem extends BaseEntity {
                 "MACHINE", "CONVEYOR", "TANK", "TABLE", "WALL", "WALL_CONCRETE", "WALL_GLASS", "WALL_GLASS_CLEAR", "WALL_PANEL",
                 "DOOR", "DOOR_DOUBLE", "DOOR_SLIDING", "WINDOW", "WINDOW_DOUBLE", "CEILING", "CEILING_CLEAR", "FLOOR", "LIGHT", "PIPE", "STAIR",
                 "SR_RACK", "SR_DOUBLE_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
-                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR").contains(modelKey)
+                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR", "SR_ACCURA_2350_1P", "SR_ACCURA_2350_3P", "SR_PANEL_BREAKER", "SR_PANEL_BRANCH", "SR_PANEL_MAIN", "SR_PANEL_METER", "SR_PANEL_BUSBAR", "SR_PANEL_WIRE").contains(modelKey)
                 && !modelKey.matches("USR_[A-Z0-9]{24}")) {
             throw new IllegalArgumentException("Unsupported modelKey");
         }
@@ -163,10 +189,11 @@ public class DevicePageSceneItem extends BaseEntity {
                 && !modelKey.startsWith("WALL") && !modelKey.startsWith("DOOR") && !modelKey.startsWith("WINDOW")
                 && !java.util.Set.of("FLOOR", "CEILING", "CEILING_CLEAR", "LIGHT", "PIPE", "STAIR").contains(modelKey);
         boolean equipmentFrame = isEquipmentFrame(modelKey);
+        boolean panelComponent = "PANEL_COMPONENT".equals(itemType);
         if (!Double.isFinite(sizeX) || !Double.isFinite(sizeY) || !Double.isFinite(sizeZ)
-                || sizeY < (scalableEquipment ? 2 : 4) || sizeY > (scalableEquipment ? 64 : 4)
-                || sizeX < .5 || sizeX > (equipmentFrame ? 32 : architecturalSpan ? 24 : scalableEquipment ? (modelKey.startsWith("SR_") || modelKey.startsWith("USR_")) ? 32 : 16 : buildingPart ? 5 : 4)
-                || sizeZ < .5 || sizeZ > (scalableEquipment ? 96 : modelKey.startsWith("CEILING") ? 24 : buildingPart ? 5 : 4)) {
+                || sizeY < (panelComponent ? .5 : scalableEquipment ? 2 : 4) || sizeY > (panelComponent ? 16 : scalableEquipment ? 64 : 4)
+                || sizeX < .5 || sizeX > (panelComponent ? 16 : equipmentFrame ? 32 : architecturalSpan ? 24 : scalableEquipment ? (modelKey.startsWith("SR_") || modelKey.startsWith("USR_")) ? 32 : 16 : buildingPart ? 5 : 4)
+                || sizeZ < .5 || sizeZ > (panelComponent ? 16 : scalableEquipment ? 96 : modelKey.startsWith("CEILING") ? 24 : buildingPart ? 5 : 4)) {
             throw new IllegalArgumentException("Invalid scene item size");
         }
         if ("SENSOR".equals(itemType) && (parent == null || device == null || pointName == null || pointName.isBlank())) {
@@ -185,7 +212,10 @@ public class DevicePageSceneItem extends BaseEntity {
                 || parent.getModelKey() == null || !parent.getModelKey().startsWith("WALL"))) {
             throw new IllegalArgumentException("A door or window must be attached to a wall");
         }
-        if (!java.util.Set.of("SENSOR", "DEVICE").contains(itemType) && parent != null && !wallOpening) {
+        if ("PANEL_COMPONENT".equals(itemType) && (parent == null || !"SR_INROW_PANEL".equals(parent.getModelKey()) || pointName != null)) {
+            throw new IllegalArgumentException("A panel component requires a distribution panel host");
+        }
+        if (!java.util.Set.of("SENSOR", "DEVICE", "PANEL_COMPONENT").contains(itemType) && parent != null && !wallOpening) {
             throw new IllegalArgumentException("Only devices or wall openings can be attached to a parent item");
         }
         this.parent = parent;
