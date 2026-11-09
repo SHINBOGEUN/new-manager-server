@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS `device_page_scene_item` (
   `group_key` varchar(36) DEFAULT NULL COMMENT '같이 이동하는 설비 묶음 식별자',
   `group_name` varchar(80) DEFAULT NULL COMMENT '설비 묶음 이름',
   `locked` tinyint(1) NOT NULL DEFAULT 0 COMMENT '설비 배치 잠금 여부',
+  `panel_photo` longtext DEFAULT NULL COMMENT '분전반 내부 사진',
+  `panel_layout_initialized` tinyint(1) NOT NULL DEFAULT 0 COMMENT '분전반 기본 배치 저장 여부',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6) COMMENT '생성 시각',
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6) COMMENT '수정 시각',
   PRIMARY KEY (`id`),

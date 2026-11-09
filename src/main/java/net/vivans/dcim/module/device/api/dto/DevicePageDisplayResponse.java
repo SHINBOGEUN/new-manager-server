@@ -28,6 +28,8 @@ public record DevicePageDisplayResponse(
             String groupKey,
             String groupName,
             boolean locked,
-            String rackColor
+            String rackColor,
+            String panelPhoto,
+            boolean panelLayoutInitialized
     ) {}
 }

@@ -30,6 +30,8 @@ public record DevicePageDisplayUpdateRequest(
             String groupKey,
             String groupName,
             Boolean locked,
-            String rackColor
+            String rackColor,
+            String panelPhoto,
+            Boolean panelLayoutInitialized
     ) {}
 }

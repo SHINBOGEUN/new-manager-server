@@ -188,7 +188,7 @@ if [[ " ${services[*]} " == *" manager-server "* ]]; then
     if command -v mariadb >/dev/null 2>&1; then client=mariadb; elif command -v mysql >/dev/null 2>&1; then client=mysql; else exit 41; fi
     exec "$client" --protocol=socket --user="$user" --password="$pass" "$db"
   ' < "$migration"
-  echo 'GPU agent catalog migration applied'
+  echo 'Manager catalog and panel migrations applied'
 fi
 mkdir -p "$app_dir/.cd-releases"
 mv "$incoming" "$release"

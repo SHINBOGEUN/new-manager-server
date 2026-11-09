@@ -56,6 +56,11 @@ public class SceneModel extends BaseEntity {
     @Column(name = "device_linkable", nullable = false)
     private boolean deviceLinkable;
 
+    @Column(name = "panel_installable", nullable = false)
+    private boolean panelInstallable;
+
+    public void setPanelInstallable(boolean allowed) { this.panelInstallable = allowed; }
+
     public void setDeviceLinkable(boolean allowed) { this.deviceLinkable = allowed; }
 
     public void setRackInstallable(boolean allowed) { this.rackInstallable = allowed; this.rackUInstallable = allowed; this.rackAttachmentInstallable = allowed; }

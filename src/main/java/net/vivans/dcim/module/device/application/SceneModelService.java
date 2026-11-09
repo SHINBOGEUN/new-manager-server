@@ -29,12 +29,12 @@ public class SceneModelService {
     private final net.vivans.dcim.module.device.infrastructure.persistence.RackModelPlacementRepository modelPlacements;
 
     public record ModelResponse(String key, String label, String category, String file, double width, double height,
-                                double depth, boolean enabled, boolean builtin, String url, boolean inUse, boolean rackInstallable, boolean rackUInstallable, boolean rackAttachmentInstallable, boolean deviceLinkable) {
+                                double depth, boolean enabled, boolean builtin, String url, boolean inUse, boolean rackInstallable, boolean rackUInstallable, boolean rackAttachmentInstallable, boolean deviceLinkable, boolean panelInstallable) {
         static ModelResponse from(SceneModel model, boolean inUse) {
             return new ModelResponse(model.getKey(), model.getName(), model.getCategory(), model.getFileName(),
                     model.getWidth(), model.getHeight(), model.getDepth(), model.isEnabled(),
                     model.isBuiltin(), "/api/manager/scene-models/" + model.getKey() + "/content?v="
-                    + (model.getUpdatedDt() == null ? 0 : model.getUpdatedDt().toEpochMilli()), inUse, model.isRackInstallable(), model.isRackUInstallable(), model.isRackAttachmentInstallable(), model.isDeviceLinkable());
+                    + (model.getUpdatedDt() == null ? 0 : model.getUpdatedDt().toEpochMilli()), inUse, model.isRackInstallable(), model.isRackUInstallable(), model.isRackAttachmentInstallable(), model.isDeviceLinkable(), model.isPanelInstallable());
         }
     }
 
@@ -50,6 +50,18 @@ public class SceneModelService {
 
     public boolean usable(String key) {
         return repository.existsById(key);
+    }
+
+    public boolean panelInstallable(String key) {
+        return repository.findById(key).map(model -> model.isEnabled() && model.isPanelInstallable()).orElse(false);
+    }
+
+    @Transactional
+    public ModelResponse setPanelInstallable(String key, boolean allowed) {
+        SceneModel model = find(key);
+        model.setPanelInstallable(allowed);
+        repository.flush();
+        return ModelResponse.from(model, sceneItemRepository.existsByModelKey(key) || rackPlacements.existsBySceneModelKey(key) || modelPlacements.existsBySceneModelKey(key));
     }
 
     @Transactional

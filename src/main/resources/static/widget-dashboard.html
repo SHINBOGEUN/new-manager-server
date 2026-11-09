@@ -18,10 +18,16 @@
       const device = results.get(Number(source.deviceId));
       const points = new Map((device?.points || []).map((point) => [point.pointName, point]));
       return `<tr><th scope="row">${esc(source.deviceName || device?.deviceName || `장비 #${source.deviceId}`)}</th>${columns.map((column) => {
+        if (column.pointName === '__collected_at') {
+          const latest = (device?.points || []).map((point) => point.time ? Date.parse(point.time) : NaN).filter(Number.isFinite);
+          return `<td class="widget-table-text">${latest.length ? esc(new Date(Math.max(...latest)).toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false })) : '—'}</td>`;
+        }
         const point = points.get(column.pointName);
-        const number = point?.value == null ? null : Number(point.value);
-        const value = number == null || !Number.isFinite(number) ? '—' : number.toLocaleString('ko-KR', { maximumFractionDigits:3 });
-        return `<td>${esc(value)}${number != null && Number.isFinite(number) && point?.unit ? ` <small>${esc(point.unit)}</small>` : ''}</td>`;
+        const raw = point?.value;
+        const number = raw == null || typeof raw === 'boolean' || String(raw).trim() === '' ? null : Number(raw);
+        const numeric = number != null && Number.isFinite(number);
+        const value = raw == null || raw === '' ? '—' : numeric ? number.toLocaleString('ko-KR', { maximumFractionDigits:3 }) : String(raw);
+        return `<td class="${numeric ? 'widget-table-number' : 'widget-table-text'}">${esc(value)}${raw != null && point?.unit ? ` <small>${esc(point.unit)}</small>` : ''}</td>`;
       }).join('')}</tr>`;
     }).join('');
     return `<div class="widget-table-scroll"><table class="widget-data-table"><thead><tr><th scope="col">장비</th>${columns.map((column) => `<th scope="col">${esc(column.label)}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${columns.length + 1}">선택한 장비가 없습니다.</td></tr>`}</tbody></table></div>`;
@@ -46,7 +52,7 @@
     function renderPowerDistributionBody(data) {
       if (!data || data.error) return `<div class="empty" style="padding:12px">${escapeHtml(data?.error || "데이터 없음")}</div>`;
       const groups = data.groups || [];
-      const colors = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#fb7185", "#22d3ee", "#f97316", "#a3e635"];
+      const colors = ["#4cc9f0", "#b59cff", "#53d6a2", "#ffd166", "#ff8696", "#80d8cf", "#ffae70", "#b9dd76"];
       const resolved = groups.map((group, index) => ({ ...group, color: group.color || colors[index % colors.length] }));
       const conic = resolved.length && data.complete
         ? `conic-gradient(${resolved.map((group, index) => `${group.color} ${resolved.slice(0, index).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}% ${resolved.slice(0, index + 1).reduce((sum, item) => sum + Number(item.ratio || 0), 0)}%`).join(", ")})`
@@ -85,17 +91,21 @@
 
   </style>
   <style>
-.widget-table-scroll { width:100%; height:100%; min-height:100px; overflow:auto; }
-.widget-data-table { width:100%; border-collapse:collapse; color:var(--text); font-size:12px; text-align:left; }
-.widget-data-table th, .widget-data-table td { padding:9px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
-.widget-data-table thead th { position:sticky; top:0; z-index:1; background:var(--panel-2,var(--surface2)); color:var(--muted); }
-.widget-data-table tbody tr:nth-child(even) { background:rgba(128,158,190,.06); }
-.widget-data-table tbody th { font-weight:650; }
-.widget-data-table td { color:var(--accent); font-variant-numeric:tabular-nums; }
-.widget-data-table td small { color:var(--muted); }
+.widget-table-scroll { width:100%; height:100%; min-height:100px; overflow:auto; border-radius:8px; }
+.widget-data-table { width:100%; border-collapse:separate; border-spacing:0; color:var(--text); font-size:12px; text-align:left; font-variant-numeric:tabular-nums; }
+.widget-data-table th, .widget-data-table td { padding:10px 14px; border-bottom:1px solid rgba(137,166,194,.16); white-space:nowrap; }
+.widget-data-table thead th { position:sticky; top:0; z-index:2; background:#20344a; color:#e3f1ff; font-weight:700; letter-spacing:.02em; }
+.widget-data-table tbody tr:nth-child(even) { background:rgba(120,158,190,.09); }
+.widget-data-table tbody tr:hover { background:rgba(91,181,216,.14); }
+.widget-data-table tbody th { position:sticky; left:0; z-index:1; background:var(--surface2,#142234); font-weight:700; }
+.widget-data-table td.widget-table-number { color:#75d6f3; font-weight:650; }
+.widget-data-table td.widget-table-text { color:var(--text); }
+.widget-data-table td small { color:var(--muted); font-weight:400; }
+html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color:#20384e; }
+html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261105e"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261109panel-accura"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -271,6 +281,12 @@
     .board > .card .card-head { padding:10px 14px; background:var(--panel-2); border-bottom:1px solid var(--line); }
     .board > .card .card-head h2 { font-size:13px; letter-spacing:.01em; }
     .board > .card .card-body { padding:12px 14px; }
+    .board > .card.power-distribution-card .card-body { container-type:size; }
+    .power-distribution-card .power-distribution { min-height:100%; }
+    .power-distribution-card .power-donut { width:clamp(96px, min(35cqw, 75cqh), 220px); height:auto; aspect-ratio:1; flex:0 0 auto; }
+    .power-distribution-card .power-donut::after { inset:22%; }
+    .power-distribution-card .power-donut-center b { font-size:clamp(16px, 7cqh, 24px); }
+    .power-distribution-card .power-groups { gap:clamp(9px, 6cqh, 20px); }
     .board > .card.chart-card .card-body, .board > .card.psychrometric-card .card-body { display:flex; flex-direction:column; }
     .board > .card.cctv-card .card-body { padding:5px; }
     .power-rank { display:grid; gap:7px; margin-top:10px; }
@@ -342,6 +358,11 @@
     .board > .card.cctv-card .card-head { display:none; }
     body.edit-mode .board > .card.cctv-card .card-head { display:flex; position:absolute; top:5px; left:6px; z-index:5; min-height:0; padding:5px 8px; border:0; border-radius:6px; background:var(--panel-2); }
     body.edit-mode .board > .card.cctv-card .card-head > div { display:none; }
+    /* Compact widgets keep their contents visible while offering a usable drag strip. */
+    body.edit-mode .board > .card:is(.last-card,.cctv-card) .card-head { left:12px; right:12px; top:5px; width:auto; min-height:28px; justify-content:center; cursor:grab; touch-action:none; background:rgba(16,35,52,.9); }
+    body.edit-mode .board > .card:is(.last-card,.cctv-card) .card-head .drag-handle { font-size:18px; }
+    body.edit-mode .board > .card .card-head { touch-action:none; }
+
     @container (max-width:250px) { .metric-tile { gap:10px; padding:14px 10px; } .metric-icon { width:34px; height:34px; border-radius:10px; } .metric-icon svg { width:20px; height:20px; } .metric-number strong { font-size:30px; } }
     .point-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
     .point-row .val { color: var(--accent); font-variant-numeric: tabular-nums; }
@@ -639,6 +660,11 @@
     .page-visualization-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid #263951; }
     .page-visualization-head strong { color:#e4edf8; }
     .page-visualization-head small { color:#8fa4be; }
+    .scene-summary { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0; }
+    .scene-summary-item { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid #304b60; border-radius:8px; background:#102235; color:#b9ccdc; font-size:12px; line-height:1.2; white-space:nowrap; }
+    .scene-summary-item b { color:#e7f7ff; font-size:13px; }
+    .scene-summary-item.is-alert b { color:#ff9ba8; }
+    .scene-summary-item.is-ok b { color:#75d9ad; }
     .page-scene-nav .page-edit-icon { min-height:36px; padding:7px 12px; border-color:var(--accent); color:#dff5ff; background:#173b50; font-size:12px; font-weight:650; white-space:nowrap; }
     .page-scene-nav .page-edit-icon:hover { background:#204c63; }
     .page-device-data-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; padding:12px; }
@@ -1053,7 +1079,7 @@
     const DEFAULT_W = 16;  // 화면상 예전 4/12 ≈ 같은 너비
     const DEFAULT_H = 8;   // 화면상 예전 2행 ≈ 같은 높이
     const DEFAULT_CHART_H = 16; // chart 카드는 라인 차트용으로 더 높게
-    const CHART_PALETTE = ["#3d9cf0", "#3ecf8e", "#f0b429", "#f07178", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
+    const CHART_PALETTE = ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
     // 스케일: 12칸→×4, 24칸→×2, 이미 48칸이면 그대로
 
     const state = {
@@ -1564,7 +1590,7 @@
       state.models = models?.content || models || [];
       try {
         const catalog = await api("/api/manager/scene-models", { cache: "no-store" });
-        const { setShowroomModels } = await import("/showroom-models.js?v=20261103d");
+        const { setShowroomModels } = await import("/showroom-models.js?v=20261109paneledit");
         setShowroomModels(catalog);
       } catch (error) { console.warn("3D 모델 목록을 불러오지 못했습니다", error); }
       state.pageVisualization = pageMeasurements ? { ...pageMeasurements, ...(pageDisplay || {}) } : null;
@@ -1580,12 +1606,60 @@
       await refreshBoard(true);
     }
 
+    const sceneSummaryCache = new Map();
+    let sceneProblemDeviceIds = [];
+    let sceneProblemPageCode = '';
+    async function populateSceneSummary(page, devices, element) {
+      const code = String(page.pageCode || '');
+      const items = page.items || [];
+      const rackCodes = [...new Set(items.map(item => item.locationNodeCode).filter(Boolean))].sort();
+      const directIds = [...new Set(items.filter(item => item.deviceId != null).map(item => Number(item.deviceId)).filter(id => Number.isInteger(id) && id > 0))].sort((a,b) => a-b);
+      const key = code + ':' + directIds.join(',') + ':' + rackCodes.join(',');
+      let cached = sceneSummaryCache.get(key);
+      if (!cached || Date.now() - cached.time > 60000) {
+        const promise = (async () => {
+          const rackResults = await Promise.allSettled(rackCodes.map(rack => api(`/api/manager/assets/racks/${encodeURIComponent(rack)}/layout`, {cache:'no-store'})));
+          const connected = new Set(directIds);
+          for (const result of rackResults) if (result.status === 'fulfilled') for (const placement of result.value?.placements || []) {
+            const id = Number(placement.deviceId); if (Number.isInteger(id) && id > 0) connected.add(id);
+          }
+          const ids = [...connected].sort((a,b) => a-b);
+          const [alarm, status] = await Promise.allSettled([
+            ids.length ? api(`/api/manager/alarms/device-summary?deviceIds=${encodeURIComponent(ids.join(','))}`, {cache:'no-store'}) : Promise.resolve({openCount:0,deviceIds:[]}),
+            ids.length ? api('/api/manager/query/collection-status?lookbackHours=168', {cache:'no-store'}) : Promise.resolve({devices:[]})
+          ]);
+          return {ids, alarm, status, incomplete:rackResults.some(result => result.status !== 'fulfilled')};
+        })();
+        cached = {time:Date.now(), promise}; sceneSummaryCache.clear(); sceneSummaryCache.set(key, cached);
+      }
+      const {ids, alarm, status, incomplete} = await cached.promise;
+      if (!element.isConnected) return;
+      const rows = status.status === 'fulfilled' && Array.isArray(status.value?.devices) ? status.value.devices : null;
+      const statusById = new Map();
+      if (rows) rows.forEach(row => statusById.set(Number(row.deviceId), row.status));
+      const affected = new Set(alarm.status === 'fulfilled' && Array.isArray(alarm.value?.deviceIds) ? alarm.value.deviceIds.map(Number) : []);
+      if (rows) for (const id of ids) if (['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusById.get(id))) affected.add(id);
+      const unknown = !rows || ids.some(id => !statusById.has(id));
+      const partial = incomplete || unknown || alarm.status !== 'fulfilled';
+      sceneProblemDeviceIds = [...affected];
+      state.pageScene3dApi?.setProblemDevices?.(sceneProblemDeviceIds);
+      const countText = `${ids.length}대${incomplete ? ' 이상' : ''}`;
+      const problemText = `${affected.size}대${partial ? ' · 일부 확인 불가' : ''}`;
+      element.innerHTML = `<span class="scene-summary-item"><span>연결된 장비</span><b>${escapeHtml(countText)}</b></span><span class="scene-summary-item ${affected.size ? 'is-alert' : !partial ? 'is-ok' : ''}"><span>문제 장비</span><b>${escapeHtml(problemText)}</b></span>`;
+    }
+
     function createSceneHeader(page, modeLabel, devices) {
       const head = document.createElement("div"); head.className = "page-visualization-head";
+      if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
+        if (sceneProblemPageCode !== page.pageCode) { sceneProblemDeviceIds = []; sceneProblemPageCode = page.pageCode; }
+        const summary = document.createElement('div'); summary.className = 'scene-summary'; summary.setAttribute('aria-label', '페이지 장비 요약');
+        summary.innerHTML = `<span class="scene-summary-item">연결 상태 조회 중…</span>`;
+        head.append(summary);
+        populateSceneSummary(page, devices, summary).catch(() => { if (summary.isConnected) summary.textContent = '요약을 불러오지 못했습니다.'; });
+      }
       const tools = document.createElement("div"); tools.className = "page-scene-nav";
       tools.style.marginLeft = "auto";
-      const count = document.createElement("small"); count.textContent = `${devices.length}대 · 최신값 자동 갱신`;
-      tools.append(count);
+
       if (consoleAuth()?.getRole?.() === "ADMIN") {
         if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
           if (page.viewMode === "SCENE_3D") {
@@ -1731,6 +1805,8 @@
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
           rackColor: item.rackColor || null,
+          panelPhoto: item.modelKey === 'SR_INROW_PANEL' ? (item.panelPhoto || '') : null,
+          panelLayoutInitialized: item.modelKey === 'SR_INROW_PANEL' ? Boolean(item.panelLayoutInitialized) : false,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),
@@ -1743,7 +1819,8 @@
         clearSceneDraft();
         await refreshPageVisualization();
         log("랙 배치와 센서 장착 정보를 저장했습니다.");
-      } catch (error) { log("3D 장면 저장 실패: " + error.message); }
+        return true;
+      } catch (error) { log("3D 장면 저장 실패: " + error.message); return false; }
     }
 
     function findSceneItemKey(item) { return item.id != null ? `db-${item.id}` : item.clientKey; }
@@ -1970,7 +2047,7 @@
               };
               dialog.addEventListener("close", () => { requestSequence++; clearInterval(timer); viewer?.dispose(); dialog.remove(); }, {once:true});
               drawConnection(); dialog.showModal(); refreshValues(); timer = setInterval(refreshValues, 15000);
-              Promise.all([import("/showroom-models.js?v=20261103d"), import("/asset-model-preview.js?v=20261105c")]).then(([catalog, preview]) => {
+              Promise.all([import("/showroom-models.js?v=20261109paneledit"), import("/asset-model-preview.js?v=20261105c")]).then(([catalog, preview]) => {
                 if (!dialog.open) return;
                 const model = catalog.showroomModelByKey(host.modelKey);
                 if (!model) { modelStage.textContent = "3D 모델을 찾을 수 없습니다."; return; }
@@ -1979,10 +2056,14 @@
             },
             onPanelDetail: (panel) => {
               const key = findSceneItemKey(panel);
-              const attached = (state.pageScene3dApi?.getItems?.() || []).filter((item) =>
-                ["DEVICE", "SENSOR"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key)
+              const children = (state.pageScene3dApi?.getItems?.() || []).filter((item) => (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key);
+              const attached = children.filter((item) =>
+                ["DEVICE", "SENSOR", "PANEL_COMPONENT"].includes(item.itemType) && (item.parentId != null ? `db-${item.parentId}` : item.parentClientKey) === key)
                 .map((item) => Number(item.deviceId)).filter((id) => Number.isSafeInteger(id) && id > 0);
-              window.parent.postMessage({ type: "dcim:dashboard:open-panel", label: panel.label || "분전반", deviceIds: attached }, location.origin);
+              const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN" && !panel.locked;
+              if (window.parent.openScenePanel) window.parent.openScenePanel(panel.label || "분전반", page.pageCode, attached,
+                children.filter((item) => item.itemType === "PANEL_COMPONENT"), editing, devices,
+                async (components) => { if (!state.pageScene3dApi?.setPanelComponents(key, components)) throw new Error("분전반이 잠겼거나 도면에서 삭제되었거나 설치할 수 없는 모델이 있습니다."); if (!await savePageScene()) throw new Error("도면 저장에 실패했습니다. 변경 사항을 확인한 뒤 다시 저장하세요."); }, Boolean(panel.panelLayoutInitialized));
             },
             onRackDetail: (rack) => {
               if (!rack.locationNodeCode) {
@@ -2014,6 +2095,7 @@
               if (status) status.textContent = "선택한 설비에 장착할 장비를 고르세요.";
             },
           });
+          state.pageScene3dApi?.setProblemDevices?.(sceneProblemDeviceIds);
           for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
             refreshSceneRack(code).catch((error) => console.warn("랙 배치 조회 실패", error));
           }
@@ -2176,7 +2258,7 @@
             if (category.key === "showroom") {
               try {
                 const models = await api("/api/manager/scene-models", { cache: "no-store" });
-                const { setShowroomModels } = await import("/showroom-models.js?v=20261103d");
+                const { setShowroomModels } = await import("/showroom-models.js?v=20261109paneledit");
                 setShowroomModels(models);
                 category.models = models.filter((model) => model.enabled && !["SR_DLC_RACK", "SR_INROW_RACK", "SR_HAC_RACK", "SR_OCP_RACK", "SR_ORV3_RACK"].includes(model.key));
                 category.items = category.models.map((model) => [model.key, model.label, "▣"]);
@@ -2187,7 +2269,7 @@
                   api("/api/manager/scene-builtin-assets", { cache: "no-store" }),
                   api("/api/manager/scene-models", { cache: "no-store" }),
                 ]);
-                const { setShowroomModels } = await import("/showroom-models.js?v=20261103d");
+                const { setShowroomModels } = await import("/showroom-models.js?v=20261109paneledit");
                 setShowroomModels(models);
                 const enabled = builtins.filter((asset) => asset.enabled && asset.category === category.key.toUpperCase());
                 const icons = new Map(category.items.map(([key, , icon]) => [key, icon]));
@@ -3425,6 +3507,7 @@
           dataStatus = distribution?.dataStatus;
           body = window.PowerDistributionWidget.render(distribution);
           subExtra = " · W 단위 최신값 분배";
+          cardClass = "card power-distribution-card";
         } else if (w.queryKind === "cctv") {
           body = renderCctvBody(w);
           subExtra = ` · ${(w.cctvCameras || []).length}대`;
@@ -3658,17 +3741,20 @@
     function bindEditHandlers() {
       if (!state.editMode) return;
       $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => {
+        if (card.dataset.editSelectionBound === "true") return;
+        card.dataset.editSelectionBound = "true";
         card.addEventListener("click", (event) => {
+          if (!state.editMode) return;
           if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
           toggleRowSelection(card.dataset.widgetId);
           selectWidgetFromList(card.dataset.widgetId, {scrollBoard:false, scrollList:true});
         });
       });
       $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
-        handle.addEventListener("pointerdown", onDragStart);
+        handle.onpointerdown = onDragStart;
       });
       $("board").querySelectorAll("[data-resize]").forEach((handle) => {
-        handle.addEventListener("pointerdown", onResizeStart);
+        handle.onpointerdown = onResizeStart;
       });
     }
 
@@ -3714,7 +3800,7 @@
     }
 
     function onDragStart(e) {
-      if (!state.editMode || e.button !== 0) return;
+      if (!state.editMode || e.button !== 0 || e.target.closest("button, select, input, a")) return;
       const card = e.currentTarget.closest(".card");
       if (!card) return;
       beginInteraction(e, card, "move");
@@ -3818,7 +3904,13 @@
     async function saveLayoutEdits() {
       if (state.saving) return;
       const changed = state.widgets.filter(hasWidgetLayoutChanges);
-      if (!changed.length) { showLayoutSaveStatus("저장할 변경 사항이 없습니다"); if (!widgetWorkspaceRequested) setEditMode(false); return; }
+      if (!changed.length) {
+        setEditMode(false);
+        if (embeddedInConsole && window.parent !== window && (widgetWorkspaceRequested || layoutEditRequested)) {
+          window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
+        } else showLayoutSaveStatus("저장할 변경 사항이 없습니다");
+        return;
+      }
       state.saving = true;
       showLayoutSaveStatus("배치를 저장하고 있습니다…", false, true);
       $("editBtn").textContent = "저장 중…";
@@ -3839,9 +3931,8 @@
         }
         log(`배치 변경 ${savedCount}개 저장 완료`);
         showLayoutSaveStatus(`✓ 위젯 ${savedCount}개 배치 저장 완료`);
-        if (widgetWorkspaceRequested) { renderWidgetList(); await refreshBoard(false); }
-        else setEditMode(false);
-        if (!widgetWorkspaceRequested && embeddedInConsole && window.parent !== window) {
+        setEditMode(false);
+        if (embeddedInConsole && window.parent !== window && (widgetWorkspaceRequested || layoutEditRequested)) {
           window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
         }
       } catch (error) {
