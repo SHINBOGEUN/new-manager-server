@@ -4653,7 +4653,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         await doLogin($("loginUsername").value, $("loginPassword").value);
       } catch (e) {
         err.style.display = "block";
-        err.textContent = "실패: " + e.message + " (계정이 없으면 회원가입을 먼저 하세요)";
+        err.textContent = "실패: " + e.message + (state.registrationOpen ? " (계정이 없으면 회원가입을 먼저 하세요)" : " (계정이 없으면 관리자에게 요청하세요)");
         toast("로그인 실패: " + e.message, true);
         log("로그인 실패: " + e.message);
       }
@@ -4674,6 +4674,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("registerModal").setAttribute("aria-hidden", "false");
       $("registerUsername").focus();
     }
+
+    // 공개 회원가입이 꺼져 있으면(운영 기본) 버튼을 숨긴다. 빈 DB에서는 첫 관리자 계정 만들기로 보여준다.
+    async function applyRegistrationPolicy() {
+      try {
+        const policy = await api("/api/manager/auth/registration", { retryOnUnauthorized: false });
+        state.registrationOpen = !!(policy && policy.open);
+        $("registerCardBtn").style.display = state.registrationOpen ? "" : "none";
+        if (policy && policy.initialAdmin) {
+          $("registerCardBtn").textContent = "첫 관리자 만들기";
+          $("registerTitle").textContent = "첫 관리자 계정 만들기";
+        }
+      } catch (e) {
+        state.registrationOpen = false;
+        $("registerCardBtn").style.display = "none";
+      }
+    }
+    applyRegistrationPolicy();
 
     $("registerCardBtn").onclick = openRegisterModal;
     $("registerClose").onclick = closeRegisterModal;

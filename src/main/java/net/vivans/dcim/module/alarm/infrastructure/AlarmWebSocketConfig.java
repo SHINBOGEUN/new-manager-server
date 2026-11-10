@@ -1,6 +1,8 @@
 package net.vivans.dcim.module.alarm.infrastructure;
 
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.shared.security.SecurityConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
@@ -19,6 +21,10 @@ import java.util.Map;
 public class AlarmWebSocketConfig implements WebSocketConfigurer {
     private final AlarmWebSocketHandler handler;
     private final AlarmSocketTickets tickets;
+
+    /** HTTP CORS와 같은 Origin 목록(CORS_ALLOWED_ORIGINS). 같은 출처 접속은 항상 허용된다. */
+    @Value("${security.cors.allowed-origins:*}")
+    private String allowedOrigins;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
@@ -40,6 +46,6 @@ public class AlarmWebSocketConfig implements WebSocketConfigurer {
             @Override
             public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                        WebSocketHandler webSocketHandler, Exception exception) {}
-        });
+        }).setAllowedOriginPatterns(SecurityConfig.parseOrigins(allowedOrigins).toArray(String[]::new));
     }
 }

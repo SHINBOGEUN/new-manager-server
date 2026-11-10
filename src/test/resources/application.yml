@@ -32,6 +32,8 @@ manager:
 
 security:
   auth-enabled: true
+  # 테스트 도우미가 /auth/register로 사용자를 만든다.
+  public-registration-enabled: true
 
 collector:
   service:

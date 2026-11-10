@@ -19,10 +19,11 @@ server:
 springdoc:
   api-docs:
     path: /api-docs
-    enabled: true
+    # 운영(prod) 프로필은 기본으로 끈다. 필요하면 SWAGGER_ENABLED=true.
+    enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: ${SWAGGER_ENABLED:true}
     operations-sorter: alpha
     tags-sorter: alpha
     try-it-out-enabled: true
@@ -56,6 +57,11 @@ jwt:
 
 security:
   auth-enabled: true
+  # 공개 회원가입. 끄면(기본) 빈 DB의 첫 계정만 가입되어 ADMIN이 되고, 이후 계정은 관리자가 사용자 관리에서 만든다.
+  public-registration-enabled: ${PUBLIC_REGISTRATION_ENABLED:false}
+  cors:
+    # 교차 출처 호출을 허용할 화면 주소(쉼표 구분). 예: http://dj.vivans.net:20174
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
   refresh-cookie:
     # HTTPS 배포에서는 AUTH_REFRESH_COOKIE_SECURE=true로 설정한다.
     secure: ${AUTH_REFRESH_COOKIE_SECURE:false}

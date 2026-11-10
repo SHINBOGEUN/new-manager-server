@@ -15,7 +15,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,7 +46,30 @@ class AuthCommandServiceTest {
     private AuthCommandService authCommandService;
 
     @Test
+    void register_whenPublicRegistrationDisabled_firstAccountBecomesAdmin() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
+        given(passwordEncoder.encode("password123")).willReturn("encoded-password");
+        given(userRepository.findByUsername("admin")).willReturn(Optional.empty());
+        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        UserResponse response = authCommandService.register("admin", "password123");
+
+        assertThat(response.role()).isEqualTo("ADMIN");
+        assertThat(authCommandService.registrationPolicy().initialAdmin()).isTrue();
+    }
+
+    @Test
+    void register_whenPublicRegistrationDisabled_rejectsAfterFirstAccount() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of(User.createNew("admin", "encoded")));
+
+        assertThatThrownBy(() -> authCommandService.register("intruder", "password123"))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThat(authCommandService.registrationPolicy().open()).isFalse();
+    }
+
+    @Test
     void register_createsNewUser() {
+        ReflectionTestUtils.setField(authCommandService, "publicRegistrationEnabled", true);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.findByUsername("newuser")).willReturn(Optional.empty());
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -57,6 +83,7 @@ class AuthCommandServiceTest {
 
     @Test
     void register_returnsExistingUserWithoutUpdatingPassword() {
+        ReflectionTestUtils.setField(authCommandService, "publicRegistrationEnabled", true);
         User existing = User.createNew("existing", "encoded-password");
         given(passwordEncoder.encode("any-password")).willReturn("new-encoded-password");
         given(userRepository.findByUsername("existing")).willReturn(Optional.of(existing));
