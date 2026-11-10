@@ -19,7 +19,11 @@ import java.util.List;
 @Slf4j
 @Component
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
-    private final List<String> validApiKeys = List.of("collector-service", "sensor-data-service");
+    @Value("${manager.inbound.sensor-data-api-key:}")
+    private String managerSensorDataApiKey;
+
+    @Value("${manager.inbound.collector-api-key:}")
+    private String managerCollectorApiKey;
 
     @Value("${external-data.api-key:}")
     private String externalDataApiKey;
@@ -53,7 +57,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         }
 
         if (apiKey != null) {
-            if (validApiKeys.contains(apiKey)) {
+            if (matchesKey(managerSensorDataApiKey, apiKey) || matchesKey(managerCollectorApiKey, apiKey)) {
                 authenticateApiKey("admin");
                 log.debug("API Key 인증 성공");
             } else {

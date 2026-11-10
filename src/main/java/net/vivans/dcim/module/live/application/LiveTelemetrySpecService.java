@@ -14,6 +14,7 @@ import net.vivans.dcim.module.live.infrastructure.collector.LiveCollectionPointS
 import net.vivans.dcim.module.live.infrastructure.collector.LiveCollectionSpec;
 import net.vivans.dcim.module.live.infrastructure.collector.LiveCollectionTargetSpec;
 import net.vivans.dcim.module.live.infrastructure.collector.LiveModbusTargetSpec;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +30,16 @@ import java.util.LinkedHashSet;
 @Transactional(readOnly = true)
 public class LiveTelemetrySpecService {
 
-    static final int LIVE_INTERVAL_MS = 1000;
-    private static final String DEFAULT_COMMUNITY = "public";
-    private static final int DEFAULT_TIMEOUT_MS = 800;
-    private static final int DEFAULT_RETRIES = 0;
-    private static final int DEFAULT_MAX_CONCURRENCY = 10;
+    @Value("${live.telemetry.interval-ms:1000}")
+    private int intervalMs = 1000;
+    @Value("${collection.snmp.community:public}")
+    private String community = "public";
+    @Value("${live.telemetry.timeout-ms:800}")
+    private int timeoutMs = 800;
+    @Value("${live.telemetry.retries:0}")
+    private int retries = 0;
+    @Value("${live.telemetry.max-concurrency:10}")
+    private int maxConcurrency = 10;
 
     private final DeviceCapabilityQueryService deviceCapabilityQueryService;
     private final DeviceRepository deviceRepository;
@@ -84,12 +90,12 @@ public class LiveTelemetrySpecService {
         }
         String protocol = targets.isEmpty() ? "modbus" : modbusTargets.isEmpty() ? "snmp" : "mixed";
         return new LiveCollectionSpec(
-                LIVE_INTERVAL_MS,
+                intervalMs,
                 protocol,
-                DEFAULT_COMMUNITY,
-                DEFAULT_TIMEOUT_MS,
-                DEFAULT_RETRIES,
-                DEFAULT_MAX_CONCURRENCY,
+                community,
+                timeoutMs,
+                retries,
+                maxConcurrency,
                 List.copyOf(targets),
                 List.copyOf(modbusTargets)
         );
