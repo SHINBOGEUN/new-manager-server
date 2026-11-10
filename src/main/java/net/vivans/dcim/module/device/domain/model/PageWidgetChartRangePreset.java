@@ -1,6 +1,8 @@
 package net.vivans.dcim.module.device.domain.model;
 
 public enum PageWidgetChartRangePreset {
+    last_1h,
+    last_6h,
     last_24h,
     today,
     yesterday,
@@ -17,7 +19,7 @@ public enum PageWidgetChartRangePreset {
             return valueOf(raw.trim());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                    "chartRangePreset must be last_24h, today, yesterday, last_3d, last_7d, this_month, or last_month");
+                    "chartRangePreset must be last_1h, last_6h, last_24h, today, yesterday, last_3d, last_7d, this_month, or last_month");
         }
     }
 }

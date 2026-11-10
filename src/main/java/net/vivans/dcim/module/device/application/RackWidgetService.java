@@ -1,8 +1,12 @@
 package net.vivans.dcim.module.device.application;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import net.vivans.dcim.module.device.domain.model.PageWidgetChartRangePreset;
+import net.vivans.dcim.module.query.application.UnitDisplay;
+import net.vivans.dcim.module.query.application.QueryRanges;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -49,15 +53,18 @@ public class RackWidgetService {
         return java.util.Arrays.stream(value.split(",")).map(String::strip).filter(s -> !s.isEmpty()).toList();
     }
     public record Source(Integer deviceId, String pointName, String protocol) {}
-    public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH, List<String> colors, String chartStyle) {
-        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, layoutX, layoutY, layoutW, layoutH, null, null); }
-        public Widget(String title, String type, int width, List<Source> sources) { this(title, type, width, sources, null, null, null, null, null, null, null, null); }
-        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes) { this(title, type, width, sources, rangeHours, intervalMinutes, null, null, null, null, null, null); }
-        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, null, null, null, null); }
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH, List<String> colors, String chartStyle, String rangePreset, String window) {
+        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, layoutX, layoutY, layoutW, layoutH, null, null, null, null); }
+        public Widget(String title, String type, int width, List<Source> sources) { this(title, type, width, sources, null, null, null, null, null, null, null, null, null, null, null, null); }
+        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes) { this(title, type, width, sources, rangeHours, intervalMinutes, null, null, null, null, null, null, null, null, null, null); }
+        public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, null, null, null, null, null, null, null, null); }
     }
-    public record WidgetValue(Source source, Double value, Instant time, List<Sample> samples) {}
+    public record WidgetValue(Source source, Double value, Instant time, List<Sample> samples, String displayValue, String displayUnit) {
+        public WidgetValue(Source source, Double value, Instant time, List<Sample> samples) { this(source, value, time, samples, null, null); }
+    }
     public record Sample(Instant time, Double value) {}
-    private record WidgetDefinition(String type, List<Source> sources, Integer rangeHours, Integer intervalMinutes) {}
+    private record WidgetDefinition(String type, List<Source> sources, String rangePreset, String window) {}
     public record RackWidgetDevice(Integer deviceId, String deviceName, String modelName, String deviceType, String pathCode, String pathName, boolean threePhaseMeasurements) {}
 
     @Transactional(readOnly = true)
@@ -83,8 +90,8 @@ public class RackWidgetService {
     public List<Widget> get(String code) {
         racks.getRackLayout(code);
         var rows = jdbc.query("SELECT widgets_json FROM rack_widget_config WHERE rack_location_code=?", (rs, n) -> rs.getString(1), code);
-        if (rows.isEmpty()) return defaultWidgets(code);
-        try { return mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {}); }
+        if (rows.isEmpty()) return normalizeWidgets(defaultWidgets(code));
+        try { return normalizeWidgets(mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {})); }
         catch (Exception e) { throw new IllegalStateException("랙 위젯 설정을 읽을 수 없습니다", e); }
     }
 
@@ -134,14 +141,16 @@ public class RackWidgetService {
     }
     @Transactional
     public List<Widget> save(String code, List<Widget> widgets) {
-        validateForRack(code, widgets);
+        List<Widget> normalized = normalizeWidgets(widgets);
+        validateForRack(code, normalized);
         try {
-            String json = mapper.writeValueAsString(widgets);
+            String json = mapper.writeValueAsString(normalized);
             jdbc.update("INSERT INTO rack_widget_config(rack_location_code, widgets_json) VALUES (?, ?) ON DUPLICATE KEY UPDATE widgets_json=VALUES(widgets_json)", code, json);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalArgumentException("위젯 설정을 저장할 수 없습니다", e); }
-        return widgets;
+        return normalized;
     }
     private List<DeviceMeasurementSourceCatalog.Source> validateForRack(String code, List<Widget> widgets) {
+        widgets = normalizeWidgets(widgets);
         var valid = sources(code);
         validateWidgets(widgets, valid);
         var deviceInfo = devices(code).stream().collect(java.util.stream.Collectors.toMap(RackWidgetDevice::deviceId, d -> d));
@@ -168,13 +177,13 @@ public class RackWidgetService {
             if (w == null || w.title() == null || w.title().isBlank() || w.title().length() > 80 || w.type() == null || !Set.of("VALUE", "PIE", "TREND", "PATH_BALANCE", "PHASE_BALANCE", "POWER_TREND").contains(w.type()) || (w.width() != 1 && w.width() != 2) || w.sources() == null || w.sources().isEmpty() || w.sources().size() > 8 || (w.type().equals("VALUE") && w.sources().size() != 1) || w.sources().stream().anyMatch(s -> !allowed(s, valid)))
                 throw new IllegalArgumentException("랙에 연결된 장비의 유효한 측정 항목을 선택하세요");
             if (w.colors() != null && (w.colors().size() > 8 || w.colors().stream().anyMatch(c -> c == null || !c.matches("#[0-9a-fA-F]{6}")))) throw new IllegalArgumentException("위젯 색상이 유효하지 않습니다");
-            if (w.chartStyle() != null && !Set.of("line", "bar").contains(w.chartStyle())) throw new IllegalArgumentException("차트 표시 방식이 유효하지 않습니다");
+            if (w.chartStyle() != null && !Set.of("line", "bar", "area").contains(w.chartStyle())) throw new IllegalArgumentException("차트 표시 방식이 유효하지 않습니다");
             String title = w.title().strip();
             String sameName = names.putIfAbsent(title.toLowerCase(Locale.ROOT), title);
             if (sameName != null) throw new IllegalArgumentException("이미 존재하는 위젯 이름입니다: " + sameName);
             var normalizedSources = new ArrayList<>(w.sources().stream().map(s -> new Source(s.deviceId(), s.pointName(), s.protocol().toLowerCase(Locale.ROOT))).toList());
             if (!w.type().equals("POWER_TREND") && !w.type().equals("PATH_BALANCE")) normalizedSources.sort(Comparator.comparing(Source::deviceId).thenComparing(Source::protocol).thenComparing(Source::pointName));
-            var definition = new WidgetDefinition(w.type(), List.copyOf(normalizedSources), w.type().equals("POWER_TREND") ? (w.rangeHours() == null ? 24 : w.rangeHours()) : null, w.type().equals("POWER_TREND") ? (w.intervalMinutes() == null ? 15 : w.intervalMinutes()) : null);
+            var definition = new WidgetDefinition(w.type(), List.copyOf(normalizedSources), w.type().equals("POWER_TREND") ? effectiveRangePreset(w) : null, w.type().equals("POWER_TREND") ? effectiveWindow(w) : null);
             String sameDefinition = definitions.putIfAbsent(definition, title);
             if (sameDefinition != null) throw new IllegalArgumentException("이미 존재하는 위젯입니다: " + sameDefinition + " (동일한 종류와 측정 항목)");
             if ((w.gridX() == null) != (w.gridY() == null) || (w.gridX() != null && (w.gridX() < 0 || w.gridY() < 0 || w.gridY() >= 24 || w.gridX() + w.width() > 2))) throw new IllegalArgumentException("위젯 위치가 유효하지 않습니다");
@@ -197,7 +206,11 @@ public class RackWidgetService {
                     if (w.sources().size() == 6 && w.sources().get(0).deviceId().equals(w.sources().get(3).deviceId())) throw new IllegalArgumentException("서로 다른 PDU를 선택하세요");
                 }
             }
-            if (w.type().equals("POWER_TREND") && ((w.rangeHours() != null && !Set.of(1, 6, 24, 72, 168).contains(w.rangeHours())) || (w.intervalMinutes() != null && !Set.of(1, 5, 15, 60).contains(w.intervalMinutes())))) throw new IllegalArgumentException("유효한 기간과 집계 간격을 선택하세요");
+            if (w.type().equals("POWER_TREND")) {
+                try { PageWidgetChartRangePreset.valueOf(effectiveRangePreset(w)); }
+                catch (RuntimeException e) { throw new IllegalArgumentException("유효한 기간을 선택하세요"); }
+                if (!Set.of("1m", "5m", "15m", "1h", "1d").contains(effectiveWindow(w))) throw new IllegalArgumentException("유효한 집계 간격을 선택하세요");
+            }
         }
     }
     @Transactional(readOnly = true)
@@ -224,14 +237,14 @@ public class RackWidgetService {
         if (rows.isEmpty()) {
             var defaults = defaultEquipmentWidgets(equipmentSources(deviceId));
             // Sources can be configured later; do not persist an empty automatic configuration.
-            if (defaults.isEmpty()) return defaults;
+            if (defaults.isEmpty()) return normalizeWidgets(defaults);
             try {
                 jdbc.update("INSERT IGNORE INTO scene_device_widget_config(device_id,widgets_json) VALUES (?,?)", deviceId, mapper.writeValueAsString(defaults));
                 // Another editor may have saved a custom configuration during initialization.
                 rows = jdbc.query("SELECT widgets_json FROM scene_device_widget_config WHERE device_id=?", (rs,n) -> rs.getString(1), deviceId);
             } catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalStateException("기본 위젯을 생성할 수 없습니다", e); }
         }
-        try { return mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {}); }
+        try { return normalizeWidgets(mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {})); }
         catch (Exception e) { throw new IllegalStateException("설비 위젯 설정을 읽을 수 없습니다", e); }
     }
     List<Widget> defaultEquipmentWidgets(List<DeviceMeasurementSourceCatalog.Source> available) {
@@ -261,6 +274,7 @@ public class RackWidgetService {
         return List.copyOf(defaults);
     }
     private List<DeviceMeasurementSourceCatalog.Source> validateEquipment(int deviceId, List<Widget> widgets) {
+        widgets = normalizeWidgets(widgets);
         var valid = equipmentSources(deviceId);
         validateWidgets(widgets, valid);
         validateRackAssignments(widgets, equipmentDevices(deviceId).stream().collect(java.util.stream.Collectors.toMap(RackWidgetDevice::deviceId, d -> d)));
@@ -268,10 +282,11 @@ public class RackWidgetService {
     }
     @Transactional
     public List<Widget> equipmentSave(int deviceId, List<Widget> widgets) {
-        validateEquipment(deviceId, widgets);
-        try { jdbc.update("INSERT INTO scene_device_widget_config(device_id,widgets_json) VALUES (?,?) ON DUPLICATE KEY UPDATE widgets_json=VALUES(widgets_json)", deviceId, mapper.writeValueAsString(widgets)); }
+        List<Widget> normalized = normalizeWidgets(widgets);
+        validateEquipment(deviceId, normalized);
+        try { jdbc.update("INSERT INTO scene_device_widget_config(device_id,widgets_json) VALUES (?,?) ON DUPLICATE KEY UPDATE widgets_json=VALUES(widgets_json)", deviceId, mapper.writeValueAsString(normalized)); }
         catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw new IllegalArgumentException("위젯 설정을 저장할 수 없습니다", e); }
-        return widgets;
+        return normalized;
     }
     public List<List<WidgetValue>> equipmentValues(int deviceId) { return valuesFor(equipmentGet(deviceId), equipmentSources(deviceId)); }
     public List<List<WidgetValue>> equipmentPreview(int deviceId, List<Widget> widgets) { return valuesFor(widgets, validateEquipment(deviceId, widgets)); }
@@ -284,16 +299,76 @@ public class RackWidgetService {
             List<Sample> samples = List.of();
             if (w.type().equals("TREND") || w.type().equals("POWER_TREND")) {
                 Instant now = queryTime;
-                int hours = w.type().equals("POWER_TREND") && w.rangeHours() != null ? w.rangeHours() : 24;
-                int minutes = w.type().equals("POWER_TREND") && w.intervalMinutes() != null ? w.intervalMinutes() : 15;
-                var raw = pointQuery.findMeanSeries(List.of(s.deviceId()), List.of(s.pointName()), now.minus(Duration.ofHours(hours)), now, s.protocol(), minutes);
+                String rangePreset = w.type().equals("POWER_TREND") ? effectiveRangePreset(w) : "last_24h";
+                String window = w.type().equals("POWER_TREND") ? effectiveWindow(w) : "15m";
+                var range = QueryRanges.resolve(PageWidgetChartRangePreset.valueOf(rangePreset));
+                int minutes = windowMinutes(window);
+                var raw = pointQuery.findMeanSeries(List.of(s.deviceId()), List.of(s.pointName()), range.start(), range.end(), s.protocol(), minutes);
                 var buckets = new TreeMap<Long, double[]>(); long span = minutes * 60L;
                 for (var p : raw) if (p.time() != null && p.value() != null && Double.isFinite(p.value())) { long t = Math.floorDiv(p.time().getEpochSecond(), span) * span; double[] aggregate = buckets.computeIfAbsent(t, ignored -> new double[2]); aggregate[0] += p.value(); aggregate[1]++; }
                 var reduced = new ArrayList<Sample>();
                 buckets.forEach((t, v) -> reduced.add(new Sample(Instant.ofEpochSecond(t), v[0] / v[1])));
                 samples = reduced;
             }
-            return new WidgetValue(s, latest == null ? null : latest.value(), latest == null ? null : latest.time(), samples);
+            var source = valid.stream().filter(v -> v.deviceId().equals(s.deviceId()) && v.pointName().equals(s.pointName()) && v.protocol().equalsIgnoreCase(s.protocol())).findFirst().orElse(null);
+            var display = UnitDisplay.of(latest == null ? null : java.math.BigDecimal.valueOf(latest.value()), source == null ? null : source.unit());
+            return new WidgetValue(s, latest == null ? null : latest.value(), latest == null ? null : latest.time(), samples, display.displayValue(), display.displayUnit());
         }).toList()).toList();
+    }
+
+    private static List<Widget> normalizeWidgets(List<Widget> widgets) {
+        if (widgets == null) return null;
+        return widgets.stream().map(RackWidgetService::normalizeWidget).toList();
+    }
+
+    private static Widget normalizeWidget(Widget widget) {
+        if (widget == null || !"POWER_TREND".equals(widget.type())) return widget;
+        String preset = widget.rangePreset() == null || widget.rangePreset().isBlank()
+                ? legacyRangePreset(widget.rangeHours()) : widget.rangePreset();
+        String window = widget.window() == null || widget.window().isBlank()
+                ? legacyWindow(widget.intervalMinutes()) : widget.window();
+        return new Widget(widget.title(), widget.type(), widget.width(), widget.sources(), null, null,
+                widget.gridX(), widget.gridY(), widget.layoutX(), widget.layoutY(), widget.layoutW(), widget.layoutH(),
+                widget.colors(), widget.chartStyle(), preset, window);
+    }
+
+    private static String effectiveRangePreset(Widget widget) {
+        return widget.rangePreset() == null ? legacyRangePreset(widget.rangeHours()) : widget.rangePreset();
+    }
+
+    private static String effectiveWindow(Widget widget) {
+        return widget.window() == null ? legacyWindow(widget.intervalMinutes()) : widget.window();
+    }
+
+    private static String legacyRangePreset(Integer hours) {
+        if (hours == null || hours == 24) return "last_24h";
+        return switch (hours) {
+            case 1 -> "last_1h";
+            case 6 -> "last_6h";
+            case 72 -> "last_3d";
+            case 168 -> "last_7d";
+            default -> "";
+        };
+    }
+
+    private static String legacyWindow(Integer minutes) {
+        if (minutes == null || minutes == 15) return "15m";
+        return switch (minutes) {
+            case 1 -> "1m";
+            case 5 -> "5m";
+            case 60 -> "1h";
+            default -> "";
+        };
+    }
+
+    private static int windowMinutes(String window) {
+        return switch (window) {
+            case "1m" -> 1;
+            case "5m" -> 5;
+            case "15m" -> 15;
+            case "1h" -> 60;
+            case "1d" -> 1440;
+            default -> throw new IllegalArgumentException("POWER_TREND에는 1분~1시간 간격만 사용할 수 있습니다");
+        };
     }
 }

@@ -4064,6 +4064,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return json.data;
     }
 
+    let sharedWidgetOptionsPromise;
+    function loadSharedWidgetOptions() {
+      if (!sharedWidgetOptionsPromise) sharedWidgetOptionsPromise = api("/api/manager/widgets/options");
+      return sharedWidgetOptionsPromise;
+    }
+
+    function setWidgetOptionSelect(select, options, selected, includeBlank = false) {
+      if (!select) return;
+      const blank = includeBlank ? '<option value="">위젯 설정</option>' : '';
+      select.innerHTML = blank + options.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('');
+      if (selected && [...select.options].some((option) => option.value === selected)) select.value = selected;
+    }
+
     async function apiForm(path, formData) {
       const headers = {};
       if (state.token) headers.Authorization = "Bearer " + state.token;
@@ -6839,7 +6852,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         names.set(normalized, name);
         const sources = w.sources.map((s) => JSON.stringify([s.deviceId, s.protocol.toLowerCase(), s.pointName]));
         if (!['POWER_TREND','PATH_BALANCE'].includes(w.type)) sources.sort();
-        const key = JSON.stringify([w.type, sources, w.type === 'POWER_TREND' ? (w.rangeHours ?? 24) : null, w.type === 'POWER_TREND' ? (w.intervalMinutes ?? 15) : null]);
+        const key = JSON.stringify([w.type, sources, w.type === 'POWER_TREND' ? (w.rangePreset ?? 'last_24h') : null, w.type === 'POWER_TREND' ? (w.window ?? '15m') : null]);
         if (definitions.has(key)) return `이미 존재하는 위젯입니다: ${definitions.get(key)} (동일한 종류와 측정 항목)`;
         definitions.set(key, name);
       }
@@ -6852,7 +6865,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       body.classList.toggle('is-rack-widget-view', !editing);
       try {
         const base = baseOverride || `/api/manager/assets/racks/${encodeURIComponent(code)}`;
-        let [widgets, sources, devices] = await Promise.all([api(`${base}/widgets`), api(`${base}/widget-sources`), api(`${base}/widgets/devices`)]);
+        let [widgets, sources, devices, widgetOptions] = await Promise.all([api(`${base}/widgets`), api(`${base}/widget-sources`), api(`${base}/widgets/devices`), loadSharedWidgetOptions()]);
         if (!panel.isConnected) return;
         sources = sources.filter((source) => !source.ambiguous);
         const sourceKey = (s) => s ? `${s.deviceId}|${s.protocol}|${s.pointName}` : '';
@@ -6888,11 +6901,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             const paletteFor = (i) => /^#[0-9a-f]{6}$/i.test(w.colors?.[i] || '') ? w.colors[i] : defaults[i % defaults.length];
             const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(pdus.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
             const label = (entry) => { const source = sourceFor(entry.source) || entry.source; return `${baseOverride ? '' : `${source.deviceName || `장비 ${source.deviceId}`} · `}${source.pointName}`; };
-            const value = (entry) => entry.value == null ? '—' : Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
+            const value = (entry) => entry.value == null ? '—' : entry.displayValue ?? Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
             const legendRow = (color, name, reading = '') => `<div class="rack-metric-legend-row"><span class="rack-metric-dot" style="--series-color:${color}"></span><span class="rack-metric-legend-label" title="${esc(name)}">${esc(name)}</span>${reading ? `<span class="rack-metric-legend-value">${esc(reading)}</span>` : ''}</div>`;
             const chartMarkup = (series, gapMs = 0) => `<div class="rack-chart" data-rack-chart="${esc(JSON.stringify({series,gapMs,style:w.chartStyle || 'line'}))}"></div>`;
             let content = '';
-            if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(sourceFor(entry.source)?.unit || '')}</small></div>` : '—'; }
+            if (w.type === 'VALUE') { const entry = entries[0]; content = entry ? `<div class="rack-metric-value">${value(entry)} <small>${esc(entry.displayUnit || sourceFor(entry.source)?.unit || '')}</small></div>` : '—'; }
             else if (w.type === 'PATH_BALANCE' || w.type === 'PHASE_BALANCE') {
               const donut = (group, heading, names, center) => {
                 const palette = Array.from({length: group.length}, (_, i) => paletteFor(i));
@@ -6914,8 +6927,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               const points = series.flatMap((s) => s.samples), vals = points.map((p) => p.value), times = points.map((p) => Date.parse(p.time));
               if (!points.length) content = '<p class="muted">선택한 기간에 수집된 데이터가 없습니다.</p>';
               else {
-                const start = Math.min(...times), end = Math.max(...times), gap = (w.intervalMinutes || 15) * 60 * 1000 * 1.5;
-                content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · ${w.intervalMinutes || 15}분 평균</small>`;
+                const windowValue = w.window || '15m', windowOption = widgetOptions.windows.find((option) => option.value === windowValue), windowMinutes = windowValue === '1d' ? 1440 : windowValue.endsWith('h') ? Number(windowValue.slice(0, -1)) * 60 : Number(windowValue.slice(0, -1));
+                const start = Math.min(...times), end = Math.max(...times), gap = windowMinutes * 60 * 1000 * 1.5;
+                content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · ${esc(windowOption?.label || windowValue)} 평균</small>`;
               }
               content += `<div class="rack-metric-legend">${series.map((s) => legendRow(s.color,s.name)).join('')}</div>`;
             } else if (w.type === 'PIE') {
@@ -6972,7 +6986,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           const collapsedWidgets = new Set();
           const widgetTypeLabel = (type) => ({VALUE:'최신값',PIE:'비율',TREND:'24시간 추이',PATH_BALANCE:'경로 밸런스',PHASE_BALANCE:'PDU 상 밸런스',POWER_TREND:'전력 추이'})[type] || '위젯';
           const previewCache = new Map(); let previewSequence = 0, previewRunning = false, previewRepeat = false;
-          const previewKey = (w) => JSON.stringify([w.type, w.sources, w.rangeHours, w.intervalMinutes]);
+          const previewKey = (w) => JSON.stringify([w.type, w.sources, w.rangePreset, w.window]);
           const widgetReady = (w) => w && w.title?.trim() && Array.isArray(w.sources) && w.sources.length > 0 && !Array.from(w.sources).some((s) => !s) && w.sources.length <= 8 && (w.type !== 'VALUE' || w.sources.length === 1) && (w.type !== 'PATH_BALANCE' || w.sources.length === 2) && (w.type !== 'PHASE_BALANCE' || [3,6].includes(w.sources.length)) && (w.type !== 'POWER_TREND' || [2,3].includes(w.sources.length));
           const save = async (event) => {
             if (widgets.some((w) => !widgetReady(w))) return toast('위젯 제목과 측정 항목을 모두 확인하세요.', true);
@@ -7026,7 +7040,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   return;
                 }
                 const labels = widget.type === 'POWER_TREND' ? ['A 경로 전력','B 경로 전력','전체 전력 (선택)'] : ['A 경로 전력','B 경로 전력'];
-                section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 PDU마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range><option value="1">최근 1시간</option><option value="6">최근 6시간</option><option value="24">최근 24시간</option><option value="72">최근 3일</option><option value="168">최근 7일</option></select></label><label class="rack-widget-field">평균 집계 간격<select data-interval><option value="1">1분</option><option value="5">5분</option><option value="15">15분</option><option value="60">1시간</option></select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
+                section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 PDU마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range>${widgetOptions.rangePresets.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label><label class="rack-widget-field">평균 집계 간격<select data-interval>${widgetOptions.windows.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
                 section.querySelectorAll('[data-slot]').forEach((select) => {
                   const slot = Number(select.dataset.slot);
                   if (slot < 2) [...select.options].slice(1).forEach((option) => { const source = sources.find((s) => sourceKey(s) === option.value), device = pdus.find((d) => d.deviceId === source?.deviceId); if (!device || String(device.pathCode || '').toUpperCase() !== (slot === 0 ? 'A' : 'B') || !['W','KW','MW'].includes(String(source.unit || '').toUpperCase())) option.remove(); });
@@ -7036,7 +7050,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   else widget.sources[slot] = selected ? { deviceId:selected.deviceId, pointName:selected.pointName, protocol:selected.protocol } : null;
                   };
                 });
-                if (widget.type === 'POWER_TREND') { const range = section.querySelector('[data-range]'), interval = section.querySelector('[data-interval]'); range.value = String(widget.rangeHours || 24); interval.value = String(widget.intervalMinutes || 15); range.onchange = () => widget.rangeHours = Number(range.value); interval.onchange = () => widget.intervalMinutes = Number(interval.value); }
+                if (widget.type === 'POWER_TREND') { const range = section.querySelector('[data-range]'), interval = section.querySelector('[data-interval]'); range.value = widget.rangePreset || 'last_24h'; interval.value = widget.window || '15m'; range.onchange = () => widget.rangePreset = range.value; interval.onchange = () => widget.window = interval.value; }
               };
               row.querySelector('[data-search]').oninput = showSources;
               row.querySelector('[data-type]').onchange = (e) => { widget.type = e.target.value; widget.sources = widget.type === 'PHASE_BALANCE' ? defaultPhases() : ['PATH_BALANCE','POWER_TREND'].includes(widget.type) ? [powerForPath('A'),powerForPath('B')] : []; draw(); };
@@ -7047,7 +7061,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 const count = widget.type === 'PATH_BALANCE' ? 2 : widget.type === 'PHASE_BALANCE' || widget.type === 'POWER_TREND' ? 3 : Math.max(1, widget.sources.length);
                 const labels = widget.type === 'PATH_BALANCE' ? ['A 경로','B 경로'] : widget.type === 'PHASE_BALANCE' ? ['L1','L2','L3'] : widget.type === 'POWER_TREND' ? ['A 경로','B 경로','전체 전력'] : widget.sources.map((source) => sourceLabel(sourceFor(source) || source));
                 const controls = document.createElement('div'); controls.className = 'rack-widget-card-grid'; controls.style.marginTop = '14px';
-                controls.innerHTML = `${['TREND','POWER_TREND'].includes(widget.type) ? `<label class="rack-widget-field">차트 방식<select data-chart-style><option value="line">선 그래프</option><option value="bar">막대 그래프</option></select></label>` : ''}${Array.from({length:count}, (_,i) => `<label class="rack-widget-field">${esc(labels[i] || `항목 ${i+1}`)} 색상<input type="color" data-series-color="${i}" value="${esc(widget.colors?.[i] || defaults[i % defaults.length])}"></label>`).join('')}`;
+                controls.innerHTML = `${['TREND','POWER_TREND'].includes(widget.type) ? `<label class="rack-widget-field">차트 방식<select data-chart-style>${widgetOptions.chartStyles.map((style) => `<option value="${esc(style)}">${style === 'bar' ? '막대 그래프' : style === 'area' ? '영역 그래프' : '선 그래프'}</option>`).join('')}</select></label>` : ''}${Array.from({length:count}, (_,i) => `<label class="rack-widget-field">${esc(labels[i] || `항목 ${i+1}`)} 색상<input type="color" data-series-color="${i}" value="${esc(widget.colors?.[i] || defaults[i % defaults.length])}"></label>`).join('')}`;
                 const style = controls.querySelector('[data-chart-style]'); if (style) { style.value = widget.chartStyle || 'line'; style.onchange = () => { widget.chartStyle = style.value; drawLayout(); }; }
                 controls.querySelectorAll('[data-series-color]').forEach((input) => input.oninput = () => { if (!widget.colors) widget.colors = Array.from({length:count}, (_,i) => defaults[i % defaults.length]); widget.colors[Number(input.dataset.seriesColor)] = input.value; drawLayout(); });
                 row.querySelector('[data-widget-body]').append(controls);
@@ -8806,6 +8820,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     function openWidgetEditor(editing = false) {
       if (!editing) clearWidgetForm(true);
+      loadSharedWidgetOptions().then((options) => {
+        const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
+        setWidgetOptionSelect($("wKind"), options.kinds.filter((option) => widgetKinds.has(option.value)), $("wKind").value);
+        setWidgetOptionSelect($("wChartRangePreset"), options.rangePresets, $("wChartRangePreset").value);
+        setWidgetOptionSelect($("wPueRangePreset"), options.rangePresets, $("wPueRangePreset").value);
+        setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
+        setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
+        setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
+      }).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
       $("wCreatePage").disabled = true;
       state.widgetSourcesLoaded = false;
       state.widgetSources = [];

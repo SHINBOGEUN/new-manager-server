@@ -8,19 +8,21 @@ import java.time.ZoneOffset;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 
-final class QueryRanges {
+public final class QueryRanges {
 
     private QueryRanges() {
     }
 
-    static Range resolve(PageWidgetChartRangePreset preset) {
+    public static Range resolve(PageWidgetChartRangePreset preset) {
         return resolve(preset, ZoneOffset.UTC);
     }
 
-    static Range resolve(PageWidgetChartRangePreset preset, ZoneId zone) {
+    public static Range resolve(PageWidgetChartRangePreset preset, ZoneId zone) {
         Instant now = Instant.now();
         LocalDate todayUtc = LocalDate.now(zone);
         return switch (preset) {
+            case last_1h -> new Range(now.minus(1, ChronoUnit.HOURS), now);
+            case last_6h -> new Range(now.minus(6, ChronoUnit.HOURS), now);
             case last_24h -> new Range(now.minus(24, ChronoUnit.HOURS), now);
             case today -> new Range(todayUtc.atStartOfDay(zone).toInstant(), now);
             case yesterday -> {
@@ -48,14 +50,16 @@ final class QueryRanges {
     }
 
     /** weighted_avg 시계열 윈도우 */
-    static String defaultWindow(PageWidgetChartRangePreset preset) {
+    public static String defaultWindow(PageWidgetChartRangePreset preset) {
         return switch (preset) {
+            case last_1h -> "1m";
+            case last_6h -> "5m";
             case last_24h, today, yesterday -> "5m";
             case last_3d -> "15m";
             case last_7d, this_month, last_month -> "1h";
         };
     }
 
-    record Range(Instant start, Instant end) {
+    public record Range(Instant start, Instant end) {
     }
 }

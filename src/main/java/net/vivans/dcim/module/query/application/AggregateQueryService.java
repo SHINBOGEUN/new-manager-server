@@ -118,11 +118,15 @@ public class AggregateQueryService {
                 continue;
             }
             Device device = deviceById.get(deviceId);
+            var rounded = QueryValues.round2(delta);
+            UnitDisplay.Result display = UnitDisplay.of(rounded, unit);
             deviceRows.add(new AggregateDeviceValueResponse(
                     deviceId,
                     device == null ? null : device.getName(),
                     PageWidgetDeviceRole.DEFAULT.wireValue(),
-                    QueryValues.round2(delta)
+                    rounded,
+                    display.displayValue(),
+                    display.displayUnit()
             ));
             sum += delta;
         }
@@ -193,11 +197,15 @@ public class AggregateQueryService {
                 continue;
             }
             Device device = deviceById.get(point.deviceId());
+            var rounded = QueryValues.round2(point.value());
+            UnitDisplay.Result display = UnitDisplay.of(rounded, resolveUnit(List.of(device), List.of(pointName)));
             out.add(new AggregateDeviceValueResponse(
                     point.deviceId(),
                     device == null ? null : device.getName(),
                     role.wireValue(),
-                    QueryValues.round2(point.value())
+                    rounded,
+                    display.displayValue(),
+                    display.displayUnit()
             ));
             sum += point.value();
             hasValue = true;
