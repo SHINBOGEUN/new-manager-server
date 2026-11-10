@@ -105,7 +105,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261109panel-accura"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261110roles"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1805,8 +1805,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
           rackColor: item.rackColor || null,
-          panelPhoto: item.modelKey === 'SR_INROW_PANEL' ? (item.panelPhoto || '') : null,
-          panelLayoutInitialized: item.modelKey === 'SR_INROW_PANEL' ? Boolean(item.panelLayoutInitialized) : false,
+          panelPhoto: item.modelRole === 'PANEL' ? (item.panelPhoto || '') : null,
+          panelLayoutInitialized: item.modelRole === 'PANEL' ? Boolean(item.panelLayoutInitialized) : false,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),
