@@ -26,6 +26,28 @@ public class RackWidgetService {
     private int environmentalSources = 8;
     @Value("${widgets.defaults.equipment-value-widgets:20}")
     private int equipmentValueWidgets = 20;
+    /** 전력 균형·상별 위젯 대상이 되는 장비 유형(DEVICE_TYPE 코드, 쉼표 구분). 버스웨이 등 현장 장비 유형을 코드 수정 없이 추가한다. */
+    @Value("${widgets.rack.power-device-types:PDU}")
+    private String powerDeviceTypes = "PDU";
+    /** 이중화 전력 경로 코드(첫째, 둘째 순서). 전력 균형·전력 추이 위젯이 이 순서로 장비를 받는다. */
+    @Value("${widgets.rack.redundant-paths:A,B}")
+    private String redundantPaths = "A,B";
+
+    private boolean isPowerDevice(RackWidgetDevice device) {
+        if (device == null || device.deviceType() == null) return false;
+        return csv(powerDeviceTypes).stream().anyMatch(type -> type.equalsIgnoreCase(device.deviceType()));
+    }
+
+    private String redundantPath(int index) {
+        var paths = csv(redundantPaths);
+        if (paths.size() != 2) throw new IllegalStateException("widgets.rack.redundant-paths에는 경로 코드 2개를 지정해야 합니다");
+        return paths.get(index);
+    }
+
+    private static List<String> csv(String value) {
+        if (value == null) return List.of();
+        return java.util.Arrays.stream(value.split(",")).map(String::strip).filter(s -> !s.isEmpty()).toList();
+    }
     public record Source(Integer deviceId, String pointName, String protocol) {}
     public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH, List<String> colors, String chartStyle) {
         public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, layoutX, layoutY, layoutW, layoutH, null, null); }
@@ -68,10 +90,10 @@ public class RackWidgetService {
 
     private List<Widget> defaultWidgets(String code) {
         var valid = sources(code).stream().filter(s -> !s.ambiguous()).toList();
-        var pdus = devices(code).stream().filter(d -> "PDU".equalsIgnoreCase(d.deviceType())).toList();
+        var pdus = devices(code).stream().filter(this::isPowerDevice).toList();
         var defaults = new ArrayList<Widget>();
-        var a = pdus.stream().filter(d -> "A".equalsIgnoreCase(d.pathCode())).toList();
-        var b = pdus.stream().filter(d -> "B".equalsIgnoreCase(d.pathCode())).toList();
+        var a = pdus.stream().filter(d -> redundantPath(0).equalsIgnoreCase(d.pathCode())).toList();
+        var b = pdus.stream().filter(d -> redundantPath(1).equalsIgnoreCase(d.pathCode())).toList();
         var aPower = a.size() == 1 ? defaultPowerSource(valid, a.get(0).deviceId()) : null;
         var bPower = b.size() == 1 ? defaultPowerSource(valid, b.get(0).deviceId()) : null;
         if (aPower != null && bPower != null && aPower.unit().equalsIgnoreCase(bPower.unit())) {
@@ -126,14 +148,14 @@ public class RackWidgetService {
         validateRackAssignments(widgets, deviceInfo);
         return valid;
     }
-    static void validateRackAssignments(List<Widget> widgets, Map<Integer, RackWidgetDevice> deviceInfo) {
+    void validateRackAssignments(List<Widget> widgets, Map<Integer, RackWidgetDevice> deviceInfo) {
         for (var w : widgets) {
             if (w.type().equals("PATH_BALANCE") || w.type().equals("POWER_TREND")) {
                 for (int i = 0; i < 2; i++) { var device = deviceInfo.get(w.sources().get(i).deviceId());
-                    if (device == null || !"PDU".equalsIgnoreCase(device.deviceType()) || !(i == 0 ? "A" : "B").equalsIgnoreCase(device.pathCode())) throw new IllegalArgumentException("A·B 경로에 등록된 PDU를 각각 선택하세요"); }
+                    if (!isPowerDevice(device) || !redundantPath(i).equalsIgnoreCase(device.pathCode())) throw new IllegalArgumentException(redundantPath(0) + "·" + redundantPath(1) + " 경로에 등록된 PDU를 각각 선택하세요"); }
             } else if (w.type().equals("PHASE_BALANCE")) {
                 for (int i = 0; i < w.sources().size(); i += 3) { var device = deviceInfo.get(w.sources().get(i).deviceId());
-                    if (device == null || !"PDU".equalsIgnoreCase(device.deviceType()) || !device.threePhaseMeasurements()) throw new IllegalArgumentException("상별 전류 3개가 등록된 PDU를 선택하세요"); }
+                    if (!isPowerDevice(device) || !device.threePhaseMeasurements()) throw new IllegalArgumentException("상별 전류 3개가 등록된 PDU를 선택하세요"); }
             }
         }
     }

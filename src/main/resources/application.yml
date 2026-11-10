@@ -135,6 +135,10 @@ widgets:
   defaults:
     environmental-sources: ${WIDGET_ENVIRONMENTAL_SOURCES:8}
     equipment-value-widgets: ${EQUIPMENT_VALUE_WIDGETS:20}
+  rack:
+    # 전력 균형·상별 위젯 대상 장비 유형(DEVICE_TYPE 코드, 쉼표 구분)과 이중화 경로 코드 2개
+    power-device-types: ${RACK_POWER_DEVICE_TYPES:PDU}
+    redundant-paths: ${RACK_REDUNDANT_PATHS:A,B}
 
 alarms:
   thresholds:

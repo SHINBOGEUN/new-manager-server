@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS `scene_model` (
   `device_linkable` tinyint(1) NOT NULL DEFAULT 0,
   `panel_installable` tinyint(1) NOT NULL DEFAULT 0,
   `rack_installable` tinyint(1) NOT NULL DEFAULT 0 COMMENT '랙에 설치 가능한 3D 모델 여부',
+  `scene_role` varchar(20) DEFAULT NULL COMMENT '도면 역할: RACK, PANEL, FRAME 또는 NULL',
   `created_dt` timestamp(6) NULL DEFAULT current_timestamp(6),
   `updated_dt` timestamp(6) NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
   PRIMARY KEY (`model_key`),
@@ -70,3 +71,6 @@ UPDATE `scene_model` SET `rack_u_installable` = 1 WHERE @scene_model_initial_see
 UPDATE `scene_model` SET `rack_attachment_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_PDU_VERTICAL','SR_DRAGINO_TH','SR_DRAGINO_DOOR');
 UPDATE `scene_model` SET `device_linkable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_RDC','SR_IMMERSION','SR_RDC_RACK');
 UPDATE `scene_model` SET `panel_installable` = 1 WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_ACCURA_2350_1P','SR_ACCURA_2350_3P','SR_PANEL_BREAKER','SR_PANEL_BRANCH','SR_PANEL_MAIN','SR_PANEL_METER','SR_PANEL_BUSBAR','SR_PANEL_WIRE');
+UPDATE `scene_model` SET `scene_role` = 'RACK' WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_RACK','SR_DOUBLE_RACK','SR_DLC_RACK','SR_INROW_RACK','SR_OCP_RACK','SR_RDC_RACK','SR_ORV3_RACK','SR_HAC_RACK');
+UPDATE `scene_model` SET `scene_role` = 'PANEL' WHERE @scene_model_initial_seed = 1 AND `model_key` = 'SR_INROW_PANEL';
+UPDATE `scene_model` SET `scene_role` = 'FRAME' WHERE @scene_model_initial_seed = 1 AND `model_key` IN ('SR_INROW_MOLD','SR_WALL_COIL');

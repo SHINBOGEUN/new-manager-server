@@ -12,6 +12,8 @@ import net.vivans.dcim.module.device.domain.model.DevicePageDisplayConfig;
 import net.vivans.dcim.module.device.domain.model.DevicePageSceneItem;
 import net.vivans.dcim.module.device.domain.model.DevicePageViewMode;
 import net.vivans.dcim.module.device.domain.model.DevicePageCodes;
+import net.vivans.dcim.module.device.domain.model.SceneModelKeys;
+import net.vivans.dcim.module.device.domain.model.SceneModelRole;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDeviceRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageDisplayConfigRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageSceneItemRepository;
@@ -48,6 +50,7 @@ public class DevicePageDisplayService {
         CommonCode page = findPage(pageCode);
         DevicePageDisplayConfig config = configRepository.findById(page.getId()).orElse(null);
         List<DevicePageSceneItem> savedItems = sceneItemRepository.findAllForPage(page.getId());
+        Map<String, java.util.Optional<SceneModelRole>> catalog = sceneModelService.catalogRoles();
         List<DevicePageDisplayResponse.SceneItem> items = new java.util.ArrayList<>(savedItems.stream()
                 .map(item -> new DevicePageDisplayResponse.SceneItem(
                         item.getId(), item.getParent() == null ? null : item.getParent().getId(),
@@ -55,7 +58,8 @@ public class DevicePageDisplayService {
                         item.getLocationNode() == null ? null : item.getLocationNode().getCode(),
                         item.getPointName(), item.getLocationNode() == null ? item.getLabel() : item.getLocationNode().getName(),
                         item.getModelKey(), item.getX(), item.getY(),
-                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked(), item.getRackColor(), item.getPanelPhoto(), item.isPanelLayoutInitialized()))
+                        item.getZ(), item.getRotationY(), item.getSizeX(), item.getSizeY(), item.getSizeZ(), item.getGroupKey(), item.getGroupName(), item.isLocked(), item.getRackColor(), item.getPanelPhoto(), item.isPanelLayoutInitialized(),
+                        roleName(roleOf(catalog, item.getModelKey()))))
                 .toList());
 
         // Import descendant location racks until the page's scene is next saved.
@@ -96,7 +100,7 @@ public class DevicePageDisplayService {
                     int row = rackIndex / 4;
                     items.add(new DevicePageDisplayResponse.SceneItem(
                             null, null, "RACK", null, rack.getCode(), null, rack.getName(), "RACK",
-                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false, null, null, false));
+                            -3.6 + column * 2.4, 0, row % 2 == 0 ? -1.7 : 1.7, 0, 4, 4, 4, null, null, false, null, null, false, null));
                 }
                 rackIndex++;
             }
@@ -128,19 +132,22 @@ public class DevicePageDisplayService {
         Map<String, Integer> itemOrder = new HashMap<>();
         Set<String> locationNodeCodes = new HashSet<>();
         Set<Integer> attachedDeviceIds = new HashSet<>();
+        // 모델 역할(랙·분전반·프레임)은 모델 키 이름이 아니라 scene_model 카탈로그에서 가져온다.
+        Map<String, java.util.Optional<SceneModelRole>> catalog = sceneModelService.catalogRoles();
+        Set<String> uploadedModels = sceneModelService.uploadedKeys();
         for (int index = 0; index < request.items().size(); index++) {
             DevicePageDisplayUpdateRequest.SceneItem item = request.items().get(index);
             if (!clientKeys.add(item.clientKey())) throw new IllegalArgumentException("Duplicate scene item clientKey");
             sceneItemsByKey.put(item.clientKey(), item);
             itemOrder.put(item.clientKey(), index);
-            validateItem(item, devicesById);
+            validateItem(item, devicesById, catalog, uploadedModels);
             if (("DEVICE".equals(item.itemType()) || "SENSOR".equals(item.itemType()) || "PANEL_COMPONENT".equals(item.itemType()))
                     && item.deviceId() != null && !attachedDeviceIds.add(item.deviceId())) {
                 throw new IllegalArgumentException("A device can only be attached once on a page");
             }
             if (item.locationNodeCode() != null) {
                 if (!"RACK".equals(item.itemType()) && !("EQUIPMENT".equals(item.itemType())
-                        && item.modelKey() != null && item.modelKey().matches("SR_.*RACK") && !"SR_PDU_RACK".equals(item.modelKey()))) {
+                        && roleOf(catalog, item.modelKey()) == SceneModelRole.RACK)) {
                     throw new IllegalArgumentException("Only a rack scene item can reference a location node");
                 }
                 if (!locationNodeCodes.add(item.locationNodeCode())) {
@@ -170,7 +177,7 @@ public class DevicePageDisplayService {
                     && !Set.of("RACK", "EQUIPMENT").contains(host.itemType())) {
                 throw new IllegalArgumentException("An attached device must reference a rack or equipment host");
             } else if ("PANEL_COMPONENT".equals(item.itemType())) {
-                if (!"SR_INROW_PANEL".equals(host.modelKey()) || !sceneModelService.panelInstallable(item.modelKey()))
+                if (roleOf(catalog, host.modelKey()) != SceneModelRole.PANEL || !sceneModelService.panelInstallable(item.modelKey()))
                     throw new IllegalArgumentException("분전반 설치가 가능한 모델만 배치할 수 있습니다");
             } else if (!Set.of("SENSOR", "DEVICE").contains(item.itemType())) {
                 throw new IllegalArgumentException("Only devices or wall openings can be attached to a host");
@@ -224,7 +231,7 @@ public class DevicePageDisplayService {
             DevicePageSceneItem saved = sceneItemRepository.saveAndFlush(DevicePageSceneItem.create(
                     page, parent, item.deviceId() == null ? null : devicesById.get(item.deviceId()),
                     resolveRackLocation(item),
-                    item.itemType(), item.pointName(), item.label(), item.modelKey(),
+                    item.itemType(), item.pointName(), item.label(), item.modelKey(), roleOf(catalog, item.modelKey()),
                     item.x(), item.y(), item.z(), item.rotationY() == null ? 0 : item.rotationY(),
                     item.sizeX() == null ? 4 : item.sizeX(),
                     item.sizeY() == null ? (isScalableEquipment(item) ? (item.sizeX() == null ? 4 : item.sizeX()) : 4) : item.sizeY(),
@@ -252,17 +259,17 @@ public class DevicePageDisplayService {
         return node;
     }
 
-    private void validateItem(DevicePageDisplayUpdateRequest.SceneItem item, Map<Integer, Device> devicesById) {
+    private void validateItem(DevicePageDisplayUpdateRequest.SceneItem item, Map<Integer, Device> devicesById,
+                              Map<String, java.util.Optional<SceneModelRole>> catalog, Set<String> uploadedModels) {
         if (!Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE", "PANEL_COMPONENT").contains(item.itemType())) {
             throw new IllegalArgumentException("Unsupported scene item type: " + item.itemType());
         }
-        if (!Set.of("RACK", "PDU", "CRAC", "UPS", "SENSOR", "GENERIC", "CHILLER", "SWITCH", "SERVER",
-                "MACHINE", "CONVEYOR", "TANK", "TABLE", "WALL", "WALL_CONCRETE", "WALL_GLASS", "WALL_GLASS_CLEAR", "WALL_PANEL",
-                "DOOR", "DOOR_DOUBLE", "DOOR_SLIDING", "WINDOW", "WINDOW_DOUBLE", "CEILING", "CEILING_CLEAR", "FLOOR", "LIGHT", "PIPE", "STAIR",
-                "SR_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
-                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR", "SR_ACCURA_2350_1P", "SR_ACCURA_2350_3P", "SR_PANEL_BREAKER", "SR_PANEL_BRANCH", "SR_PANEL_MAIN", "SR_PANEL_METER", "SR_PANEL_BUSBAR", "SR_PANEL_WIRE").contains(item.modelKey())
-                && !(Set.of("EQUIPMENT", "PANEL_COMPONENT").contains(item.itemType()) && item.modelKey() != null
-                && item.modelKey().matches("USR_[A-Z0-9]{24}") && sceneModelService.usable(item.modelKey()))) {
+        // 기본 도형은 화면이 직접 그리는 값이고, 그 밖의 모델은 scene_model 카탈로그에 있어야 한다.
+        boolean primitive = SceneModelKeys.isPrimitive(item.modelKey());
+        boolean catalogModel = item.modelKey() != null && catalog.containsKey(item.modelKey());
+        boolean uploadedPlacement = !uploadedModels.contains(item.modelKey())
+                || Set.of("EQUIPMENT", "PANEL_COMPONENT").contains(item.itemType());
+        if (!primitive && !(catalogModel && uploadedPlacement)) {
             throw new IllegalArgumentException("Unsupported scene model: " + item.modelKey());
         }
         if (item.deviceId() != null && !devicesById.containsKey(item.deviceId())) {
@@ -304,8 +311,13 @@ public class DevicePageDisplayService {
         return modelKey != null && modelKey.startsWith("WALL");
     }
 
-    private static boolean isEquipmentFrame(String modelKey) {
-        return "SR_INROW_MOLD".equals(modelKey) || "SR_WALL_COIL".equals(modelKey);
+    private static String roleName(SceneModelRole role) {
+        return role == null ? null : role.name();
+    }
+
+    private static SceneModelRole roleOf(Map<String, java.util.Optional<SceneModelRole>> catalog, String modelKey) {
+        if (modelKey == null) return null;
+        return catalog.getOrDefault(modelKey, java.util.Optional.empty()).orElse(null);
     }
 
     private static boolean isScalableEquipment(DevicePageDisplayUpdateRequest.SceneItem item) {

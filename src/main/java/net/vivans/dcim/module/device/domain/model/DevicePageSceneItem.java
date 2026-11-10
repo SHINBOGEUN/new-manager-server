@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -99,14 +100,23 @@ public class DevicePageSceneItem extends BaseEntity {
     @Column(name = "panel_layout_initialized", nullable = false)
     private boolean panelLayoutInitialized;
 
+    /**
+     * 저장 요청에서 카탈로그(scene_model.scene_role)로부터 받은 역할. DB 컬럼이 아니라 저장 시 검증에만 쓴다.
+     * 기본 도형(SceneModelKeys.PRIMITIVES)이나 역할이 없는 모델은 null이다.
+     */
+    @Transient
+    private SceneModelRole modelRole;
+
+    public SceneModelRole getModelRole() { return modelRole; }
+
     public void setPanelLayoutInitialized(boolean value) {
-        if (value && !"SR_INROW_PANEL".equals(modelKey)) throw new IllegalArgumentException("Panel layout requires a panel");
+        if (value && modelRole != SceneModelRole.PANEL) throw new IllegalArgumentException("Panel layout requires a panel");
         this.panelLayoutInitialized = value;
     }
 
     public void setPanelPhoto(String value) {
         if (value == null || value.isBlank()) { this.panelPhoto = null; return; }
-        if (!"SR_INROW_PANEL".equals(modelKey) || !"EQUIPMENT".equals(itemType)
+        if (modelRole != SceneModelRole.PANEL || !"EQUIPMENT".equals(itemType)
                 || value.length() > 1_500_000 || !value.startsWith("data:image/jpeg;base64,")) {
             throw new IllegalArgumentException("Invalid panel photo");
         }
@@ -120,8 +130,7 @@ public class DevicePageSceneItem extends BaseEntity {
 
     public void setRackColor(String color) {
         if (color == null || color.isBlank()) { this.rackColor = null; return; }
-        if (!("RACK".equals(itemType) || (modelKey != null && modelKey.matches("SR_.*RACK") && !"SR_PDU_RACK".equals(modelKey)))
-                || !color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Invalid rack color");
+        if (!actsAsRack(itemType, modelRole) || !color.matches("#[0-9a-fA-F]{6}")) throw new IllegalArgumentException("Invalid rack color");
         this.rackColor = color.toUpperCase(java.util.Locale.ROOT);
     }
 
@@ -143,41 +152,42 @@ public class DevicePageSceneItem extends BaseEntity {
     }
 
     private DevicePageSceneItem(CommonCode pageCode, DevicePageSceneItem parent, Device device, LocationNode locationNode,
-                                String itemType, String pointName, String label, String modelKey,
+                                String itemType, String pointName, String label, String modelKey, SceneModelRole modelRole,
                                 double x, double y, double z, double rotationY, double sizeX, double sizeY, double sizeZ) {
         this.pageCode = pageCode;
-        update(parent, device, locationNode, itemType, pointName, label, modelKey, x, y, z, rotationY, sizeX, sizeY, sizeZ);
+        update(parent, device, locationNode, itemType, pointName, label, modelKey, modelRole, x, y, z, rotationY, sizeX, sizeY, sizeZ);
     }
 
+    /**
+     * @param modelRole 카탈로그에서 조회한 모델 역할(없으면 null). 모델 키 이름으로 역할을 추측하지 않는다.
+     */
     public static DevicePageSceneItem create(CommonCode pageCode, DevicePageSceneItem parent, Device device, LocationNode locationNode,
-                                               String itemType, String pointName, String label, String modelKey,
+                                               String itemType, String pointName, String label, String modelKey, SceneModelRole modelRole,
                                                double x, double y, double z, double rotationY, double sizeX, double sizeY, double sizeZ) {
         if (pageCode == null) throw new IllegalArgumentException("pageCode is required");
         return new DevicePageSceneItem(pageCode, parent, device, locationNode, itemType, pointName, label,
-                modelKey, x, y, z, rotationY, sizeX, sizeY, sizeZ);
+                modelKey, modelRole, x, y, z, rotationY, sizeX, sizeY, sizeZ);
     }
 
     public void update(DevicePageSceneItem parent, Device device, LocationNode locationNode, String itemType, String pointName,
-                       String label, String modelKey, double x, double y, double z, double rotationY,
+                       String label, String modelKey, SceneModelRole modelRole, double x, double y, double z, double rotationY,
                        double sizeX, double sizeZ) {
-        update(parent, device, locationNode, itemType, pointName, label, modelKey, x, y, z, rotationY,
-                sizeX, isEquipmentFrame(modelKey) ? sizeX : 4, sizeZ);
+        update(parent, device, locationNode, itemType, pointName, label, modelKey, modelRole, x, y, z, rotationY,
+                sizeX, modelRole == SceneModelRole.FRAME ? sizeX : 4, sizeZ);
     }
 
     public void update(DevicePageSceneItem parent, Device device, LocationNode locationNode, String itemType, String pointName,
-                       String label, String modelKey, double x, double y, double z, double rotationY,
+                       String label, String modelKey, SceneModelRole modelRole, double x, double y, double z, double rotationY,
                        double sizeX, double sizeY, double sizeZ) {
         if (itemType == null || !java.util.Set.of("RACK", "EQUIPMENT", "SENSOR", "DEVICE", "PANEL_COMPONENT").contains(itemType)) {
             throw new IllegalArgumentException("Unsupported itemType");
         }
         if (label == null || label.isBlank() || label.length() > 120) throw new IllegalArgumentException("Invalid label");
-        if (modelKey == null || !java.util.Set.of("RACK", "PDU", "CRAC", "UPS", "SENSOR", "GENERIC", "CHILLER", "SWITCH", "SERVER",
-                "MACHINE", "CONVEYOR", "TANK", "TABLE", "WALL", "WALL_CONCRETE", "WALL_GLASS", "WALL_GLASS_CLEAR", "WALL_PANEL",
-                "DOOR", "DOOR_DOUBLE", "DOOR_SLIDING", "WINDOW", "WINDOW_DOUBLE", "CEILING", "CEILING_CLEAR", "FLOOR", "LIGHT", "PIPE", "STAIR",
-                "SR_RACK", "SR_DOUBLE_RACK", "SR_RDC", "SR_INROW", "SR_INROW_MOLD", "SR_WALL_COIL", "SR_DLC_RACK", "SR_INROW_RACK",
-                "SR_OCP_RACK", "SR_RDC_RACK", "SR_ORV3_RACK", "SR_IMMERSION", "SR_HAC_RACK", "SR_DLC_CDU", "SR_DLC_SERVER", "SR_INROW_PANEL", "SR_PDU_RACK", "SR_PDU_VERTICAL", "SR_GPU_SERVER", "SR_DRAGINO_TH", "SR_DRAGINO_DOOR", "SR_ACCURA_2350_1P", "SR_ACCURA_2350_3P", "SR_PANEL_BREAKER", "SR_PANEL_BRANCH", "SR_PANEL_MAIN", "SR_PANEL_METER", "SR_PANEL_BUSBAR", "SR_PANEL_WIRE").contains(modelKey)
-                && !modelKey.matches("USR_[A-Z0-9]{24}")) {
+        if (!SceneModelKeys.isPrimitive(modelKey) && !SceneModelKeys.isCatalogKeyFormat(modelKey)) {
             throw new IllegalArgumentException("Unsupported modelKey");
+        }
+        if (modelRole != null && SceneModelKeys.isPrimitive(modelKey)) {
+            throw new IllegalArgumentException("A primitive shape cannot have a catalog role");
         }
         if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z) || !Double.isFinite(rotationY)) {
             throw new IllegalArgumentException("Scene coordinates must be finite");
@@ -188,11 +198,12 @@ public class DevicePageSceneItem extends BaseEntity {
         boolean scalableEquipment = ("RACK".equals(itemType) || "EQUIPMENT".equals(itemType))
                 && !modelKey.startsWith("WALL") && !modelKey.startsWith("DOOR") && !modelKey.startsWith("WINDOW")
                 && !java.util.Set.of("FLOOR", "CEILING", "CEILING_CLEAR", "LIGHT", "PIPE", "STAIR").contains(modelKey);
-        boolean equipmentFrame = isEquipmentFrame(modelKey);
+        boolean equipmentFrame = modelRole == SceneModelRole.FRAME;
+        boolean catalogModel = !SceneModelKeys.isPrimitive(modelKey);
         boolean panelComponent = "PANEL_COMPONENT".equals(itemType);
         if (!Double.isFinite(sizeX) || !Double.isFinite(sizeY) || !Double.isFinite(sizeZ)
                 || sizeY < (panelComponent ? .5 : scalableEquipment ? 2 : 4) || sizeY > (panelComponent ? 16 : scalableEquipment ? 64 : 4)
-                || sizeX < .5 || sizeX > (panelComponent ? 16 : equipmentFrame ? 32 : architecturalSpan ? 24 : scalableEquipment ? (modelKey.startsWith("SR_") || modelKey.startsWith("USR_")) ? 32 : 16 : buildingPart ? 5 : 4)
+                || sizeX < .5 || sizeX > (panelComponent ? 16 : equipmentFrame ? 32 : architecturalSpan ? 24 : scalableEquipment ? catalogModel ? 32 : 16 : buildingPart ? 5 : 4)
                 || sizeZ < .5 || sizeZ > (panelComponent ? 16 : scalableEquipment ? 96 : modelKey.startsWith("CEILING") ? 24 : buildingPart ? 5 : 4)) {
             throw new IllegalArgumentException("Invalid scene item size");
         }
@@ -202,7 +213,7 @@ public class DevicePageSceneItem extends BaseEntity {
         if ("DEVICE".equals(itemType) && (parent == null || device == null || pointName != null)) {
             throw new IllegalArgumentException("A device attachment requires a host and device, but no single point");
         }
-        if (locationNode != null && (!("RACK".equals(itemType) || ("EQUIPMENT".equals(itemType) && modelKey.matches("SR_.*RACK") && !"SR_PDU_RACK".equals(modelKey)))
+        if (locationNode != null && (!actsAsRack(itemType, modelRole)
                 || !"RACK".equals(locationNode.getLocationType().getCode()))) {
             throw new IllegalArgumentException("A location node can only identify a RACK scene item");
         }
@@ -212,7 +223,7 @@ public class DevicePageSceneItem extends BaseEntity {
                 || parent.getModelKey() == null || !parent.getModelKey().startsWith("WALL"))) {
             throw new IllegalArgumentException("A door or window must be attached to a wall");
         }
-        if ("PANEL_COMPONENT".equals(itemType) && (parent == null || !"SR_INROW_PANEL".equals(parent.getModelKey()) || pointName != null)) {
+        if ("PANEL_COMPONENT".equals(itemType) && (parent == null || parent.getModelRole() != SceneModelRole.PANEL || pointName != null)) {
             throw new IllegalArgumentException("A panel component requires a distribution panel host");
         }
         if (!java.util.Set.of("SENSOR", "DEVICE", "PANEL_COMPONENT").contains(itemType) && parent != null && !wallOpening) {
@@ -225,6 +236,7 @@ public class DevicePageSceneItem extends BaseEntity {
         this.pointName = pointName == null || pointName.isBlank() ? null : pointName.trim();
         this.label = label.trim();
         this.modelKey = modelKey;
+        this.modelRole = modelRole;
         this.x = x;
         this.y = y;
         this.z = z;
@@ -234,7 +246,8 @@ public class DevicePageSceneItem extends BaseEntity {
         this.sizeZ = sizeZ;
     }
 
-    private static boolean isEquipmentFrame(String modelKey) {
-        return "SR_INROW_MOLD".equals(modelKey) || "SR_WALL_COIL".equals(modelKey);
+    /** 기본 RACK 도형이거나, 카탈로그에서 RACK 역할을 받은 설비. */
+    private static boolean actsAsRack(String itemType, SceneModelRole modelRole) {
+        return "RACK".equals(itemType) || ("EQUIPMENT".equals(itemType) && modelRole == SceneModelRole.RACK);
     }
 }
