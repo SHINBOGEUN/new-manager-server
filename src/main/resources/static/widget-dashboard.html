@@ -1793,6 +1793,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const scene = state.pageScene3dApi;
       if (!page || !scene) return;
       const items = scene.getItems();
+      const { isPanelItem } = await import("/scene-item-role.js?v=20261110roles");
       const request = {
         viewMode: page.viewMode || "SCENE_3D",
         layoutAssetKey: page.layoutAssetKey || null,
@@ -1805,8 +1806,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
           rackColor: item.rackColor || null,
-          panelPhoto: item.modelRole === 'PANEL' ? (item.panelPhoto || '') : null,
-          panelLayoutInitialized: item.modelRole === 'PANEL' ? Boolean(item.panelLayoutInitialized) : false,
+          panelPhoto: isPanelItem(item) ? (item.panelPhoto || '') : null,
+          panelLayoutInitialized: isPanelItem(item) ? Boolean(item.panelLayoutInitialized) : false,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),
