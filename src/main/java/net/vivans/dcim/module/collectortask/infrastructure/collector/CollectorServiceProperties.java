@@ -9,7 +9,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "collector.service")
 public class CollectorServiceProperties {
 
-    private String url = "http://localhost:8081";
+    /** 기본값은 application.yml(COLLECTOR_SERVICE_URL)에서만 정한다. */
+    private String url;
     private String apiKey = "";
     private boolean enabled = true;
     private boolean failFast = true;

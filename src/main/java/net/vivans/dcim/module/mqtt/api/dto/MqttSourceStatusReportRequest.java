@@ -4,7 +4,7 @@ import net.vivans.dcim.module.mqtt.domain.model.MqttSourceStatusType;
 
 import java.time.Instant;
 
-/** Sensor Data → Manager 상태 보고용. 카운터는 Sensor Data 기동 후 누적값이다. */
+/** Collector(MQTT 수신) → Manager 상태 보고용. 카운터는 Collector(MQTT 수신) 기동 후 누적값이다. */
 public record MqttSourceStatusReportRequest(
         MqttSourceStatusType status,
         Instant lastConnectedAt,

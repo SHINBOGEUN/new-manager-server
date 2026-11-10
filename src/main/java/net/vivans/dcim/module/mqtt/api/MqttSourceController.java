@@ -36,9 +36,9 @@ public class MqttSourceController {
         return ResponseEntity.ok(ApiResponse.ok(sourceService.getAll()));
     }
 
-    /** Sensor Data API key 전용. 비활성 소스도 포함해 기존 client를 끊을 수 있게 한다. */
+    /** Collector(MQTT 수신) API key 전용. 비활성 소스도 포함해 기존 client를 끊을 수 있게 한다. */
     @GetMapping("/bulk")
-    @Operation(summary = "Sensor Data용 소스 일괄 조회")
+    @Operation(summary = "Collector(MQTT 수신)용 소스 일괄 조회")
     public ResponseEntity<ApiResponse<List<MqttSourceResponse>>> getAllForSensorData() {
         return ResponseEntity.ok(ApiResponse.ok(sourceService.getAllForSensorData()));
     }
@@ -64,15 +64,15 @@ public class MqttSourceController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/sync")
-    @Operation(summary = "Sensor Data에 즉시 소스 재동기화 요청")
+    @Operation(summary = "Collector(MQTT 수신)에 즉시 소스 재동기화 요청")
     public ResponseEntity<ApiResponse<Void>> sync() {
         sourceService.requestImmediateSync();
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
-    /** Sensor Data API key 전용 상태 보고. */
+    /** Collector(MQTT 수신) API key 전용 상태 보고. */
     @PostMapping("/{id}/status")
-    @Operation(summary = "Sensor Data 연결/수신 상태 보고")
+    @Operation(summary = "Collector(MQTT 수신) 연결/수신 상태 보고")
     public ResponseEntity<ApiResponse<MqttSourceStatusResponse>> reportStatus(
             @PathVariable Integer id, @RequestBody MqttSourceStatusReportRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(sourceService.reportStatus(id, request)));

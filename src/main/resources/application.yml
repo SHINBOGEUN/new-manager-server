@@ -49,7 +49,8 @@ app:
   version: @project.version@
 
 jwt:
-  secret: ${JWT_SECRET}
+  # 필수값은 기본값을 두지 않는다. 비어 있으면 RequiredSettingsValidator가 누락 목록을 한 번에 보여주고 기동을 멈춘다.
+  secret: ${JWT_SECRET:}
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:1800}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:1209600}
 
@@ -63,7 +64,7 @@ security:
 collector:
   service:
     url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
-    api-key: ${COLLECTOR_API_KEY}
+    api-key: ${COLLECTOR_API_KEY:}
     enabled: ${COLLECTOR_SYNC_ENABLED:true}
     fail-fast: ${COLLECTOR_SYNC_FAIL_FAST:true}
     retry-max-attempts: ${COLLECTOR_SYNC_RETRY_MAX_ATTEMPTS:3}
@@ -71,13 +72,14 @@ collector:
   reconciliation:
     fixed-delay-ms: ${COLLECTOR_RECONCILIATION_FIXED_DELAY_MS:60000}
 
-# LoRa MQTT 수집 소스 변경을 Sensor Data에 즉시 전달한다.
-# 실제 MQTT 비밀번호는 Manager DB가 아닌 Sensor Data 환경변수에서 credentialKey로 해석한다.
+# MQTT 수신(구 Sensor Data)은 Collector에 통합되었다. LoRa·GPU MQTT 소스 변경을 Collector에 즉시 전달한다.
+# 접속 주소와 키는 Collector와 같은 값을 쓴다. 실제 MQTT 비밀번호는 Collector 환경변수에서 credentialKey로 해석한다.
+# (Java 설정 클래스 이름은 호환을 위해 SensorDataServiceProperties를 유지한다.)
 sensor-data:
   service:
-    url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
-    api-key: ${SENSOR_DATA_API_KEY}
-    enabled: ${SENSOR_DATA_SYNC_ENABLED:true}
+    url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
+    api-key: ${COLLECTOR_API_KEY:}
+    enabled: ${INGEST_SYNC_ENABLED:true}
 
 # 외부 데이터 수신 API 인증키. 배포 환경에서는 별도 키로 덮어쓰는 것을 권장한다.
 external-data:
@@ -85,8 +87,6 @@ external-data:
 
 operations:
   health:
-    sensor-data-url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
-    sensor-data-enabled: ${SENSOR_DATA_HEALTH_ENABLED:true}
     mqtt-enabled: ${MQTT_HEALTH_ENABLED:true}
     mqtt-host: ${MQTT_HOST:localhost}
     mqtt-port: ${MQTT_PORT:1883}
@@ -102,7 +102,8 @@ live:
 
 manager:
   inbound:
-    sensor-data-api-key: ${MANAGER_API_KEY}
+    # Collector(MQTT 수신 포함) -> Manager 호출 키. Collector의 MANAGER_API_KEY와 같은 값이어야 한다.
+    service-api-key: ${MANAGER_API_KEY:}
 
 collection:
   snmp:

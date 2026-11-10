@@ -13,11 +13,6 @@ on:
         required: false
         type: boolean
         default: false
-      deploy_sensor_data:
-        description: Deploy Sensor Data
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -34,11 +29,10 @@ jobs:
         env:
           DEPLOY_MANAGER: ${{ inputs.deploy_manager }}
           DEPLOY_COLLECTOR: ${{ inputs.deploy_collector }}
-          DEPLOY_SENSOR_DATA: ${{ inputs.deploy_sensor_data }}
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
-          if [[ "$DEPLOY_MANAGER" != true && "$DEPLOY_COLLECTOR" != true && "$DEPLOY_SENSOR_DATA" != true ]]; then
+          if [[ "$DEPLOY_MANAGER" != true && "$DEPLOY_COLLECTOR" != true ]]; then
             echo 'Select at least one service to deploy.' >&2
             exit 1
           fi
@@ -57,14 +51,6 @@ jobs:
           path: collector
           persist-credentials: false
 
-      - name: Checkout Sensor Data
-        uses: actions/checkout@v4
-        with:
-          repository: SHINBOGEUN/new-sensor-data-server
-          ref: main
-          path: sensor-data
-          persist-credentials: false
-
       - name: Read Maven project versions
         id: versions
         run: |
@@ -73,8 +59,7 @@ jobs:
           import xml.etree.ElementTree as ET
 
           for key, path in (("manager", "manager/pom.xml"),
-                            ("collector", "collector/pom.xml"),
-                            ("sensor_data", "sensor-data/pom.xml")):
+                            ("collector", "collector/pom.xml")):
               root = ET.parse(path).getroot()
               namespace = root.tag.split("}", 1)[0] + "}" if "}" in root.tag else ""
               version = root.findtext(f"{namespace}version")
@@ -84,7 +69,7 @@ jobs:
           PY
 
       - name: Set up JDK 17
-        if: ${{ inputs.deploy_manager || inputs.deploy_collector || inputs.deploy_sensor_data }}
+        if: ${{ inputs.deploy_manager || inputs.deploy_collector }}
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -93,7 +78,6 @@ jobs:
           cache-dependency-path: |
             manager/pom.xml
             collector/pom.xml
-            sensor-data/pom.xml
 
       - name: Build and test Manager
         if: ${{ inputs.deploy_manager }}
@@ -105,19 +89,12 @@ jobs:
         working-directory: collector
         run: chmod +x mvnw && ./mvnw -B verify
 
-      - name: Build and test Sensor Data
-        if: ${{ inputs.deploy_sensor_data }}
-        working-directory: sensor-data
-        run: chmod +x mvnw && ./mvnw -B verify
-
       - name: Assemble selected versioned bundle
         env:
           DEPLOY_MANAGER: ${{ inputs.deploy_manager }}
           DEPLOY_COLLECTOR: ${{ inputs.deploy_collector }}
-          DEPLOY_SENSOR_DATA: ${{ inputs.deploy_sensor_data }}
           MANAGER_VERSION: ${{ steps.versions.outputs.manager }}
           COLLECTOR_VERSION: ${{ steps.versions.outputs.collector }}
-          SENSOR_DATA_VERSION: ${{ steps.versions.outputs.sensor_data }}
         run: |
           set -euo pipefail
           mkdir -p bundle
@@ -137,19 +114,13 @@ jobs:
             cp "collector/target/new-collector-server-${COLLECTOR_VERSION}.jar" bundle/collector.jar
             services+=(collector-service)
           fi
-          if [[ "$DEPLOY_SENSOR_DATA" == true ]]; then
-            cp "sensor-data/target/new-sensor-data-server-${SENSOR_DATA_VERSION}.jar" bundle/sensor-data.jar
-            services+=(sensor-data-service)
-          fi
           cp manager/scripts/deploy-three-services.sh bundle/
           {
             printf 'manager-version=%s\n' "$MANAGER_VERSION"
             printf 'collector-version=%s\n' "$COLLECTOR_VERSION"
-            printf 'sensor-data-version=%s\n' "$SENSOR_DATA_VERSION"
             printf 'services=%s\n' "$(IFS=,; printf '%s' "${services[*]}")"
             printf 'manager=%s\n' "$(git -C manager rev-parse HEAD)"
             printf 'collector=%s\n' "$(git -C collector rev-parse HEAD)"
-            printf 'sensor-data=%s\n' "$(git -C sensor-data rev-parse HEAD)"
           } > bundle/revisions.txt
 
       - name: Upload selected deployment bundle

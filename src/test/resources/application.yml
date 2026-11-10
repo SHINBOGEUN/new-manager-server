@@ -28,15 +28,23 @@ jwt:
 
 manager:
   inbound:
-    sensor-data-api-key: sensor-data-service
-    collector-api-key: collector-service
+    service-api-key: test-collector-service-key
 
 security:
   auth-enabled: true
 
 collector:
   service:
+    url: http://127.0.0.1:1
     enabled: false
+
+sensor-data:
+  service:
+    url: http://127.0.0.1:1
+
+operations:
+  health:
+    mqtt-host: 127.0.0.1
 
 live:
   telemetry:

@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import net.vivans.dcim.module.lora.infrastructure.sensordata.SensorDataServiceProperties;
 
-/** Manager 설정 변경을 Sensor Data에 즉시 알린다. 실패해도 Sensor Data의 1분 재조정이 복구한다. */
+/** Manager 설정 변경을 Collector(MQTT 수신)에 즉시 알린다. 실패해도 Collector(MQTT 수신)의 1분 재조정이 복구한다. */
 @Slf4j
 @Component
 public class MqttSourceSyncClient {
@@ -24,18 +24,18 @@ public class MqttSourceSyncClient {
         try {
             restClient.post().uri("/api/internal/mqtt/sources/refresh")
                     .header("X-Config-Reason", reason).retrieve().toBodilessEntity();
-            log.info("[MQTT_SOURCE_SYNC] Sensor Data refresh requested: reason={}", reason);
+            log.info("[MQTT_SOURCE_SYNC] Collector(MQTT 수신) refresh requested: reason={}", reason);
         } catch (org.springframework.web.client.HttpClientErrorException.NotFound exception) {
-            // Sensor Data 전환 전 기존 LoRa 소스 동기화는 계속 지원한다.
+            // Collector(MQTT 수신) 전환 전 기존 LoRa 소스 동기화는 계속 지원한다.
             try {
                 restClient.post().uri("/api/internal/lora/sources/refresh")
                         .header("X-Config-Reason", reason).retrieve().toBodilessEntity();
-                log.info("[MQTT_SOURCE_SYNC] Legacy LoRa refresh requested; AGENT requires Sensor Data upgrade");
+                log.info("[MQTT_SOURCE_SYNC] Legacy LoRa refresh requested; AGENT requires Collector(MQTT 수신) upgrade");
             } catch (Exception fallbackException) {
                 log.warn("[MQTT_SOURCE_SYNC] Source refresh failed; periodic reconciliation required");
             }
         } catch (Exception exception) {
-            log.warn("[LORA_SOURCE_SYNC] Sensor Data refresh request failed; reconciliation will retry: reason={}, message={}",
+            log.warn("[LORA_SOURCE_SYNC] Collector(MQTT 수신) refresh request failed; reconciliation will retry: reason={}, message={}",
                     reason, exception.getMessage());
         }
     }
@@ -45,9 +45,9 @@ public class MqttSourceSyncClient {
         try {
             restClient.post().uri("/api/internal/lora/config/refresh")
                     .header("X-Config-Reason", reason).retrieve().toBodilessEntity();
-            log.info("[LORA_CONFIG_SYNC] Sensor Data config refresh requested: reason={}", reason);
+            log.info("[LORA_CONFIG_SYNC] Collector(MQTT 수신) config refresh requested: reason={}", reason);
         } catch (Exception exception) {
-            log.warn("[LORA_CONFIG_SYNC] Sensor Data config refresh request failed; TTL refresh will retry: reason={}, message={}",
+            log.warn("[LORA_CONFIG_SYNC] Collector(MQTT 수신) config refresh request failed; TTL refresh will retry: reason={}, message={}",
                     reason, exception.getMessage());
         }
     }

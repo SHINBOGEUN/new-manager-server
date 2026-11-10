@@ -11,7 +11,7 @@ import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** 기존 서비스 API Key 인증을 사용하는 Sensor Data용 설정 조회 API. */
+/** 기존 서비스 API Key 인증을 사용하는 Collector(MQTT 수신)용 설정 조회 API. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/manager/mqtt")

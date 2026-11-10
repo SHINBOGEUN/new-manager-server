@@ -45,19 +45,24 @@ services:
       - mqtt-data:/mosquitto/data
       - mqtt-log:/mosquitto/log
 
+  # Collector = SNMP/Modbus 수집 + MQTT 수신 -> InfluxDB 저장(구 sensor-data 서비스 통합)
   collector:
     build:
       context: ../new-collector-server
       dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
       args:
-        JAR_FILE: new-collector-server-${APP_TAG:-1.0.2-new}.jar
-    image: defog-collector:${APP_TAG:-1.0.2-new}
+        JAR_FILE: new-collector-server-${COLLECTOR_APP_TAG:-1.1.0-new}.jar
+    image: defog-collector:${COLLECTOR_APP_TAG:-1.1.0-new}
     restart: unless-stopped
     env_file: .env
     environment:
+      # 발행용과 수신용 MQTT client id는 반드시 달라야 한다.
       MQTT_CLIENT_ID: ${COLLECTOR_MQTT_CLIENT_ID}
+      INGEST_MQTT_CLIENT_ID: ${COLLECTOR_INGEST_MQTT_CLIENT_ID}
     depends_on:
       mqtt:
+        condition: service_started
+      influxdb:
         condition: service_started
     volumes:
       - ${COLLECTOR_RUNTIME_PATH:-./runtime/collector}/log:/app/log
@@ -83,27 +88,6 @@ services:
     volumes:
       - ${MANAGER_RUNTIME_PATH:-./runtime/manager}/log:/app/log
       - ${MANAGER_RUNTIME_PATH:-./runtime/manager}/assets:/app/assets
-
-  sensor-data:
-    build:
-      context: ../new-sensor-data-server
-      dockerfile: ../new-manager-server/docker/JavaService.Dockerfile
-      args:
-        JAR_FILE: new-sensor-data-server-${APP_TAG:-1.0.2-new}.jar
-    image: defog-sensor-data:${APP_TAG:-1.0.2-new}
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      MQTT_CLIENT_ID: ${SENSOR_DATA_MQTT_CLIENT_ID}
-    depends_on:
-      mqtt:
-        condition: service_started
-      influxdb:
-        condition: service_started
-      manager:
-        condition: service_started
-    volumes:
-      - ${SENSOR_DATA_RUNTIME_PATH:-./runtime/sensor-data}/log:/app/log
 
 volumes:
   mariadb-data:

@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * LoRa 실제 수집 검증(1차) — Ops Console "LoRa 수집 상태" 탭이 사용하는 조회 전용 서비스.
  * device_mqtt_identity / device_model_mqtt_point / mqtt_source(_status) 와
- * InfluxDB(protocol=mqtt), 그리고 Sensor Data의 장비별 런타임 상태(메모리, GET /api/internal/lora/runtime-status)
+ * InfluxDB(protocol=mqtt), 그리고 Collector(MQTT 수신)의 장비별 런타임 상태(메모리, GET /api/internal/lora/runtime-status)
  * 를 조합해서 판정한다. 영구 오류 이력 테이블(lora_ingest_error_log)은 더 이상 존재하지 않는다.
  *
  * 상태 판정 우선순위(위에서부터 순서대로 검사, 먼저 만족하는 조건이 최종 상태):
@@ -37,15 +37,15 @@ import java.util.stream.Collectors;
  *   2) NO_MAPPING            — 장비 모델에 활성화된 필드 매핑 없음
  *   3) NO_SOURCE             — 활성(enabled) MQTT 수집 소스가 하나도 없음
  *   4) SOURCE_DOWN           — 활성 소스는 있으나 CONNECTED 상태인 소스가 없음
- *   5) INFLUX_WRITE_FAILED   — Sensor Data runtime cache의 최근 오류가 INFLUX_WRITE_FAILED (저장 이력 유무와 무관)
- *   6) FIELD_ERROR           — Sensor Data runtime cache의 최근 오류가 FIELD_CONVERSION_FAILED (저장 이력 유무와 무관)
+ *   5) INFLUX_WRITE_FAILED   — Collector(MQTT 수신) runtime cache의 최근 오류가 INFLUX_WRITE_FAILED (저장 이력 유무와 무관)
+ *   6) FIELD_ERROR           — Collector(MQTT 수신) runtime cache의 최근 오류가 FIELD_CONVERSION_FAILED (저장 이력 유무와 무관)
  *   7) NEVER_SAVED           — 위 오류가 없고 InfluxDB(protocol=mqtt)에 저장 이력이 전혀 없음
  *   8) SAVED                 — 위 조건에 해당하지 않고 저장 이력이 있음(정상)
  *
- * INFLUX_WRITE_FAILED/FIELD_ERROR는 저장 이력(lastSavedAt) 유무보다 우선한다. Sensor Data runtime status가
+ * INFLUX_WRITE_FAILED/FIELD_ERROR는 저장 이력(lastSavedAt) 유무보다 우선한다. Collector(MQTT 수신) runtime status가
  * 없으면(서비스 재시작 직후 등) 오류로 취급하지 않고 InfluxDB 저장 이력과 설정 정보만으로 상태를 계산한다.
  *
- * 미등록(devEUI/deviceName) 장비는 운영 정책상 Sensor Data가 DEBUG 로그만 남기고 조용히 무시하므로
+ * 미등록(devEUI/deviceName) 장비는 운영 정책상 Collector(MQTT 수신)가 DEBUG 로그만 남기고 조용히 무시하므로
  * 이 화면·API의 판정 대상이 아니다.
  * 1차 범위에서는 STALE(지연) 상태를 판정하지 않는다 — device_mqtt_identity/device_model_mqtt_point에
  * 장비별 전송 주기 정보가 없어 오탐 없이 판정할 기준이 없기 때문이며, 2차 확장 범위로 분리했다.

@@ -2297,7 +2297,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           <div>
             <span class="eyebrow">COLLECTION OPERATIONS</span>
             <h2 style="margin:4px 0 0">수집 운영 상태</h2>
-            <p class="muted" style="margin:6px 0 0;font-size:12px">Manager · MariaDB · InfluxDB · Collector · Sensor Data · MQTT 연결과 Collector Job 동기화 상태입니다.</p>
+            <p class="muted" style="margin:6px 0 0;font-size:12px">Manager · MariaDB · InfluxDB · Collector(수집·MQTT 수신) · MQTT 연결과 Collector Job 동기화 상태입니다.</p>
           </div>
           <div class="row">
             <button type="button" class="ghost" id="opsHealthReload">상태 새로고침</button>
@@ -3446,7 +3446,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     <!-- LORA COLLECTION STATUS -->
     <section class="panel" id="tab-lora-collection-status">
       <h1 class="page-title">MQTT 수집 상태</h1>
-      <p class="page-desc">LoRa · GPU 등 MQTT 장비의 식별자, 모델 매핑과 최근 7일 InfluxDB 저장 이력을 확인합니다. 저장 확인은 현재 정상 발행을 보장하지 않으므로 마지막 저장 시간을 함께 확인하세요. 소스 연결은 메시지 형식별 집계이며 특정 장비의 브로커 연결을 보장하지 않습니다. 상세 런타임 오류는 현재 LoRa만 지원하며 GPU 오류는 Sensor Data 로그에서 확인하세요.</p>
+      <p class="page-desc">LoRa · GPU 등 MQTT 장비의 식별자, 모델 매핑과 최근 7일 InfluxDB 저장 이력을 확인합니다. 저장 확인은 현재 정상 발행을 보장하지 않으므로 마지막 저장 시간을 함께 확인하세요. 소스 연결은 메시지 형식별 집계이며 특정 장비의 브로커 연결을 보장하지 않습니다. 상세 런타임 오류는 현재 LoRa만 지원하며 GPU 오류는 Collector 로그에서 확인하세요.</p>
       <div class="card">
         <div class="row" style="justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
           <div>
@@ -3473,7 +3473,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     <!-- LORA MQTT SOURCES -->
     <section class="panel" id="tab-lora-mqtt-sources">
       <h1 class="page-title">MQTT 수집 소스</h1>
-      <p class="page-desc">LoRa·GPU·에이전트의 Broker와 구독 Topic을 관리합니다. 메시지 형식에 따라 수신 처리를 구분하며, 장비는 MAC·DevEUI 등의 MQTT 식별값으로 연결합니다. 비밀번호는 저장하지 않고 credential key만 Sensor Data 환경설정과 연결합니다.</p>
+      <p class="page-desc">LoRa·GPU·에이전트의 Broker와 구독 Topic을 관리합니다. 메시지 형식에 따라 수신 처리를 구분하며, 장비는 MAC·DevEUI 등의 MQTT 식별값으로 연결합니다. 비밀번호는 저장하지 않고 credential key만 Collector 환경설정과 연결합니다.</p>
       <div class="card workspace-table-card">
         <div class="row" style="justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
           <div>
@@ -3511,7 +3511,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <input id="mqttSourceTopic" class="mono" value="application/#" />
           </label>
           <label class="field">MQTT client ID <span class="muted">(선택)</span>
-            <input id="mqttSourceClientId" class="mono" placeholder="비우면 Sensor Data가 자동 생성" />
+            <input id="mqttSourceClientId" class="mono" placeholder="비우면 Collector가 자동 생성" />
           </label>
           <label class="field">credential key <span class="muted">(선택)</span>
             <input id="mqttSourceCredentialKey" class="mono" placeholder="예: chirpstack" />
@@ -3520,7 +3520,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <select id="mqttSourceEnabled"><option value="true">enabled</option><option value="false">disabled</option></select>
           </label>
         </div>
-        <div class="muted" style="font-size:12px;margin-top:8px">credential key의 실제 username/password는 Sensor Data의 환경변수에만 설정합니다. Manager DB에는 저장되지 않습니다.</div>
+        <div class="muted" style="font-size:12px;margin-top:8px">credential key의 실제 username/password는 Collector의 환경변수에만 설정합니다. Manager DB에는 저장되지 않습니다.</div>
         <div class="row" style="margin-top:12px">
           <button type="button" class="primary" id="mqttSourceSave" data-role-gate="admin">등록</button>
           <button type="button" class="ghost" id="mqttSourceCancelEdit" style="display:none">취소</button>
@@ -14059,7 +14059,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <button type="button" class="danger" data-delete-source="${source.id}">삭제</button>
           </div></td>
         </tr>`;
-      }).join("") || '<tr><td colspan="9"><div class="empty">등록된 MQTT 수집 소스가 없습니다. Broker와 Topic을 등록하면 Sensor Data가 자동으로 연결을 시도합니다.</div></td></tr>';
+      }).join("") || '<tr><td colspan="9"><div class="empty">등록된 MQTT 수집 소스가 없습니다. Broker와 Topic을 등록하면 Collector가 자동으로 연결을 시도합니다.</div></td></tr>';
 
       $("mqttSourceBody").querySelectorAll("[data-edit-source]").forEach((button) => {
         button.onclick = () => {
@@ -14334,7 +14334,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("mqttSourceSync").onclick = async () => {
       try {
         await api("/api/manager/mqtt/sources/sync", { method: "POST" });
-        toast("Sensor Data에 즉시 동기화를 요청했습니다");
+        toast("Collector에 즉시 동기화를 요청했습니다");
         setTimeout(() => loadMqttSources().catch(() => {}), 700);
       } catch (e) { toast(e.message, true); }
     };

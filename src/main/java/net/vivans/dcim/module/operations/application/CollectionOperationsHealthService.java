@@ -24,12 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.sql.DataSource;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.sql.Connection;
-import java.time.Duration;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -51,8 +47,6 @@ public class CollectionOperationsHealthService {
     private final CalculatedMetricRepository calculatedMetricRepository;
     private final OperationsHealthProperties properties;
 
-    private volatile HttpClient httpClient;
-
     @Transactional(readOnly = true)
     public CollectionOperationsHealthResponse getHealth() {
         List<CollectionOperationsHealthResponse.Component> components = new ArrayList<>();
@@ -70,15 +64,18 @@ public class CollectionOperationsHealthService {
                 Map<String, Object> details = new LinkedHashMap<>();
                 details.put("instanceId", collectorHealth.instanceId());
                 details.put("jobs", collectorHealth.jobs());
+                Object ingestEnabled = collectorHealth.details() == null ? null : collectorHealth.details().get("ingestEnabled");
+                Object ingestConnected = collectorHealth.details() == null ? null : collectorHealth.details().get("ingestConnected");
+                if (ingestEnabled != null) details.put("ingestEnabled", ingestEnabled);
+                if (ingestConnected != null) details.put("ingestConnected", ingestConnected);
                 components.add(component("collector", "Collector", "UP", null,
-                        "수집 Job API에 연결되었습니다.", details));
+                        collectorMessage(ingestEnabled, ingestConnected), details));
             } catch (Exception exception) {
                 components.add(component("collector", "Collector", "DOWN", null,
                         readableMessage(exception), Map.of()));
             }
         }
 
-        components.add(sensorDataComponent());
         components.add(mqttComponent());
         return new CollectionOperationsHealthResponse(Instant.now(), components, syncSummary(collectorHealth));
     }
@@ -197,25 +194,17 @@ public class CollectionOperationsHealthService {
         }
     }
 
-    private CollectionOperationsHealthResponse.Component sensorDataComponent() {
-        if (!properties.isSensorDataEnabled()) {
-            return component("sensor-data", "Sensor Data", "DISABLED", properties.getSensorDataUrl(),
-                    "Sensor Data 연결 확인이 비활성화되어 있습니다.", Map.of());
+    /** MQTT 수신(InfluxDB 저장)은 Collector에 통합되어 Collector 상태 응답으로 함께 확인한다. */
+    static String collectorMessage(Object ingestEnabled, Object ingestConnected) {
+        if (ingestEnabled == null) {
+            return "수집 Job API에 연결되었습니다.";
         }
-        String target = trimTrailingSlash(properties.getSensorDataUrl()) + "/actuator/health";
-        try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(target))
-                    .timeout(Duration.ofMillis(properties.getTimeoutMillis()))
-                    .GET()
-                    .build();
-            HttpResponse<Void> response = httpClient().send(request, HttpResponse.BodyHandlers.discarding());
-            boolean reachable = response.statusCode() >= 200 && response.statusCode() < 300;
-            return component("sensor-data", "Sensor Data", reachable ? "UP" : "DOWN", target,
-                    reachable ? "Sensor Data 상태 API가 정상 응답했습니다." : "HTTP " + response.statusCode(),
-                    Map.of("httpStatus", response.statusCode()));
-        } catch (Exception exception) {
-            return component("sensor-data", "Sensor Data", "DOWN", target, readableMessage(exception), Map.of());
+        if (!Boolean.parseBoolean(String.valueOf(ingestEnabled))) {
+            return "수집 Job API에 연결되었습니다. MQTT 수신은 꺼져 있습니다.";
         }
+        return Boolean.parseBoolean(String.valueOf(ingestConnected))
+                ? "수집 Job API와 MQTT 수신이 정상입니다."
+                : "수집 Job API에 연결되었으나 MQTT 수신 연결이 끊겨 있습니다.";
     }
 
     private CollectionOperationsHealthResponse.Component mqttComponent() {
@@ -280,24 +269,6 @@ public class CollectionOperationsHealthService {
         return new CollectionOperationsHealthResponse.Component(code, name, status, target, message, details);
     }
 
-    private static String trimTrailingSlash(String value) {
-        return value == null ? "" : value.replaceAll("/+$", "");
-    }
-
-    private HttpClient httpClient() {
-        HttpClient current = httpClient;
-        if (current != null) {
-            return current;
-        }
-        synchronized (this) {
-            if (httpClient == null) {
-                httpClient = HttpClient.newBuilder()
-                        .connectTimeout(Duration.ofSeconds(2))
-                        .build();
-            }
-            return httpClient;
-        }
-    }
 
     private static String readableMessage(Exception exception) {
         String message = exception.getMessage();

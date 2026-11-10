@@ -32,10 +32,8 @@ read_version() {
 
 manager_version=$(read_version manager-version)
 collector_version=$(read_version collector-version)
-sensor_data_version=$(read_version sensor-data-version)
 manager_commit=$(read_value manager)
 collector_commit=$(read_value collector)
-sensor_data_commit=$(read_value sensor-data)
 targets=$(read_value services)
 IFS=, read -r -a requested_services <<< "$targets"
 (( ${#requested_services[@]} > 0 )) || { echo 'No services selected' >&2; exit 1; }
@@ -68,14 +66,7 @@ for service in "${requested_services[@]}"; do
       health_urls+=(http://127.0.0.1:21081/api/health)
       versions+=("collector=$collector_version")
       ;;
-    sensor-data-service)
-      containers+=(dcim_new_sensor_data_service)
-      bundled_jars+=(sensor-data.jar)
-      jars+=("new-sensor-data-server-${sensor_data_version}.jar")
-      jar_stems+=(new-sensor-data-server)
-      health_urls+=(http://127.0.0.1:21082/api/health)
-      versions+=("sensor-data=$sensor_data_version")
-      ;;
+    # sensor-data-service는 Collector에 통합되어 더 이상 배포하지 않는다(docs/ops/DEPLOYMENT.md 전환 절차 참고).
     *) echo "Unsupported service: $service" >&2; exit 1 ;;
   esac
   services+=("$service")
@@ -269,7 +260,7 @@ for index in "${!jars[@]}"; do
     fi
   fi
 done
-printf 'Deployed release %s: services=%s versions=%s commits=%s,%s,%s\n' \
-  "$release_id" "${services[*]}" "${versions[*]}" "$manager_commit" "$collector_commit" "$sensor_data_commit"
+printf 'Deployed release %s: services=%s versions=%s commits=%s,%s\n' \
+  "$release_id" "${services[*]}" "${versions[*]}" "$manager_commit" "$collector_commit"
 echo 'Unselected app services, MQTT, databases, InfluxDB, and legacy services were untouched'
 
