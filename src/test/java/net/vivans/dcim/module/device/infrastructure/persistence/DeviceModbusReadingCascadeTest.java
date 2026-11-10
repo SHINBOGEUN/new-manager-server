@@ -4,17 +4,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** 실제 DB에 접속하지 않고 23/27 DDL의 FK 삭제 범위를 H2 MariaDB 모드로 검증합니다. */
+/** 실제 DB에 접속하지 않고 23/42 DDL의 FK 삭제 범위를 H2 MariaDB 모드로 검증합니다. */
 class DeviceModbusReadingCascadeTest {
     private Connection connection;
 
@@ -24,8 +25,8 @@ class DeviceModbusReadingCascadeTest {
         execute("CREATE TABLE device_protocol_endpoint (id INT PRIMARY KEY)");
         execute("CREATE TABLE devices (id INT PRIMARY KEY)");
         execute("CREATE TABLE device_model_modbus_point (id INT PRIMARY KEY)");
-        execute(Files.readString(Path.of("sql/schema/23_device_endpoint_modbus.sql")));
-        execute(Files.readString(Path.of("sql/schema/42_device_modbus_reading.sql")));
+        execute(readSql("db/test-schema/23_device_endpoint_modbus.sql"));
+        execute(readSql("db/test-schema/42_device_modbus_reading.sql"));
         execute("INSERT INTO device_protocol_endpoint VALUES (14), (15)");
         execute("INSERT INTO devices VALUES (14), (20)");
         execute("INSERT INTO device_model_modbus_point VALUES (1)");
@@ -92,6 +93,12 @@ class DeviceModbusReadingCascadeTest {
     private void execute(String sql) throws SQLException {
         try (var statement = connection.createStatement()) {
             statement.execute(sql);
+        }
+    }
+
+    private String readSql(String resource) throws Exception {
+        try (InputStream stream = getClass().getClassLoader().getResourceAsStream(resource)) {
+            return new String(Objects.requireNonNull(stream, "Missing test resource: " + resource).readAllBytes(), StandardCharsets.UTF_8);
         }
     }
 }
