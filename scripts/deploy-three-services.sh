@@ -66,7 +66,7 @@ for service in "${requested_services[@]}"; do
       health_urls+=(http://127.0.0.1:21081/api/health)
       versions+=("collector=$collector_version")
       ;;
-    # sensor-data-service는 Collector에 통합되어 더 이상 배포하지 않는다(docs/ops/DEPLOYMENT.md 전환 절차 참고).
+    # sensor-data-service는 Collector에 통합되어 더 이상 배포하지 않는다(DCIM_NEW/docs/07_배포_운영.md 전환 절차 참고).
     *) echo "Unsupported service: $service" >&2; exit 1 ;;
   esac
   services+=("$service")
