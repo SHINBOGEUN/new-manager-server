@@ -332,7 +332,7 @@ React 표에서 `장비 / 모델 / 상태 / 최근 수집 / 진단`을 확인했
 React에도 수집 시스템·Collector 작업 탭과 동기화 버튼이 있습니다. 아래 세부 사항을 확인합니다.
 
 - [ ] 작업별 마지막 성공·실패, 연속 실패 횟수, 실패 원인, Collector Job ID
-- [ ] Manager·MariaDB·InfluxDB·Collector·Sensor Data·MQTT 연결 상태
+- [ ] Manager·MariaDB·InfluxDB·Collector(수집·MQTT 수신)·MQTT 연결 상태 (2026-11-10: Sensor Data는 Collector로 통합되어 별도 항목 없음)
 - [ ] 수동 동기화 후 성공·실패 결과 표시
 
 ## 9. 알람
@@ -407,3 +407,14 @@ React 설정에서 장비 모델·MQTT 측정항목·공통코드·사용자 관
 - [ ] 데이터 없음, 로딩 중, 오류, 권한 없음 상태가 구분됩니다.
 - [ ] 화면 크기가 바뀌어도 버튼과 정보가 겹치지 않습니다.
 - [ ] 실제 데이터와 연결된 상태에서 주요 흐름을 검증합니다.
+
+## 2026-11-10 서버 변경으로 추가된 확인 항목
+
+자세한 내용은 `docs/ops/HARDCODING_UI_HANDOFF.md`를 참고합니다.
+
+- [ ] 로그인 화면: `GET /api/manager/auth/registration` 결과로 회원가입 버튼 표시/숨김, 첫 관리자 만들기 문구
+- [ ] 회원가입 403 처리와 "관리자에게 계정 요청" 안내, 사용자 추가는 사용자 관리(ADMIN)에서
+- [ ] 3D 도면: 랙·분전반·프레임 판단을 `SR_*` 키 이름 대신 `modelRole`(도면 항목)·`sceneRole`(모델 목록)로
+- [ ] 3D 모델 관리: 모델별 역할(랙/분전반/프레임/없음) 선택 → `PATCH /api/manager/scene-models/{key}/scene-role`
+- [ ] 운영 상태: Sensor Data 칸 제거, Collector 칸에 MQTT 수신 상태(`ingestEnabled`, `ingestConnected`)
+- [ ] React 화면 주소를 서버 `CORS_ALLOWED_ORIGINS`에 등록 요청(API·WebSocket 공통)
