@@ -3222,15 +3222,22 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       <div class="models-layout">
         <div class="model-list-panel">
           <div class="card">
-            <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">모델 목록</h2>
-              <button type="button" class="primary" id="modelAddOpen" data-role-gate="admin">+ 모델 생성</button>
+            <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h2 style="margin:0">모델 목록</h2>
+              <div class="row"><button type="button" class="ghost" id="modelCatalogExport" data-role-gate="admin">내보내기</button><button type="button" class="ghost" id="modelCatalogImportOpen" data-role-gate="admin">가져오기</button><button type="button" class="primary" id="modelAddOpen" data-role-gate="admin">+ 모델 생성</button></div>
             </div>
+            <input id="modelCatalogFile" type="file" accept="application/json,.json" hidden>
+            <dialog class="wizard-quick-dialog" id="modelCatalogImportDialog" aria-labelledby="modelCatalogImportTitle">
+              <div class="wizard-dialog-head"><div><span class="eyebrow">MODEL CATALOG</span><h2 id="modelCatalogImportTitle">장비 모델 카탈로그 가져오기</h2><p>미리보기에서 오류가 없을 때만 적용할 수 있습니다. 모델 충돌 시 처리 방식을 선택하세요.</p></div><button type="button" class="ghost" id="modelCatalogImportClose" aria-label="닫기">×</button></div>
+              <label class="field">충돌 처리<select id="modelCatalogConflict"><option value="SKIP">건너뛰기 (기본)</option><option value="UPDATE">기존 정의 갱신</option></select></label>
+              <pre id="modelCatalogImportReport" class="muted" style="max-height:42vh;overflow:auto;white-space:pre-wrap;word-break:break-word">JSON 파일을 선택하세요.</pre>
+              <div class="wizard-dialog-actions"><button type="button" class="ghost" id="modelCatalogPreview">미리보기</button><button type="button" class="primary" id="modelCatalogApply" disabled>적용</button></div>
+            </dialog>
             <div class="row" style="margin-bottom:10px">
               <button type="button" class="ghost" id="modelReload">새로고침</button>
             </div>
             <div class="model-list-scroll">
               <table>
-                <thead><tr><th>이름</th><th>유형</th><th>프로토콜</th><th></th></tr></thead>
+                <thead><tr><th><input id="modelCatalogSelectAll" type="checkbox" aria-label="모델 전체 선택"></th><th>이름</th><th>유형</th><th>프로토콜</th><th></th></tr></thead>
                 <tbody id="modelBody"></tbody>
               </table>
             </div>
@@ -5522,14 +5529,16 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.modelRequiresInstance = {};
       $("modelBody").innerHTML = state.models.map((m) => `
         <tr class="clickable" data-id="${m.id}">
+          <td><input type="checkbox" data-model-catalog-export="${m.id}" aria-label="${esc(m.manufacturer || "")} ${esc(m.name)} 내보내기"></td>
           <td><b>${esc(m.name)}</b><div class="muted mono">#${m.id} · ${esc(m.manufacturer || "")}</div></td>
           <td>${esc(m.deviceTypeName || m.deviceTypeCode)}</td>
           <td>${(m.protocols || []).map((p) => esc(p.protocolName || p.protocolCode)).join(", ") || "–"}</td>
           <td><div class="action-btns" data-role-gate="admin"><button type="button" class="ghost" data-edit-model="${m.id}">수정</button><button type="button" class="danger" data-del-model="${m.id}">삭제</button></div></td>
-        </tr>`).join("") || `<tr><td colspan="4"><div class="empty">모델이 없습니다</div></td></tr>`;
+        </tr>`).join("") || `<tr><td colspan="5"><div class="empty">모델이 없습니다</div></td></tr>`;
+      $("modelBody").querySelectorAll("[data-model-catalog-export]").forEach((checkbox) => checkbox.onclick = (event) => event.stopPropagation());
       $("modelBody").querySelectorAll("tr[data-id]").forEach((tr) => {
         tr.onclick = (ev) => {
-          if (ev.target.closest("[data-edit-model],[data-del-model]")) return;
+          if (ev.target.closest("[data-edit-model],[data-del-model],[data-model-catalog-export]")) return;
           selectModel(Number(tr.dataset.id));
         };
       });
@@ -11916,6 +11925,62 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("reloadAllBtn").onclick = boot;
     $("locReload").onclick = () => loadLocations().catch((e) => toast(e.message, true));
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
+    let modelCatalogDocument = null;
+    let modelCatalogPreviewValid = false;
+    const modelCatalogFile = $("modelCatalogFile");
+    const modelCatalogDialog = $("modelCatalogImportDialog");
+    const modelCatalogReport = $("modelCatalogImportReport");
+    const modelCatalogApply = $("modelCatalogApply");
+    function showModelCatalogReport(report) {
+      modelCatalogReport.textContent = JSON.stringify(report, null, 2);
+      modelCatalogPreviewValid = Array.isArray(report?.errors) && report.errors.length === 0;
+      modelCatalogApply.disabled = !modelCatalogPreviewValid;
+    }
+    async function previewModelCatalog() {
+      modelCatalogPreviewValid = false; modelCatalogApply.disabled = true;
+      if (!modelCatalogDocument) { modelCatalogReport.textContent = "먼저 JSON 파일을 선택하세요."; return; }
+      try {
+        const policy = $("modelCatalogConflict").value;
+        const report = await api(`/api/manager/device-models/import?dryRun=true&onConflict=${encodeURIComponent(policy)}`, { method:"POST", body:JSON.stringify(modelCatalogDocument) });
+        showModelCatalogReport(report);
+      } catch (error) { modelCatalogReport.textContent = error.message; }
+    }
+    $("modelCatalogImportOpen").onclick = () => modelCatalogFile.click();
+    $("modelCatalogImportClose").onclick = () => modelCatalogDialog.close();
+    $("modelCatalogPreview").onclick = () => previewModelCatalog();
+    $("modelCatalogConflict").onchange = () => { if (modelCatalogDocument) previewModelCatalog(); };
+    modelCatalogFile.onchange = async () => {
+      const file = modelCatalogFile.files?.[0]; modelCatalogFile.value = "";
+      modelCatalogDocument = null; modelCatalogPreviewValid = false; modelCatalogApply.disabled = true;
+      if (!file) return;
+      modelCatalogDialog.showModal();
+      if (file.size > 2 * 1024 * 1024) { modelCatalogReport.textContent = "파일은 2 MiB 이하여야 합니다."; return; }
+      try { modelCatalogDocument = JSON.parse(await file.text()); await previewModelCatalog(); }
+      catch (error) { modelCatalogReport.textContent = `JSON 파일을 읽지 못했습니다: ${error.message}`; }
+    };
+    $("modelCatalogApply").onclick = async () => {
+      if (!modelCatalogDocument || !modelCatalogPreviewValid) return;
+      if (!confirm("미리보기한 카탈로그 변경을 적용할까요?")) return;
+      modelCatalogApply.disabled = true;
+      try {
+        const report = await api(`/api/manager/device-models/import?dryRun=false&onConflict=${encodeURIComponent($("modelCatalogConflict").value)}`, { method:"POST", body:JSON.stringify(modelCatalogDocument) });
+        showModelCatalogReport(report); toast("장비 모델 카탈로그 적용을 마쳤습니다."); await loadModels();
+      } catch (error) { modelCatalogReport.textContent = error.message; toast(error.message, true); }
+    };
+    $("modelCatalogSelectAll").onchange = (event) => $("modelBody").querySelectorAll("[data-model-catalog-export]").forEach((checkbox) => checkbox.checked = event.target.checked);
+    $("modelCatalogExport").onclick = async () => {
+      const ids = [...$("modelBody").querySelectorAll("[data-model-catalog-export]:checked")].map((checkbox) => checkbox.dataset.modelCatalogExport);
+      const path = "/api/manager/device-models/export" + (ids.length ? `?ids=${ids.join(",")}` : "");
+      try {
+        let response = await fetch(base() + path, { headers: state.token ? { Authorization:"Bearer " + state.token } : {}, credentials:"same-origin" });
+        if (response.status === 401 && await refreshAccessToken()) response = await fetch(base() + path, { headers: state.token ? { Authorization:"Bearer " + state.token } : {}, credentials:"same-origin" });
+        if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || body.message || `HTTP ${response.status}`); }
+        const blob = await response.blob(), url = URL.createObjectURL(blob), anchor = document.createElement("a");
+        anchor.href = url; anchor.download = response.headers.get("Content-Disposition")?.match(/filename\*?=(?:UTF-8''|")?([^;"]+)/i)?.[1] || "dcim-models.json";
+        document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+        toast(ids.length ? `${ids.length}개 모델을 내보냈습니다.` : "전체 모델을 내보냈습니다.");
+      } catch (error) { toast(error.message, true); }
+    };
     $("sceneModelReload").onclick = () => loadSceneModels().catch((e) => toast(e.message, true));
     $("sceneBuiltinReload").onclick = () => loadSceneBuiltins().catch((e) => toast(e.message, true));
     $("sceneModelNew").onclick = () => { resetSceneModelForm(); $("sceneModelDialog").showModal(); $("sceneModelName").focus(); };
