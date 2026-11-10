@@ -12,6 +12,7 @@ flock -n 9 || { echo 'Another app deployment is running' >&2; exit 1; }
 
 command -v docker >/dev/null
 command -v curl >/dev/null
+command -v gzip >/dev/null
 [[ -f docker-compose.yml && -f .env ]] || { echo 'App Compose or .env is missing' >&2; exit 1; }
 docker info >/dev/null
 
@@ -112,11 +113,9 @@ for index in "${!jars[@]}"; do
   }
 done
 
-# Apply the additive catalog migration through the database container already
-# reachable from Manager. Runtime DB variables are not exposed in this deployment.
+# Back up the shared database before replacing a Manager JAR.
+# Flyway runs inside the new Manager process; this script does not execute SQL migrations.
 if [[ " ${services[*]} " == *" manager-server "* ]]; then
-  migration="$incoming/gpu_agent_catalog.sql"
-  [[ -s "$migration" ]] || { echo 'Missing GPU agent catalog migration' >&2; exit 1; }
   manager_env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' dcim_new_manager_server)
   manager_env_value() {
     awk -F= -v key="$1" '$1 == key { print substr($0, index($0, "=") + 1); exit }' <<< "$manager_env"
@@ -171,18 +170,29 @@ if [[ " ${services[*]} " == *" manager-server "* ]]; then
     exit 1
   fi
 
-  docker exec -i "$database_container" sh -c '
+  mkdir -p "$app_dir/.cd-releases"
+  backup_tmp="$app_dir/.cd-releases/.${release_id}.db-backup.sql.gz.tmp"
+  [[ ! -e "$backup_tmp" ]] || { echo 'Database backup staging file already exists' >&2; exit 1; }
+  if ! docker exec -i "$database_container" sh -c '
     db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
     user=${MARIADB_USER:-${MYSQL_USER:-}}
     pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}
     [ -n "$db" ] && [ -n "$user" ] && [ -n "$pass" ] || exit 40
-    if command -v mariadb >/dev/null 2>&1; then client=mariadb; elif command -v mysql >/dev/null 2>&1; then client=mysql; else exit 41; fi
-    exec "$client" --protocol=socket --user="$user" --password="$pass" "$db"
-  ' < "$migration"
-  echo 'Manager catalog and panel migrations applied'
+    if command -v mariadb-dump >/dev/null 2>&1; then client=mariadb-dump; elif command -v mysqldump >/dev/null 2>&1; then client=mysqldump; else exit 41; fi
+    exec "$client" --protocol=socket --user="$user" --password="$pass" --single-transaction --routines --events --triggers "$db"
+  ' | gzip -c > "$backup_tmp"; then
+    rm -f -- "$backup_tmp"
+    echo 'Shared database backup failed; application deployment stopped' >&2
+    exit 1
+  fi
+  [[ -s "$backup_tmp" ]] || { rm -f -- "$backup_tmp"; echo 'Shared database backup is empty' >&2; exit 1; }
+  echo "Shared database backup created for release $release_id"
 fi
 mkdir -p "$app_dir/.cd-releases"
 mv "$incoming" "$release"
+if [[ " ${services[*]} " == *" manager-server "* ]]; then
+  mv "$app_dir/.cd-releases/.${release_id}.db-backup.sql.gz.tmp" "$release/db-backup.sql.gz"
+fi
 mkdir "$release/previous"
 cp -p docker-compose.yml "$release/previous/docker-compose.yml"
 for jar in "${current_jars[@]}"; do
@@ -236,7 +246,7 @@ done
 
 wait_http() {
   local name=$1 url=$2 attempt
-  for attempt in {1..24}; do
+  for attempt in {1..48}; do
     if curl --fail --silent --max-time 5 --output /dev/null "$url"; then
       echo "$name is responding"
       return 0
