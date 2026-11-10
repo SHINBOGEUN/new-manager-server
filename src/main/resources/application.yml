@@ -1,8 +1,6 @@
 spring:
   application:
     name: new-manager-server
-  profiles:
-    active: test
   jackson:
     generator:
       write-bigdecimal-as-plain: true
@@ -51,7 +49,7 @@ app:
   version: @project.version@
 
 jwt:
-  secret: ${JWT_SECRET:lusR6p5tGwGKEWC2rWRYyCVbOzsVOMxMCtxOtHT+V4SiKE8ODJbomdCOl7cy5qbv7JQVHNRPKnwvxhmo9NYmlg==}
+  secret: ${JWT_SECRET}
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:1800}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:1209600}
 
@@ -65,7 +63,7 @@ security:
 collector:
   service:
     url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
-    api-key: ${COLLECTOR_API_KEY:manager-server}
+    api-key: ${COLLECTOR_API_KEY}
     enabled: ${COLLECTOR_SYNC_ENABLED:true}
     fail-fast: ${COLLECTOR_SYNC_FAIL_FAST:true}
     retry-max-attempts: ${COLLECTOR_SYNC_RETRY_MAX_ATTEMPTS:3}
@@ -78,12 +76,12 @@ collector:
 sensor-data:
   service:
     url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
-    api-key: ${SENSOR_DATA_API_KEY:sensor-data-server}
+    api-key: ${SENSOR_DATA_API_KEY}
     enabled: ${SENSOR_DATA_SYNC_ENABLED:true}
 
 # 외부 데이터 수신 API 인증키. 배포 환경에서는 별도 키로 덮어쓰는 것을 권장한다.
 external-data:
-  api-key: ${EXTERNAL_DATA_API_KEY:external-data-service}
+  api-key: ${EXTERNAL_DATA_API_KEY:}
 
 operations:
   health:
@@ -98,7 +96,17 @@ live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
 
+manager:
+  inbound:
+    sensor-data-api-key: ${MANAGER_API_KEY:}
+    collector-api-key: ${COLLECTOR_MANAGER_API_KEY:}
+
 collection:
+  snmp:
+    community: ${SNMP_COMMUNITY:public}
+  timeout-ms: ${COLLECTION_TIMEOUT_MS:2000}
+  retries: ${COLLECTION_RETRIES:1}
+  max-concurrency: ${COLLECTION_MAX_CONCURRENCY:10}
   status:
     # 수집 주기(cron) 대비 허용 지연·실패 기준. 프로토콜과 무관하게 동일하게 적용한다.
     default-interval-seconds: ${COLLECTION_STATUS_DEFAULT_INTERVAL_SECONDS:900}

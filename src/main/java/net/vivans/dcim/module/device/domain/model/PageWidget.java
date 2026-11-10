@@ -63,6 +63,23 @@ public class PageWidget extends BaseEntity {
     @Column(name = "visual_color", length = 7)
     private String visualColor;
 
+    @Column(name = "trend_range_preset", nullable = false, length = 24)
+    private String trendRangePreset = "last_3d";
+
+    @Column(name = "trend_window", nullable = false, length = 8)
+    private String trendWindow = "15m";
+
+    public void changeTrendDefaults(String rangePreset, String window) {
+        if (!Set.of("last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month").contains(rangePreset)) {
+            throw new IllegalArgumentException("지원하지 않는 상세 차트 기간입니다");
+        }
+        if (!Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {
+            throw new IllegalArgumentException("지원하지 않는 상세 차트 집계 간격입니다");
+        }
+        this.trendRangePreset = rangePreset;
+        this.trendWindow = window;
+    }
+
     @Column(name = "table_columns_json", columnDefinition = "TEXT")
     private String tableColumnsJson;
 

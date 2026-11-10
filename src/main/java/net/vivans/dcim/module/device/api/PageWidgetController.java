@@ -40,6 +40,22 @@ import java.util.List;
 public class PageWidgetController {
 
     private final PageWidgetQueryService pageWidgetQueryService;
+    private final net.vivans.dcim.module.device.domain.repository.PageWidgetRepository pageWidgetRepository;
+
+    public record TrendDefaultsRequest(
+            @jakarta.validation.constraints.NotBlank String rangePreset,
+            @jakarta.validation.constraints.NotBlank String window) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/trend-defaults")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> setTrendDefaults(
+            @PathVariable Integer id, @Valid @RequestBody TrendDefaultsRequest request) {
+        var widget = pageWidgetRepository.findById(id)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Widget not found: " + id));
+        widget.changeTrendDefaults(request.rangePreset(), request.window());
+        return ResponseEntity.ok(ApiResponse.ok(PageWidgetResponse.from(pageWidgetRepository.save(widget))));
+    }
 
     public record TableColumnsRequest(List<PageWidgetQueryService.TableColumn> columns) {}
     public record TableCreateRequest(@jakarta.validation.constraints.NotNull @Valid PageWidgetCreateRequest widget, List<PageWidgetQueryService.TableColumn> columns) {}

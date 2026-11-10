@@ -26,6 +26,11 @@ jwt:
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:3600}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:7200}
 
+manager:
+  inbound:
+    sensor-data-api-key: sensor-data-service
+    collector-api-key: collector-service
+
 security:
   auth-enabled: true
 

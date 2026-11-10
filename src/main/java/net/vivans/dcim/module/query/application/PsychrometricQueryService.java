@@ -12,6 +12,7 @@ import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,8 @@ import java.util.stream.Collectors;
 public class PsychrometricQueryService {
 
     private static final int HISTORY_POINT_COUNT = 5;
-    private static final Duration LATEST_LOOKBACK = Duration.ofHours(24);
+    @Value("${query.widget.latest-lookback:PT24H}")
+    private Duration latestLookback = Duration.ofHours(24);
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
@@ -64,7 +66,7 @@ public class PsychrometricQueryService {
             samples = samples.subList(samples.size() - HISTORY_POINT_COUNT, samples.size());
         }
 
-        List<LastPoint> latestPoints = pointQuery.findLast(deviceIds, pointNames, LATEST_LOOKBACK);
+        List<LastPoint> latestPoints = pointQuery.findLast(deviceIds, pointNames, latestLookback);
         java.util.Optional<Sample> latest = latestAverage(latestPoints, roles);
         if (latest.isPresent() && samples.stream().noneMatch(sample -> sample.time().equals(latest.get().time()))) {
             samples.add(latest.get());

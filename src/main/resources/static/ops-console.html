@@ -3048,6 +3048,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             </label>
             <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">기준을 넘은 값은 수집 지연으로 표시됩니다.</div>
           </div>
+          <div id="wTrendDefaults" class="fields" data-widget-stage="3" style="margin-top:14px">
+            <label class="field">상세 차트 기본 기간
+              <select id="wTrendRange"><option value="last_3d">최근 3일</option><option value="last_24h">최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option><option value="last_month">지난 달</option></select>
+            </label>
+            <label class="field">상세 차트 집계 간격
+              <select id="wTrendWindow"><option value="1m">1분</option><option value="5m">5분</option><option value="15m" selected>15분</option><option value="1h">1시간</option><option value="1d">1일</option></select>
+            </label>
+            <div class="muted full">위젯을 눌러 여는 상세 차트에 적용됩니다.</div>
+          </div>
           <div class="widget-review" id="wReview" data-widget-stage="3" aria-live="polite"></div>
           <section class="widget-page-preview" data-widget-stage="3" aria-label="페이지 화면 미리보기">
             <div class="widget-page-preview-head">
@@ -7202,10 +7211,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       }
       const list = $("rackPreviewBody").querySelector('[data-panel-list]'), editor = $("rackPreviewBody").querySelector('[data-panel-editor]'), selectedLabel = $("rackPreviewBody").querySelector('[data-panel-selection]');
       const isAccuraModel = (key) => /^SR_ACCURA_2350_(1P|3P)$/.test(key || '');
-      const isAccuraDevice = (device) => /accura|2350/i.test(`${device?.modelName || ''} ${device?.deviceName || ''}`);
+      const panelDeviceId = (device) => Number(device?.deviceId ?? device?.id);
+      const panelDeviceName = (device) => device?.deviceName || device?.name || `장비 #${panelDeviceId(device)}`;
+      const isAccuraDevice = (device) => /accura|2350/i.test([
+        device?.modelName, device?.manufacturer, device?.deviceTypeCode,
+        device?.deviceName, device?.name,
+      ].filter(Boolean).join(' ')) && device?.enabled !== false;
       const isLinkedAccura = (item) => {
         if (!item?.deviceId) return false;
-        const device = devices.find((entry) => Number(entry.deviceId) === Number(item.deviceId));
+        const device = devices.find((entry) => panelDeviceId(entry) === Number(item.deviceId));
         return device ? isAccuraDevice(device) : isAccuraModel(item.modelKey);
       };
       const componentTitle = (item, index) => `${models.find(m => m.key === item.modelKey)?.label || item.label || item.modelKey} ${index + 1}`;
@@ -7250,15 +7264,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           if (editing) {
             if (isAccuraModel(item.modelKey)) {
               const device = document.createElement('select'); device.setAttribute('aria-label','연결할 ACCURA 장비'); device.append(new Option('장비 연결 안 함', ''));
-              devices.filter(isAccuraDevice).forEach(d => device.append(new Option(d.deviceName || `장비 #${d.deviceId}`, String(d.deviceId))));
+              devices.filter(isAccuraDevice).forEach(d => device.append(new Option(panelDeviceName(d), String(panelDeviceId(d)))));
               if (item.deviceId && ![...device.options].some(option => option.value === String(item.deviceId))) {
-                const current = devices.find(d => Number(d.deviceId) === Number(item.deviceId));
-                device.append(new Option(`${current?.deviceName || `장비 #${item.deviceId}`} · 기존 연결`,String(item.deviceId)));
+                const current = devices.find(d => panelDeviceId(d) === Number(item.deviceId));
+                device.append(new Option(`${current ? panelDeviceName(current) : `장비 #${item.deviceId}`} · 기존 연결`,String(item.deviceId)));
               }
               device.value = item.deviceId ? String(item.deviceId) : ''; device.onchange = () => { item.deviceId = device.value ? Number(device.value) : null; }; row.append(device);
             } else if (item.deviceId) {
-              const current = devices.find(d => Number(d.deviceId) === Number(item.deviceId));
-              const note = document.createElement('span'); note.className = 'muted'; note.textContent = ` · 기존 연결: ${current?.deviceName || `장비 #${item.deviceId}`}`; row.append(note);
+              const current = devices.find(d => panelDeviceId(d) === Number(item.deviceId));
+              const note = document.createElement('span'); note.className = 'muted'; note.textContent = ` · 기존 연결: ${current ? panelDeviceName(current) : `장비 #${item.deviceId}`}`; row.append(note);
               const unlink = document.createElement('button'); unlink.type = 'button'; unlink.textContent = '연결 해제'; unlink.onclick = () => { item.deviceId = null; render(); }; row.append(unlink);
             }
             const actions = document.createElement('div'); actions.className = 'row';
@@ -7268,7 +7282,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             adjust('확대', () => { for (const axis of ['sizeX','sizeY','sizeZ']) item[axis] = Math.min(16,(Number(item[axis]) || 4) + .5); render(); });
             const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제'; remove.onclick = () => { components.splice(index,1); if (selectedPanelIndex === index) selectedPanelIndex = null; else if (selectedPanelIndex > index) selectedPanelIndex--; render(); }; row.append(remove);
             row.append(actions);
-          } else if (item.deviceId) { const linked = devices.find(d => Number(d.deviceId) === Number(item.deviceId)); const info = document.createElement('span'); info.textContent = ` · ${linked?.deviceName || `장비 #${item.deviceId}`}`; row.append(info); }
+          } else if (item.deviceId) { const linked = devices.find(d => panelDeviceId(d) === Number(item.deviceId)); const info = document.createElement('span'); info.textContent = ` · ${linked ? panelDeviceName(linked) : `장비 #${item.deviceId}`}`; row.append(info); }
           (editing ? groups[isAccuraModel(item.modelKey) ? 'device' : 'decoration'] : list).append(row);
         });
         showSelection(selectedPanelIndex);
@@ -9236,6 +9250,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     async function refreshWidgetPoints() {
+      $("wTrendDefaults").hidden = ["count", "cctv"].includes($("wKind").value);
       const hint = $("wPointsHint");
       const grid = $("wPointGrid");
       if (!hint || !grid) return;
@@ -12829,6 +12844,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("wPueRangePreset").value = "last_24h";
       $("wPueFreshnessMinutes").value = "15";
       $("wDataFreshnessMinutes").value = "15";
+      $("wTrendRange").value = "last_3d";
+      $("wTrendWindow").value = "15m";
       $("wPueDefinition").value = "";
       $("wOp").value = "";
       if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
@@ -12870,6 +12887,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wCreatePage").disabled = true;
         await loadWidgetSources();
         $("wName").value = w.name || "";
+        $("wTrendRange").value = w.trendRangePreset || "last_3d";
+        $("wTrendWindow").value = w.trendWindow || "15m";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
         setWidgetVisualStyle(w.visualStyle || "classic");
@@ -13687,6 +13706,21 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     renderWidgetModels();
     renderPsychrometricSources();
 
+    async function saveWidgetTrendDefaults(widget) {
+      try {
+        await api(`/api/manager/widgets/${widget.id}/trend-defaults`, {
+          method: "PATCH",
+          body: JSON.stringify({ rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value }),
+        });
+      } catch (error) {
+        state.editingWidgetId = widget.id;
+        state.editingLayout = widget.layout || null;
+        state.editingEnabled = widget.enabled !== false;
+        $("wCreate").textContent = "변경 저장";
+        throw new Error(`위젯은 저장됐지만 상세 차트 설정 저장에 실패했습니다. 다시 저장해 주세요. ${error.message}`);
+      }
+    }
+
     $("wCreate").onclick = async () => {
       try {
         validateWidgetEditorStep(1);
@@ -13710,6 +13744,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             state.editingWidgetId ? `/api/manager/widgets/${state.editingWidgetId}` : "/api/manager/widgets",
             { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(cctvBody) }
           );
+          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "CCTV 위젯을 저장했습니다" : "CCTV 위젯을 만들었습니다");
           $("wPage").value = cctvBody.pageCode;
@@ -13745,6 +13780,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               : "/api/manager/widgets/power-distribution",
             { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(powerBody) }
           );
+          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "전력 분배 위젯을 저장했습니다" : "전력 분배 위젯을 만들었습니다");
           $("wPage").value = powerBody.pageCode;
@@ -13777,6 +13813,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             body: JSON.stringify(psychBody),
           }
         );
+          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "사이코메트릭 위젯을 저장했습니다" : "사이코메트릭 위젯을 만들었습니다");
           $("wPage").value = psychBody.pageCode;
@@ -13869,6 +13906,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const useTableEndpoint = !!tableColumns || widgetTablePreviouslyEnabled;
         const url = wasEditing ? `/api/manager/widgets/${state.editingWidgetId}${useTableEndpoint ? '/table' : ''}` : `/api/manager/widgets${useTableEndpoint ? '/table' : ''}`;
         const saved = await api(url, { method:wasEditing ? 'PUT' : 'POST', body:JSON.stringify(useTableEndpoint ? {widget:body, columns:tableColumns} : body) });
+        await saveWidgetTrendDefaults(saved);
         toast(wasEditing ? "위젯을 저장했습니다" : "위젯을 만들었습니다");
         $("wOut").textContent = JSON.stringify(saved, null, 2);
         $("wPage").value = body.pageCode;

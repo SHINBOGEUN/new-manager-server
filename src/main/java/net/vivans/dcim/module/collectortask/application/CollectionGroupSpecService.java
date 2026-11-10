@@ -25,6 +25,7 @@ import net.vivans.dcim.module.devicemodel.domain.model.ModbusRegisterType;
 import net.vivans.dcim.module.devicemodel.domain.model.ModbusDataType;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelModbusPointRepository;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelSnmpPointRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,10 +49,14 @@ public class CollectionGroupSpecService {
     }
     /** 장비 모델이 수집 작업(Task) 모델과 다를 때 남기는 skip 사유 마커. 프로토콜에 관계없이 공통으로 사용한다. */
     public static final String MODEL_MISMATCH_MARKER = "model mismatch";
-    private static final String DEFAULT_COMMUNITY = "public";
-    private static final int DEFAULT_TIMEOUT_MS = 2000;
-    private static final int DEFAULT_RETRIES = 1;
-    private static final int DEFAULT_MAX_CONCURRENCY = 10;
+    @Value("${collection.snmp.community:public}")
+    private String community = "public";
+    @Value("${collection.timeout-ms:2000}")
+    private int timeoutMs = 2000;
+    @Value("${collection.retries:1}")
+    private int retries = 1;
+    @Value("${collection.max-concurrency:10}")
+    private int maxConcurrency = 10;
 
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
     private final DeviceModelModbusPointRepository deviceModelModbusPointRepository;
@@ -153,10 +158,10 @@ public class CollectionGroupSpecService {
                 task.getDeviceModel().getId(),
                 SNMP_PROTOCOL_CODE,
                 group.getCronExpression(),
-                DEFAULT_COMMUNITY,
-                DEFAULT_TIMEOUT_MS,
-                DEFAULT_RETRIES,
-                DEFAULT_MAX_CONCURRENCY,
+                community,
+                timeoutMs,
+                retries,
+                maxConcurrency,
                 oids,
                 targets,
                 skipped
@@ -215,10 +220,10 @@ public class CollectionGroupSpecService {
                 group.getTask().getDeviceModel().getId(),
                 group.getTask().getScriptType().getCode(),
                 group.getCronExpression(),
-                DEFAULT_COMMUNITY,
-                DEFAULT_TIMEOUT_MS,
-                DEFAULT_RETRIES,
-                DEFAULT_MAX_CONCURRENCY,
+                community,
+                timeoutMs,
+                retries,
+                maxConcurrency,
                 List.of(),
                 List.of(),
                 skipped
@@ -261,7 +266,7 @@ public class CollectionGroupSpecService {
         }
         CollectionGroupModbusSpec spec = new CollectionGroupModbusSpec(
                 task.getId(), group.getId(), task.getDeviceModel().getId(), MODBUS_PROTOCOL_CODE,
-                group.getCronExpression(), DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES, DEFAULT_MAX_CONCURRENCY,
+                group.getCronExpression(), timeoutMs, retries, maxConcurrency,
                 List.of(), targets, skipped);
         return new CollectionGroupPlan(spec, skipped, pointsBySource);
     }

@@ -50,7 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CollectionStatusQueryService {
-    private static final int MAX_DEVICES = 200;
+    private static final int DEVICE_PAGE_SIZE = 200;
     private static final int DEFAULT_LOOKBACK_HOURS = 168;
     private static final int MAX_LOOKBACK_HOURS = 168;
     private static final String UNSUPPORTED_MARKER = "not supported yet";
@@ -100,9 +100,9 @@ public class CollectionStatusQueryService {
                                                 Map<Integer, DeviceMonitoringPolicy> policies) {
         List<Device> selected = new ArrayList<>();
         Map<Integer, Boolean> mqttOnlyByModelId = new HashMap<>();
-        for (int pageIndex = 0; selected.size() < MAX_DEVICES; pageIndex++) {
+        for (int pageIndex = 0; ; pageIndex++) {
             Page<Device> page = deviceRepository.findAll(null, null, null, null, null, null,
-                    PageRequest.of(pageIndex, MAX_DEVICES, Sort.by("id")));
+                    PageRequest.of(pageIndex, DEVICE_PAGE_SIZE, Sort.by("id")));
             for (Device device : page.getContent()) {
                 boolean mqttOnly = mqttOnlyByModelId.computeIfAbsent(device.getDeviceModel().getId(),
                         ignored -> isMqttOnlyModel(device));
@@ -112,7 +112,6 @@ public class CollectionStatusQueryService {
                     continue;
                 }
                 selected.add(device);
-                if (selected.size() == MAX_DEVICES) break;
             }
             if (!page.hasNext()) break;
         }

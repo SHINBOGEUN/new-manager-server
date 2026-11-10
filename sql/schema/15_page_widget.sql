@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS `page_widget` (
   `enabled` tinyint(1) NOT NULL DEFAULT 1 COMMENT '사용 여부',
   `visual_style` varchar(16) NOT NULL DEFAULT 'classic' COMMENT '위젯 디자인',
   `visual_color` varchar(7) DEFAULT NULL COMMENT '위젯 강조 색상',
+  `trend_range_preset` varchar(24) NOT NULL DEFAULT 'last_3d',
+  `trend_window` varchar(8) NOT NULL DEFAULT '15m',
   `table_columns_json` text DEFAULT NULL COMMENT '테이블 열 설정',
   `data_freshness_minutes` int(11) NOT NULL DEFAULT 15 COMMENT '원천 데이터 최신 허용 경과 분',
   `query_kind` varchar(32) NOT NULL COMMENT 'last | aggregate | count | chart | calculated | psychrometric | power_distribution | cctv',

@@ -11,6 +11,7 @@ import net.vivans.dcim.module.alarm.infrastructure.ThresholdRuleRepository;
 import net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog;
 import net.vivans.dcim.module.query.domain.PointQuery;
 import net.vivans.dcim.module.query.domain.SeriesPoint;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,7 +31,8 @@ public class ThresholdEvaluator {
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final ApplicationEventPublisher publisher;
 
-    private static final Duration MAX_SAMPLE_AGE = Duration.ofMinutes(5);
+    @Value("${alarms.thresholds.max-sample-age:PT5M}")
+    private Duration maxSampleAge = Duration.ofMinutes(5);
 
     @Transactional
     public void evaluate(long ruleId, Instant now) {
@@ -74,8 +76,8 @@ public class ThresholdEvaluator {
         apply(rule, source, BigDecimal.valueOf(value), Instant.now());
     }
 
-    private static boolean fresh(Instant measuredAt, Instant now) {
-        return measuredAt != null && !measuredAt.isBefore(now.minus(MAX_SAMPLE_AGE))
+    private boolean fresh(Instant measuredAt, Instant now) {
+        return measuredAt != null && !measuredAt.isBefore(now.minus(maxSampleAge))
                 && !measuredAt.isAfter(now.plusSeconds(30));
     }
 

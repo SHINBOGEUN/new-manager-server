@@ -12,6 +12,7 @@ import net.vivans.dcim.module.query.api.dto.PowerDistributionWidgetResponse;
 import net.vivans.dcim.module.query.api.dto.WidgetDataStatusResponse;
 import net.vivans.dcim.module.query.domain.LastPoint;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,8 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class PowerDistributionQueryService {
 
-    private static final Duration LOOKBACK = Duration.ofHours(24);
+    @Value("${query.widget.latest-lookback:PT24H}")
+    private Duration latestLookback = Duration.ofHours(24);
 
     private final PageWidgetRepository pageWidgetRepository;
     private final PointQuery pointQuery;
@@ -50,7 +52,7 @@ public class PowerDistributionQueryService {
         List<Integer> deviceIds = sources.stream().map(source -> source.getDevice().getId()).distinct().toList();
         List<String> pointNames = sources.stream().map(PageWidgetPowerDistributionSource::getPointName).distinct().toList();
         Map<String, LastPoint> latestBySource = new HashMap<>();
-        for (LastPoint point : pointQuery.findLast(deviceIds, pointNames, LOOKBACK)) {
+        for (LastPoint point : pointQuery.findLast(deviceIds, pointNames, latestLookback)) {
             latestBySource.put(key(point.deviceId(), point.pointName()), point);
         }
 

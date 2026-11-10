@@ -2062,7 +2062,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 .map((item) => Number(item.deviceId)).filter((id) => Number.isSafeInteger(id) && id > 0);
               const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN" && !panel.locked;
               if (window.parent.openScenePanel) window.parent.openScenePanel(panel.label || "분전반", page.pageCode, attached,
-                children.filter((item) => item.itemType === "PANEL_COMPONENT"), editing, devices,
+                children.filter((item) => item.itemType === "PANEL_COMPONENT"), editing, state.devices,
                 async (components) => { if (!state.pageScene3dApi?.setPanelComponents(key, components)) throw new Error("분전반이 잠겼거나 도면에서 삭제되었거나 설치할 수 없는 모델이 있습니다."); if (!await savePageScene()) throw new Error("도면 저장에 실패했습니다. 변경 사항을 확인한 뒤 다시 저장하세요."); }, Boolean(panel.panelLayoutInitialized));
             },
             onRackDetail: (rack) => {
@@ -3173,9 +3173,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         return openPueTrendModal(widgetId);
       }
       if (widget.queryKind === "count") return;
+      const range = widget.trendRangePreset || "last_3d";
+      const windowSize = widget.trendWindow || "15m";
       const data = widget.queryKind === "chart"
-        ? await fetchChart(widget, { rangePreset: "last_3d", window: "15m", seriesMode: "per_device" })
-        : await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
+        ? await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: "per_device" })
+        : await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
       if (data.error) throw new Error(data.error);
       if (!(data.series || []).some((series) => (series.values || []).length)) {
         log(`trend skipped #${widget.id}: Influx 시계열 데이터 없음`);
@@ -3188,7 +3190,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         state.trendModalChart = null;
       }
       const units = data.units || (data.unit ? [data.unit] : []);
-      $("trendModalMeta").textContent = ["최근 3일", "15분 평균", ...units].filter(Boolean).join(" · ");
+      $("trendModalMeta").textContent = [trendRangeLabel(range), trendWindowLabel(windowSize) + " 평균", ...units].filter(Boolean).join(" · ");
       modal.classList.add("open");
       state.trendModalChart = createChartInstance($("trendModalCanvas"), data);
       if (!state.trendModalChart) closeTrendModal();
@@ -3208,7 +3210,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (state.editMode) return;
       const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
       if (!widget || widget.queryKind !== "calculated") return;
-      const data = await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=last_3d&window=15m`);
+      const range = widget.trendRangePreset || "last_3d";
+      const windowSize = widget.trendWindow || "15m";
+      const data = await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
       if (!data.trend?.length) {
         log(`trend skipped #${widget.id}: 최근 3일 계산 결과 없음`);
         return;
@@ -3219,9 +3223,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
         state.trendModalChart = null;
       }
-      $("trendModalMeta").textContent = `최근 3일 · 15분 평균 · ${data.unit || "값"}`;
+      $("trendModalMeta").textContent = `${trendRangeLabel(range)} · ${trendWindowLabel(windowSize)} 평균 · ${data.unit || "값"}`;
       modal.classList.add("open");
       state.trendModalChart = createChartInstance($("trendModalCanvas"), pueTrendChartData(data));
+    }
+
+    function trendRangeLabel(range) {
+      return ({last_24h:"최근 24시간", today:"오늘", yesterday:"어제", last_3d:"최근 3일", last_7d:"최근 7일", this_month:"이번 달", last_month:"지난 달"})[range] || range;
+    }
+
+    function trendWindowLabel(windowSize) {
+      return ({"1m":"1분", "5m":"5분", "15m":"15분", "1h":"1시간", "1d":"1일"})[windowSize] || windowSize;
     }
 
     function trendAvailability(widget) {
@@ -3488,7 +3500,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } else if (w.queryKind === "aggregate") {
           const aggregate = state.aggregateByWidget.get(w.id);
           dataStatus = aggregate?.dataStatus;
-          body = renderAggregateBody(aggregate, w);
+          if (aggregate && !aggregate.error && ["usage", "power", "demand"].includes(aggregate.aggregatePreset)) {
+            const pointName = aggregate.aggregatePreset === "usage" ? "TOTAL_ENERGY" : "TOTAL_WT";
+            const unit = aggregate.unit || knownWidgetUnit(w);
+            body = renderLastBody({ devices: [{ points: [{ pointName, value: aggregate.value, unit }] }] }, w.name);
+            const statusLabel = ({ PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" })[dataStatus?.status];
+            let detail = statusLabel || "";
+            if (aggregate.aggregatePreset === "demand") {
+              const peak = aggregate.peakTime ? `발생 시각: ${new Date(aggregate.peakTime).toLocaleString("ko-KR")}` : "완전한 15분 데이터가 없습니다.";
+              detail = [detail, peak].filter(Boolean).join(" · ");
+            }
+            if (detail) {
+              body = body.replace('</div></div></div>', `<div class="metric-state">${escapeHtml(detail)}</div></div></div></div>`);
+            }
+            cardClass = "card last-card";
+          } else {
+            body = renderAggregateBody(aggregate, w);
+          }
           subExtra = ` · ${escapeHtml(aggregatePresetLabel(w.op))} · ${escapeHtml(w.aggregateRangePreset || "")}`;
         } else if (w.queryKind === "calculated") {
           const pue = state.pueByWidget.get(w.id);
