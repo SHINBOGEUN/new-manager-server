@@ -95,11 +95,14 @@ operations:
 live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
+    interval-ms: ${LIVE_INTERVAL_MS:1000}
+    timeout-ms: ${LIVE_TIMEOUT_MS:800}
+    retries: ${LIVE_RETRIES:0}
+    max-concurrency: ${LIVE_MAX_CONCURRENCY:10}
 
 manager:
   inbound:
-    sensor-data-api-key: ${MANAGER_API_KEY:}
-    collector-api-key: ${COLLECTOR_MANAGER_API_KEY:}
+    sensor-data-api-key: ${MANAGER_API_KEY}
 
 collection:
   snmp:
@@ -120,3 +123,18 @@ asset:
     storage-path: ${ASSET_IMAGE_STORAGE_PATH:./uploads/device-images}
   document:
     storage-path: ${ASSET_DOCUMENT_STORAGE_PATH:./uploads/device-documents}
+
+query:
+  collection:
+    latest-lookback-hours: ${COLLECTION_LATEST_LOOKBACK_HOURS:168}
+  widget:
+    latest-lookback: ${WIDGET_LATEST_LOOKBACK:PT24H}
+
+widgets:
+  defaults:
+    environmental-sources: ${WIDGET_ENVIRONMENTAL_SOURCES:8}
+    equipment-value-widgets: ${EQUIPMENT_VALUE_WIDGETS:20}
+
+alarms:
+  thresholds:
+    max-sample-age: ${ALARM_MAX_SAMPLE_AGE:PT5M}

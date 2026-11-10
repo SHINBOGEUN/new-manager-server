@@ -17,7 +17,7 @@ import java.security.MessageDigest;
 public class AlarmMeasurementController {
     private final ThresholdEvaluator evaluator;
 
-    @Value("${sensor-data.service.api-key:sensor-data-server}")
+    @Value("${sensor-data.service.api-key:}")
     private String sensorDataApiKey;
 
     @PostMapping

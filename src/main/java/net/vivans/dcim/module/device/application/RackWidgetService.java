@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.query.domain.PointQuery;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,12 @@ public class RackWidgetService {
     private final DeviceAssetRackService racks;
     private final DeviceMeasurementSourceCatalog catalog;
     private final PointQuery pointQuery;
+    @Value("${query.widget.latest-lookback:PT24H}")
+    private Duration latestLookback = Duration.ofHours(24);
+    @Value("${widgets.defaults.environmental-sources:8}")
+    private int environmentalSources = 8;
+    @Value("${widgets.defaults.equipment-value-widgets:20}")
+    private int equipmentValueWidgets = 20;
     public record Source(Integer deviceId, String pointName, String protocol) {}
     public record Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH, List<String> colors, String chartStyle) {
         public Widget(String title, String type, int width, List<Source> sources, Integer rangeHours, Integer intervalMinutes, Integer gridX, Integer gridY, Integer layoutX, Integer layoutY, Integer layoutW, Integer layoutH) { this(title, type, width, sources, rangeHours, intervalMinutes, gridX, gridY, layoutX, layoutY, layoutW, layoutH, null, null); }
@@ -84,7 +91,7 @@ public class RackWidgetService {
         var environmental = valid.stream().filter(s -> {
             var type = s.dataPointType() == null ? "" : s.dataPointType().toUpperCase(Locale.ROOT);
             return type.equals("TEMPERATURE") || type.equals("HUMIDITY");
-        }).limit(8).map(RackWidgetService::toSource).toList();
+        }).limit(Math.max(1, Math.min(environmentalSources, 8))).map(RackWidgetService::toSource).toList();
         if (!environmental.isEmpty()) defaults.add(new Widget("온습도 추이", "TREND", 2, environmental));
         return List.copyOf(defaults);
     }
@@ -205,12 +212,12 @@ public class RackWidgetService {
         try { return mapper.readValue(rows.get(0), new TypeReference<List<Widget>>() {}); }
         catch (Exception e) { throw new IllegalStateException("설비 위젯 설정을 읽을 수 없습니다", e); }
     }
-    static List<Widget> defaultEquipmentWidgets(List<DeviceMeasurementSourceCatalog.Source> available) {
+    List<Widget> defaultEquipmentWidgets(List<DeviceMeasurementSourceCatalog.Source> available) {
         var valid = available.stream().filter(s -> !s.ambiguous()).sorted(Comparator
                 .comparing(DeviceMeasurementSourceCatalog.Source::pointName)
                 .thenComparing(DeviceMeasurementSourceCatalog.Source::protocol)).toList();
         var defaults = new ArrayList<Widget>();
-        for (var source : valid.stream().limit(20).toList()) {
+        for (var source : valid.stream().limit(Math.max(0, Math.min(equipmentValueWidgets, 20))).toList()) {
             String name = source.pointName();
             if (name.length() > 60) name = name.substring(0, 60);
             defaults.add(new Widget(name + " · " + source.protocol(), "VALUE", 1, List.of(toSource(source))));
@@ -225,7 +232,7 @@ public class RackWidgetService {
                     : Set.of("A", "MA", "KA").contains(unit) ? "전류 추이" : null;
             if (category != null) {
                 var sources = categories.computeIfAbsent(category, ignored -> new ArrayList<>());
-                if (sources.size() < 8) sources.add(toSource(source));
+                if (sources.size() < Math.max(1, Math.min(environmentalSources, 8))) sources.add(toSource(source));
             }
         }
         categories.forEach((name, sources) -> defaults.add(new Widget(name, "TREND", 2, List.copyOf(sources))));
@@ -250,7 +257,7 @@ public class RackWidgetService {
         Instant queryTime = Instant.now();
         return widgets.stream().map(w -> w.sources().stream().map(s -> {
             if (!allowed(s, valid)) return new WidgetValue(s, null, null, List.of());
-            var last = pointQuery.findLast(List.of(s.deviceId()), List.of(s.pointName()), Duration.ofHours(24), s.protocol());
+            var last = pointQuery.findLast(List.of(s.deviceId()), List.of(s.pointName()), latestLookback, s.protocol());
             var latest = last.isEmpty() ? null : last.get(0);
             List<Sample> samples = List.of();
             if (w.type().equals("TREND") || w.type().equals("POWER_TREND")) {

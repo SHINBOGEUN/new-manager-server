@@ -22,7 +22,7 @@ app:
   version: "1.0.2-new-TEST"
 
 jwt:
-  secret: ${JWT_SECRET:lusR6p5tGwGKEWC2rWRYyCVbOzsVOMxMCtxOtHT+V4SiKE8ODJbomdCOl7cy5qbv7JQVHNRPKnwvxhmo9NYmlg==}
+  secret: ${JWT_SECRET:dGVzdC1vbmx5LXNpZ25pbmcta2V5LW5ldmVyLXVzZS1pbi1wcm9kdWN0aW9u}
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:3600}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:7200}
 

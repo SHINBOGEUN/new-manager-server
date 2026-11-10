@@ -43,6 +43,9 @@ class SceneModuleSecurityTest {
     }
 
     @Test void sceneModuleLoadsWithoutBearerTokenWhileApiRemainsProtected() throws Exception {
+        mvc.perform(get("/vendor/chartjs/chart.umd.min.js")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/mqtt/mqtt.min.js")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/pretendard/PretendardVariable.woff2")).andExpect(status().isOk());
         mvc.perform(get("/page-scene-3d.js")).andExpect(status().isOk());
         mvc.perform(get("/scene-group-lock.js")).andExpect(status().isOk());
         mvc.perform(get("/rack-widget-layout.js")).andExpect(status().isOk());

@@ -37,3 +37,6 @@ uploads/
 .tmp_last_extract/
 __pycache__/
 *.pyc
+
+# 로컬 실행 전용 설정
+/config/

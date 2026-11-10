@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class CollectorServiceProperties {
 
     private String url = "http://localhost:8081";
-    private String apiKey = "manager-server";
+    private String apiKey = "";
     private boolean enabled = true;
     private boolean failFast = true;
     private int retryMaxAttempts = 3;

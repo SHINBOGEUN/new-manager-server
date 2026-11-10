@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 @Slf4j
-@Configuration
+@Configuration("dcimInfluxQueryConfiguration")
 @EnableConfigurationProperties({InfluxProperties.class, CollectionStatusProperties.class})
 public class InfluxConfig {
 

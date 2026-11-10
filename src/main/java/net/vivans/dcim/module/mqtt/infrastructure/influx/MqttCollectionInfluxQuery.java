@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.vivans.dcim.module.query.config.InfluxProperties;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -27,7 +28,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MqttCollectionInfluxQuery {
 
-    private static final int LOOKBACK_HOURS = 168;
+    @Value("${query.collection.latest-lookback-hours:168}")
+    private int lookbackHours = 168;
 
     private final ObjectProvider<InfluxDBClient> clientProvider;
     private final InfluxProperties properties;
@@ -45,7 +47,7 @@ public class MqttCollectionInfluxQuery {
         if (deviceIds == null || deviceIds.isEmpty() || client == null || !properties.isEnabled()) {
             return Map.of();
         }
-        String flux = buildQuery(properties.getBucket(), properties.getMeasurement(), deviceIds);
+        String flux = buildQuery(properties.getBucket(), properties.getMeasurement(), deviceIds, Math.max(1, lookbackHours));
         try {
             List<FluxTable> tables = client.getQueryApi().query(flux, properties.getOrg());
             return mapByDevice(tables);
@@ -57,6 +59,10 @@ public class MqttCollectionInfluxQuery {
     }
 
     static String buildQuery(String bucket, String measurement, List<Integer> deviceIds) {
+        return buildQuery(bucket, measurement, deviceIds, 168);
+    }
+
+    static String buildQuery(String bucket, String measurement, List<Integer> deviceIds, int lookbackHours) {
         String deviceFilter = deviceIds.stream()
                 .map(id -> "r[\"device_id\"] == " + quote(String.valueOf(id)))
                 .collect(Collectors.joining(" or "));
@@ -72,7 +78,7 @@ public class MqttCollectionInfluxQuery {
                   |> sort(columns: ["_time"])
                   |> last()
                   |> keep(columns: ["device_id", "point_name", "_value", "_time"])
-                """.formatted(quote(bucket), LOOKBACK_HOURS, quote(measurement), deviceFilter);
+                """.formatted(quote(bucket), lookbackHours, quote(measurement), deviceFilter);
     }
 
     private static Map<Integer, List<LoraInfluxPointRecord>> mapByDevice(List<FluxTable> tables) {

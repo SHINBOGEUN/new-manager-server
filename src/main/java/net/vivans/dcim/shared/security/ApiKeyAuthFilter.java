@@ -22,13 +22,10 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     @Value("${manager.inbound.sensor-data-api-key:}")
     private String managerSensorDataApiKey;
 
-    @Value("${manager.inbound.collector-api-key:}")
-    private String managerCollectorApiKey;
-
     @Value("${external-data.api-key:}")
     private String externalDataApiKey;
 
-    @Value("${sensor-data.service.api-key:sensor-data-server}")
+    @Value("${sensor-data.service.api-key:}")
     private String sensorDataApiKey;
 
     @Override
@@ -57,8 +54,8 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         }
 
         if (apiKey != null) {
-            if (matchesKey(managerSensorDataApiKey, apiKey) || matchesKey(managerCollectorApiKey, apiKey)) {
-                authenticateApiKey("admin");
+            if (matchesKey(managerSensorDataApiKey, apiKey) && sensorDataRoute(request.getMethod(), path)) {
+                authenticateApiKey("sensor-data-service");
                 log.debug("API Key 인증 성공");
             } else {
                 log.warn("유효하지 않은 API Key");
@@ -68,6 +65,19 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private static boolean sensorDataRoute(String method, String path) {
+        if ("GET".equals(method)) {
+            return path.equals("/api/manager/mqtt/identities/bulk")
+                    || path.equals("/api/manager/mqtt/identities/resolve")
+                    || path.equals("/api/manager/mqtt/mappings/models/bulk")
+                    || path.equals("/api/manager/mqtt/sources/bulk")
+                    || path.equals("/api/manager/lora/sources/bulk")
+                    || path.matches("/api/manager/devices/[0-9]+");
+        }
+        return "POST".equals(method)
+                && path.matches("/api/manager/(mqtt|lora)/sources/[0-9]+/status");
     }
 
     private static boolean requiresExternalDataApiKey(String path, String apiKey) {
