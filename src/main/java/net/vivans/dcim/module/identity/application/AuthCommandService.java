@@ -10,6 +10,7 @@ import net.vivans.dcim.module.identity.infrastructure.security.CustomUserDetails
 import net.vivans.dcim.shared.exception.InvalidTokenException;
 import net.vivans.dcim.shared.security.JwtProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,6 +29,7 @@ public class AuthCommandService {
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     /**
      * 공개 회원가입 허용 여부(PUBLIC_REGISTRATION_ENABLED, 기본 false).
@@ -69,6 +71,9 @@ public class AuthCommandService {
     public UserResponse register(String username, String password) {
         UserRole role = UserRole.USER;
         if (!publicRegistrationEnabled) {
+            // The fixed row serializes bootstrap across instances until this transaction commits.
+            var lockRows = jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
+            if (lockRows.size() != 1) throw new IllegalStateException("Initial administrator lock row is missing");
             if (!userRepository.findAllByOrderByUsernameAsc().isEmpty()) {
                 throw new AccessDeniedException("회원가입이 꺼져 있습니다. 관리자에게 계정 생성을 요청하세요.");
             }

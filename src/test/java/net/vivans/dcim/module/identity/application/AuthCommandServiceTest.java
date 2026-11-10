@@ -18,6 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.InOrder;
+import static org.mockito.Mockito.inOrder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,11 +45,15 @@ class AuthCommandServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
     @InjectMocks
     private AuthCommandService authCommandService;
 
     @Test
     void register_whenPublicRegistrationDisabled_firstAccountBecomesAdmin() {
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
         given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.findByUsername("admin")).willReturn(Optional.empty());
@@ -55,16 +62,28 @@ class AuthCommandServiceTest {
         UserResponse response = authCommandService.register("admin", "password123");
 
         assertThat(response.role()).isEqualTo("ADMIN");
+        InOrder order = inOrder(jdbcTemplate, userRepository);
+        order.verify(jdbcTemplate).queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
+        order.verify(userRepository).findAllByOrderByUsernameAsc();
         assertThat(authCommandService.registrationPolicy().initialAdmin()).isTrue();
     }
 
     @Test
     void register_whenPublicRegistrationDisabled_rejectsAfterFirstAccount() {
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
         given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of(User.createNew("admin", "encoded")));
 
         assertThatThrownBy(() -> authCommandService.register("intruder", "password123"))
                 .isInstanceOf(AccessDeniedException.class);
         assertThat(authCommandService.registrationPolicy().open()).isFalse();
+    }
+
+    @Test
+    void register_whenBootstrapLockMissing_failsClosed() {
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of());
+        assertThatThrownBy(() -> authCommandService.register("admin", "password123"))
+                .isInstanceOf(IllegalStateException.class);
+        org.mockito.Mockito.verifyNoInteractions(userRepository);
     }
 
     @Test

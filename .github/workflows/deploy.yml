@@ -109,7 +109,8 @@ jobs:
                 manager/sql/migration/20261109_panel_breaker_model.sql \
                 manager/sql/migration/20261109_panel_default_models.sql \
                 manager/sql/migration/20261110_widget_trend_defaults.sql \
-                manager/sql/migration/20261110_scene_model_role.sql > bundle/gpu_agent_catalog.sql
+                manager/sql/migration/20261110_scene_model_role.sql \
+                manager/sql/migration/20261110_initial_admin_lock.sql > bundle/gpu_agent_catalog.sql
             services+=(manager-server)
           fi
           if [[ "$DEPLOY_COLLECTOR" == true ]]; then
