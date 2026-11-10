@@ -3229,7 +3229,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <dialog class="wizard-quick-dialog" id="modelCatalogImportDialog" aria-labelledby="modelCatalogImportTitle">
               <div class="wizard-dialog-head"><div><span class="eyebrow">MODEL CATALOG</span><h2 id="modelCatalogImportTitle">장비 모델 카탈로그 가져오기</h2><p>미리보기에서 오류가 없을 때만 적용할 수 있습니다. 모델 충돌 시 처리 방식을 선택하세요.</p></div><button type="button" class="ghost" id="modelCatalogImportClose" aria-label="닫기">×</button></div>
               <label class="field">충돌 처리<select id="modelCatalogConflict"><option value="SKIP">건너뛰기 (기본)</option><option value="UPDATE">기존 정의 갱신</option></select></label>
-              <pre id="modelCatalogImportReport" class="muted" style="max-height:42vh;overflow:auto;white-space:pre-wrap;word-break:break-word">JSON 파일을 선택하세요.</pre>
+              <div id="modelCatalogImportReport" class="muted" style="max-height:42vh;overflow:auto">JSON 파일을 선택하세요.</div>
               <div class="wizard-dialog-actions"><button type="button" class="ghost" id="modelCatalogPreview">미리보기</button><button type="button" class="primary" id="modelCatalogApply" disabled>적용</button></div>
             </dialog>
             <div class="row" style="margin-bottom:10px">
@@ -11932,7 +11932,34 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     const modelCatalogReport = $("modelCatalogImportReport");
     const modelCatalogApply = $("modelCatalogApply");
     function showModelCatalogReport(report) {
-      modelCatalogReport.textContent = JSON.stringify(report, null, 2);
+      modelCatalogReport.replaceChildren();
+      const sections = [
+        ["생성", report?.created], ["갱신", report?.updated], ["건너뜀", report?.skipped],
+        ["비활성화", report?.disabledPoints], ["경고", report?.warnings]
+      ];
+      const summary = document.createElement("p");
+      summary.textContent = sections.map(([label, rows]) => `${label} ${Array.isArray(rows) ? rows.length : 0}건`).join(" · ");
+      modelCatalogReport.append(summary);
+      for (const [label, rows] of sections) {
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+        const heading = document.createElement("h3"); heading.textContent = `${label} (${rows.length})`;
+        const list = document.createElement("ul");
+        for (const row of rows) { const item = document.createElement("li"); item.textContent = row; list.append(item); }
+        modelCatalogReport.append(heading, list);
+      }
+      const errors = Array.isArray(report?.errors) ? report.errors : [];
+      if (errors.length) {
+        const heading = document.createElement("h3"); heading.textContent = `오류 (${errors.length})`;
+        const table = document.createElement("table");
+        table.innerHTML = "<thead><tr><th>모델</th><th>항목</th><th>메시지</th></tr></thead>";
+        const body = document.createElement("tbody");
+        for (const error of errors) {
+          const row = document.createElement("tr");
+          for (const value of [error.model, error.field, error.message]) { const cell = document.createElement("td"); cell.textContent = value || ""; row.append(cell); }
+          body.append(row);
+        }
+        table.append(body); modelCatalogReport.append(heading, table);
+      }
       modelCatalogPreviewValid = Array.isArray(report?.errors) && report.errors.length === 0;
       modelCatalogApply.disabled = !modelCatalogPreviewValid;
     }

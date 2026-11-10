@@ -14,6 +14,7 @@ import net.vivans.dcim.module.mqtt.domain.model.DeviceModelMqttPoint;
 import net.vivans.dcim.module.mqtt.domain.model.MqttPointScope;
 import net.vivans.dcim.module.mqtt.domain.repository.DeviceModelMqttPointRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -61,6 +62,7 @@ public class DeviceModelCatalogTransferService {
 
     @Transactional
     public DeviceModelCatalogImportReport importCatalog(DeviceModelCatalogDocument document, boolean dryRun, String conflictPolicy) {
+        if (dryRun) TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         String policy = conflictPolicy == null || conflictPolicy.isBlank() ? "SKIP" : conflictPolicy.trim().toUpperCase(Locale.ROOT);
         if (!Set.of("SKIP", "UPDATE").contains(policy)) throw new IllegalArgumentException("onConflict must be SKIP or UPDATE");
         List<String> created = new ArrayList<>(), updated = new ArrayList<>(), skipped = new ArrayList<>();
@@ -317,14 +319,20 @@ public class DeviceModelCatalogTransferService {
         if ("snmp".equals(protocol)) {
             for (var p : snmpService.getDeviceModelSnmpPoints(modelId, protocolId)) if (p.enabled()) {
                 snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, p.id(), new DeviceModelSnmpPointCreateRequest(p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.name(), p.oid(), p.requiresInstance(), p.scale(), false));
-                disabled.add("model #" + modelId + " · snmp · " + p.name());
+                disabled.add(displayModel(modelId) + " · snmp · " + p.name());
             }
         } else if ("modbus".equals(protocol)) {
             for (var p : modbusService.getDeviceModelModbusPoints(modelId, protocolId)) if (p.enabled()) {
                 modbusService.updateDeviceModelModbusPoint(modelId, protocolId, p.id(), new DeviceModelModbusPointCreateRequest(p.name(), p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.registerType(), p.dataType(), p.byteOrder(), p.address(), p.requiresInstance(), p.scale(), p.offset(), false));
-                disabled.add("model #" + modelId + " · modbus · " + p.name());
+                disabled.add(displayModel(modelId) + " · modbus · " + p.name());
             }
         }
+    }
+
+    private String displayModel(Integer modelId) {
+        return modelRepository.findById(modelId)
+                .map(model -> model.getManufacturer() + " / " + model.getName())
+                .orElse("model #" + modelId);
     }
 
     private void validateDocument(DeviceModelCatalogDocument document, List<DeviceModelCatalogImportReport.Error> errors) {
