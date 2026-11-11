@@ -1497,6 +1497,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .widget-editor-head { display:flex; justify-content:space-between; align-items:center; gap:12px; position:sticky; top:0; z-index:4; margin:0 -22px; padding:14px 22px; background:var(--surface); border-bottom:1px solid var(--line); }
     .widget-editor-head h2 { margin:2px 0 0; font-size:18px; }
     #wEditorCard [data-widget-stage].widget-step-hidden { display:none !important; }
+    .widget-kind-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; }
+    .widget-kind-card { display:grid; gap:5px; text-align:left; padding:11px 12px; border:1px solid var(--line); border-radius:9px; background:var(--surface2); color:var(--text); cursor:pointer; }
+    .widget-kind-card span,.widget-kind-card small { color:var(--muted); font-size:11px; line-height:1.4; }
+    .widget-kind-card.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+    .widget-form-grid { grid-template-columns:1fr; }
+    .widget-form-section { min-width:0; }
     .widget-review { padding:16px; margin-top:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface2); line-height:1.7; }
     .widget-review .pick-item { margin-top:6px; }
     .widget-page-preview { margin-top:14px; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#090f19; }
@@ -2791,7 +2797,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <label class="field">표시 이름
               <input id="wName" placeholder="PDU 전력" />
             </label>
-            <label class="field full">조회 종류
+            <label class="field full" style="display:none">조회 종류
               <select id="wKind">
                 <option value="last">최신 측정값</option>
                 <option value="count">장비 수</option>
@@ -2803,6 +2809,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 <option value="cctv">CCTV</option>
               </select>
             </label>
+            <div id="wKindCards" class="widget-kind-cards full" role="group" aria-label="위젯 종류 선택"></div>
             <p class="muted full" id="wKindHint" style="margin:0;font-size:13px;line-height:1.5"></p>
             <label id="wTableFormatChoice" class="full row" style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface2)"><input type="checkbox" id="wTableEnabled"> <span><strong>장비별 테이블로 표시</strong><br><small class="muted">선택한 장비를 행으로, 측정 항목을 열로 보여줍니다.</small></span></label>
           </div>
@@ -3051,7 +3058,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             </label>
             <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">기준을 넘은 값은 수집 지연으로 표시됩니다.</div>
           </div>
-          <div id="wTrendDefaults" class="fields" data-widget-stage="3" style="margin-top:14px">
+          <div id="wTrendDefaults" class="fields" data-widget-stage="4" style="margin-top:14px">
             <label class="field">클릭 시
               <select id="wClickAction"><option value="chart">차트 팝업</option><option value="device">장비 상세</option><option value="rack">랙 상세</option><option value="page">페이지 이동</option><option value="none">없음</option></select>
             </label>
@@ -3068,17 +3075,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <label class="field">상세 차트 묶음
               <select id="wClickSeries"><option value="per_device">장비별</option><option value="sum">합계</option><option value="by_phase">상별</option><option value="by_path">위치별</option></select>
             </label>
+            <div class="full"><button type="button" class="ghost" id="wClickPreview">미리 열어 보기</button><div id="wClickPreviewResult" class="muted" role="status" hidden style="margin-top:8px"></div></div>
             <div class="muted full">클릭 동작과 차트 기본값입니다. 팝업 안에서 바꾼 값은 저장하지 않습니다.</div>
           </div>
-          <div class="widget-review" id="wReview" data-widget-stage="3" aria-live="polite"></div>
-          <section class="widget-page-preview" data-widget-stage="3" aria-label="페이지 화면 미리보기">
+          <div class="widget-review" id="wReview" data-widget-stage="5" aria-live="polite"></div>
+          <div id="wSaveError" class="widget-review" data-widget-stage="5" role="alert" hidden></div>
+          <section class="widget-page-preview" data-widget-stage="5" aria-label="페이지 화면 미리보기">
             <div class="widget-page-preview-head">
               <div><strong id="wPagePreviewTitle">페이지 배경 미리보기</strong><p class="muted">선택한 페이지의 2D·3D 도면과 저장된 위젯 배치를 함께 표시합니다.</p></div>
               <button type="button" class="ghost" id="wEditPageLayout">페이지에서 위젯 크기·위치 조정</button>
             </div>
             <iframe id="wPagePreviewFrame" title="선택한 페이지의 도면과 위젯 미리보기" loading="lazy"></iframe>
           </section>
-          <div class="widget-editor-footer">
+          <div class="widget-editor-footer" data-widget-stage="5">
             <span class="muted" style="font-size:12px">종류와 대상을 선택한 뒤 저장하세요.</span>
             <div class="row" style="gap:8px">
             <button type="button" class="primary" id="wCreate" data-role-gate="admin">만들기</button>
@@ -4103,6 +4112,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const blank = includeBlank ? '<option value="">위젯 설정</option>' : '';
       select.innerHTML = blank + options.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('');
       if (selected && [...select.options].some((option) => option.value === selected)) select.value = selected;
+    }
+
+    function renderWidgetKindCards(kinds) {
+      const container = $("wKindCards");
+      if (!container) return;
+      const supported = new Set([...$("wKind").options].map((option) => option.value));
+      state.widgetKindOptions = (kinds || []).filter((item) => supported.has(item.value));
+      container.innerHTML = state.widgetKindOptions.map((item) => `<button type="button" class="widget-kind-card${item.value === $("wKind").value ? " selected" : ""}" data-kind="${esc(item.value)}"><strong>${esc(item.label)}</strong><span>${esc(item.description)}</span><small>기본 크기 ${Number(item.defaultSize?.w) || 16}×${Number(item.defaultSize?.h) || 8}</small></button>`).join("");
+      container.querySelectorAll("[data-kind]").forEach((button) => button.addEventListener("click", () => {
+        $("wKind").value = button.dataset.kind;
+        $("wKind").dispatchEvent(new Event("change", { bubbles: true }));
+      }));
+    }
+
+    function defaultWidgetLayout(kind, tableColumns) {
+      const size = state.widgetKindOptions?.find((item) => item.value === kind)?.defaultSize || { w: 16, h: 8 };
+      return { gridX: 0, gridY: 0, w: Number(size.w) || 16, h: Number(tableColumns ? size.tableH : size.h) || Number(size.h) || 8 };
     }
 
     async function apiForm(path, formData) {
@@ -8735,11 +8761,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!editor) return;
       if (!editor.querySelector(".widget-form-grid")) {
         const grid = document.createElement("div"); grid.className = "widget-form-grid";
-        const sections = ["기본 정보", "데이터 선택", "디자인과 표시"].map((title) => {
+        const sections = ["① 종류", "② 데이터", "③ 표시", "④ 클릭", "⑤ 저장"].map((title) => {
           const section = document.createElement("section"); section.className = "widget-form-section";
           const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); grid.append(section);
           return section;
         });
+        const tableChoice = $("wTableFormatChoice");
+        if (tableChoice) sections[2].append(tableChoice);
         const preview = document.createElement("details"); preview.className = "widget-preview-details";
         const summary = document.createElement("summary"); summary.textContent = "선택 항목과 페이지 미리보기"; preview.append(summary);
         const review = $("wReview"), pagePreview = editor.querySelector(".widget-page-preview");
@@ -8747,7 +8775,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           if (element === review || element === pagePreview) { preview.append(element); continue; }
           if (element.classList.contains("raw")) continue;
           const stage = Number(element.dataset.widgetStage);
-          if (stage >= 1 && stage <= 3) sections[stage - 1].append(element);
+          if (stage >= 1 && stage <= 5) sections[stage - 1].append(element);
         }
         preview.addEventListener("toggle", () => { if (preview.open) { renderWidgetReview(); updateWidgetPagePreview(); } });
         editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
@@ -8932,11 +8960,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       loadSharedWidgetOptions().then((options) => {
         const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
         setWidgetOptionSelect($("wKind"), options.kinds.filter((option) => widgetKinds.has(option.value)), $("wKind").value);
+        renderWidgetKindCards(options.kinds);
         setWidgetOptionSelect($("wChartRangePreset"), options.rangePresets, $("wChartRangePreset").value);
         setWidgetOptionSelect($("wPueRangePreset"), options.rangePresets, $("wPueRangePreset").value);
         setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
         setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
         setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
+        $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
       }).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
       $("wCreatePage").disabled = true;
       state.widgetSourcesLoaded = false;
@@ -13865,6 +13895,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     });
     $("wKind").addEventListener("change", () => {
       configureWidgetClickKind($("wKind").value);
+      $("wKindCards")?.querySelectorAll("[data-kind]").forEach((button) => button.classList.toggle("selected", button.dataset.kind === $("wKind").value));
+      const kindInfo = state.widgetKindOptions?.find((item) => item.value === $("wKind").value);
+      $("wKindHint").textContent = kindInfo?.description || "";
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
@@ -13893,30 +13926,26 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     renderWidgetModels();
     renderPsychrometricSources();
 
-    async function saveWidgetTrendDefaults(widget) {
-      try {
-        await api(`/api/manager/widgets/${widget.id}/click-config`, {
-          method: "PATCH",
-          body: JSON.stringify({ clickConfig: (() => {
-            const action = $("wClickAction")?.value || "chart";
-            const rawTarget = $("wClickTarget")?.value.trim();
-            const config = { action, chartStyle: $("wTrendStyle")?.value || "line",
-              rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value,
-              seriesMode: $("wClickSeries")?.value || "per_device" };
-            if (action === "device") config.target = { deviceId: Number(rawTarget) };
-            if (action === "rack") config.target = { rackLocationCode: rawTarget };
-            if (action === "page") config.target = { pageCode: rawTarget };
-            return config;
-          })()}),
-        });
-      } catch (error) {
-        state.editingWidgetId = widget.id;
-        state.editingLayout = widget.layout || null;
-        state.editingEnabled = widget.enabled !== false;
-        $("wCreate").textContent = "변경 저장";
-        throw new Error(`위젯은 저장됐지만 상세 차트 설정 저장에 실패했습니다. 다시 저장해 주세요. ${error.message}`);
-      }
+    function currentWidgetClickConfig() {
+      const action = $("wClickAction")?.value || "chart";
+      const rawTarget = $("wClickTarget")?.value.trim();
+      const config = { action, chartStyle: $("wTrendStyle")?.value || "line",
+        rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value,
+        seriesMode: $("wClickSeries")?.value || "per_device" };
+      if (action === "device") config.target = { deviceId: Number(rawTarget) };
+      if (action === "rack") config.target = { rackLocationCode: rawTarget };
+      if (action === "page") config.target = { pageCode: rawTarget };
+      return config;
     }
+
+    $("wClickPreview")?.addEventListener("click", () => {
+      const config = currentWidgetClickConfig();
+      const labels = { chart: "차트 팝업", none: "클릭 동작 없음", device: "장비 상세", rack: "랙 상세", page: "페이지 이동" };
+      const target = config.target ? ` · 대상 ${Object.values(config.target)[0] || "미지정"}` : "";
+      const chart = config.action === "chart" ? ` · ${config.rangePreset} / ${config.window} / ${config.seriesMode} / ${config.chartStyle}` : "";
+      $("wClickPreviewResult").textContent = `미리 보기: ${labels[config.action] || config.action}${target}${chart}`;
+      $("wClickPreviewResult").hidden = false;
+    });
 
     function configureWidgetClickKind(kind, preferredAction) {
       const select = $("wClickAction");
@@ -13929,6 +13958,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     $("wCreate").onclick = async () => {
       try {
+        $("wSaveError").hidden = true;
+        await loadSharedWidgetOptions();
         validateWidgetEditorStep(1);
         validateWidgetEditorStep(2);
         const kind = $("wKind").value;
@@ -13944,13 +13975,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             enabled: state.editingWidgetId ? state.editingEnabled : true,
             queryKind: "cctv",
             cctvCameraIds: [...state.cctvCameraIds],
-            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 16 },
+            clickConfig: currentWidgetClickConfig(),
+            layout: state.editingLayout || defaultWidgetLayout(kind),
           };
           const saved = await api(
             state.editingWidgetId ? `/api/manager/widgets/${state.editingWidgetId}` : "/api/manager/widgets",
             { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(cctvBody) }
           );
-          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "CCTV 위젯을 저장했습니다" : "CCTV 위젯을 만들었습니다");
           $("wPage").value = cctvBody.pageCode;
@@ -13978,7 +14009,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               color: group.color,
               sources: group.sources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             })),
-            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 10 },
+            clickConfig: currentWidgetClickConfig(),
+            layout: state.editingLayout || defaultWidgetLayout(kind),
           };
           const saved = await api(
             state.editingWidgetId
@@ -13986,7 +14018,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               : "/api/manager/widgets/power-distribution",
             { method: state.editingWidgetId ? "PUT" : "POST", body: JSON.stringify(powerBody) }
           );
-          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "전력 분배 위젯을 저장했습니다" : "전력 분배 위젯을 만들었습니다");
           $("wPage").value = powerBody.pageCode;
@@ -14008,7 +14039,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             dataFreshnessMinutes: Number($("wDataFreshnessMinutes").value) || 15,
             temperatureSources: state.psychrometricTemperatureSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             humiditySources: state.psychrometricHumiditySources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
-            layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: 16 },
+            clickConfig: currentWidgetClickConfig(),
+            layout: state.editingLayout || defaultWidgetLayout(kind),
           };
         const saved = await api(
           state.editingWidgetId
@@ -14019,7 +14051,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             body: JSON.stringify(psychBody),
           }
         );
-          await saveWidgetTrendDefaults(saved);
           $("wOut").textContent = JSON.stringify(saved, null, 2);
           toast(state.editingWidgetId ? "사이코메트릭 위젯을 저장했습니다" : "사이코메트릭 위젯을 만들었습니다");
           $("wPage").value = psychBody.pageCode;
@@ -14079,7 +14110,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           throw new Error("특정 모델 모드에서는 모델을 선택하세요");
         }
 
-        const layoutH = kind === "chart" ? 16 : tableColumns ? 12 : kind === "last" ? 6 : 8;
         const body = {
           pageCode: $("wCreatePage").value,
           visualStyle: selectedWidgetVisualStyle(), visualColor: $("wColorCustom").checked ? $("wVisualColor").value : "",
@@ -14105,14 +14135,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           modelIds: kind === "chart" && chartScope === "models" ? modelIds : [],
           pointNames,
           lastSources: kind === "last" ? lastSources : null,
-          layout: state.editingLayout || { gridX: 0, gridY: 0, w: 16, h: layoutH },
+          clickConfig: currentWidgetClickConfig(),
+          tableColumns: kind === "last" ? (tableColumns || (widgetTablePreviouslyEnabled ? [] : null))
+            : (widgetTablePreviouslyEnabled ? [] : null),
+          layout: state.editingLayout || defaultWidgetLayout(kind, tableColumns),
         };
 
         const wasEditing = !!state.editingWidgetId;
-        const useTableEndpoint = !!tableColumns || widgetTablePreviouslyEnabled;
-        const url = wasEditing ? `/api/manager/widgets/${state.editingWidgetId}${useTableEndpoint ? '/table' : ''}` : `/api/manager/widgets${useTableEndpoint ? '/table' : ''}`;
-        const saved = await api(url, { method:wasEditing ? 'PUT' : 'POST', body:JSON.stringify(useTableEndpoint ? {widget:body, columns:tableColumns} : body) });
-        await saveWidgetTrendDefaults(saved);
+        const url = wasEditing ? `/api/manager/widgets/${state.editingWidgetId}` : "/api/manager/widgets";
+        const saved = await api(url, { method:wasEditing ? 'PUT' : 'POST', body:JSON.stringify(body) });
         toast(wasEditing ? "위젯을 저장했습니다" : "위젯을 만들었습니다");
         $("wOut").textContent = JSON.stringify(saved, null, 2);
         $("wPage").value = body.pageCode;
@@ -14121,6 +14152,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         refreshWidgetPages(body.pageCode);
       } catch (e) {
         $("wOut").textContent = e.message;
+        $("wSaveError").textContent = `저장 단계: ${e.message}`;
+        $("wSaveError").hidden = false;
         toast(e.message, true);
       }
     };

@@ -30,16 +30,20 @@ public class WidgetOptionsController {
             new Option("1h", "1시간"), new Option("1d", "1일")
     );
     private static final List<KindOption> KINDS = List.of(
-            new KindOption("last", "현재값", "장비와 측정 항목의 최신값"),
-            new KindOption("chart", "추이", "선택한 측정 항목의 시계열"),
-            new KindOption("comparison", "비교", "상별 또는 위치별 묶음 비교"),
-            new KindOption("aggregate", "집계·순위", "기간 합계, 순위, 최대 수요"),
-            new KindOption("count", "개수", "사용 중인 장비 수"),
-            new KindOption("calculated", "계산 지표", "PUE 등 계산된 지표"),
-            new KindOption("psychrometric", "공기선도", "온도와 습도 기반 공기선도"),
-            new KindOption("power_distribution", "전력 분배", "그룹별 전력 분배"),
-            new KindOption("cctv", "CCTV", "카메라 영상")
+            kind("last", "현재값", "장비와 측정 항목의 최신값", 6),
+            kind("chart", "추이", "선택한 측정 항목의 시계열", 16),
+            kind("comparison", "비교", "상별 또는 위치별 묶음 비교", 16),
+            kind("aggregate", "집계·순위", "기간 합계, 순위, 최대 수요", 8),
+            kind("count", "개수", "사용 중인 장비 수", 8),
+            kind("calculated", "계산 지표", "PUE 등 계산된 지표", 8),
+            kind("psychrometric", "공기선도", "온도와 습도 기반 공기선도", 16),
+            kind("power_distribution", "전력 분배", "그룹별 전력 분배", 10),
+            kind("cctv", "CCTV", "카메라 영상", 16)
     );
+
+    private static KindOption kind(String value, String label, String description, int height) {
+        return new KindOption(value, label, description, new DefaultSize(16, height, "last".equals(value) ? 12 : null));
+    }
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -54,7 +58,9 @@ public class WidgetOptionsController {
     public record Option(String value, String label) {
     }
 
-    public record KindOption(String value, String label, String description) {
+    public record DefaultSize(int w, int h, Integer tableH) {}
+
+    public record KindOption(String value, String label, String description, DefaultSize defaultSize) {
     }
 
     public record Options(List<Option> rangePresets, List<Option> windows, List<String> chartStyles,
