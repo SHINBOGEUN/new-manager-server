@@ -1987,7 +1987,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       if (window.DcimRoomScene3D?.mount) {
         try {
-          state.pageScene3dApi = window.DcimRoomScene3D.mount(viewport, page, {
+          state.pageScene3dApi = window.DcimRoomScene3D.mount(viewport, visiblePage, {
             editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN",
             canBuild: consoleAuth()?.getRole?.() === "ADMIN",
             onBuildModeToggle: () => {
