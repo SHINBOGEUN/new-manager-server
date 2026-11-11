@@ -269,7 +269,7 @@ public class ChartQueryService {
         }
         Map<String, Map<Instant, Double>> grouped = new LinkedHashMap<>();
         Map<String, String> labels = new HashMap<>();
-        Map<String, java.util.SortedMap<Integer, String>> phaseLabels = new HashMap<>();
+        Map<String, java.util.SortedMap<PhaseNotationKey, String>> phaseLabels = new HashMap<>();
         boolean multipleTypes = context.phaseTypes().size() > 1;
         for (SeriesPoint point : raw) {
             var source = context.sourcesByKey().get(sourceKey(point.deviceId(), point.pointName()));
@@ -282,8 +282,10 @@ public class ChartQueryService {
                     && containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), type)) {
                 key = multipleTypes ? type + ":" + phase : phase;
                 String display = source.phaseLabel() == null ? phase : source.phaseLabel();
+                int notationOrder = source.phaseNotationOrder() == null ? 1 : source.phaseNotationOrder();
+                String notationCode = source.phaseNotationCode() == null ? display : source.phaseNotationCode();
                 phaseLabels.computeIfAbsent(key, ignored -> new java.util.TreeMap<>())
-                        .putIfAbsent(source.phaseNotationOrder() == null ? 1 : source.phaseNotationOrder(), display);
+                        .putIfAbsent(new PhaseNotationKey(notationOrder, notationCode), display);
                 label = null;
             } else if ((phase == null || phase.isBlank()) && context.phaseTypes().contains(type)
                     && !containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), type)) {
@@ -296,7 +298,7 @@ public class ChartQueryService {
             if (label != null) labels.putIfAbsent(key, label);
         }
         phaseLabels.forEach((key, notation) -> {
-            String label = String.join("/", notation.values()) + "상";
+            String label = String.join("/", new LinkedHashSet<>(notation.values())) + "상";
             String type = key.contains(":") ? key.substring(0, key.indexOf(':')) : null;
             labels.put(key, type == null ? label : label + " (" + type + ")");
         });
@@ -441,6 +443,14 @@ public class ChartQueryService {
 
     private static String sourceKey(int deviceId, String pointName) {
         return deviceId + "\u0000" + pointName;
+    }
+
+    private record PhaseNotationKey(int sortOrder, String code) implements Comparable<PhaseNotationKey> {
+        @Override
+        public int compareTo(PhaseNotationKey other) {
+            int order = Integer.compare(sortOrder, other.sortOrder);
+            return order != 0 ? order : code.compareTo(other.code);
+        }
     }
 
     private record ChartUnitContext(Map<String, String> unitsBySource, List<String> units) {

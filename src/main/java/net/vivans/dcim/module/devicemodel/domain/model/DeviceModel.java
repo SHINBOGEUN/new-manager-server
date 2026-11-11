@@ -80,13 +80,19 @@ public class DeviceModel extends BaseEntity {
         if (phaseNotation != null && !"PHASE_NOTATION".equals(phaseNotation.getCodeGroup().getGroupKey())) {
             throw new IllegalArgumentException("phaseNotation must belong to PHASE_NOTATION group");
         }
-        if (phaseNotation != null) validatePhaseNotation(phaseNotation.getName());
+        if (phaseNotation != null) validatePhaseNotationFormat(phaseNotation.getName());
         this.phaseNotation = phaseNotation;
     }
 
     public String phaseLabel(String phaseCode) {
-        String[] labels = phaseNotation == null ? new String[]{"L1", "L2", "L3", "N"}
-                : validatePhaseNotation(phaseNotation.getName());
+        String[] labels = new String[]{"L1", "L2", "L3", "N"};
+        if (phaseNotation != null) {
+            try {
+                labels = parsePhaseNotation(phaseNotation.getName());
+            } catch (IllegalArgumentException ignored) {
+                // Defensive fallback for legacy or externally corrupted common-code data.
+            }
+        }
         return switch (phaseCode == null ? "" : phaseCode) {
             case "P1" -> labels[0];
             case "P2" -> labels[1];
@@ -101,10 +107,14 @@ public class DeviceModel extends BaseEntity {
                 "P3", phaseLabel("P3"), "N", phaseLabel("N"));
     }
 
-    private static String[] validatePhaseNotation(String notation) {
+    public static void validatePhaseNotationFormat(String notation) {
+        parsePhaseNotation(notation);
+    }
+
+    private static String[] parsePhaseNotation(String notation) {
         String[] labels = notation == null ? new String[0] : notation.split("/", -1);
         if (labels.length != 4 || java.util.Arrays.stream(labels).anyMatch(String::isBlank)) {
-            throw new IllegalArgumentException("phase notation must contain four slash-separated labels");
+            throw new IllegalArgumentException("상 표기 이름은 '/'로 구분한 4개 항목이어야 합니다");
         }
         return labels;
     }
