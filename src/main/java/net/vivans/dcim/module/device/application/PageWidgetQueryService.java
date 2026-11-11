@@ -103,6 +103,7 @@ public class PageWidgetQueryService {
     public PageWidgetResponse createWidget(PageWidgetCreateRequest request) {
         PageWidgetResponse response = createWidgetContent(request);
         persistClickConfig(response.id(), request.clickConfig());
+        applyRequestTableColumns(response.id(), request.tableColumns());
         return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
@@ -212,7 +213,25 @@ public class PageWidgetQueryService {
     public PageWidgetResponse updateWidget(Integer id, PageWidgetUpdateRequest request) {
         PageWidgetResponse response = updateWidgetContent(id, request);
         persistClickConfig(response.id(), request.clickConfig());
+        applyRequestTableColumns(response.id(), request.tableColumns());
         return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
+    }
+
+    private void applyRequestTableColumns(Integer id, List<net.vivans.dcim.module.device.api.dto.PageWidgetTableColumnRequest> columns) {
+        if (columns == null) return;
+        PageWidget widget = widgetSupport.findWidget(id);
+        if (widget.getQueryKind() != PageWidgetQueryKind.last) {
+            if (!columns.isEmpty()) throw new IllegalArgumentException("tableColumns is only supported for last widgets");
+            widget.setTableColumnsJson(null);
+            pageWidgetRepository.save(widget);
+            return;
+        }
+        if (columns.isEmpty()) {
+            widget.setTableColumnsJson(null);
+            pageWidgetRepository.save(widget);
+            return;
+        }
+        setTableColumns(id, columns.stream().map(column -> new TableColumn(column.pointName(), column.label())).toList());
     }
 
     private PageWidgetResponse responseWithClickConfig(Integer id) {
