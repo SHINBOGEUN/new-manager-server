@@ -2925,6 +2925,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   <option value="last_month">지난 달</option>
                 </select>
               </label>
+              <label class="field">기간 비교
+                <select id="wChartCompareMode"><option value="none">비교 안 함</option><option value="previous_period">직전 같은 기간</option><option value="previous_day">전날 같은 시간</option><option value="previous_week">지난주 같은 요일</option></select>
+              </label>
               <label class="field">조회 간격
                 <select id="wChartWindow">
                   <option value="1m">1분</option>
@@ -3076,6 +3079,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             </label>
             <label class="field">상세 차트 묶음
               <select id="wClickSeries"><option value="per_device">장비별</option><option value="sum">합계</option><option value="by_phase">상별</option><option value="by_path">위치별</option></select>
+            </label>
+            <label class="field">상세 차트 기간 비교
+              <select id="wClickCompare"><option value="none">비교 안 함</option><option value="previous_period">직전 같은 기간</option><option value="previous_day">전날 같은 시간</option><option value="previous_week">지난주 같은 요일</option></select>
             </label>
             <div class="full"><button type="button" class="ghost" id="wClickPreview">미리 열어 보기</button><div id="wClickPreviewResult" class="muted" role="status" hidden style="margin-top:8px"></div></div>
             <div class="muted full">클릭 동작과 차트 기본값입니다. 팝업 안에서 바꾼 값은 저장하지 않습니다.</div>
@@ -8986,6 +8992,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
         setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
         setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
+        if (Array.isArray(options.compareModes)) {
+          setWidgetOptionSelect($("wChartCompareMode"), options.compareModes, $("wChartCompareMode").value);
+          setWidgetOptionSelect($("wClickCompare"), options.compareModes, $("wClickCompare").value);
+        }
         $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
       }).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
       $("wCreatePage").disabled = true;
@@ -13069,6 +13079,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       delete $("wChartSeriesMode").dataset.userSelected;
       $("wChartRangePreset").value = "last_24h";
       $("wChartWindow").value = "5m";
+      $("wChartCompareMode").value = "none";
+      $("wClickCompare").value = "none";
       $("wPueRangePreset").value = "last_24h";
       $("wPueFreshnessMinutes").value = "15";
       $("wDataFreshnessMinutes").value = "15";
@@ -13123,6 +13135,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wClickAction").value = w.clickConfig?.action || "chart";
         $("wTrendStyle").value = w.clickConfig?.chartStyle || "line";
         $("wClickSeries").value = w.clickConfig?.seriesMode || w.chartSeriesMode || "per_device";
+        $("wClickCompare").value = w.clickConfig?.compare || "none";
+        $("wChartCompareMode").value = w.clickConfig?.chartCompareMode || "none";
         $("wClickTarget").value = w.clickConfig?.target?.deviceId || w.clickConfig?.target?.rackLocationCode || w.clickConfig?.target?.pageCode || "";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
@@ -13951,7 +13965,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const rawTarget = $("wClickTarget")?.value.trim();
       const config = { action, chartStyle: $("wTrendStyle")?.value || "line",
         rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value,
-        seriesMode: $("wClickSeries")?.value || "per_device" };
+        seriesMode: $("wClickSeries")?.value || "per_device",
+        compare: $("wClickCompare")?.value || "none",
+        chartCompareMode: $("wChartCompareMode")?.value || "none" };
       if (action === "device") config.target = { deviceId: Number(rawTarget) };
       if (action === "rack") config.target = { rackLocationCode: rawTarget };
       if (action === "page") config.target = { pageCode: rawTarget };
@@ -14035,7 +14051,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         : "장비·포인트별 선으로 표시하며, 합계·상별·위치별 묶음은 저장 후 적용됩니다.";
       await window.DcimWidgetDetail.open({
         title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
-        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: false, note: note,
+        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: true, note: note,
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
           if (compare && compare !== "none") params.set("compare", compare);

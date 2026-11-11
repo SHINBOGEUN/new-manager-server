@@ -111,11 +111,19 @@
 
   function fromCalculated(data) {
     const trend = data && Array.isArray(data.trend) ? data.trend : [];
+    const current = trend.filter(function (point) { return !point.compare; });
+    const compared = trend.filter(function (point) { return point.compare; });
+    const series = [{ key: "calculated", label: "계산 결과", unit: data && data.unit || "값", axis: "left",
+      times: current.map(function (point) { return point.time; }),
+      values: current.map(function (point) { return point.value; }) }];
+    if (compared.length) series.push({ key: "calculated:compare", label: "계산 결과 (" + (compared[0].compareLabel || "비교") + ")",
+      unit: data && data.unit || "값", axis: "left", compare: true, offsetSeconds: compared[0].offsetSeconds,
+      originalTimes: compared.map(function (point) { return point.originalTime; }),
+      times: compared.map(function (point) { return point.time; }),
+      values: compared.map(function (point) { return point.value; }) });
     return {
       units: [data && data.unit || "값"],
-      series: [{ label: "계산 결과", unit: data && data.unit || "값", axis: "left",
-        times: trend.map(function (point) { return point.time; }),
-        values: trend.map(function (point) { return point.value; }) }],
+      series: series,
       dataStatus: data && data.dataStatus,
       calculationStatus: data && data.calculationStatus,
     };
@@ -147,7 +155,12 @@
     const hasRightAxis = units.length === 2;
     const datasets = series.map(function (item, index) {
       const byTime = new Map((item.times || []).map(function (time, i) { return [time, item.values[i]]; }));
-      const color = CHART_PALETTE[index % CHART_PALETTE.length];
+      const baseKey = item.compare && item.key ? item.key.replace(/:compare$/, "") : null;
+      const baseIndex = baseKey ? series.findIndex(function (candidate) { return candidate.key === baseKey; }) : -1;
+      const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
+      const baseSeries = baseIndex >= 0 ? series[baseIndex] : null;
+      const baseValues = baseSeries ? new Map((baseSeries.times || []).map(function (time, i) { return [formatTime(time), baseSeries.values[i]]; })) : new Map();
+      const originalByTime = new Map((item.times || []).map(function (time, i) { return [time, (item.originalTimes || [])[i] || null]; }));
       return {
         label: item.label || item.key || ("series-" + index),
         unit: item.unit || data.unit || "",
@@ -158,6 +171,10 @@
         tension: 0.25,
         pointRadius: times.length > 80 ? 0 : 2,
         borderWidth: 2,
+        borderDash: item.compare ? [6, 4] : [],
+        originalTimes: times.map(function (time) { return originalByTime.get(time) || null; }),
+        baseValues: baseValues,
+        isCompare: item.compare === true,
         spanGaps: true,
         yAxisID: hasRightAxis && item.axis === "right" ? "y1" : "y",
       };
@@ -175,7 +192,14 @@
           tooltip: { callbacks: { label: function (context) {
             const value = context.parsed.y;
             const unit = context.dataset.unit ? " " + context.dataset.unit : "";
-            return context.dataset.label + ": " + (value == null ? "-" : formatValue(value)) + unit;
+            let text = context.dataset.label + ": " + (value == null ? "-" : formatValue(value)) + unit;
+            const originalTime = context.dataset.originalTimes[context.dataIndex];
+            if (originalTime) text += " · 원래 시각 " + formatTime(originalTime);
+            if (context.dataset.isCompare && value != null) {
+              const base = context.dataset.baseValues.get(context.label);
+              if (base != null) text += " · 차이 " + (Number(base) === 0 ? "—" : (((Number(value) - Number(base)) / Math.abs(Number(base))) * 100).toFixed(1) + "%");
+            }
+            return text;
           } } },
         },
         scales: {

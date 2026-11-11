@@ -42,16 +42,35 @@ public class WidgetTrendQueryService {
     private final DeviceMeasurementSourceCatalog sourceCatalog;
 
     public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window) {
+        return getTrend(widgetId, rangePresetRaw, window, null);
+    }
+
+    public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window, String compareMode) {
         PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (!widget.isEnabled()) throw new IllegalArgumentException("widget is disabled");
         PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
         String resolvedWindow = resolveWindow(window);
         QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartWidgetResponse current = trendForRange(widget, preset, resolvedWindow, range);
+        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        if (comparison == null) return current;
+        if (current.series().size() > 5) throw new IllegalArgumentException(
+                "비교는 시리즈 5개 이하에서만 가능합니다 · 묶음을 합계로 바꾸세요");
+        ChartWidgetResponse previous = trendForRange(widget, preset, resolvedWindow, comparison.range());
+        List<ChartSeriesResponse> series = ChartComparisonSupport.appendComparison(
+                current.series(), previous.series(), comparison);
+        return new ChartWidgetResponse(current.widgetId(), current.widgetName(), current.pageCode(),
+                current.chartScope(), current.seriesMode(), current.rangePreset(), current.window(),
+                current.start(), current.end(), current.unit(), current.units(), series,
+                current.dataStatus(), current.availableSeriesModes());
+    }
 
+    private ChartWidgetResponse trendForRange(PageWidget widget, PageWidgetChartRangePreset preset,
+                                               String window, QueryRanges.Range range) {
         return switch (widget.getQueryKind()) {
-            case last, aggregate -> standardTrend(widget, preset, resolvedWindow, range);
-            case psychrometric -> psychrometricTrend(widget, preset, resolvedWindow, range);
-            case power_distribution -> powerDistributionTrend(widget, preset, resolvedWindow, range);
+            case last, aggregate -> standardTrend(widget, preset, window, range);
+            case psychrometric -> psychrometricTrend(widget, preset, window, range);
+            case power_distribution -> powerDistributionTrend(widget, preset, window, range);
             case chart -> throw new IllegalArgumentException("chart widget must use /query/chart");
             case calculated -> throw new IllegalArgumentException("calculated widget must use /query/calculated");
             case count -> throw new IllegalArgumentException("count widget has no time-series data");

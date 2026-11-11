@@ -55,11 +55,17 @@ public class ChartQueryService {
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final WidgetDataStatusResolver widgetDataStatusResolver;
 
+    public ChartWidgetResponse getChart(Integer widgetId, String rangePresetOverride,
+                                        String windowOverride, String seriesModeOverride) {
+        return getChart(widgetId, rangePresetOverride, windowOverride, seriesModeOverride, null);
+    }
+
     public ChartWidgetResponse getChart(
             Integer widgetId,
             String rangePresetOverride,
             String windowOverride,
-            String seriesModeOverride
+            String seriesModeOverride,
+            String compareOverride
     ) {
         PageWidget widget = findChartWidget(widgetId);
         List<String> pointNames = widget.pointNames();
@@ -114,6 +120,22 @@ public class ChartQueryService {
             case by_phase -> buildByPhase(raw, deviceById, pointContext, unitContext);
             case by_path -> buildByPath(raw, deviceById, pointContext, unitContext);
         };
+        String compareMode = compareOverride == null || compareOverride.isBlank()
+                ? widget.getChartCompareMode() : compareOverride.trim();
+        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        if (comparison != null) {
+            if (series.size() > 5) throw new IllegalArgumentException(
+                    "비교는 시리즈 5개 이하에서만 가능합니다 · 묶음을 합계로 바꾸세요");
+            List<SeriesPoint> previousRaw = pointQuery.findSeries(
+                    deviceIds, queryPointNames, comparison.range().start(), comparison.range().end(), window);
+            List<ChartSeriesResponse> previous = switch (mode) {
+                case per_device -> buildPerDevice(previousRaw, deviceById, queryPointNames, pointContext, unitContext);
+                case sum -> buildSum(previousRaw, deviceById, pointContext, unitContext);
+                case by_phase -> buildByPhase(previousRaw, deviceById, pointContext, unitContext);
+                case by_path -> buildByPath(previousRaw, deviceById, pointContext, unitContext);
+            };
+            series = ChartComparisonSupport.appendComparison(series, previous, comparison);
+        }
 
         PageWidgetChartScope scope = widget.getChartScope() == null
                 ? PageWidgetChartScope.devices

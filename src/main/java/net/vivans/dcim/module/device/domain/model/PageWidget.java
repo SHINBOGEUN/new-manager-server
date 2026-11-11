@@ -74,6 +74,20 @@ public class PageWidget extends BaseEntity {
 
     public void changeClickConfig(String value) {
         this.clickConfig = value;
+        if (this.chart != null) {
+            try {
+                var config = new com.fasterxml.jackson.databind.ObjectMapper().readValue(value,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+                Object mode = config.get("chartCompareMode");
+                this.chart.updateCompareMode(mode instanceof String text ? text : "none");
+            } catch (com.fasterxml.jackson.core.JsonProcessingException error) {
+                throw new IllegalArgumentException("클릭 설정을 읽을 수 없습니다", error);
+            }
+        }
+    }
+
+    public String getChartCompareMode() {
+        return chart == null ? "none" : chart.getCompareMode();
     }
 
     public void changeTrendDefaults(String rangePreset, String window) {

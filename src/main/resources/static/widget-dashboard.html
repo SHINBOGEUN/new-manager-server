@@ -2619,6 +2619,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         if (windowOverride) params.set("window", windowOverride);
         else if (widget.chartWindow) params.set("window", widget.chartWindow);
         if (seriesMode) params.set("seriesMode", seriesMode);
+        const compare = overrides.compare || widget.clickConfig?.chartCompareMode;
+        if (compare && compare !== "none") params.set("compare", compare);
         return await api(`/api/manager/query/chart?${params}`);
       } catch (err) {
         return { widgetId: widget.id, widgetName: widget.name, series: [], error: err.message };
@@ -3044,6 +3046,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         config: { rangePreset: rangePreset, window: windowSize, seriesMode: seriesMode,
           chartStyle: config.chartStyle || "line", compare: config.compare || "none" },
         showSeries: widget.queryKind === "chart",
+        showCompare: true,
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
           if (compare && compare !== "none") params.set("compare", compare);
