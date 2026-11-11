@@ -451,6 +451,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .asset-model-preview img { display:block; max-width:100%; max-height:100%; object-fit:contain; }
     .asset-model-preview canvas { display:block; width:100%; height:100%; touch-action:none; }
     .scene-model-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:14px; }
+    .scene-role-control { display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap:wrap; }
+    .scene-role-control select { min-width:120px; }
+    .scene-role-badge { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:3px 8px; color:var(--muted); font-size:11px; }
     .scene-model-card { border:1px solid var(--line); border-radius:9px; background:var(--surface2); padding:10px; min-width:0; }
     .scene-model-card img { display:block; width:100%; height:130px; object-fit:contain; background:#0c1a29; border-radius:6px; }
     .scene-model-card .preview-empty { display:grid; place-items:center; height:130px; background:#0c1a29; border-radius:6px; color:var(--muted); }
@@ -2235,7 +2238,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     <!-- SCENE MODEL CATALOG -->
     <section class="panel" id="tab-scene-models">
       <div class="row" style="justify-content:space-between;align-items:center"><h1 class="page-title" style="margin:0">3D 자산 관리</h1><button type="button" class="primary" id="sceneModelNew" data-role-gate="admin">+ 새 모델</button></div>
-      <p class="page-desc">도면에 배치할 모델을 등록하고 카테고리, 이름, 기본 크기, 파일을 관리합니다. 카테고리는 도면의 3D 모델 선택 창에도 적용됩니다.</p>
+      <p class="page-desc">도면에 배치할 모델을 등록하고 카테고리, 이름, 기본 크기, 파일을 관리합니다. 카테고리는 도면의 3D 모델 선택 창에도 적용됩니다.</p><p class="muted">도면 역할은 랙의 위치 연결·색상, 분전반의 구성품·사진, 프레임의 크기 조절 동작을 정합니다.</p>
       <dialog id="sceneModelDialog" aria-labelledby="sceneModelFormTitle" style="width:min(760px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)">
       <div class="card" data-role-gate="admin" style="margin:0;border:0">
         <div class="row" style="justify-content:space-between"><h2 id="sceneModelFormTitle" style="margin:0">새 모델 등록</h2><button type="button" class="ghost" id="sceneModelReset" aria-label="닫기">닫기 ×</button></div>
@@ -3219,15 +3222,22 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       <div class="models-layout">
         <div class="model-list-panel">
           <div class="card">
-            <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">모델 목록</h2>
-              <button type="button" class="primary" id="modelAddOpen" data-role-gate="admin">+ 모델 생성</button>
+            <div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px"><h2 style="margin:0">모델 목록</h2>
+              <div class="row"><button type="button" class="ghost" id="modelCatalogExport" data-role-gate="admin">내보내기</button><button type="button" class="ghost" id="modelCatalogImportOpen" data-role-gate="admin">가져오기</button><button type="button" class="primary" id="modelAddOpen" data-role-gate="admin">+ 모델 생성</button></div>
             </div>
+            <input id="modelCatalogFile" type="file" accept="application/json,.json" hidden>
+            <dialog class="wizard-quick-dialog" id="modelCatalogImportDialog" aria-labelledby="modelCatalogImportTitle">
+              <div class="wizard-dialog-head"><div><span class="eyebrow">MODEL CATALOG</span><h2 id="modelCatalogImportTitle">장비 모델 카탈로그 가져오기</h2><p>미리보기에서 오류가 없을 때만 적용할 수 있습니다. 모델 충돌 시 처리 방식을 선택하세요.</p></div><button type="button" class="ghost" id="modelCatalogImportClose" aria-label="닫기">×</button></div>
+              <label class="field">충돌 처리<select id="modelCatalogConflict"><option value="SKIP">건너뛰기 (기본)</option><option value="UPDATE">기존 정의 갱신</option></select></label>
+              <div id="modelCatalogImportReport" class="muted" style="max-height:42vh;overflow:auto">JSON 파일을 선택하세요.</div>
+              <div class="wizard-dialog-actions"><button type="button" class="ghost" id="modelCatalogPreview">미리보기</button><button type="button" class="primary" id="modelCatalogApply" disabled>적용</button></div>
+            </dialog>
             <div class="row" style="margin-bottom:10px">
               <button type="button" class="ghost" id="modelReload">새로고침</button>
             </div>
             <div class="model-list-scroll">
               <table>
-                <thead><tr><th>이름</th><th>유형</th><th>프로토콜</th><th></th></tr></thead>
+                <thead><tr><th><input id="modelCatalogSelectAll" type="checkbox" aria-label="모델 전체 선택"></th><th>이름</th><th>유형</th><th>프로토콜</th><th></th></tr></thead>
                 <tbody id="modelBody"></tbody>
               </table>
             </div>
@@ -4144,7 +4154,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     async function loadSceneModels() {
-      sceneModels = (await api("/api/manager/scene-models", { cache: "no-store" })).filter((model) => !["SR_DLC_RACK", "SR_INROW_RACK", "SR_HAC_RACK", "SR_OCP_RACK", "SR_ORV3_RACK"].includes(model.key));
+      const sceneCatalog = await api("/api/manager/scene-models", { cache: "no-store" });
+      const showroom = await import("/showroom-models.js?v=20261109paneledit");
+      showroom.setShowroomModels(sceneCatalog);
+      sceneModels = sceneCatalog.filter((model) => !["SR_DLC_RACK", "SR_INROW_RACK", "SR_HAC_RACK", "SR_OCP_RACK", "SR_ORV3_RACK"].includes(model.key));
       const categories = [...new Set(sceneModels.map((model) => model.category || "기타"))].sort((a, b) => a.localeCompare(b, "ko"));
       const filter = $("sceneModelCategoryFilter");
       const previousFilter = filter.value;
@@ -4163,6 +4176,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           <div class="preview-empty" data-scene-preview>미리보기 불러오는 중</div>
           <strong>${esc(model.label)} ${model.enabled ? "" : "(숨김)"}</strong>
           <small>${esc(model.category || "기타")} · ${esc(model.file)}<br>${model.width} × ${model.height} × ${model.depth} m · ${model.builtin ? "기본 모델" : "업로드 모델"}${model.inUse ? " · 도면에서 사용 중" : ""}</small>
+          <div class="scene-role-control"><label for="scene-role-${esc(model.key)}">도면 역할</label><select id="scene-role-${esc(model.key)}" data-scene-role="${esc(model.key)}" ${state.role === "ADMIN" ? "" : "disabled"}>
+            <option value="" ${!model.sceneRole ? "selected" : ""}>없음</option><option value="RACK" ${model.sceneRole === "RACK" ? "selected" : ""}>랙</option><option value="PANEL" ${model.sceneRole === "PANEL" ? "selected" : ""}>분전반</option><option value="FRAME" ${model.sceneRole === "FRAME" ? "selected" : ""}>프레임</option>
+          </select><span class="scene-role-badge" data-scene-role-badge>${model.sceneRole ? esc(({RACK:"랙",PANEL:"분전반",FRAME:"프레임"})[model.sceneRole] || "없음") : "없음"}</span></div>
           <div class="row" style="margin-bottom:8px"><label><input type="checkbox" data-scene-rack-u="${esc(model.key)}" ${model.rackUInstallable ? "checked" : ""}> 랙 U 장착</label><label><input type="checkbox" data-scene-rack-attachment="${esc(model.key)}" ${model.rackAttachmentInstallable ? "checked" : ""}> 랙 부착</label><label><input type="checkbox" data-scene-panel-install="${esc(model.key)}" ${model.panelInstallable ? "checked" : ""}> 분전반 설치</label><label><input type="checkbox" data-scene-device-link="${esc(model.key)}" ${model.deviceLinkable ? "checked" : ""}> 장비 연결</label></div>
           <div class="row"><button type="button" class="ghost" data-scene-edit="${esc(model.key)}">수정</button><button type="button" class="danger" data-scene-delete="${esc(model.key)}" ${model.inUse ? "disabled title=\"도면에서 사용 중\"" : ""}>삭제</button></div>
         </article>`).join("") : '<div class="empty">등록된 3D 모델이 없습니다.</div>';
@@ -4170,6 +4186,21 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         card.style.display = !filter.value || card.dataset.sceneCategory === filter.value ? "" : "none";
       });
       filter.onchange();
+      list.querySelectorAll('[data-scene-role]').forEach((control) => control.onchange = async () => {
+        const model = sceneModels.find((entry) => entry.key === control.dataset.sceneRole);
+        if (!model) return;
+        const previous = model.sceneRole || "";
+        control.disabled = true;
+        try {
+          const updated = await api(`/api/manager/scene-models/${encodeURIComponent(model.key)}/scene-role`, { method:"PATCH", body:JSON.stringify({sceneRole:control.value || null}) });
+          Object.assign(model, updated);
+          control.value = model.sceneRole || "";
+          const badge = control.closest('[data-scene-model]')?.querySelector('[data-scene-role-badge]');
+          if (badge) badge.textContent = ({RACK:"랙",PANEL:"분전반",FRAME:"프레임"})[model.sceneRole] || "없음";
+          toast('도면 역할을 저장했습니다.');
+        } catch (error) { control.value = previous; toast(error.message, true); }
+        finally { control.disabled = state.role !== "ADMIN"; }
+      });
       list.querySelectorAll('[data-scene-panel-install]').forEach((control) => control.onchange = async () => {
         control.disabled = true;
         try {
@@ -4226,7 +4257,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261109panel-accura");
+        await import("/page-scene-3d.js?v=20261110roles");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -4262,7 +4293,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261109panel-accura");
+        await import("/page-scene-3d.js?v=20261110roles");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -5544,14 +5575,16 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.modelRequiresInstance = {};
       $("modelBody").innerHTML = state.models.map((m) => `
         <tr class="clickable" data-id="${m.id}">
+          <td><input type="checkbox" data-model-catalog-export="${m.id}" aria-label="${esc(m.manufacturer || "")} ${esc(m.name)} 내보내기"></td>
           <td><b>${esc(m.name)}</b><div class="muted mono">#${m.id} · ${esc(m.manufacturer || "")}</div></td>
           <td>${esc(m.deviceTypeName || m.deviceTypeCode)}</td>
           <td>${(m.protocols || []).map((p) => esc(p.protocolName || p.protocolCode)).join(", ") || "–"}</td>
           <td><div class="action-btns" data-role-gate="admin"><button type="button" class="ghost" data-edit-model="${m.id}">수정</button><button type="button" class="danger" data-del-model="${m.id}">삭제</button></div></td>
-        </tr>`).join("") || `<tr><td colspan="4"><div class="empty">모델이 없습니다</div></td></tr>`;
+        </tr>`).join("") || `<tr><td colspan="5"><div class="empty">모델이 없습니다</div></td></tr>`;
+      $("modelBody").querySelectorAll("[data-model-catalog-export]").forEach((checkbox) => checkbox.onclick = (event) => event.stopPropagation());
       $("modelBody").querySelectorAll("tr[data-id]").forEach((tr) => {
         tr.onclick = (ev) => {
-          if (ev.target.closest("[data-edit-model],[data-del-model]")) return;
+          if (ev.target.closest("[data-edit-model],[data-del-model],[data-model-catalog-export]")) return;
           selectModel(Number(tr.dataset.id));
         };
       });
@@ -7364,7 +7397,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         showSelection(selectedPanelIndex);
         if (selectedPanelIndex != null) rackDetailViewer.selectComponent(selectedPanelIndex);
       };
-      Promise.all([import("/page-scene-3d.js?v=20261109panel-accura"), api('/api/manager/scene-models')]).then(([, catalog]) => {
+      Promise.all([import("/page-scene-3d.js?v=20261110roles"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
+        const showroom = await import("/showroom-models.js?v=20261109paneledit");
+        showroom.setShowroomModels(catalog);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         models = catalog;
         if (editing) {
@@ -7597,7 +7632,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261109panel-accura")]).then(([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261110roles")]).then(async ([models]) => {
+        const showroom = await import("/showroom-models.js?v=20261109paneledit");
+        showroom.setShowroomModels(models);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
         rackDetailViewer = window.DcimRoomScene3D.mountRackDetail(canvas, layout, models, (u) => {
           if (!form) return;
@@ -11901,6 +11938,89 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("reloadAllBtn").onclick = boot;
     $("locReload").onclick = () => loadLocations().catch((e) => toast(e.message, true));
     $("modelReload").onclick = () => loadModels().catch((e) => toast(e.message, true));
+    let modelCatalogDocument = null;
+    let modelCatalogPreviewValid = false;
+    const modelCatalogFile = $("modelCatalogFile");
+    const modelCatalogDialog = $("modelCatalogImportDialog");
+    const modelCatalogReport = $("modelCatalogImportReport");
+    const modelCatalogApply = $("modelCatalogApply");
+    function showModelCatalogReport(report) {
+      modelCatalogReport.replaceChildren();
+      const sections = [
+        ["생성", report?.created], ["갱신", report?.updated], ["건너뜀", report?.skipped],
+        ["비활성화", report?.disabledPoints], ["경고", report?.warnings]
+      ];
+      const summary = document.createElement("p");
+      summary.textContent = sections.map(([label, rows]) => `${label} ${Array.isArray(rows) ? rows.length : 0}건`).join(" · ");
+      modelCatalogReport.append(summary);
+      for (const [label, rows] of sections) {
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+        const heading = document.createElement("h3"); heading.textContent = `${label} (${rows.length})`;
+        const list = document.createElement("ul");
+        for (const row of rows) { const item = document.createElement("li"); item.textContent = row; list.append(item); }
+        modelCatalogReport.append(heading, list);
+      }
+      const errors = Array.isArray(report?.errors) ? report.errors : [];
+      if (errors.length) {
+        const heading = document.createElement("h3"); heading.textContent = `오류 (${errors.length})`;
+        const table = document.createElement("table");
+        table.innerHTML = "<thead><tr><th>모델</th><th>항목</th><th>메시지</th></tr></thead>";
+        const body = document.createElement("tbody");
+        for (const error of errors) {
+          const row = document.createElement("tr");
+          for (const value of [error.model, error.field, error.message]) { const cell = document.createElement("td"); cell.textContent = value || ""; row.append(cell); }
+          body.append(row);
+        }
+        table.append(body); modelCatalogReport.append(heading, table);
+      }
+      modelCatalogPreviewValid = Array.isArray(report?.errors) && report.errors.length === 0;
+      modelCatalogApply.disabled = !modelCatalogPreviewValid;
+    }
+    async function previewModelCatalog() {
+      modelCatalogPreviewValid = false; modelCatalogApply.disabled = true;
+      if (!modelCatalogDocument) { modelCatalogReport.textContent = "먼저 JSON 파일을 선택하세요."; return; }
+      try {
+        const policy = $("modelCatalogConflict").value;
+        const report = await api(`/api/manager/device-models/import?dryRun=true&onConflict=${encodeURIComponent(policy)}`, { method:"POST", body:JSON.stringify(modelCatalogDocument) });
+        showModelCatalogReport(report);
+      } catch (error) { modelCatalogReport.textContent = error.message; }
+    }
+    $("modelCatalogImportOpen").onclick = () => modelCatalogFile.click();
+    $("modelCatalogImportClose").onclick = () => modelCatalogDialog.close();
+    $("modelCatalogPreview").onclick = () => previewModelCatalog();
+    $("modelCatalogConflict").onchange = () => { if (modelCatalogDocument) previewModelCatalog(); };
+    modelCatalogFile.onchange = async () => {
+      const file = modelCatalogFile.files?.[0]; modelCatalogFile.value = "";
+      modelCatalogDocument = null; modelCatalogPreviewValid = false; modelCatalogApply.disabled = true;
+      if (!file) return;
+      modelCatalogDialog.showModal();
+      if (file.size > 2 * 1024 * 1024) { modelCatalogReport.textContent = "파일은 2 MiB 이하여야 합니다."; return; }
+      try { modelCatalogDocument = JSON.parse(await file.text()); await previewModelCatalog(); }
+      catch (error) { modelCatalogReport.textContent = `JSON 파일을 읽지 못했습니다: ${error.message}`; }
+    };
+    $("modelCatalogApply").onclick = async () => {
+      if (!modelCatalogDocument || !modelCatalogPreviewValid) return;
+      if (!confirm("미리보기한 카탈로그 변경을 적용할까요?")) return;
+      modelCatalogApply.disabled = true;
+      try {
+        const report = await api(`/api/manager/device-models/import?dryRun=false&onConflict=${encodeURIComponent($("modelCatalogConflict").value)}`, { method:"POST", body:JSON.stringify(modelCatalogDocument) });
+        showModelCatalogReport(report); toast("장비 모델 카탈로그 적용을 마쳤습니다."); await loadModels();
+      } catch (error) { modelCatalogReport.textContent = error.message; toast(error.message, true); }
+    };
+    $("modelCatalogSelectAll").onchange = (event) => $("modelBody").querySelectorAll("[data-model-catalog-export]").forEach((checkbox) => checkbox.checked = event.target.checked);
+    $("modelCatalogExport").onclick = async () => {
+      const ids = [...$("modelBody").querySelectorAll("[data-model-catalog-export]:checked")].map((checkbox) => checkbox.dataset.modelCatalogExport);
+      const path = "/api/manager/device-models/export" + (ids.length ? `?ids=${ids.join(",")}` : "");
+      try {
+        let response = await fetch(base() + path, { headers: state.token ? { Authorization:"Bearer " + state.token } : {}, credentials:"same-origin" });
+        if (response.status === 401 && await refreshAccessToken()) response = await fetch(base() + path, { headers: state.token ? { Authorization:"Bearer " + state.token } : {}, credentials:"same-origin" });
+        if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || body.message || `HTTP ${response.status}`); }
+        const blob = await response.blob(), url = URL.createObjectURL(blob), anchor = document.createElement("a");
+        anchor.href = url; anchor.download = response.headers.get("Content-Disposition")?.match(/filename\*?=(?:UTF-8''|")?([^;"]+)/i)?.[1] || "dcim-models.json";
+        document.body.append(anchor); anchor.click(); anchor.remove(); URL.revokeObjectURL(url);
+        toast(ids.length ? `${ids.length}개 모델을 내보냈습니다.` : "전체 모델을 내보냈습니다.");
+      } catch (error) { toast(error.message, true); }
+    };
     $("sceneModelReload").onclick = () => loadSceneModels().catch((e) => toast(e.message, true));
     $("sceneBuiltinReload").onclick = () => loadSceneBuiltins().catch((e) => toast(e.message, true));
     $("sceneModelNew").onclick = () => { resetSceneModelForm(); $("sceneModelDialog").showModal(); $("sceneModelName").focus(); };
