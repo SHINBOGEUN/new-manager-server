@@ -9,7 +9,7 @@ public record MqttPointResponse(
         Integer categoryCodeId, String categoryName,
         Integer unitCodeId, String unit, Double scale, String valueMap, boolean enabled,
         MqttPointScope componentScope, String componentType, String componentPath,
-        String componentIndexField, String componentUuidField
+        String componentIndexField, String componentUuidField, String phase
 ) {
     public static MqttPointResponse from(DeviceModelMqttPoint p) {
         return new MqttPointResponse(p.getId(), p.getDeviceModel().getId(), p.getPayloadField(),
@@ -17,6 +17,6 @@ public record MqttPointResponse(
                 p.getCategoryCode() == null ? null : p.getCategoryCode().getId(), p.getCategory(),
                 p.getUnitCode() == null ? null : p.getUnitCode().getId(), p.getUnit(), p.getScale(),
                 p.getValueMap(), p.isEnabled(), p.getComponentScope(), p.getComponentType(),
-                p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField());
+                p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField(), p.getPhase() == null ? null : p.getPhase().getCode());
     }
 }

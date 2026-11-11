@@ -19,6 +19,11 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class RackWidgetService {
+    private static final Set<String> PHASE_CODES = Set.of("P1", "P2", "P3");
+
+    private static boolean isPhaseCode(String phase) {
+        return phase != null && PHASE_CODES.contains(phase);
+    }
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper;
     private final DeviceAssetRackService racks;
@@ -40,6 +45,10 @@ public class RackWidgetService {
     private boolean isPowerDevice(RackWidgetDevice device) {
         if (device == null || device.deviceType() == null) return false;
         return csv(powerDeviceTypes).stream().anyMatch(type -> type.equalsIgnoreCase(device.deviceType()));
+    }
+
+    private boolean isPowerDeviceType(String deviceType) {
+        return deviceType != null && csv(powerDeviceTypes).stream().anyMatch(type -> type.equalsIgnoreCase(deviceType));
     }
 
     private String redundantPath(int index) {
@@ -65,20 +74,36 @@ public class RackWidgetService {
     }
     public record Sample(Instant time, Double value) {}
     private record WidgetDefinition(String type, List<Source> sources, String rangePreset, String window) {}
-    public record RackWidgetDevice(Integer deviceId, String deviceName, String modelName, String deviceType, String pathCode, String pathName, boolean threePhaseMeasurements) {}
+    public record RackWidgetDevice(Integer deviceId, String deviceName, String modelName, String deviceType,
+                                   String pathCode, String pathName, boolean threePhaseMeasurements,
+                                   boolean powerDevice) {
+        public RackWidgetDevice(Integer deviceId, String deviceName, String modelName, String deviceType,
+                                String pathCode, String pathName, boolean threePhaseMeasurements) {
+            this(deviceId, deviceName, modelName, deviceType, pathCode, pathName, threePhaseMeasurements, false);
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<RackWidgetDevice> devices(String code) {
         var available = sources(code);
         return jdbc.query("SELECT d.id,d.name,m.name,t.code,p.code,p.name FROM device_rack_placement r JOIN devices d ON d.id=r.device_id JOIN device_model m ON m.id=d.model_id JOIN common_code t ON t.id=m.device_type_id LEFT JOIN common_code p ON p.id=d.path_code_id WHERE r.rack_location_code=? ORDER BY d.name,d.id", (rs, n) -> {
             int id = rs.getInt(1);
-            boolean hasThree = available.stream().filter(s -> s.deviceId().equals(id) && !s.ambiguous() && s.unit() != null && s.unit().equalsIgnoreCase("A"))
-                    .map(s -> s.protocol().toLowerCase(Locale.ROOT)).distinct().anyMatch(protocol ->
-                            List.of("L1_AMP", "L2_AMP", "L3_AMP").stream().allMatch(point -> available.stream().anyMatch(s -> s.deviceId().equals(id) && !s.ambiguous() && s.protocol().equalsIgnoreCase(protocol) && s.pointName().equalsIgnoreCase(point) && s.unit() != null && s.unit().equalsIgnoreCase("A"))));
-            return new RackWidgetDevice(id, rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), hasThree);
+            boolean hasThree = hasThreePhaseMeasurements(available, id);
+            String deviceType = rs.getString(4);
+            return new RackWidgetDevice(id, rs.getString(2), rs.getString(3), deviceType, rs.getString(5), rs.getString(6),
+                    hasThree, isPowerDeviceType(deviceType));
         }, code);
     }
 
+    private static boolean hasThreePhaseMeasurements(List<DeviceMeasurementSourceCatalog.Source> sources, Integer deviceId) {
+        Map<String, Set<String>> phasesByType = new HashMap<>();
+        for (var source : sources) {
+            if (!Objects.equals(source.deviceId(), deviceId) || source.ambiguous() || !"CURRENT".equalsIgnoreCase(source.dataPointType())
+                    || !isPhaseCode(source.phase())) continue;
+            phasesByType.computeIfAbsent(source.dataPointType(), ignored -> new HashSet<>()).add(source.phase());
+        }
+        return phasesByType.values().stream().anyMatch(phases -> phases.containsAll(Set.of("P1", "P2", "P3")));
+    }
     private List<DeviceMeasurementSourceCatalog.Source> sources(String code) {
         var ids = racks.getRackLayout(code).placements().stream().map(p -> p.deviceId()).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
         return ids.isEmpty() ? List.of() : catalog.availableSources(ids);
@@ -97,10 +122,10 @@ public class RackWidgetService {
 
     private List<Widget> defaultWidgets(String code) {
         var valid = sources(code).stream().filter(s -> !s.ambiguous()).toList();
-        var pdus = devices(code).stream().filter(this::isPowerDevice).toList();
+        var powerDevices = devices(code).stream().filter(this::isPowerDevice).toList();
         var defaults = new ArrayList<Widget>();
-        var a = pdus.stream().filter(d -> redundantPath(0).equalsIgnoreCase(d.pathCode())).toList();
-        var b = pdus.stream().filter(d -> redundantPath(1).equalsIgnoreCase(d.pathCode())).toList();
+        var a = powerDevices.stream().filter(d -> redundantPath(0).equalsIgnoreCase(d.pathCode())).toList();
+        var b = powerDevices.stream().filter(d -> redundantPath(1).equalsIgnoreCase(d.pathCode())).toList();
         var aPower = a.size() == 1 ? defaultPowerSource(valid, a.get(0).deviceId()) : null;
         var bPower = b.size() == 1 ? defaultPowerSource(valid, b.get(0).deviceId()) : null;
         if (aPower != null && bPower != null && aPower.unit().equalsIgnoreCase(bPower.unit())) {
@@ -108,12 +133,12 @@ public class RackWidgetService {
             defaults.add(new Widget("전력 균형", "PATH_BALANCE", 1, pair));
             defaults.add(new Widget("전력 추이", "POWER_TREND", 1, pair, 24, 15));
         } else {
-            for (var pdu : pdus) {
-                var power = defaultPowerSource(valid, pdu.deviceId());
+            for (var powerDevice : powerDevices) {
+                var power = defaultPowerSource(valid, powerDevice.deviceId());
                 if (power != null && defaults.size() < 16) {
-                    String name = pdu.deviceName();
+                    String name = powerDevice.deviceName();
                     if (name.length() > 50) name = name.substring(0, 50);
-                    defaults.add(new Widget("전력 · " + name + " #" + pdu.deviceId(), "VALUE", 1, List.of(toSource(power))));
+                    defaults.add(new Widget("전력 · " + name + " #" + powerDevice.deviceId(), "VALUE", 1, List.of(toSource(power))));
                 }
             }
         }
@@ -126,16 +151,15 @@ public class RackWidgetService {
     }
 
     private static DeviceMeasurementSourceCatalog.Source defaultPowerSource(List<DeviceMeasurementSourceCatalog.Source> sources, int deviceId) {
-        var candidates = sources.stream().filter(s -> s.deviceId().equals(deviceId) && s.unit() != null
-                && Set.of("W", "KW", "MW").contains(s.unit().trim().toUpperCase(Locale.ROOT))).toList();
-        for (String name : List.of("TOTAL_WT", "TOTAL_POWER", "ACTIVE_POWER", "WATT")) {
-            var matches = candidates.stream().filter(s -> s.pointName().equalsIgnoreCase(name)).toList();
-            if (matches.size() == 1) return matches.get(0);
-            if (matches.size() > 1) return null;
-        }
-        return candidates.size() == 1 ? candidates.get(0) : null;
+        List<DeviceMeasurementSourceCatalog.Source> candidates = sources.stream().filter(s -> s.deviceId().equals(deviceId) && !s.ambiguous()
+                        && "POWER".equalsIgnoreCase(s.dataPointType()) && s.unit() != null
+                        && Set.of("W", "KW", "MW").contains(s.unit().trim().toUpperCase(Locale.ROOT)))
+                .toList();
+        List<DeviceMeasurementSourceCatalog.Source> unphased = candidates.stream()
+                .filter(s -> s.phase() == null || s.phase().isBlank()).toList();
+        if (unphased.size() == 1) return unphased.get(0);
+        return unphased.isEmpty() && candidates.size() == 1 ? candidates.get(0) : null;
     }
-
     private static Source toSource(DeviceMeasurementSourceCatalog.Source source) {
         return new Source(source.deviceId(), source.pointName(), source.protocol());
     }
@@ -161,10 +185,10 @@ public class RackWidgetService {
         for (var w : widgets) {
             if (w.type().equals("PATH_BALANCE") || w.type().equals("POWER_TREND")) {
                 for (int i = 0; i < 2; i++) { var device = deviceInfo.get(w.sources().get(i).deviceId());
-                    if (!isPowerDevice(device) || !redundantPath(i).equalsIgnoreCase(device.pathCode())) throw new IllegalArgumentException(redundantPath(0) + "·" + redundantPath(1) + " 경로에 등록된 PDU를 각각 선택하세요"); }
+                if (!isPowerDevice(device) || !redundantPath(i).equalsIgnoreCase(device.pathCode())) throw new IllegalArgumentException(redundantPath(0) + "·" + redundantPath(1) + " 경로에 등록된 전력 장비를 각각 선택하세요"); }
             } else if (w.type().equals("PHASE_BALANCE")) {
                 for (int i = 0; i < w.sources().size(); i += 3) { var device = deviceInfo.get(w.sources().get(i).deviceId());
-                    if (!isPowerDevice(device) || !device.threePhaseMeasurements()) throw new IllegalArgumentException("상별 전류 3개가 등록된 PDU를 선택하세요"); }
+                    if (device == null || !device.threePhaseMeasurements()) throw new IllegalArgumentException("L1, L2, L3 상 정보가 있는 장비를 선택하세요"); }
             }
         }
     }
@@ -202,8 +226,26 @@ public class RackWidgetService {
                 if (units.size() != 1 || units.get(0).isBlank()) throw new IllegalArgumentException("서로 같은 단위의 측정 항목을 선택하세요");
                 if (w.type().equals("PHASE_BALANCE") ? !Set.of("a", "ma", "ka").contains(units.get(0)) : !Set.of("w", "kw", "mw").contains(units.get(0))) throw new IllegalArgumentException(w.type().equals("PHASE_BALANCE") ? "상 밸런스에는 전류(A) 항목을 선택하세요" : "경로 밸런스와 전력 추이에는 전력(W) 항목을 선택하세요");
                 if (w.type().equals("PHASE_BALANCE")) {
-                    for (int base = 0; base < w.sources().size(); base += 3) for (int i = 0; i < 3; i++) if (!w.sources().get(base+i).deviceId().equals(w.sources().get(base).deviceId()) || !w.sources().get(base+i).pointName().equalsIgnoreCase("L" + (i+1) + "_AMP")) throw new IllegalArgumentException("각 PDU의 L1_AMP, L2_AMP, L3_AMP를 선택하세요");
-                    if (w.sources().size() == 6 && w.sources().get(0).deviceId().equals(w.sources().get(3).deviceId())) throw new IllegalArgumentException("서로 다른 PDU를 선택하세요");
+                    for (int base = 0; base < w.sources().size(); base += 3) {
+                        Integer deviceId = w.sources().get(base).deviceId();
+                        String type = null;
+                        Set<String> phases = new HashSet<>();
+                        for (int i = 0; i < 3; i++) {
+                            Source selected = w.sources().get(base + i);
+                            if (!deviceId.equals(selected.deviceId())) throw new IllegalArgumentException("각 상 측정값은 같은 장비에서 선택하세요");
+                            var metadata = valid.stream().filter(candidate -> candidate.deviceId().equals(selected.deviceId())
+                                    && candidate.pointName().equals(selected.pointName())
+                                    && candidate.protocol().equalsIgnoreCase(selected.protocol())).findFirst().orElseThrow();
+                            if (metadata.dataPointType() == null || metadata.phase() == null
+                                    || (type != null && !type.equals(metadata.dataPointType()))) {
+                                throw new IllegalArgumentException("같은 측정 유형의 L1, L2, L3 항목을 선택하세요");
+                            }
+                            type = metadata.dataPointType();
+                            phases.add(metadata.phase());
+                        }
+                        if (!phases.equals(Set.of("P1", "P2", "P3"))) throw new IllegalArgumentException("P1, P2, P3 상 항목을 각각 선택하세요");
+                    }
+                    if (w.sources().size() == 6 && w.sources().get(0).deviceId().equals(w.sources().get(3).deviceId())) throw new IllegalArgumentException("서로 다른 장비를 선택하세요");
                 }
             }
             if (w.type().equals("POWER_TREND")) {
@@ -227,8 +269,10 @@ public class RackWidgetService {
     public List<RackWidgetDevice> equipmentDevices(int deviceId) {
         var available = equipmentSources(deviceId);
         return jdbc.query("SELECT d.id,d.name,m.name,t.code,p.code,p.name FROM devices d JOIN device_model m ON m.id=d.model_id JOIN common_code t ON t.id=m.device_type_id LEFT JOIN common_code p ON p.id=d.path_code_id WHERE d.id=?", (rs,n) -> {
-            boolean three = available.stream().filter(s -> !s.ambiguous() && "A".equalsIgnoreCase(s.unit())).map(s -> s.protocol().toLowerCase(Locale.ROOT)).distinct().anyMatch(protocol -> List.of("L1_AMP","L2_AMP","L3_AMP").stream().allMatch(point -> available.stream().anyMatch(s -> !s.ambiguous() && s.protocol().equalsIgnoreCase(protocol) && s.pointName().equalsIgnoreCase(point) && "A".equalsIgnoreCase(s.unit()))));
-            return new RackWidgetDevice(rs.getInt(1),rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),rs.getString(6),three);
+            boolean three = hasThreePhaseMeasurements(available, deviceId);
+            String deviceType = rs.getString(4);
+            return new RackWidgetDevice(rs.getInt(1),rs.getString(2),rs.getString(3),deviceType,rs.getString(5),rs.getString(6),
+                    three,isPowerDeviceType(deviceType));
         }, deviceId);
     }
     @Transactional
@@ -368,7 +412,7 @@ public class RackWidgetService {
             case "15m" -> 15;
             case "1h" -> 60;
             case "1d" -> 1440;
-            default -> throw new IllegalArgumentException("POWER_TREND에는 1분~1시간 간격만 사용할 수 있습니다");
+            default -> throw new IllegalArgumentException("POWER_TREND에는 1분~1일 간격만 사용할 수 있습니다");
         };
     }
 }

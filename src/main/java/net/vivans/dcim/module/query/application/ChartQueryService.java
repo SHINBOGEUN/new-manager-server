@@ -39,6 +39,15 @@ import java.util.stream.Collectors;
 public class ChartQueryService {
 
     static final int MAX_DEVICE_IDS = 200;
+    private static final Set<String> PHASE_CODES = Set.of("P1", "P2", "P3");
+
+    private static boolean isPhaseCode(String phase) {
+        return phase != null && PHASE_CODES.contains(phase);
+    }
+
+    private static boolean containsType(Set<String> types, String type) {
+        return type != null && types.contains(type);
+    }
 
     private final PageWidgetRepository pageWidgetRepository;
     private final DeviceRepository deviceRepository;
@@ -127,29 +136,70 @@ public class ChartQueryService {
                 unitContext.singleUnit(),
                 unitContext.units(),
                 series,
-                dataStatus
+                dataStatus,
+                availableSeriesModes(devices, pointContext, unitContext)
         );
     }
 
-    private static String phaseSuffix(String name) {
-        if (name == null || name.length() < 4 || name.charAt(0) != 'L'
-                || (name.charAt(1) != '1' && name.charAt(1) != '2' && name.charAt(1) != '3')
-                || name.charAt(2) != '_') {
-            return null;
+    private ChartPointContext buildPointContext(List<Device> devices, List<String> pointNames) {
+        Set<Integer> deviceIds = devices.stream().map(Device::getId).collect(Collectors.toSet());
+        Map<String, DeviceMeasurementSourceCatalog.Source> sources = new HashMap<>();
+        Map<Integer, Map<String, Set<String>>> phasesByDeviceAndType = new HashMap<>();
+        Map<Integer, Set<String>> unphasedTypesByDevice = new HashMap<>();
+        for (DeviceMeasurementSourceCatalog.Source source : sourceCatalog.availableSources(deviceIds)) {
+            if (source.ambiguous() || !pointNames.contains(source.pointName())) continue;
+            sources.putIfAbsent(sourceKey(source.deviceId(), source.pointName()), source);
+            String type = source.dataPointType();
+            if (type == null || type.isBlank()) continue;
+            if (source.phase() == null || source.phase().isBlank()) {
+                unphasedTypesByDevice.computeIfAbsent(source.deviceId(), ignored -> new HashSet<>()).add(type);
+            } else if (isPhaseCode(source.phase())) {
+                phasesByDeviceAndType.computeIfAbsent(source.deviceId(), ignored -> new HashMap<>())
+                        .computeIfAbsent(type, ignored -> new HashSet<>()).add(source.phase());
+            }
         }
-        return name.substring(3);
+        Map<Integer, Set<String>> phaseTypesByDevice = new HashMap<>();
+        Set<String> phaseTypes = new LinkedHashSet<>();
+        phasesByDeviceAndType.forEach((deviceId, byType) -> byType.forEach((type, phases) -> {
+            if (phases.containsAll(Set.of("P1", "P2", "P3"))) {
+                phaseTypesByDevice.computeIfAbsent(deviceId, ignored -> new HashSet<>()).add(type);
+                phaseTypes.add(type);
+            }
+        }));
+        return new ChartPointContext(sources, phaseTypesByDevice, unphasedTypesByDevice, phaseTypes, pointNames);
     }
 
-    private static String totalSuffix(String name) {
-        if (name == null) return null;
-        return switch (name) {
-            case "TOTAL_WT" -> "WATT";
-            case "AMP" -> "AMP";
-            case "PF" -> "PF";
-            default -> name.startsWith("TOTAL_") ? name.substring(6) : null;
-        };
+    private static boolean includePerDevicePoint(SeriesPoint point, ChartPointContext context) {
+        var source = context.sourcesByKey().get(sourceKey(point.deviceId(), point.pointName()));
+        if (source == null || source.dataPointType() == null || source.phase() == null) return true;
+        return !isPhaseCode(source.phase())
+                || !containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), source.dataPointType())
+                || !containsType(context.unphasedTypesByDevice().getOrDefault(point.deviceId(), Set.of()), source.dataPointType());
     }
 
+    private static boolean includeAggregatePoint(
+            SeriesPoint point,
+            Map<Integer, Device> deviceById,
+            ChartPointContext context
+    ) {
+        var source = context.sourcesByKey().get(sourceKey(point.deviceId(), point.pointName()));
+        if (source == null) return true;
+        if ("N".equals(source.phase())) return false;
+        String type = source.dataPointType();
+        if (type == null || !context.phaseTypes().contains(type)) return true;
+        boolean phaseDevice = containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), type);
+        if (phaseDevice) return isPhaseCode(source.phase());
+        return source.phase() == null || source.phase().isBlank();
+    }
+
+    private record ChartPointContext(
+            Map<String, DeviceMeasurementSourceCatalog.Source> sourcesByKey,
+            Map<Integer, Set<String>> phaseTypesByDevice,
+            Map<Integer, Set<String>> unphasedTypesByDevice,
+            Set<String> phaseTypes,
+            List<String> pointNames
+    ) {
+    }
     private List<ChartSeriesResponse> buildPerDevice(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
@@ -162,7 +212,7 @@ public class ChartQueryService {
             if (!deviceById.containsKey(point.deviceId())) {
                 continue;
             }
-            if (!includePerDevicePoint(point.pointName(), context)) {
+            if (!includePerDevicePoint(point, context)) {
                 continue;
             }
             String key = point.deviceId() + ":" + point.pointName();
@@ -214,45 +264,52 @@ public class ChartQueryService {
             ChartPointContext context,
             ChartUnitContext unitContext
     ) {
-        Map<String, Map<Instant, Double>> byPoint = new LinkedHashMap<>();
+        if (context.phaseTypes().isEmpty()) {
+            return buildPerDevice(raw, deviceById, context.pointNames(), context, unitContext);
+        }
+        Map<String, Map<Instant, Double>> grouped = new LinkedHashMap<>();
         Map<String, String> labels = new HashMap<>();
+        Map<String, java.util.SortedMap<PhaseNotationKey, String>> phaseLabels = new HashMap<>();
+        boolean multipleTypes = context.phaseTypes().size() > 1;
         for (SeriesPoint point : raw) {
-            if (context.phaseSuffixes().isEmpty()) {
-                byPoint.computeIfAbsent(point.pointName(), ignored -> new HashMap<>())
-                        .merge(point.time(), point.value(), Double::sum);
-                labels.putIfAbsent(point.pointName(), point.pointName());
-                continue;
-            }
-            Device device = deviceById.get(point.deviceId());
-            if (device == null) continue;
-            boolean phaseModel = context.phaseModelIds().contains(device.getDeviceModel().getId());
-            String suffix = phaseSuffix(point.pointName());
-            String total = totalSuffix(point.pointName());
+            var source = context.sourcesByKey().get(sourceKey(point.deviceId(), point.pointName()));
+            if (source == null || source.dataPointType() == null) continue;
+            String type = source.dataPointType();
+            String phase = source.phase();
             String key;
-            if (phaseModel && suffix != null && context.phaseSuffixes().contains(suffix)) {
-                key = point.pointName();
-                labels.putIfAbsent(key, key);
-            } else if (!phaseModel && total != null && context.phaseSuffixes().contains(total)) {
-                key = "single:" + total;
-                labels.putIfAbsent(key, context.phaseSuffixes().size() == 1 ? "단상" : "단상 " + total);
+            String label;
+            if (isPhaseCode(phase)
+                    && containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), type)) {
+                key = multipleTypes ? type + ":" + phase : phase;
+                String display = source.phaseLabel() == null ? phase : source.phaseLabel();
+                int notationOrder = source.phaseNotationOrder() == null ? 1 : source.phaseNotationOrder();
+                String notationCode = source.phaseNotationCode() == null ? display : source.phaseNotationCode();
+                phaseLabels.computeIfAbsent(key, ignored -> new java.util.TreeMap<>())
+                        .putIfAbsent(new PhaseNotationKey(notationOrder, notationCode), display);
+                label = null;
+            } else if ((phase == null || phase.isBlank()) && context.phaseTypes().contains(type)
+                    && !containsType(context.phaseTypesByDevice().getOrDefault(point.deviceId(), Set.of()), type)) {
+                key = "single:" + type;
+                label = multipleTypes ? "단상 (" + type + ")" : "단상";
             } else {
                 continue;
             }
-            byPoint.computeIfAbsent(key, ignored -> new HashMap<>())
-                    .merge(point.time(), point.value(), Double::sum);
+            grouped.computeIfAbsent(key, ignored -> new HashMap<>()).merge(point.time(), point.value(), Double::sum);
+            if (label != null) labels.putIfAbsent(key, label);
         }
+        phaseLabels.forEach((key, notation) -> {
+            String label = String.join("/", new LinkedHashSet<>(notation.values())) + "상";
+            String type = key.contains(":") ? key.substring(0, key.indexOf(':')) : null;
+            labels.put(key, type == null ? label : label + " (" + type + ")");
+        });
         List<ChartSeriesResponse> series = new ArrayList<>();
-        for (Map.Entry<String, Map<Instant, Double>> entry : byPoint.entrySet()) {
-            series.add(toSeries(
-                    entry.getKey(), labels.getOrDefault(entry.getKey(), entry.getKey()), null, entry.getKey(), null,
-                    unitContext.singleUnit(), "left",
-                    fromInstantMap(entry.getValue())
-            ));
+        for (Map.Entry<String, Map<Instant, Double>> entry : grouped.entrySet()) {
+            series.add(toSeries(entry.getKey(), labels.getOrDefault(entry.getKey(), entry.getKey()), null,
+                    entry.getKey(), null, unitContext.singleUnit(), "left", fromInstantMap(entry.getValue())));
         }
         series.sort(Comparator.comparing(ChartSeriesResponse::key));
         return series;
     }
-
     private List<ChartSeriesResponse> buildByPath(
             List<SeriesPoint> raw,
             Map<Integer, Device> deviceById,
@@ -269,7 +326,7 @@ public class ChartQueryService {
             if (!includeAggregatePoint(point, deviceById, context)) {
                 continue;
             }
-            // PDU(장비)별 pathCode (A/B/C). 위치가 달라도 같은 path code면 합산.
+            // 장비별 pathCode (A/B/C). 위치가 달라도 같은 path code면 합산.
             var path = device.getPathCode();
             String key;
             String label;
@@ -300,82 +357,6 @@ public class ChartQueryService {
         }
         series.sort(Comparator.comparing(ChartSeriesResponse::key));
         return series;
-    }
-
-    private ChartPointContext buildPointContext(List<Device> devices, List<String> pointNames) {
-        Set<String> phaseSuffixes = pointNames.stream()
-                .map(ChartQueryService::phaseSuffix)
-                .filter(java.util.Objects::nonNull)
-                .filter(suffix -> pointNames.contains("L1_" + suffix)
-                        && pointNames.contains("L2_" + suffix)
-                        && pointNames.contains("L3_" + suffix))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<String> totalSuffixes = pointNames.stream()
-                .map(ChartQueryService::totalSuffix)
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toSet());
-        if (phaseSuffixes.isEmpty()) {
-            return new ChartPointContext(Set.of(), Set.of(), totalSuffixes);
-        }
-
-        Set<Integer> modelIds = devices.stream()
-                .map(device -> device.getDeviceModel().getId())
-                .collect(Collectors.toSet());
-        Set<Integer> deviceIds = devices.stream().map(Device::getId).collect(Collectors.toSet());
-        Map<Integer, Set<String>> namesByModel = new HashMap<>();
-        for (DeviceMeasurementSourceCatalog.Source point : sourceCatalog.availableSources(deviceIds)) {
-            if (!modelIds.contains(point.modelId()) || point.ambiguous()) continue;
-            namesByModel.computeIfAbsent(point.modelId(), ignored -> new HashSet<>()).add(point.pointName());
-        }
-        Set<Integer> phaseModelIds = new HashSet<>();
-        for (Map.Entry<Integer, Set<String>> entry : namesByModel.entrySet()) {
-            for (String suffix : phaseSuffixes) {
-                Set<String> names = entry.getValue();
-                if (names.contains("L1_" + suffix) && names.contains("L2_" + suffix)
-                        && names.contains("L3_" + suffix)) {
-                    phaseModelIds.add(entry.getKey());
-                    break;
-                }
-            }
-        }
-        return new ChartPointContext(phaseSuffixes, phaseModelIds, totalSuffixes);
-    }
-
-    private static boolean includePerDevicePoint(String pointName, ChartPointContext context) {
-        String phase = phaseSuffix(pointName);
-        String total = totalSuffix(pointName);
-        if (phase != null && context.phaseSuffixes().contains(phase)
-                && context.totalSuffixes().contains(phase)) {
-            return false;
-        }
-        return total == null || !context.phaseSuffixes().contains(total)
-                || context.totalSuffixes().contains(total);
-    }
-
-    private static boolean includeAggregatePoint(
-            SeriesPoint point,
-            Map<Integer, Device> deviceById,
-            ChartPointContext context
-    ) {
-        String phase = phaseSuffix(point.pointName());
-        String total = totalSuffix(point.pointName());
-        if ((phase == null || !context.phaseSuffixes().contains(phase))
-                && (total == null || !context.phaseSuffixes().contains(total))) {
-            return true;
-        }
-        Device device = deviceById.get(point.deviceId());
-        if (device == null) return false;
-        boolean phaseModel = context.phaseModelIds().contains(device.getDeviceModel().getId());
-        return phaseModel
-                ? phase != null && context.phaseSuffixes().contains(phase)
-                : total != null && context.phaseSuffixes().contains(total);
-    }
-
-    private record ChartPointContext(
-            Set<String> phaseSuffixes,
-            Set<Integer> phaseModelIds,
-            Set<String> totalSuffixes
-    ) {
     }
 
     private static ChartSeriesResponse toSeries(
@@ -430,6 +411,16 @@ public class ChartQueryService {
                 .toList();
     }
 
+    private static List<String> availableSeriesModes(
+            List<Device> devices, ChartPointContext context, ChartUnitContext unitContext
+    ) {
+        if (unitContext.units().size() > 1) return List.of("per_device");
+        List<String> modes = new ArrayList<>(List.of("sum", "per_device"));
+        if (!context.phaseTypes().isEmpty()) modes.add("by_phase");
+        long locatedDevices = devices.stream().filter(device -> device.getLocationNode() != null).count();
+        if (locatedDevices >= 2) modes.add("by_path");
+        return List.copyOf(modes);
+    }
     private ChartUnitContext buildUnitContext(List<Device> devices, List<String> pointNames) {
         Set<Integer> deviceIds = devices.stream()
                 .map(Device::getId)
@@ -452,6 +443,14 @@ public class ChartQueryService {
 
     private static String sourceKey(int deviceId, String pointName) {
         return deviceId + "\u0000" + pointName;
+    }
+
+    private record PhaseNotationKey(int sortOrder, String code) implements Comparable<PhaseNotationKey> {
+        @Override
+        public int compareTo(PhaseNotationKey other) {
+            int order = Integer.compare(sortOrder, other.sortOrder);
+            return order != 0 ? order : code.compareTo(other.code);
+        }
     }
 
     private record ChartUnitContext(Map<String, String> unitsBySource, List<String> units) {
@@ -520,7 +519,8 @@ public class ChartQueryService {
                 unit,
                 unit == null ? List.of() : List.of(unit),
                 List.of(),
-                widgetDataStatusResolver.resolve(List.of(), widget.getDataFreshnessMinutes())
+                widgetDataStatusResolver.resolve(List.of(), widget.getDataFreshnessMinutes()),
+                List.of("sum", "per_device")
         );
     }
 

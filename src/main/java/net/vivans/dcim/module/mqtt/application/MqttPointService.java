@@ -4,6 +4,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.common.application.CategoryCodeResolver;
 import net.vivans.dcim.module.common.application.UnitCodeResolver;
+import net.vivans.dcim.module.common.domain.model.CommonCode;
+import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.module.devicemodel.domain.repository.DeviceModelRepository;
 import net.vivans.dcim.module.lora.application.LoraConfigChangedEvent;
@@ -31,6 +33,7 @@ public class MqttPointService {
     private final CategoryCodeResolver categories;
     private final LoraValueMapValidator valueMaps;
     private final ApplicationEventPublisher events;
+    private final CommonCodeRepository commonCodes;
 
     public List<MqttPointResponse> list(Integer modelId) {
         model(modelId);
@@ -64,6 +67,7 @@ public class MqttPointService {
             point.update(r.payloadField(), r.pointName(), types.resolve(r.dataPointTypeId()), units.resolve(r.unitCodeId()),
                     r.scale(), r.valueMap(), !Boolean.FALSE.equals(r.enabled()), categories.resolve(r.categoryCodeId()));
         }
+        point.setPhase(resolvePhase(r.phase()));
         if (r.componentScope() == MqttPointScope.COMPONENT) {
             point.configureComponent(r.componentType(), r.componentPath(), r.componentIndexField(), r.componentUuidField());
         } else {
@@ -83,6 +87,12 @@ public class MqttPointService {
 
     private DeviceModel model(Integer id) {
         return models.findById(id).orElseThrow(() -> new EntityNotFoundException("DeviceModel not found: " + id));
+    }
+    private CommonCode resolvePhase(String code) {
+        if (code == null || code.isBlank()) return null;
+        String normalized = code.trim().toUpperCase(java.util.Locale.ROOT);
+        return commonCodes.findByCodeGroupGroupKeyAndCode("PHASE", normalized)
+                .orElseThrow(() -> new IllegalArgumentException("phase must be a PHASE code (P1, P2, P3, N)"));
     }
     private DeviceModelMqttPoint point(Integer modelId, Integer id) {
         var point = points.findById(id).orElseThrow(() -> new EntityNotFoundException("MQTT point not found: " + id));

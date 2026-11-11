@@ -28,6 +28,7 @@ public record DeviceModelSnmpPointCreateRequest(
         Double scale,
 
         @Schema(description = "사용 여부 (기본 true)", example = "true")
-        Boolean enabled
+        Boolean enabled,
+        String phase
 ) {
 }

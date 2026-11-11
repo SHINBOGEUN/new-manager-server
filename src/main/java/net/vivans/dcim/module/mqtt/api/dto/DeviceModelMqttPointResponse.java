@@ -10,7 +10,7 @@ public record DeviceModelMqttPointResponse(
         Integer categoryCodeId, String categoryCode, String categoryName, Integer unitCodeId, String unit,
         MqttPointScope componentScope, String componentType, String componentPath,
         String componentIndexField, String componentUuidField,
-        Double scale, String valueMap, boolean enabled, Instant createdDt, Instant updatedDt
+        Double scale, String valueMap, boolean enabled, Instant createdDt, Instant updatedDt, String phase
 ) {
     public static DeviceModelMqttPointResponse from(DeviceModelMqttPoint point) {
         var category = point.getCategoryCode();
@@ -22,6 +22,6 @@ public record DeviceModelMqttPointResponse(
                 category == null ? null : category.getName(), unit == null ? null : unit.getId(), point.getUnit(),
                 point.getComponentScope(), point.getComponentType(), point.getComponentPath(),
                 point.getComponentIndexField(), point.getComponentUuidField(), point.getScale(), point.getValueMap(),
-                point.isEnabled(), point.getCreatedDt(), point.getUpdatedDt());
+                point.isEnabled(), point.getCreatedDt(), point.getUpdatedDt(), point.getPhase() == null ? null : point.getPhase().getCode());
     }
 }

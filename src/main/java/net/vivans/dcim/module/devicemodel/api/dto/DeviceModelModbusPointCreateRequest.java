@@ -46,6 +46,7 @@ public record DeviceModelModbusPointCreateRequest(
         Double offset,
 
         @Schema(description = "사용여부 (기본 true)", example = "true")
-        Boolean enabled
+        Boolean enabled,
+        String phase
 ) {
 }
