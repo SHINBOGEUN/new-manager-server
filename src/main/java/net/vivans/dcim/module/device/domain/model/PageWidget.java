@@ -70,7 +70,7 @@ public class PageWidget extends BaseEntity {
     private String trendWindow = "15m";
 
     public void changeTrendDefaults(String rangePreset, String window) {
-        if (!Set.of("last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month").contains(rangePreset)) {
+        if (!Set.of("last_1h", "last_6h", "last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month").contains(rangePreset)) {
             throw new IllegalArgumentException("지원하지 않는 상세 차트 기간입니다");
         }
         if (!Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {

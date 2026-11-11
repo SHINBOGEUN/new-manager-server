@@ -1252,6 +1252,25 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return json.data;
     }
 
+    let sharedWidgetOptionsPromise;
+    function loadSharedWidgetOptions() {
+      if (!sharedWidgetOptionsPromise) sharedWidgetOptionsPromise = api("/api/manager/widgets/options");
+      return sharedWidgetOptionsPromise;
+    }
+    async function hydrateTrendOverrideOptions() {
+      const options = await loadSharedWidgetOptions();
+      const range = $("chartRangeOverride"), windowSelect = $("chartWindowOverride"), seriesSelect = $("chartSeriesOverride");
+      const selectedRange = range.value, selectedWindow = windowSelect.value, selectedSeries = seriesSelect.value;
+      range.innerHTML = '<option value="">위젯 설정</option>' + options.rangePresets.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join("");
+      windowSelect.innerHTML = '<option value="">위젯 설정</option>' + options.windows.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join("");
+      const seriesLabels = {sum:"합계", by_phase:"상별", by_path:"위치별", per_device:"장비별"};
+      seriesSelect.innerHTML = '<option value="">위젯 설정</option>' + options.seriesModes.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(seriesLabels[value] || value)}</option>`).join("");
+      range.value = selectedRange; windowSelect.value = selectedWindow; seriesSelect.value = selectedSeries;
+    }
+    $("chartRangeOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
+    $("chartWindowOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
+    $("chartSeriesOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
+
     const analysisState = { options: null, selectedDevices: new Set(), selectedPoints: new Map(), charts: [], response: null, mode: "device", viewMode: fixedAnalysisPage ? "trend" : "widgets" };
     const analysisPalette = ["#35bdf4", "#47d58c", "#ffbd54", "#ff7484", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
     function isAnalysisPage() { return String($("pageCode").value).toUpperCase() === "ANALYSIS"; }
@@ -2706,11 +2725,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       let number = value == null || value === '' ? NaN : Number(value);
       let displayUnit = String(unit || knownMetricUnit(pointName));
       if (!Number.isFinite(number)) return { number: '—', unit: displayUnit, missing: true };
-      const scaledUnits = { W: 'kW', Wh: 'kWh' };
-      if (scaledUnits[displayUnit] && Math.abs(number) >= 1000) {
-        number /= 1000;
-        displayUnit = scaledUnits[displayUnit];
-      }
       return { number: number.toLocaleString('ko-KR', { maximumFractionDigits: 2 }), unit: displayUnit, missing: false };
     }
 
@@ -2720,7 +2734,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!points.length) return '<div class="empty" style="padding:12px">표시할 측정값이 없습니다.</div>';
       const tiles = points.map((point) => {
         const presentation = latestMetricPresentation(point.pointName, point.unit);
-        const value = latestMetricValue(point.value, point.unit, point.pointName);
+        const value = latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName);
         const time = point.time ? new Date(point.time) : null;
         const collectedAt = time && Number.isFinite(time.getTime()) ? time.toLocaleString('ko-KR') : null;
         const stale = time && Number.isFinite(time.getTime()) && Number(last.dataStatus?.freshnessMinutes) > 0
@@ -2734,8 +2748,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div></div>`;
       });
       if (points.length > 1 && last.total != null && ['W','kW','Wh','kWh','MWh'].includes(last.totalUnit)
-          && points.every((point) => !latestMetricValue(point.value, point.unit, point.pointName).missing && point.unit === last.totalUnit)) {
-        const value = latestMetricValue(last.total, last.totalUnit, points[0]?.pointName);
+          && points.every((point) => !latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName).missing && point.unit === last.totalUnit)) {
+        const value = latestMetricValue(last.displayTotal ?? last.total, last.displayTotalUnit ?? last.totalUnit, points[0]?.pointName);
         const presentation = latestMetricPresentation('TOTAL', last.totalUnit);
         tiles.unshift(`<div class="metric-tile ${presentation.kind}"><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span>
           <div class="metric-content"><div class="metric-label">${presentation.kind === 'energy' ? '누적 전력량 합계' : '전력 합계'}</div>
@@ -2747,24 +2761,24 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     function renderAggregateBody(agg, widget) {
       if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
-      const resolvedUnit = agg.unit || knownWidgetUnit(widget);
+      const resolvedUnit = agg.displayUnit || agg.unit || knownWidgetUnit(widget);
       const unit = resolvedUnit ? " " + escapeHtml(resolvedUnit) : "";
       if (agg.aggregatePreset === "demand") {
-        return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : formatValue(agg.value)}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
+        return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : escapeHtml(agg.displayValue ?? formatValue(agg.value))}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
       }
       if (agg.aggregatePreset === "usage_rank" || agg.aggregatePreset === "power_rank") {
         const ranked = [...(agg.devices || [])].filter(d => d.value != null).sort((a,b) => Number(b.value) - Number(a.value));
         const max = Math.max(0, ...ranked.map(d => Number(d.value)).filter(Number.isFinite));
-        return `<div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>` + (ranked.length ? `<div class="power-rank">${ranked.slice(0,10).map((d,i) => `<div class="power-rank-row"><span class="power-rank-index">${String(i+1).padStart(2,"0")}</span><span class="power-rank-name" title="${escapeHtml(d.deviceName || ("#" + d.deviceId))}">${escapeHtml(d.deviceName || ("#" + d.deviceId))}</span><span class="power-rank-track"><span class="power-rank-bar" style="width:${max > 0 ? Math.max(0,Math.min(100,Number(d.value)/max*100)) : 0}%"></span></span><span class="power-rank-value">${formatValue(d.value)}${unit}</span></div>`).join("")}</div>` : '<div class="meta">표시할 데이터가 없습니다.</div>');
+        return `<div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>` + (ranked.length ? `<div class="power-rank">${ranked.slice(0,10).map((d,i) => `<div class="power-rank-row"><span class="power-rank-index">${String(i+1).padStart(2,"0")}</span><span class="power-rank-name" title="${escapeHtml(d.deviceName || ("#" + d.deviceId))}">${escapeHtml(d.deviceName || ("#" + d.deviceId))}</span><span class="power-rank-track"><span class="power-rank-bar" style="width:${max > 0 ? Math.max(0,Math.min(100,Number(d.value)/max*100)) : 0}%"></span></span><span class="power-rank-value">${escapeHtml(d.displayValue ?? formatValue(d.value))}${d.displayUnit ? ` ${escapeHtml(d.displayUnit)}` : unit}</span></div>`).join("")}</div>` : '<div class="meta">표시할 데이터가 없습니다.</div>');
       }
       const rows = (agg.devices || []).map((d) => `
         <div class="point-row">
           <span>${escapeHtml(d.deviceName || ("#" + d.deviceId))}${d.role && d.role !== "default" ? ` <span class="chip">${escapeHtml(d.role)}</span>` : ""}</span>
-          <span class="val">${formatValue(d.value)}${unit}</span>
+          <span class="val">${escapeHtml(d.displayValue ?? formatValue(d.value))}${d.displayUnit ? ` ${escapeHtml(d.displayUnit)}` : unit}</span>
         </div>`).join("") || '<div class="meta">장비별 값 없음</div>';
       return `
         <div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>
-        <div class="count-total">${formatValue(agg.value)}${unit}</div>
+        <div class="count-total">${escapeHtml(agg.displayValue ?? formatValue(agg.value))}${unit}</div>
         <div class="count-label">장비별</div>
         ${rows}`;
     }

@@ -69,6 +69,11 @@
         const split = previous == null || (options.gapMs && point.time - previous > options.gapMs);
         path += `${split ? 'M' : 'L'}${x(point.time).toFixed(2)} ${y(point, axis).toFixed(2)} `; previous = point.time;
       }
+      if (options.style === 'area' && item.samples.length > 1) {
+        const first = item.samples[0], last = item.samples[item.samples.length - 1];
+        const areaPath = `M${x(first.time).toFixed(2)} ${bottom} ` + item.samples.map((point) => `L${x(point.time).toFixed(2)} ${y(point, axis).toFixed(2)} `).join('') + `L${x(last.time).toFixed(2)} ${bottom} Z`;
+        svg.append(svgElement('path', { d: areaPath, fill: item.color, 'fill-opacity': 0.18, stroke: 'none' }));
+      }
       svg.append(svgElement('path', { d: path, stroke: item.color, class: 'rack-chart-series' }));
       if (item.samples.length === 1) svg.append(svgElement('circle', { cx: x(item.samples[0].time), cy: y(item.samples[0], axis), r: 3, fill: item.color }));
     });

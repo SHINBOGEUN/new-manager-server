@@ -102,11 +102,14 @@ public class LastQueryService {
                     .toList()) {
                 String unit = unitByPoint.get(point.pointName());
                 BigDecimal rounded = QueryValues.round2(point.value());
+                UnitDisplay.Result display = UnitDisplay.of(rounded, unit);
                 pointResponses.add(new LastPointValueResponse(
                         point.pointName(),
                         unit,
                         rounded,
-                        point.time()
+                        point.time(),
+                        display.displayValue(),
+                        display.displayUnit()
                 ));
                 if (rounded == null) {
                     continue;

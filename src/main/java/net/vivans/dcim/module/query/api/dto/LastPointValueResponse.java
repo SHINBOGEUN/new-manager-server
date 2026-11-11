@@ -7,6 +7,11 @@ public record LastPointValueResponse(
         String pointName,
         String unit,
         BigDecimal value,
-        Instant time
+        Instant time,
+        String displayValue,
+        String displayUnit
 ) {
+    public LastPointValueResponse(String pointName, String unit, BigDecimal value, Instant time) {
+        this(pointName, unit, value, time, null, unit);
+    }
 }
