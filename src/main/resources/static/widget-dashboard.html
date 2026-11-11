@@ -8,6 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
+  <script src="/widget-detail-popup.js?v=20261111"></script>
   <script>
 (function (global) {
   'use strict';
@@ -399,15 +400,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .chart-legend i {
       width: 10px; height: 10px; border-radius: 2px; display: inline-block;
     }
-    .trend-modal { position: fixed; z-index: 100; inset: 0; display: none; padding: 28px; background: rgba(4,8,14,.72); }
     .trend-modal.open { display: flex; align-items: center; justify-content: center; }
-    .trend-dialog { width: min(1120px, 96vw); height: min(720px, 90vh); display: flex; flex-direction: column; padding: 18px; background: #171d25; border: 1px solid #44536a; border-radius: 12px; box-shadow: 0 18px 56px rgba(0,0,0,.55); }
-    .trend-dialog-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
-    .trend-dialog-head h2 { margin: 0; flex: 1; font-size: 17px; }
-    .trend-dialog-head button { padding: 4px 10px; font-size: 20px; line-height: 1; background: transparent; color: var(--muted); border-color: transparent; }
-    .trend-dialog-meta { padding: 9px 0; font-size: 12px; color: var(--muted); }
-    .trend-dialog-chart { position: relative; min-height: 0; flex: 1; }
-    .trend-dialog-chart canvas { width: 100% !important; height: 100% !important; }
     .card.psychrometric-card .card-body {
       display: flex; flex-direction: column; padding-bottom: 8px;
     }
@@ -933,9 +926,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .board-empty strong { color:var(--text); font-size:16px; font-weight:600; }
     .board-empty p { margin:0; font-size:12px; }
     .map-overlay-board .board-empty { display:none; }
-    .trend-dialog, .page-scene-editor, .scene-group-dialog, .page-scene-asset-modal { border-color:var(--line); border-radius:12px; background:var(--panel); }
-    .trend-dialog-head { align-items:flex-start; }
-    .trend-dialog-head button { min-width:32px; min-height:32px; }
+    .page-scene-editor, .scene-group-dialog, .page-scene-asset-modal { border-color:var(--line); border-radius:12px; background:var(--panel); }
     .login-dialog .control-field > span { display:block; margin-bottom:6px; }
     .page-device-data-card, .scene-group-card, .scene-template-card,
     #analysisMain .analysis-panel, #analysisMain .analysis-toolbar,
@@ -965,8 +956,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       .page-visualization-head, .page-scene-nav { flex-wrap:wrap; }
       .page-scene-nav { justify-content:flex-end; }
       #analysisMain aside.analysis-selection { position:static; }
-      .trend-modal { padding:12px; }
-      .trend-dialog { width:100%; height:90vh; padding:14px; }
     }
     @media (prefers-reduced-motion:reduce) {
       *, *::before, *::after { transition:none !important; scroll-behavior:auto !important; }
@@ -1053,16 +1042,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       <section class="analysis-panel"><div class="analysis-results-head"><h3>측정 추이</h3><span id="analysisResultSummary" class="analysis-summary">조회 전</span></div><div id="analysisErrorNotice" class="analysis-notice" role="alert"></div><div id="analysisResultsContent"><div class="analysis-empty">장비와 포인트를 선택한 뒤 조회하면<br>기간별 측정 추이가 여기에 표시됩니다.</div></div></section>
     </div>
   </main>
-  <div id="trendModal" class="trend-modal" role="dialog" aria-modal="true" aria-labelledby="trendModalTitle">
-    <div class="trend-dialog">
-      <div class="trend-dialog-head">
-        <h2 id="trendModalTitle">트렌드</h2>
-        <button type="button" id="trendModalClose" aria-label="닫기">×</button>
-      </div>
-      <div id="trendModalMeta" class="trend-dialog-meta">최근 3일 데이터를 불러오는 중…</div>
-      <div id="trendModalCharts" class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
-    </div>
-  </div>
   <div id="loginModal" class="login-modal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
     <form id="dashboardLoginForm" class="login-dialog">
       <h2 id="loginModalTitle">대시보드 로그인</h2>
@@ -1079,7 +1058,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     const DEFAULT_W = 16;  // 화면상 예전 4/12 ≈ 같은 너비
     const DEFAULT_H = 8;   // 화면상 예전 2행 ≈ 같은 높이
     const DEFAULT_CHART_H = 16; // chart 카드는 라인 차트용으로 더 높게
-    const CHART_PALETTE = ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
+    const CHART_PALETTE = window.DcimWidgetDetail.palette;
     // 스케일: 12칸→×4, 24칸→×2, 이미 48칸이면 그대로
 
     const state = {
@@ -1110,7 +1089,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       pageSceneEditorExpanded: false,
       pageSceneLoadError: false,
       dashboardReady: false,
-      trendModalChart: null,
       pollTimer: null,
       editMode: false,
       sizeMatchWidgetIds: [],
@@ -2661,21 +2639,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return ({ usage: "사용량", power: "전력 합", usage_rank: "사용량 순위", power_rank: "전력 순위 · 기간 마지막 값", demand: "최대수요전력", pue: "계산 지표" }[op] || op || "");
     }
 
-    function renderDataStatus(status) {
-      if (!status) return "";
-      const label = ({ NORMAL: "정상", PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" })[status.status] || status.status;
-      const details = [];
-      if (status.missingSourceCount) details.push(`누락 ${status.missingSourceCount}`);
-      if (status.staleSourceCount) details.push(`지연 ${status.staleSourceCount}`);
-      const title = [
-        `최신성 기준 ${status.freshnessMinutes}분`,
-        `소스 ${status.availableSourceCount || 0}/${status.expectedSourceCount || 0}`,
-        ...details,
-        status.latestCollectedAt ? `최근 ${new Date(status.latestCollectedAt).toLocaleString()}` : "최근 데이터 없음",
-      ].join(" · ");
-      return `<span class="data-status ${escapeHtml(status.status || "MISSING")}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
-    }
-
     function latestMetricPresentation(pointName, unit) {
       const key = String(pointName || '').toUpperCase();
       const normalizedUnit = String(unit || '').toLowerCase();
@@ -2723,14 +2686,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const value = latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName);
         const time = point.time ? new Date(point.time) : null;
         const collectedAt = time && Number.isFinite(time.getTime()) ? time.toLocaleString('ko-KR') : null;
-        const stale = time && Number.isFinite(time.getTime()) && Number(last.dataStatus?.freshnessMinutes) > 0
-          && Date.now() - time.getTime() > Number(last.dataStatus.freshnessMinutes) * 60000;
         const title = [point.pointName, point.value == null ? '값 없음' : `${point.value} ${point.unit || ''}`, collectedAt ? `수집 ${collectedAt}` : '수집 시각 없음'].join(' · ');
         return `<div class="metric-tile ${presentation.kind}${value.missing ? ' missing' : ''}" title="${escapeHtml(title)}">
           <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span>
           <div class="metric-content"><div class="metric-label">${escapeHtml(points.length === 1 ? (widgetName || presentation.label) : `${widgetName || '측정값'} · ${presentation.label}`)}</div>
             <div class="metric-number"><strong>${escapeHtml(value.number)}</strong><span>${escapeHtml(value.unit)}</span></div>
-            ${value.missing ? '<div class="metric-state">측정값 없음</div>' : stale ? '<div class="metric-state">수집 지연 · 이전 값</div>' : ''}
+            ${value.missing ? '<div class="metric-state">측정값 없음</div>' : ''}
           </div></div>`;
       });
       if (points.length > 1 && last.total != null && ['W','kW','Wh','kWh','MWh'].includes(last.totalUnit)
@@ -3031,99 +2992,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.chartInstances.clear();
     }
 
-    function formatChartTime(iso) {
-      if (!iso) return "";
-      const d = new Date(iso);
-      if (Number.isNaN(d.getTime())) return String(iso);
-      return d.toLocaleString("ko-KR", {
-        month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit", hour12: false,
-      });
-    }
-
-    function createChartInstance(canvas, data, chartStyle = "line") {
-      if (typeof Chart === "undefined" || !data || data.error || !canvas) return null;
-      const series = data.series || [];
-      if (!series.length) return null;
-
-      const timeSet = new Set();
-      for (const s of series) {
-        for (const t of (s.times || [])) {
-          if (t) timeSet.add(t);
-        }
-      }
-      const times = [...timeSet].sort();
-      const labels = times.map(formatChartTime);
-      const units = data.units || (data.unit ? [data.unit] : []);
-      const hasRightAxis = units.length === 2;
-      const datasets = series.map((s, i) => {
-        const byTime = new Map((s.times || []).map((t, idx) => [t, s.values[idx]]));
-        const color = CHART_PALETTE[i % CHART_PALETTE.length];
-        return {
-          label: s.label || s.key || `series-${i}`,
-          unit: s.unit || data.unit || "",
-          data: times.map((t) => {
-            const v = byTime.get(t);
-            return v == null ? null : Number(v);
-          }),
-          borderColor: color,
-          backgroundColor: color + "33",
-          fill: chartStyle === "area" || series.length === 1,
-          tension: 0.25,
-          pointRadius: times.length > 80 ? 0 : 2,
-          borderWidth: 2,
-          spanGaps: true,
-          yAxisID: hasRightAxis && s.axis === "right" ? "y1" : "y",
-        };
-      });
-
-      const chart = new Chart(canvas, {
-        type: chartStyle === "bar" ? "bar" : "line",
-        data: { labels, datasets },
-        options: {
-          animation: false,
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: "index", intersect: false },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => {
-                  const v = ctx.parsed.y;
-                  const unit = ctx.dataset.unit ? ` ${ctx.dataset.unit}` : "";
-                  return `${ctx.dataset.label}: ${v == null ? "-" : formatValue(v)}${unit}`;
-                },
-              },
-            },
-          },
-          scales: {
-            x: {
-              ticks: { color: "#8b98a8", maxTicksLimit: 6, maxRotation: 0 },
-              grid: { color: "#2a3544" },
-            },
-            y: {
-              position: "left",
-              title: { display: Boolean(units[0]), text: units[0] || "", color: "#8b98a8" },
-              ticks: { color: "#8b98a8" },
-              grid: { color: "#2a3544" },
-            },
-            y1: {
-              display: hasRightAxis,
-              position: "right",
-              title: { display: hasRightAxis, text: units[1] || "", color: "#8b98a8" },
-              ticks: { color: "#8b98a8" },
-              grid: { drawOnChartArea: false },
-            },
-          },
-        },
-      });
-      return chart;
-    }
+    const formatChartTime = window.DcimWidgetDetail.formatTime;
 
     function mountChartInstance(widgetId, data) {
       const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
-      const chart = createChartInstance(canvas, data);
+      const chart = window.DcimWidgetDetail.createChart(canvas, data);
       if (!chart) return;
       state.chartInstances.set(widgetId, chart);
     }
@@ -3138,13 +3011,16 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function closeTrendModal() {
-      $("trendModal")?.classList.remove("open");
-      if (state.trendModalChart) {
-        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
-        state.trendModalChart = null;
-      }
-      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
-      state.trendModalCharts = [];
+      window.DcimWidgetDetail.close();
+    }
+
+    function pueTrendChartData(data) {
+      const trend = data.trend || [];
+      return {
+        units: [data.unit || "값"],
+        series: [{ label: "계산 결과", unit: data.unit || "값", axis: "left",
+          times: trend.map((point) => point.time), values: trend.map((point) => point.value) }],
+      };
     }
 
     async function openWidgetDetail(widget) {
@@ -3159,881 +3035,30 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         return;
       }
       if (config.action !== "chart") return;
-      const modal = $("trendModal");
-      const dialog = modal.querySelector(".trend-dialog");
-      let controls = $("trendModalControls");
-      if (!controls) {
-        controls = document.createElement("div"); controls.id = "trendModalControls";
-        controls.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin:10px 0";
-        const select = (id, values) => { const el = document.createElement("select"); el.id = id; values.forEach(([v,l]) => { const o=document.createElement("option");o.value=v;o.textContent=l;el.append(o); }); controls.append(el); return el; };
-        select("detailRange", [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]]);
-        select("detailWindow", [["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]]);
-        select("detailSeries", [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]]);
-        select("detailStyle", [["line","선"],["bar","막대"],["area","영역"]]);
-        dialog.insertBefore(controls, dialog.querySelector(".trend-dialog-chart"));
-        controls.addEventListener("change", () => renderWidgetDetailChart(state.detailWidget, state.detailConfig).catch((e) => { $("trendModalMeta").textContent = e.message; }));
-      }
-      state.detailWidget = widget;
-      state.detailConfig = config;
-      $("detailSeries").hidden = widget.queryKind !== "chart";
-      $("trendModalTitle").textContent = `${widget.name} 상세`;
-      $("detailRange").value = config.rangePreset || widget.trendRangePreset || "last_3d";
-      $("detailWindow").value = config.window || widget.trendWindow || "15m";
-      $("detailSeries").value = config.seriesMode || widget.chartSeriesMode || "per_device";
-      $("detailStyle").value = config.chartStyle || "line";
-      modal.classList.add("open");
-      await renderWidgetDetailChart(widget, config);
-    }
-
-    async function renderWidgetDetailChart(widget, config) {
-      const range = $("detailRange").value, windowSize = $("detailWindow").value;
-      let data;
-      if (widget.queryKind === "chart") data = await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: $("detailSeries").value });
-      else if (widget.queryKind === "calculated") data = pueTrendChartData(await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`));
-      else data = await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
-      if (data.error) throw new Error(data.error);
-      if (state.trendModalChart) { try { state.trendModalChart.destroy(); } catch (_) {} state.trendModalChart = null; }
-      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
-      state.trendModalCharts = [];
-      const hasData = (data.series || []).some((series) => (series.values || series.data || []).some((v) => v != null));
-      if (!hasData) { $("trendModalMeta").textContent = "이 기간에 데이터가 없습니다 · 기간 바꾸기"; return; }
-      const units = data.units || (data.unit ? [data.unit] : []);
-      $("trendModalMeta").textContent = [trendRangeLabel(range), trendWindowLabel(windowSize) + " 평균", ...units].filter(Boolean).join(" · ");
-      const container = $("trendModalCharts"), groups = data.unitGroups || [];
-      if (groups.length > 2) {
-        container.innerHTML = groups.map((group, index) => `<section class="trend-unit-group"><strong>${escapeHtml(group.unit || "단위 없음")}</strong><div style="height:280px"><canvas id="trendModalCanvas${index}"></canvas></div></section>`).join("");
-        state.trendModalCharts = groups.map((group, index) => createChartInstance($(`trendModalCanvas${index}`), { ...data, unit: group.unit, units: [group.unit], series: group.series }, $("detailStyle").value)).filter(Boolean);
-      } else {
-        container.innerHTML = '<canvas id="trendModalCanvas"></canvas>';
-        state.trendModalChart = createChartInstance($("trendModalCanvas"), data, $("detailStyle").value);
-      }
-    }
-
-    function pueTrendChartData(data) {
-      const trend = data.trend || [];
-      return {
-        units: [data.unit || "값"],
-        series: [
-          { label: "계산 결과", unit: data.unit || "값", axis: "left", times: trend.map((point) => point.time), values: trend.map((point) => point.value) },
-        ],
-      };
-    }
-
-    function trendRangeLabel(range) {
-      return ({last_1h:"최근 1시간", last_6h:"최근 6시간", last_24h:"최근 24시간", today:"오늘", yesterday:"어제", last_3d:"최근 3일", last_7d:"최근 7일", this_month:"이번 달", last_month:"지난 달"})[range] || range;
-    }
-
-    function trendWindowLabel(windowSize) {
-      return ({"1m":"1분", "5m":"5분", "15m":"15분", "1h":"1시간", "1d":"1일"})[windowSize] || windowSize;
-    }
-
-    function widgetClickEnabled(widget) {
-      const action = widget.clickConfig?.action || (["count", "cctv"].includes(widget.queryKind) ? "none" : "chart");
-      return action !== "none";
-    }
-
-    function saturationPressureKpa(temperature) {
-      return 0.61094 * Math.exp((17.625 * temperature) / (temperature + 243.04));
-    }
-
-    function humidityRatioGPerKg(temperature, relativeHumidity) {
-      const rh = Math.max(0, Math.min(100, relativeHumidity)) / 100;
-      const vaporPressure = rh * saturationPressureKpa(temperature);
-      return 1000 * 0.62198 * vaporPressure / Math.max(0.001, 101.325 - vaporPressure);
-    }
-
-    function drawPsychrometricCanvas(widgetId, data) {
-      const canvas = document.querySelector(`canvas[data-psychrometric-id="${widgetId}"]`);
-      if (!canvas) return;
-      const points = psychrometricPoints(data);
-      if (!points.length) return;
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width < 10 || rect.height < 10) return;
-      const ratio = window.devicePixelRatio || 1;
-      canvas.width = Math.round(rect.width * ratio);
-      canvas.height = Math.round(rect.height * ratio);
-      const ctx = canvas.getContext("2d");
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      const width = rect.width;
-      const height = rect.height;
-      const plot = { left: 44, top: 16, right: width - 42, bottom: height - 32 };
-      const maxTemperature = 40;
-      const maxHumidityRatio = Math.max(20, Math.min(35, Math.ceil(Math.max(...points.map((p) => humidityRatioGPerKg(p.temperature, p.humidity))) / 5) * 5));
-      const x = (temperature) => plot.left + (Math.max(0, Math.min(maxTemperature, temperature)) / maxTemperature) * (plot.right - plot.left);
-      const y = (ratioValue) => plot.bottom - (Math.max(0, Math.min(maxHumidityRatio, ratioValue)) / maxHumidityRatio) * (plot.bottom - plot.top);
-
-      ctx.fillStyle = "#1d2530";
-      ctx.fillRect(0, 0, width, height);
-      ctx.strokeStyle = "rgba(139,152,168,.2)";
-      ctx.lineWidth = 1;
-      ctx.font = "10px Segoe UI, Malgun Gothic, sans-serif";
-      ctx.fillStyle = "#8b98a8";
-      for (let temperature = 0; temperature <= maxTemperature; temperature += 5) {
-        const px = x(temperature);
-        ctx.beginPath(); ctx.moveTo(px, plot.top); ctx.lineTo(px, plot.bottom); ctx.stroke();
-        ctx.fillText(String(temperature), px - 4, plot.bottom + 16);
-      }
-      for (let ratioValue = 0; ratioValue <= maxHumidityRatio; ratioValue += 5) {
-        const py = y(ratioValue);
-        ctx.beginPath(); ctx.moveTo(plot.left, py); ctx.lineTo(plot.right, py); ctx.stroke();
-        ctx.fillText(String(ratioValue), plot.right + 6, py + 3);
-      }
-
-      for (let rh = 10; rh <= 100; rh += 10) {
-        ctx.beginPath();
-        for (let temperature = 0; temperature <= maxTemperature; temperature += 0.5) {
-          const px = x(temperature);
-          const py = y(humidityRatioGPerKg(temperature, rh));
-          if (temperature === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.strokeStyle = rh === 100 ? "#8ea0b8" : "rgba(174,190,210,.55)";
-        ctx.lineWidth = rh === 100 ? 1.4 : 1;
-        ctx.stroke();
-        if (rh % 20 === 0) {
-          const labelTemperature = rh >= 80 ? 27 : 33;
-          ctx.fillStyle = "#c9d6e5";
-          ctx.fillText(`${rh}%`, x(labelTemperature) + 4, y(humidityRatioGPerKg(labelTemperature, rh)) - 4);
-        }
-      }
-
-      ctx.strokeStyle = "#62748a";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(plot.left, plot.top); ctx.lineTo(plot.left, plot.bottom); ctx.lineTo(plot.right, plot.bottom); ctx.stroke();
-      ctx.fillStyle = "#9eb7d7";
-      ctx.font = "11px Segoe UI, Malgun Gothic, sans-serif";
-      ctx.fillText("Dry bulb Temperature · °C", plot.left + (plot.right - plot.left) / 2 - 58, height - 7);
-      ctx.save();
-      ctx.translate(width - 9, plot.top + (plot.bottom - plot.top) / 2 + 42);
-      ctx.rotate(Math.PI / 2);
-      ctx.fillText("Humidity ratio · g/kg", 0, 0);
-      ctx.restore();
-
-      points.forEach((point, index) => {
-        const isLatest = index === points.length - 1;
-        ctx.beginPath();
-        ctx.arc(x(point.temperature), y(humidityRatioGPerKg(point.temperature, point.humidity)), isLatest ? 6 : 4, 0, Math.PI * 2);
-        ctx.fillStyle = isLatest ? "#f07178" : `rgba(61,156,240,${0.35 + (index / Math.max(1, points.length - 1)) * 0.5})`;
-        ctx.fill();
-        ctx.strokeStyle = isLatest ? "#ffd4d7" : "#d7efff";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-
-      const tooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
-      canvas._psychrometricHoverPoints = points.map((point) => ({
-        ...point,
-        x: x(point.temperature),
-        y: y(humidityRatioGPerKg(point.temperature, point.humidity)),
-      }));
-      if (canvas.dataset.psychrometricHoverBound) return;
-      canvas.dataset.psychrometricHoverBound = "true";
-      canvas.addEventListener("pointermove", (event) => {
-        const currentTooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
-        const canvasRect = canvas.getBoundingClientRect();
-        const pointerX = event.clientX - canvasRect.left;
-        const pointerY = event.clientY - canvasRect.top;
-        const nearest = (canvas._psychrometricHoverPoints || []).reduce((best, point) => {
-          const distance = Math.hypot(point.x - pointerX, point.y - pointerY);
-          return !best || distance < best.distance ? { point, distance } : best;
-        }, null);
-        if (!currentTooltip || !nearest || nearest.distance > 12) {
-          if (currentTooltip) currentTooltip.style.display = "none";
-          canvas.style.cursor = "default";
-          return;
-        }
-        const point = nearest.point;
-        currentTooltip.textContent = `${formatChartTime(point.time)} · ${formatValue(point.temperature)} °C · ${formatValue(point.humidity)} %RH`;
-        currentTooltip.style.display = "block";
-        currentTooltip.style.left = `${Math.max(6, Math.min(canvasRect.width - 190, pointerX + 12))}px`;
-        currentTooltip.style.top = `${Math.max(6, pointerY - 34)}px`;
-        canvas.style.cursor = "pointer";
-      });
-      canvas.addEventListener("pointerleave", () => {
-        const currentTooltip = canvas.closest(".psychrometric-wrap")?.querySelector(".psychrometric-tooltip");
-        if (currentTooltip) currentTooltip.style.display = "none";
-        canvas.style.cursor = "default";
-      });
-    }
-
-    function drawPsychrometricCanvases() {
-      for (const [widgetId, data] of state.psychrometricByWidget) {
-        drawPsychrometricCanvas(widgetId, data);
-      }
-    }
-
-    function refreshCountModelOverrideOptions() {
-      const wrap = $("countModelWrap");
-      const sel = $("countModelOverride");
-      const mode = $("countModeOverride").value;
-      wrap.style.display = mode === "model" ? "inline-flex" : "none";
-      if (mode !== "model") return Promise.resolve();
-      return api("/api/manager/device-models").then((models) => {
-        const prev = sel.value;
-        sel.innerHTML = '<option value="">선택</option>' + (models || []).map((m) =>
-          `<option value="${m.id}">${escapeHtml(m.name)} (${escapeHtml(m.manufacturer || "")})</option>`
-        ).join("");
-        if (prev) sel.value = prev;
-      }).catch((e) => log("모델 목록: " + e.message));
-    }
-
-    /** @param {boolean} fetchData last/count/chart/aggregate 값도 다시 가져올지 */
-    async function refreshBoard(fetchData) {
-      if (state.drag) return;
-
-      const enabled = state.widgets.filter((w) => w.enabled);
-      if (!enabled.length) {
-        destroyChartInstances();
-        const hint = state.widgets.length
-          ? "위젯 목록에서 표시 스위치를 켜세요. 일반 대시보드에서는 배치 편집을 누르면 목록이 열립니다."
-          : (boardView || fixedPageView) && consoleAuth()?.getRole?.() === "ADMIN"
-            ? "위젯 추가를 눌러 이 페이지에 표시할 정보를 선택하세요."
-            : "페이지에 위젯이 등록되면 여기에 표시됩니다.";
-        // Drawing canvases and embedded pages must remain clear even before the scene mounts.
-        const showEmptyState = !embeddedInConsole && !["PLAN_2D", "SCENE_3D"].includes(state.pageVisualization?.viewMode);
-        const emptyStateHtml = showEmptyState
-          ? `<div class="placeholder board-empty"><strong>표시 중인 위젯이 없습니다.</strong><p>${hint}</p></div>`
-          : "";
-        $("board").innerHTML = emptyStateHtml
-          + '<div id="snapGuide" class="snap-guide"></div>'
-          + '<div id="ghost" class="ghost"><span class="ghost-label" id="ghostLabel"></span></div>';
-        return;
-      }
-
-      if (fetchData) {
-        const lastWidgets = enabled.filter((w) => w.queryKind === "last");
-        const countWidgets = enabled.filter((w) => w.queryKind === "count");
-        const chartWidgets = enabled.filter((w) => w.queryKind === "chart");
-        const aggregateWidgets = enabled.filter((w) => w.queryKind === "aggregate");
-        const pueWidgets = enabled.filter((w) => w.queryKind === "calculated");
-        const psychrometricWidgets = enabled.filter((w) => w.queryKind === "psychrometric");
-        const powerDistributionWidgets = enabled.filter((w) => w.queryKind === "power_distribution");
-        const [lastResults, countResults, chartResults, aggregateResults, pueResults, psychrometricResults, powerDistributionResults] = await Promise.all([
-          Promise.all(lastWidgets.map(fetchLast)),
-          Promise.all(countWidgets.map(fetchCount)),
-          Promise.all(chartWidgets.map(fetchChart)),
-          Promise.all(aggregateWidgets.map(fetchAggregate)),
-          Promise.all(pueWidgets.map(fetchPue)),
-          Promise.all(psychrometricWidgets.map(fetchPsychrometric)),
-          Promise.all(powerDistributionWidgets.map(fetchPowerDistribution)),
-        ]);
-        state.lastByWidget = new Map(lastResults.map((r) => [r.widgetId, r]));
-        state.countByWidget = new Map(countResults.map((r) => [r.widgetId, r]));
-        state.chartByWidget = new Map(chartResults.map((r) => [r.widgetId, r]));
-        state.aggregateByWidget = new Map(aggregateResults.map((r) => [r.widgetId, r]));
-        state.pueByWidget = new Map(pueWidgets.map((w, index) => [w.id, pueResults[index]]));
-        state.psychrometricByWidget = new Map(psychrometricWidgets.map((w, index) => [w.id, psychrometricResults[index]]));
-        state.powerDistributionByWidget = new Map(powerDistributionWidgets.map((w, index) => [w.id, powerDistributionResults[index]]));
-        await refreshCountModelOverrideOptions();
-      }
-
-      // 임시 레이아웃 재배치 (layout 없는 것만)
-      let autoIdx = 0;
-      for (const w of enabled) {
-        if (!w.layout) w._tempLayout = ensureLayout(w, autoIdx++);
-      }
-
-      destroyChartInstances();
-
-      const cardsHtml = enabled.map((w) => {
-        const layout = widgetLayout(w);
-        const color = /^#[0-9a-fA-F]{6}$/.test(w.visualColor || '') ? w.visualColor : '';
-        const style = layoutStyle(layout) + (color ? `;--widget-color:${color}` : '');
-        let body;
-        let subExtra = "";
-        let cardClass = "card";
-        let dataStatus = null;
-        try {
-        if (w.queryKind === "count") {
-          const count = state.countByWidget.get(w.id);
-          if (count && !count.error && count.countMode === "total") {
-            body = renderLastBody({ devices: [{ points: [{ pointName: 'DEVICE_COUNT', value: count.count, unit: '대' }] }] }, w.name);
-            cardClass = "card last-card";
-          } else {
-            body = renderCountBody(count);
+      const rangePreset = config.rangePreset || widget.trendRangePreset || "last_3d";
+      const windowSize = config.window || widget.trendWindow || "15m";
+      const seriesMode = config.seriesMode || widget.chartSeriesMode || "per_device";
+      await window.DcimWidgetDetail.open({
+        title: widget.name + " 상세",
+        config: { rangePreset: rangePreset, window: windowSize, seriesMode: seriesMode,
+          chartStyle: config.chartStyle || "line", compare: config.compare || "none" },
+        showSeries: widget.queryKind === "chart",
+        load: async function ({ rangePreset, window, seriesMode, compare }) {
+          const params = new URLSearchParams({ rangePreset: rangePreset, window: window });
+          if (compare && compare !== "none") params.set("compare", compare);
+          if (widget.queryKind === "chart") {
+            params.set("widgetId", String(widget.id));
+            params.set("seriesMode", seriesMode);
+            return api("/api/manager/query/chart?" + params);
           }
-          if (w.countMode) subExtra = " · " + escapeHtml(countModeLabel(w.countMode));
-        } else if (w.queryKind === "last") {
-          const last = state.lastByWidget.get(w.id);
-          dataStatus = last?.dataStatus;
-          let columns = null;
-          try { columns = w.tableColumnsJson ? JSON.parse(w.tableColumnsJson) : null; } catch (_) { columns = null; }
-          if (Array.isArray(columns) && columns.length && window.WidgetTable) {
-            body = last?.error ? `<div class="empty">${escapeHtml(last.error)}</div>` : window.WidgetTable.render(columns, w.lastSources || [], last);
-            cardClass = "card table-card";
-          } else {
-            body = renderLastBody(last, w.name);
-            cardClass = "card last-card";
+          params.set("widgetId", String(widget.id));
+          if (widget.queryKind === "calculated") {
+            return pueTrendChartData(await api("/api/manager/query/calculated?" + params));
           }
-        } else if (w.queryKind === "chart") {
-          const chart = state.chartByWidget.get(w.id);
-          dataStatus = chart?.dataStatus;
-          body = renderChartBody(chart);
-          const sm = chartSeriesModeForWidget(w);
-          subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
-          cardClass = "card chart-card";
-        } else if (w.queryKind === "aggregate") {
-          const aggregate = state.aggregateByWidget.get(w.id);
-          dataStatus = aggregate?.dataStatus;
-          if (aggregate && !aggregate.error && ["usage", "power", "demand"].includes(aggregate.aggregatePreset)) {
-            const pointName = w.pointNames?.[0] || "";
-            const unit = aggregate.displayUnit || aggregate.unit || "";
-            body = renderLastBody({ devices: [{ points: [{ pointName, value: aggregate.value, unit }] }] }, w.name);
-            const statusLabel = ({ PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" })[dataStatus?.status];
-            let detail = statusLabel || "";
-            if (aggregate.aggregatePreset === "demand") {
-              const peak = aggregate.peakTime ? `발생 시각: ${new Date(aggregate.peakTime).toLocaleString("ko-KR")}` : "완전한 15분 데이터가 없습니다.";
-              detail = [detail, peak].filter(Boolean).join(" · ");
-            }
-            if (detail) {
-              body = body.replace('</div></div></div>', `<div class="metric-state">${escapeHtml(detail)}</div></div></div></div>`);
-            }
-            cardClass = "card last-card";
-          } else {
-            body = renderAggregateBody(aggregate, w);
-          }
-          subExtra = ` · ${escapeHtml(aggregatePresetLabel(w.op))} · ${escapeHtml(w.aggregateRangePreset || "")}`;
-        } else if (w.queryKind === "calculated") {
-          const pue = state.pueByWidget.get(w.id);
-          dataStatus = pue?.dataStatus;
-          body = renderPueBody(pue, w.name);
-          subExtra = ` · ${escapeHtml(w.pueRangePreset || "last_24h")}`;
-          cardClass = "card pue-card last-card";
-        } else if (w.queryKind === "psychrometric") {
-          const psychrometric = state.psychrometricByWidget.get(w.id);
-          dataStatus = psychrometric?.dataStatus;
-          body = renderPsychrometricBody(psychrometric, w.id);
-          subExtra = " · 온도·상대습도 평균";
-          cardClass = "card psychrometric-card";
-        } else if (w.queryKind === "power_distribution") {
-          const distribution = state.powerDistributionByWidget.get(w.id);
-          dataStatus = distribution?.dataStatus;
-          body = window.PowerDistributionWidget.render(distribution);
-          subExtra = " · W 단위 최신값 분배";
-          cardClass = "card power-distribution-card";
-        } else if (w.queryKind === "cctv") {
-          body = renderCctvBody(w);
-          subExtra = ` · ${(w.cctvCameras || []).length}대`;
-          cardClass = "card cctv-card";
-        } else {
-          body = `<div class="meta">devices: ${(w.deviceIds || []).join(", ")} · ${escapeHtml(w.queryKind)} 조회 미구현</div>`;
-        }
-        } catch (error) {
-          console.error(`위젯 #${w.id} 표시 오류`, error);
-          body = `<div class="empty">위젯을 표시하지 못했습니다. ${escapeHtml(error.message || "화면을 새로고침해 주세요.")}</div>`;
-          cardClass = "card";
-        }
-        const clickEnabled = widgetClickEnabled(w);
-        if (clickEnabled) cardClass += " trend-card trend-available";
-        const chartHeadTools = w.queryKind === "chart"
-          ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
-          : "";
-        return `
-          <article class="${cardClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? 'row-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
-            <div class="card-head" data-drag-handle>
-              <span class="drag-handle">⠿</span>
-              <div>
-                <h2>${escapeHtml(w.name)}</h2>
-                <div class="sub" title="${escapeHtml(w.queryKind)}">${escapeHtml(widgetKindLabel(w.queryKind))}${subExtra}<span class="layout-meta"> · (${layout.gridX},${layout.gridY}) ${layout.w}×${layout.h}</span></div>
-                ${renderDataStatus(dataStatus)}
-              </div>
-              ${chartHeadTools}${clickEnabled ? '<span class="widget-click-indicator" title="클릭 동작">↗</span>' : ''}
-            </div>
-            <div class="card-body">${body}</div>
-            <div class="resize-handle resize-n" data-resize="n" title="위쪽 크기 조절"></div>
-            <div class="resize-handle resize-w" data-resize="w" title="왼쪽 크기 조절"></div>
-            <div class="resize-handle resize-nw" data-resize="nw" title="왼쪽 위 크기 조절"></div>
-            <div class="resize-handle resize-ne" data-resize="ne" title="오른쪽 위 크기 조절"></div>
-            <div class="resize-handle resize-sw" data-resize="sw" title="왼쪽 아래 크기 조절"></div>
-            <div class="resize-handle resize-e" data-resize="e" title="가로 크기"></div>
-            <div class="resize-handle resize-s" data-resize="s" title="세로 크기"></div>
-            <div class="resize-handle resize-se" data-resize="se" title="크기 조절"></div>
-          </article>`;
-      }).join("");
-
-      const board = $("board");
-      const freshBoard = document.createElement("div");
-      freshBoard.innerHTML = cardsHtml
-        + '<div id="snapGuide" class="snap-guide"></div>'
-        + '<div id="ghost" class="ghost"><span class="ghost-label" id="ghostLabel"></span></div>';
-      const existingCctvCards = new Map([...board.querySelectorAll(".cctv-card[data-widget-id]")]
-        .map((card) => [Number(card.dataset.widgetId), card]));
-      const desiredCards = [...freshBoard.children].filter((node) => node.matches("article[data-widget-id]"))
-        .map((freshCard) => {
-          if (!freshCard.classList.contains("cctv-card")) return freshCard;
-          const widgetId = Number(freshCard.dataset.widgetId);
-          const currentCard = existingCctvCards.get(widgetId);
-          const widget = enabled.find((item) => Number(item.id) === widgetId);
-          if (!currentCard || !widget) return freshCard;
-          updateExistingCctvCard(currentCard, freshCard, widget);
-          return currentCard;
-        });
-      const boardOverlays = [...freshBoard.children].filter((node) => !node.matches("article[data-widget-id]"));
-      const retained = new Set(desiredCards.filter((card) => card.parentNode === board));
-      [...board.children].forEach((node) => { if (!retained.has(node)) node.remove(); });
-      let cursor = board.firstChild;
-      desiredCards.forEach((card) => {
-        if (card === cursor) cursor = cursor.nextSibling;
-        else board.insertBefore(card, cursor);
-      });
-      boardOverlays.forEach((overlay) => board.appendChild(overlay));
-      fitWidgetBoardHeight();
-      bindEditHandlers();
-      bindChartCardHandlers();
-      mountCctvWidgets();
-      mountChartInstances();
-      drawPsychrometricCanvases();
-    }
-
-    // Use remaining viewport height when the existing layout already nearly fills it.
-    // Keep its grid coordinates and deliberate gaps unchanged.
-    function fitWidgetBoardHeight() {
-      const board = $("board");
-      if (!board) return;
-      board.style.removeProperty("--row-h");
-      if (!fixedPageView || ["PLAN_2D", "SCENE_3D"].includes(state.pageVisualization?.viewMode)) return;
-      const layouts = state.widgets.filter((widget) => widget.enabled).map(widgetLayout).filter(Boolean);
-      if (!layouts.length) return;
-      const rows = Math.max(...layouts.map((layout) => layout.gridY + layout.h));
-      const viewportHeight = board.parentElement.clientHeight;
-      const gap = parseFloat(getComputedStyle(board).rowGap) || 6;
-      const naturalHeight = rows * 24 + Math.max(0, rows - 1) * gap;
-      if (rows > 0 && viewportHeight > naturalHeight && naturalHeight >= viewportHeight * .65) {
-        const rowHeight = Math.min(40, (viewportHeight - Math.max(0, rows - 1) * gap) / rows);
-        board.style.setProperty("--row-h", `${Math.max(24, rowHeight)}px`);
-      }
-    }
-
-    function bindChartCardHandlers() {
-      $("board").querySelectorAll(".chart-series-select").forEach((sel) => {
-        sel.addEventListener("change", (e) => {
-          const widgetId = Number(e.target.dataset.widgetId);
-          state.chartSeriesModeByWidget.set(widgetId, e.target.value);
-          reloadChartWidget(widgetId).catch((err) => log("chart series: " + err.message));
-        });
-      });
-      $("board").querySelectorAll(".trend-available").forEach((card) => {
-        card.addEventListener("click", (event) => {
-          if (state.editMode || event.target.closest("select, button, .resize-handle, details, summary")) return;
-          const widget = state.widgets.find((item) => Number(item.id) === Number(card.dataset.widgetId));
-          openWidgetDetail(widget).catch((error) => {
-            $("trendModalMeta").textContent = error.message || "트렌드 조회 실패";
-          });
-        });
+          return api("/api/manager/query/widget-trend?" + params);
+        },
       });
     }
-
-    function boardMetrics() {
-      const board = $("board");
-      const rect = board.getBoundingClientRect();
-      const styles = getComputedStyle(board);
-      const gap = parseFloat(styles.gap) || 6;
-      const explicitRows = styles.gridTemplateRows.match(/-?\d+(?:\.\d+)?px/g) || [];
-      const rowH = parseFloat(explicitRows[0]) || parseFloat(styles.gridAutoRows) || 24;
-      const colW = (rect.width - gap * (COLS - 1)) / COLS;
-      const stepX = colW + gap;
-      const stepY = rowH + gap;
-      return { board, rect, gap, rowH, colW, stepX, stepY };
-    }
-
-    function layoutToPixels(layout) {
-      const { gap, rowH, colW } = boardMetrics();
-      return {
-        left: layout.gridX * (colW + gap),
-        top: layout.gridY * (rowH + gap),
-        width: layout.w * colW + (layout.w - 1) * gap,
-        height: layout.h * rowH + (layout.h - 1) * gap,
-      };
-    }
-
-    function pixelsToLayout(left, top, width, height) {
-      const { gap, stepX, stepY } = boardMetrics();
-      let gridX = Math.round(left / stepX);
-      let gridY = Math.round(top / stepY);
-      let w = Math.max(1, Math.round((width + gap) / stepX));
-      let h = Math.max(1, Math.round((height + gap) / stepY));
-      gridX = Math.max(0, Math.min(COLS - 1, gridX));
-      w = Math.max(1, Math.min(COLS - gridX, w));
-      gridY = Math.max(0, gridY);
-      h = Math.max(1, Math.min(80, h));
-      return { gridX, gridY, w, h };
-    }
-
-    /** 리사이즈(e/s/se): 좌상단 칸 고정, 크기만 스냅 — 위치 순간이동 방지 */
-    function snapFromInteraction(d, live) {
-      if (d.mode === "move") {
-        const snap = pixelsToLayout(live.left, live.top, live.width, live.height);
-        snap.w = d.layout.w;
-        snap.h = d.layout.h;
-        snap.gridX = Math.max(0, Math.min(COLS - snap.w, snap.gridX));
-        snap.gridY = Math.max(0, snap.gridY);
-        return alignWidgetLayout(snap, d.id);
-      }
-      const { gap, stepX, stepY } = boardMetrics();
-      const mode = d.resizeMode;
-      const right = d.layout.gridX + d.layout.w;
-      const bottom = d.layout.gridY + d.layout.h;
-      let gridX = d.layout.gridX, gridY = d.layout.gridY, w = d.layout.w, h = d.layout.h;
-      if (mode.includes("w")) { gridX = Math.max(0, Math.min(right - 1, Math.round(live.left / stepX))); w = right - gridX; }
-      if (mode.includes("e")) w = Math.max(1, Math.min(COLS - gridX, Math.round((live.width + gap) / stepX)));
-      if (mode.includes("n")) { gridY = Math.max(0, Math.min(bottom - 1, Math.round(live.top / stepY))); h = bottom - gridY; if (h > 80) { h = 80; gridY = bottom - h; } }
-      if (mode.includes("s")) h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
-      return { gridX, gridY, w, h };
-    }
-
-    function alignWidgetLayout(layout, movingId) {
-      const result = { ...layout, alignX: false, alignY: false };
-      let bestX = 1.01, bestY = 1.01;
-      for (const other of state.widgets) {
-        if (other.id === movingId || !other.enabled) continue;
-        const target = widgetLayout(other);
-        if (!target) continue;
-        const xCandidates = [target.gridX, target.gridX + target.w - layout.w];
-        const yCandidates = [target.gridY, target.gridY + target.h - layout.h];
-        for (const x of xCandidates) {
-          if (x < 0 || x + layout.w > COLS) continue;
-          const distance = Math.abs(layout.gridX - x);
-          if (distance < bestX) { bestX = distance; result.gridX = x; result.alignX = true; }
-        }
-        for (const y of yCandidates) {
-          if (y < 0) continue;
-          const distance = Math.abs(layout.gridY - y);
-          if (distance < bestY) { bestY = distance; result.gridY = y; result.alignY = true; }
-        }
-      }
-      if (bestX > 1) { result.gridX = layout.gridX; result.alignX = false; }
-      if (bestY > 1) { result.gridY = layout.gridY; result.alignY = false; }
-      return result;
-    }
-
-    function placeLiveBox(left, top, width, height, snap) {
-      const ghost = $("ghost");
-      const guide = $("snapGuide");
-      const label = $("ghostLabel");
-      if (!ghost) return;
-      const minW = 40;
-      const minH = 32;
-      width = Math.max(minW, width);
-      height = Math.max(minH, height);
-      ghost.style.display = "block";
-      ghost.style.left = left + "px";
-      ghost.style.top = top + "px";
-      ghost.style.width = width + "px";
-      ghost.style.height = height + "px";
-      if (label && snap) {
-        label.textContent = `미리보기 · ${snap.w}×${snap.h} · ${snap.gridX + 1}열 ${snap.gridY + 1}행`;
-      }
-      if (guide && snap) {
-        const px = layoutToPixels(snap);
-        const alignText = [snap.alignX && "좌우", snap.alignY && "상하"].filter(Boolean).join("·");
-        guide.dataset.label = `놓을 위치 · ${snap.w}×${snap.h} · ${snap.gridX + 1}열 ${snap.gridY + 1}행${alignText ? ` · ${alignText} 정렬` : ""}`;
-        guide.style.display = "block";
-        guide.style.left = px.left + "px";
-        guide.style.top = px.top + "px";
-        guide.style.width = px.width + "px";
-        guide.style.height = px.height + "px";
-      }
-    }
-
-    function hideGhost() {
-      const ghost = $("ghost");
-      const guide = $("snapGuide");
-      if (ghost) ghost.style.display = "none";
-      if (guide) guide.style.display = "none";
-    }
-
-    function bindEditHandlers() {
-      if (!state.editMode) return;
-      $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => {
-        if (card.dataset.editSelectionBound === "true") return;
-        card.dataset.editSelectionBound = "true";
-        card.addEventListener("click", (event) => {
-          if (!state.editMode) return;
-          if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
-          toggleRowSelection(card.dataset.widgetId);
-          selectWidgetFromList(card.dataset.widgetId, {scrollBoard:false, scrollList:true});
-        });
-      });
-      $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
-        handle.onpointerdown = onDragStart;
-      });
-      $("board").querySelectorAll("[data-resize]").forEach((handle) => {
-        handle.onpointerdown = onResizeStart;
-      });
-    }
-
-    function beginInteraction(e, card, mode) {
-      const id = Number(card.dataset.widgetId);
-      const widget = state.widgets.find((w) => w.id === id);
-      if (!widget) return null;
-      const layout = { ...(widgetLayout(widget) || ensureLayout(widget, 0)) };
-      const { rect } = boardMetrics();
-      const cardRect = card.getBoundingClientRect();
-      const origin = {
-        left: cardRect.left - rect.left,
-        top: cardRect.top - rect.top,
-        width: cardRect.width,
-        height: cardRect.height,
-      };
-
-      e.preventDefault();
-      e.stopPropagation();
-      card.setPointerCapture(e.pointerId);
-      card.classList.add(mode === "move" ? "dragging" : "resizing");
-
-      const interaction = {
-        mode,
-        resizeMode: mode === "move" ? null : mode,
-        id,
-        card,
-        layout,
-        origin,
-        pointerId: e.pointerId,
-        startX: e.clientX,
-        startY: e.clientY,
-        live: { ...origin },
-        pending: { ...layout },
-        raf: 0,
-      };
-      state.drag = interaction;
-      placeLiveBox(origin.left, origin.top, origin.width, origin.height, layout);
-      card.addEventListener("pointermove", onInteractMove);
-      card.addEventListener("pointerup", onInteractEnd);
-      card.addEventListener("pointercancel", onInteractEnd);
-      return interaction;
-    }
-
-    function onDragStart(e) {
-      if (!state.editMode || e.button !== 0 || e.target.closest("button, select, input, a")) return;
-      const card = e.currentTarget.closest(".card");
-      if (!card) return;
-      beginInteraction(e, card, "move");
-    }
-
-    function onResizeStart(e) {
-      if (!state.editMode || e.button !== 0) return;
-      const card = e.currentTarget.closest(".card");
-      if (!card) return;
-      beginInteraction(e, card, e.currentTarget.dataset.resize);
-    }
-
-    function computeLiveBox(d, clientX, clientY) {
-      const dx = clientX - d.startX;
-      const dy = clientY - d.startY;
-      const { rect, stepX } = boardMetrics();
-      const boardW = rect.width;
-      let left = d.origin.left;
-      let top = d.origin.top;
-      let width = d.origin.width;
-      let height = d.origin.height;
-
-      if (d.mode === "move") {
-        left = d.origin.left + dx;
-        top = d.origin.top + dy;
-        left = Math.max(0, Math.min(boardW - width, left));
-        top = Math.max(0, top);
-      } else {
-        const mode = d.resizeMode;
-        const right = d.origin.left + d.origin.width, bottom = d.origin.top + d.origin.height;
-        if (mode.includes("w")) { left = Math.max(0, Math.min(right - stepX * .5, d.origin.left + dx)); width = right - left; }
-        if (mode.includes("e")) width = Math.max(stepX * .5, Math.min(boardW - left, d.origin.width + dx));
-        if (mode.includes("n")) { top = Math.max(0, Math.min(bottom - 20, d.origin.top + dy)); height = bottom - top; }
-        if (mode.includes("s")) height = Math.max(20, d.origin.height + dy);
-      }
-      return { left, top, width, height };
-    }
-
-    function onInteractMove(e) {
-      const d = state.drag;
-      if (!d || e.pointerId !== d.pointerId) return;
-      d._lastX = e.clientX;
-      d._lastY = e.clientY;
-      if (d.raf) return;
-      d.raf = requestAnimationFrame(() => {
-        d.raf = 0;
-        if (!state.drag) return;
-        const live = computeLiveBox(d, d._lastX, d._lastY);
-        d.live = live;
-        const snap = snapFromInteraction(d, live);
-        d.pending = snap;
-        placeLiveBox(live.left, live.top, live.width, live.height, snap);
-      });
-    }
-
-    async function onInteractEnd(e) {
-      const d = state.drag;
-      if (!d || e.pointerId !== d.pointerId) return;
-      if (d.raf) cancelAnimationFrame(d.raf);
-      d.card.releasePointerCapture(e.pointerId);
-      d.card.removeEventListener("pointermove", onInteractMove);
-      d.card.removeEventListener("pointerup", onInteractEnd);
-      d.card.removeEventListener("pointercancel", onInteractEnd);
-      d.card.classList.remove("dragging", "resizing");
-
-      // 마지막 픽셀 → 스냅 (리사이즈 시 좌상단 칸 유지)
-      const live = computeLiveBox(d, e.clientX, e.clientY);
-      const next = snapFromInteraction(d, live);
-      hideGhost();
-      state.drag = null;
-      if (e.type === "pointercancel") {
-        await refreshBoard(false);
-        return;
-      }
-
-      const widget = state.widgets.find((w) => w.id === d.id);
-      const prev = widget && widgetLayout(widget);
-      if (prev && prev.gridX === next.gridX && prev.gridY === next.gridY
-          && prev.w === next.w && prev.h === next.h) {
-        await refreshBoard(false);
-        return;
-      }
-
-      widget._draftLayout = next;
-      const verb = d.mode === "move" ? "이동" : "크기";
-      log(`${verb} 미리보기 #${d.id} → (${next.gridX},${next.gridY}) ${next.w}×${next.h}`);
-      renderWidgetList();
-      await refreshBoard(false);
-    }
-
-    let layoutSaveStatusTimer;
-    function showLayoutSaveStatus(message, isError = false, persistent = false) {
-      clearTimeout(layoutSaveStatusTimer);
-      const status = $("layoutSaveStatus");
-      status.textContent = message;
-      status.classList.toggle("is-error", isError);
-      status.hidden = false;
-      if (!persistent) layoutSaveStatusTimer = setTimeout(() => { status.hidden = true; }, 4500);
-    }
-
-    async function saveLayoutEdits() {
-      if (state.saving) return;
-      const changed = state.widgets.filter(hasWidgetLayoutChanges);
-      if (!changed.length) {
-        setEditMode(false);
-        if (embeddedInConsole && window.parent !== window && (widgetWorkspaceRequested || layoutEditRequested)) {
-          window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
-        } else showLayoutSaveStatus("저장할 변경 사항이 없습니다");
-        return;
-      }
-      state.saving = true;
-      showLayoutSaveStatus("배치를 저장하고 있습니다…", false, true);
-      $("editBtn").textContent = "저장 중…";
-      $("editBtn").disabled = true;
-      $("cancelEditBtn").disabled = true;
-      $("pageCode").disabled = true;
-      let savedCount = 0;
-      try {
-        for (const widget of changed) {
-          const layout = widget._draftLayout;
-          const updated = await api(`/api/manager/widgets/${widget.id}/layout`, {
-            method: "PUT",
-            body: JSON.stringify({ gridX: layout.gridX, gridY: layout.gridY, w: layout.w, h: layout.h }),
-          });
-          const index = state.widgets.findIndex((item) => item.id === widget.id);
-          if (index >= 0) state.widgets[index] = updated;
-          savedCount++;
-        }
-        log(`배치 변경 ${savedCount}개 저장 완료`);
-        showLayoutSaveStatus(`✓ 위젯 ${savedCount}개 배치 저장 완료`);
-        setEditMode(false);
-        if (embeddedInConsole && window.parent !== window && (widgetWorkspaceRequested || layoutEditRequested)) {
-          window.parent.postMessage({ type: "dcim:dashboard:layout-saved", pageCode: $("pageCode").value }, location.origin);
-        }
-      } catch (error) {
-        renderWidgetList();
-        await refreshBoard(false);
-        log(`배치 저장 실패: ${error.message}`);
-        showLayoutSaveStatus(`저장 실패 · ${savedCount}개 저장됨`, true);
-        alert(`배치 저장에 실패했습니다. ${savedCount}개는 저장됐고 나머지 변경은 편집 화면에 남아 있습니다.\n${error.message}`);
-      } finally {
-        state.saving = false;
-        $("editBtn").disabled = false;
-        $("editBtn").textContent = state.editMode ? "변경 저장" : "배치 편집";
-        $("cancelEditBtn").disabled = false;
-        $("pageCode").disabled = fixedPageView || fixedAnalysisPage;
-      }
-    }
-
-    function setWidgetDrawerOpen(open) {
-      document.body.classList.toggle("drawer-open", open);
-      $("drawerBtn").setAttribute("aria-expanded", String(open));
-      $("drawerBtn").classList.toggle("active", open);
-      $("drawerBtn").title = open ? "위젯 목록 접기" : "위젯 목록 열기";
-      requestAnimationFrame(() => { fitWidgetBoardHeight(); drawPsychrometricCanvases(); });
-    }
-
-    function setEditMode(on) {
-      if (!on) {
-        state.sizeMatchWidgetIds = [];
-        const discarded = state.widgets.filter((widget) => widget._draftLayout).length;
-        state.widgets.forEach((widget) => { delete widget._draftLayout; });
-        if (discarded) log(`저장하지 않은 배치 변경 ${discarded}개 취소`);
-      }
-      state.editMode = on;
-      const pageEditButton = $("pageVisualization")?.querySelector(".page-edit-icon");
-      if (pageEditButton) {
-        pageEditButton.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
-        pageEditButton.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
-        pageEditButton.setAttribute("aria-label", pageEditButton.title);
-        pageEditButton.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
-      }
-      if (on) {
-        document.body.classList.remove("controls-open");
-        $("controlsBtn").classList.remove("active");
-        $("controlsBtn").setAttribute("aria-expanded", "false");
-      }
-      document.body.classList.toggle("edit-mode", on);
-      setWidgetDrawerOpen(on);
-      $("drawerBtn").style.display = (boardView || fixedPageView || on) ? "inline-flex" : "none";
-      $("addWidgetBtn").disabled = on && !widgetWorkspaceRequested;
-      $("metricsBtn").disabled = on && !widgetWorkspaceRequested;
-      $("editBtn").classList.toggle("active", on);
-      $("editBtn").textContent = on ? "변경 저장" : "배치 편집";
-      $("editBtn").setAttribute("aria-pressed", String(on));
-      $("editBtn").title = on ? "미리보기 중인 위치·크기를 저장합니다" : "카드 상단을 끌어 이동하고 가장자리로 크기를 조절합니다";
-      $("cancelEditBtn").style.display = on ? "" : "none";
-      $("reloadBtn").disabled = on;
-      if (on) {
-        stopPolling();
-        log("배치 편집 ON — 변경 저장을 누르기 전까지 서버에 반영되지 않습니다");
-      } else {
-        hideGhost();
-        state.drag = null;
-        startPolling();
-        log("배치 편집 OFF");
-      }
-      renderWidgetList();
-      refreshBoard(false).catch((error) => log("배치 표시 실패: " + error.message));
-    }
-
-    function formatValue(v) {
-      if (v == null || v === "") return "-";
-      const n = typeof v === "number" ? v : Number(v);
-      if (!Number.isFinite(n)) return String(v);
-      return n.toLocaleString("ko-KR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "").replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[c]));
-    }
-
-    function stopPolling() {
-      if (state.pollTimer) {
-        clearInterval(state.pollTimer);
-        state.pollTimer = null;
-      }
-    }
-
-    function startPolling() {
-      stopPolling();
-      if (state.editMode || (isAnalysisPage() && analysisState.viewMode === "trend")) return;
-      state.pollTimer = setInterval(() => {
-        if (state.drag || state.saving) return;
-        Promise.all([refreshBoard(true), refreshPageVisualization()]).catch((e) => log("poll: " + e.message));
-      }, POLL_MS);
-    }
-
     async function reload() {
       if (!$("pageCode").value) return;
       if (isAnalysisPage() && analysisState.viewMode === "trend") return;
@@ -4056,13 +3081,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
     });
     $("reloadBtn").addEventListener("click", () => reload().catch((e) => log("reload: " + e.message)));
-    $("trendModalClose")?.addEventListener("click", closeTrendModal);
-    $("trendModal")?.addEventListener("click", (event) => {
-      if (event.target === $("trendModal")) closeTrendModal();
-    });
-    window.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeTrendModal();
-    });
     $("pageCode").addEventListener("change", () => {
       if (state.editMode) setEditMode(false);
       // 페이지 드롭다운은 항상 위젯 보드로 전환한다. 측정 추이는 별도 버튼/분석 메뉴에서 연다.

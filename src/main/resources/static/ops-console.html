@@ -8,6 +8,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
+  <script src="/vendor/chartjs/chart.umd.min.js"></script>
+  <script src="/widget-detail-popup.js?v=20261111"></script>
   <script>
 (function (global) {
   'use strict';
@@ -4161,6 +4163,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       log("로그인 OK: " + (data.username || username));
       await boot();
       restoreActiveTab();
+      await openPreviewTargetFromLocation();
     }
 
     function esc(s) {
@@ -4510,6 +4513,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (dialog.open) return;
       const wizard = $("tab-wizard"), anchor = document.createElement('span'); anchor.id = 'deviceWizardAnchor'; anchor.hidden = true;
       wizard.before(anchor); dialog.append(wizard); wizard.classList.add('active'); dialog.showModal();
+    }
+
+    async function openPreviewTargetFromLocation() {
+      const query = new URLSearchParams(location.search);
+      const deviceId = Number(query.get("previewDeviceId"));
+      const rackCode = query.get("previewRackCode");
+      const pageCode = query.get("previewPageCode");
+      if (Number.isSafeInteger(deviceId) && deviceId > 0) {
+        const device = await api("/api/manager/devices/" + deviceId);
+        goTab("devices");
+        openDeviceDetail(device);
+      } else if (rackCode) {
+        goTab("assets");
+        await openRackFromScene(rackCode);
+      } else if (pageCode) {
+        goTab(pageTabForCode(pageCode));
+      }
     }
 
     function restoreActiveTab() {
@@ -13938,13 +13958,124 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return config;
     }
 
-    $("wClickPreview")?.addEventListener("click", () => {
+    function selectedWidgetPreviewSources() {
+      const kind = $("wKind").value;
+      const targetIds = new Set(selectedWidgetTargetDeviceIds().map(Number));
+      const pointNames = new Set(selectedWidgetPoints());
+      if (kind === "last") return state.lastWidgetSources.flatMap((source) =>
+        (source.pointNames || []).map((pointName) => ({ deviceId: source.deviceId, pointName })));
+      if (kind === "chart" && $("wChartScope").value === "models") {
+        return state.widgetSources.filter((source) => state.widgetModelIds.includes(Number(source.modelId))
+          && pointNames.has(source.pointName) && !source.ambiguous);
+      }
+      if (kind === "chart" || kind === "aggregate") {
+        return state.widgetSources.filter((source) => targetIds.has(Number(source.deviceId))
+          && pointNames.has(source.pointName) && !source.ambiguous);
+      }
+      if (kind === "psychrometric") return [...state.psychrometricTemperatureSources, ...state.psychrometricHumiditySources];
+      if (kind === "power_distribution") return state.powerDistributionGroups.flatMap((group) => group.sources || []);
+      return [];
+    }
+    function clickPreviewUrl(page, key, value) {
+      const url = new URL("/ops-console.html", location.origin);
+      url.searchParams.set("page", page);
+      url.searchParams.set(key, String(value));
+      return url.href;
+    }
+    async function previewClickTarget(config) {
+      const box = $("wClickPreviewResult");
+      box.replaceChildren();
+      const raw = $("wClickTarget")?.value.trim() || "";
+      if (!raw) throw new Error("이동 대상이 지정되지 않았습니다.");
+      let label, url;
+      if (config.action === "device") {
+        const id = Number(raw);
+        if (!Number.isSafeInteger(id) || id <= 0) throw new Error("장비 ID가 올바르지 않습니다.");
+        const device = await api("/api/manager/devices/" + id);
+        label = (device.name || "장비 #" + id) + " 장비 상세 (존재 확인됨)";
+        url = clickPreviewUrl("devices", "previewDeviceId", id);
+      } else if (config.action === "rack") {
+        const layout = await api("/api/manager/assets/racks/" + encodeURIComponent(raw) + "/layout");
+        label = (layout.rackLocationName || raw) + " 랙 상세 (존재 확인됨)";
+        url = clickPreviewUrl("assets", "previewRackCode", raw);
+      } else {
+        const tab = pageTabForCode(raw);
+        const isKnown = FIXED_PAGE_TABS.has(raw.toLowerCase()) || state.dynamicPageTabs.has(tab);
+        if (!isKnown) throw new Error("페이지를 찾을 수 없습니다: " + raw);
+        const page = state.dynamicPageTabs.get(tab);
+        label = (page?.name || raw) + " 페이지 (존재 확인됨)";
+        url = clickPreviewUrl(tab, "previewPageCode", raw);
+      }
+      const message = document.createElement("span");
+      message.textContent = "이동할 대상: " + label + " ";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ghost";
+      button.textContent = "열어 보기";
+      button.addEventListener("click", () => {
+        const opened = window.open(url, "_blank");
+        if (!opened) toast("새 창이 차단되었습니다. 브라우저 팝업 허용을 확인하세요.", true); else opened.opener = null;
+      });
+      box.append(message, button);
+      box.hidden = false;
+    }
+    async function previewClickChart(config) {
+      const kind = $("wKind").value;
+      const existingId = Number(state.editingWidgetId) || 0;
+      if (!existingId && kind === "calculated") {
+        window.DcimWidgetDetail.setMessage("계산 지표는 저장 후 미리 볼 수 있습니다.");
+        await window.DcimWidgetDetail.open({
+          title: $("wName").value || "계산 지표", config: config,
+          note: "계산 지표는 저장 후 미리 볼 수 있습니다.",
+          load: async function () { return { series: [] }; }
+        });
+        return;
+      }
+      const pairs = selectedWidgetPreviewSources();
+      const sourceRefs = [...new Set(pairs.filter((item) => item?.deviceId && item?.pointName)
+        .map((item) => Number(item.deviceId) + ":" + item.pointName))];
+      if (!existingId && !sourceRefs.length) throw new Error("먼저 장비와 측정 항목을 선택하세요.");
+      if (!existingId && sourceRefs.length > 50) throw new Error("미리보기는 장비·측정 항목을 50개까지 선택할 수 있습니다.");
+      const note = existingId ? "데이터 선택 변경은 저장 후 반영됩니다."
+        : "장비·포인트별 선으로 표시하며, 합계·상별·위치별 묶음은 저장 후 적용됩니다.";
+      await window.DcimWidgetDetail.open({
+        title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
+        config: config, showSeries: existingId && kind === "chart", showCompare: false, note: note,
+        load: async function ({ rangePreset, window, seriesMode, compare }) {
+          const params = new URLSearchParams({ rangePreset: rangePreset, window: window });
+          if (compare && compare !== "none") params.set("compare", compare);
+          if (existingId) {
+            params.set("widgetId", String(existingId));
+            if (kind === "chart") {
+              params.set("seriesMode", seriesMode);
+              return api("/api/manager/query/chart?" + params);
+            }
+            if (kind === "calculated") return api("/api/manager/query/calculated?" + params);
+            return api("/api/manager/query/widget-trend?" + params);
+          }
+          for (const source of sourceRefs) params.append("source", source);
+          return api("/api/manager/query/widget-trend/preview?" + params);
+        }
+      });
+    }
+    $("wClickPreview")?.addEventListener("click", async () => {
+      const box = $("wClickPreviewResult");
+      box.hidden = false;
+      box.replaceChildren();
       const config = currentWidgetClickConfig();
-      const labels = { chart: "차트 팝업", none: "클릭 동작 없음", device: "장비 상세", rack: "랙 상세", page: "페이지 이동" };
-      const target = config.target ? ` · 대상 ${Object.values(config.target)[0] || "미지정"}` : "";
-      const chart = config.action === "chart" ? ` · ${config.rangePreset} / ${config.window} / ${config.seriesMode} / ${config.chartStyle}` : "";
-      $("wClickPreviewResult").textContent = `미리 보기: ${labels[config.action] || config.action}${target}${chart}`;
-      $("wClickPreviewResult").hidden = false;
+      try {
+        if (config.action === "none") {
+          box.textContent = "클릭해도 아무 동작이 없습니다.";
+          return;
+        }
+        if (config.action === "chart") {
+          await previewClickChart(config);
+          return;
+        }
+        await previewClickTarget(config);
+      } catch (error) {
+        box.textContent = error.message || "미리보기를 열지 못했습니다.";
+      }
     });
 
     function configureWidgetClickKind(kind, preferredAction) {
@@ -14168,6 +14299,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       try {
         await boot();
         restoreActiveTab();
+        await openPreviewTargetFromLocation();
       } catch (e) {
         clearAuth();
         log("세션 만료: 다시 로그인하세요");

@@ -157,6 +157,15 @@ public class QueryController {
         return ResponseEntity.ok(ApiResponse.ok(powerDistributionQueryService.getPowerDistribution(widgetId)));
     }
 
+    @GetMapping("/widget-trend/preview")
+    @Operation(summary = "저장 전 위젯 트렌드 미리보기", description = "저장하지 않고 선택한 장비·측정 항목의 시계열을 조회합니다. source=deviceId:pointName 형식으로 최대 50개까지 반복 전달합니다.")
+    public ResponseEntity<ApiResponse<ChartWidgetResponse>> previewWidgetTrend(
+            @RequestParam(name = "source") java.util.List<String> sources,
+            @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
+            @RequestParam(required = false, defaultValue = "15m") String window
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.previewTrend(sources, rangePreset, window)));
+    }
     @GetMapping("/widget-trend")
     @Operation(summary = "공통 위젯 트렌드 조회", description = "last·aggregate·psychrometric·power_distribution 위젯의 최근 시계열을 최대 두 단위로 반환합니다.")
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getWidgetTrend(

@@ -10,6 +10,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetPowerDistributionSou
 import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSource;
 import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSourceRole;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
+import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog;
 import net.vivans.dcim.module.query.api.dto.ChartSeriesResponse;
@@ -36,6 +37,7 @@ import java.util.Set;
 public class WidgetTrendQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
+    private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
 
@@ -57,6 +59,52 @@ public class WidgetTrendQueryService {
         };
     }
 
+    public ChartWidgetResponse previewTrend(List<String> sourceRefs, String rangePresetRaw, String window) {
+        if (sourceRefs == null || sourceRefs.isEmpty()) {
+            throw new IllegalArgumentException("먼저 데이터 선택에서 장비와 측정 항목을 선택하세요");
+        }
+        if (sourceRefs.size() > 50) {
+            throw new IllegalArgumentException("미리보기는 최대 50개 장비·측정 항목까지 지원합니다");
+        }
+
+        List<Source> sources = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (String sourceRef : sourceRefs) {
+            if (sourceRef == null) throw new IllegalArgumentException("source 형식은 deviceId:pointName 이어야 합니다");
+            int separator = sourceRef.indexOf(':');
+            if (separator <= 0 || separator == sourceRef.length() - 1) {
+                throw new IllegalArgumentException("source 형식은 deviceId:pointName 이어야 합니다");
+            }
+            int deviceId;
+            try {
+                deviceId = Integer.parseInt(sourceRef.substring(0, separator).trim());
+            } catch (NumberFormatException error) {
+                throw new IllegalArgumentException("source의 deviceId가 올바르지 않습니다");
+            }
+            if (deviceId <= 0) throw new IllegalArgumentException("source의 deviceId가 올바르지 않습니다");
+            String pointName = sourceRef.substring(separator + 1).trim();
+            if (pointName.isBlank() || pointName.length() > 255) {
+                throw new IllegalArgumentException("source의 pointName이 비어 있거나 너무 깁니다");
+            }
+            String sourceKey = key(deviceId, pointName);
+            if (!seen.add(sourceKey)) continue;
+            Device device = deviceRepository.findById(deviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("선택한 장비를 찾을 수 없습니다: " + deviceId));
+            if (!device.isEnabled()) {
+                throw new IllegalArgumentException("비활성 장비는 미리 볼 수 없습니다: " + device.getName());
+            }
+            sources.add(new Source(device, pointName));
+        }
+
+        PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
+        String resolvedWindow = resolveWindow(window);
+        QueryRanges.Range range = QueryRanges.resolve(preset);
+        List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
+        List<String> units = units(sources);
+        return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
+                preset.name(), resolvedWindow, range.start(), range.end(), units.size() == 1 ? units.get(0) : null,
+                units, series, null, List.of("per_device"));
+    }
     private ChartWidgetResponse standardTrend(
             PageWidget widget, PageWidgetChartRangePreset preset, String window, QueryRanges.Range range
     ) {
