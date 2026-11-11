@@ -69,15 +69,32 @@ public class PageWidget extends BaseEntity {
     @Column(name = "trend_window", nullable = false, length = 8)
     private String trendWindow = "15m";
 
+    @Column(name = "click_config", columnDefinition = "TEXT")
+    private String clickConfig;
+
+    public void changeClickConfig(String value) {
+        this.clickConfig = value;
+    }
+
     public void changeTrendDefaults(String rangePreset, String window) {
-        if (!Set.of("last_1h", "last_6h", "last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month").contains(rangePreset)) {
-            throw new IllegalArgumentException("지원하지 않는 상세 차트 기간입니다");
-        }
+        PageWidgetChartRangePreset.from(rangePreset);
         if (!Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {
             throw new IllegalArgumentException("지원하지 않는 상세 차트 집계 간격입니다");
         }
         this.trendRangePreset = rangePreset;
         this.trendWindow = window;
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<String, Object> config = clickConfig == null || clickConfig.isBlank()
+                    ? new java.util.LinkedHashMap<>()
+                    : mapper.readValue(clickConfig, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+            config.putIfAbsent("action", "chart");
+            config.put("rangePreset", rangePreset);
+            config.put("window", window);
+            this.clickConfig = mapper.writeValueAsString(config);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("기존 클릭 설정을 유지할 수 없습니다", e);
+        }
     }
 
     @Column(name = "table_columns_json", columnDefinition = "TEXT")
