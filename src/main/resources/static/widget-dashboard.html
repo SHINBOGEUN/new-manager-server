@@ -1651,7 +1651,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const alarmInfo = alarmById.get(deviceId), statusInfo = statusById.get(deviceId), reasons = [];
         if (alarmInfo) {
           const latest = alarmInfo.latest || {};
-          const severity = latest.severity || alarmInfo.worstSeverity || 'WARNING';
+          const severity = alarmInfo.worstSeverity || latest.severity || 'WARNING';
           const severityLabel = severity === 'CRITICAL' || severity === 'DANGER' ? '위험 알람' : '주의 알람';
           const latestText = latest.pointName
             ? ` · 최근 ${latest.pointName} ${formatValue(latest.value)}${latest.unit ? ' ' + latest.unit : ''}${latest.operator ? ' ' + latest.operator : ' ≥'}${latest.threshold == null ? '' : ' ' + formatValue(latest.threshold) + (latest.unit ? ' ' + latest.unit : '')}`
