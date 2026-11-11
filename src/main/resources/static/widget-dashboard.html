@@ -999,7 +999,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <a href="/ops-console.html">운영 콘솔 ↗</a>
       </div>
     </div>
-    <p id="workspaceGuide" class="workspace-guide" role="status"><span class="when-viewing"><strong>배치 변경</strong> · 위젯 편집 → 카드 상단으로 이동·가장자리로 크기 조절 → 변경 저장</span><span class="when-editing"><strong>배치 편집 중</strong> · 카드 상단을 끌어 이동하세요. 완료 후 변경 저장을 누르거나 편집 취소로 돌아갑니다.</span></p>
+    <p id="workspaceGuide" class="workspace-guide" role="status"><span class="when-viewing"><strong>배치 변경</strong> · 위젯 편집 → 카드 상단으로 이동·가장자리로 크기 조절 → 변경 저장</span><span class="when-editing"><strong>배치 편집 중</strong> · 카드 상단을 끌어 이동하세요. 더블클릭: 위젯 설정. 완료 후 변경 저장을 누르거나 편집 취소로 돌아갑니다.</span></p>
     <section id="dashboardControls" class="dashboard-controls">
       <div class="control-group">
         <p class="control-group-title">데이터 연결</p>
@@ -2449,6 +2449,41 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     });
 
     let selectedListWidgetId = null;
+    let widgetCardPointer = null;
+    let lastWidgetCardDragAt = 0;
+    const widgetBoard = $("board");
+    widgetBoard.addEventListener("pointerdown", (event) => {
+      if (!state.editMode || event.button !== 0) return;
+      const card = event.target.closest(".card[data-widget-id]");
+      if (!card) return;
+      widgetCardPointer = { id: card.dataset.widgetId, x: event.clientX, y: event.clientY, moved: false };
+    }, true);
+    window.addEventListener("pointermove", (event) => {
+      if (!widgetCardPointer || widgetCardPointer.moved) return;
+      if (Math.hypot(event.clientX - widgetCardPointer.x, event.clientY - widgetCardPointer.y) >= 5) widgetCardPointer.moved = true;
+    }, true);
+    window.addEventListener("pointerup", () => {
+      if (widgetCardPointer?.moved) lastWidgetCardDragAt = Date.now();
+      widgetCardPointer = null;
+    }, true);
+    window.addEventListener("pointercancel", () => { widgetCardPointer = null; }, true);
+    widgetBoard.addEventListener("dblclick", (event) => {
+      if (!state.editMode || consoleAuth()?.getRole?.() !== "ADMIN") return;
+      const card = event.target.closest(".card[data-widget-id]");
+      if (!card || card.classList.contains("disabled") || card.classList.contains("cctv-card")) return;
+      if (event.target.closest("button, select, input, textarea, a, .drag-handle, .resize-handle, .cctv-camera-tabs, .cctv-viewer, iframe, video, audio, [contenteditable='true']")) return;
+      if (state.drag || card.classList.contains("dragging") || Date.now() - lastWidgetCardDragAt < 600) return;
+      const widgetId = Number(card.dataset.widgetId);
+      if (!Number.isInteger(widgetId) || widgetId <= 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!state.sizeMatchWidgetIds.includes(widgetId)) state.sizeMatchWidgetIds.push(widgetId);
+      widgetBoard.querySelectorAll(".card[data-widget-id]").forEach((item) => item.classList.toggle("row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.widgetId))));
+      $("widgetList").querySelectorAll(".widget-item").forEach((item) => item.classList.toggle("is-row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.id))));
+      selectWidgetFromList(widgetId, { scrollBoard: false });
+      updateSizeMatchTools();
+      requestWidgetEditor(widgetId);
+    });
     function toggleRowSelection(id) {
       if (!state.editMode) return;
       id = Number(id);
@@ -2623,7 +2658,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
       $("widgetList").querySelectorAll("[data-edit-widget]").forEach((btn) => {
         btn.addEventListener("click", () => {
-          window.parent.postMessage({ type: "dcim:dashboard:edit-widget", widgetId: Number(btn.dataset.editWidget) }, location.origin);
+          requestWidgetEditor(btn.dataset.editWidget);
         });
       });
       $("widgetList").querySelectorAll("[data-edit-scroll]").forEach((btn) => {
@@ -3125,6 +3160,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         },
       });
     }
+    function requestWidgetEditor(widgetId) {
+      if (boardView && consoleAuth()?.getRole?.() === "ADMIN") {
+        window.parent.postMessage({ type: "dcim:dashboard:edit-widget", widgetId: Number(widgetId) }, location.origin);
+      }
+    }
+
     async function reload() {
       if (!$("pageCode").value) return;
       if (isAnalysisPage() && analysisState.viewMode === "trend") return;
