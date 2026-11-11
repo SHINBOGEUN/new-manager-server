@@ -16,11 +16,11 @@ public class LocationNode extends BaseEntity {
     public static final String LOCATION_TYPE_GROUP_KEY = "LOCATION_TYPE";
 
     @Id
-    @Column(name = "code", length = LocationNodeCodeGenerator.CODE_LENGTH, nullable = false)
+    @Column(name = "code", length = LocationNodeCodeGenerator.CODE_LENGTH, nullable = false, columnDefinition = "char(10)")
     private String code;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_code")
+    @JoinColumn(name = "parent_code", columnDefinition = "char(10)")
     private LocationNode parent;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

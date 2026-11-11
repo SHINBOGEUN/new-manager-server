@@ -12,7 +12,7 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RackModelPlacement extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Integer id;
-    @Column(name = "rack_location_code", nullable = false, length = 10) private String rackLocationCode;
+    @Column(name = "rack_location_code", nullable = false, length = 10, columnDefinition = "char(10)") private String rackLocationCode;
     @Column(name = "scene_model_key", nullable = false, length = 32) private String sceneModelKey;
     @Enumerated(EnumType.STRING) @Column(name = "mount_type", nullable = false) private DeviceMountType mountType;
     @Enumerated(EnumType.STRING) @Column(name = "rack_side") private DeviceRackSide rackSide;
