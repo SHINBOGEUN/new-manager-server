@@ -101,7 +101,9 @@ public class PageWidgetQueryService {
 
     @Transactional
     public PageWidgetResponse createWidget(PageWidgetCreateRequest request) {
-        return applyVisualStyle(createWidgetContent(request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = createWidgetContent(request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
     private PageWidgetResponse createWidgetContent(PageWidgetCreateRequest request) {
@@ -180,27 +182,83 @@ public class PageWidgetQueryService {
 
     @Transactional
     public PageWidgetResponse createPsychrometricWidget(PageWidgetPsychrometricCreateRequest request) {
-        return applyVisualStyle(psychrometricWidgetHandler.create(request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = psychrometricWidgetHandler.create(request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updatePsychrometricWidget(Integer id, PageWidgetPsychrometricUpdateRequest request) {
-        return applyVisualStyle(psychrometricWidgetHandler.update(id, request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = psychrometricWidgetHandler.update(id, request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse createPowerDistributionWidget(PageWidgetPowerDistributionCreateRequest request) {
-        return applyVisualStyle(powerDistributionWidgetHandler.create(request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = powerDistributionWidgetHandler.create(request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updatePowerDistributionWidget(Integer id, PageWidgetPowerDistributionUpdateRequest request) {
-        return applyVisualStyle(powerDistributionWidgetHandler.update(id, request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = powerDistributionWidgetHandler.update(id, request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
     }
 
     @Transactional
     public PageWidgetResponse updateWidget(Integer id, PageWidgetUpdateRequest request) {
-        return applyVisualStyle(updateWidgetContent(id, request), request.visualStyle(), request.visualColor());
+        PageWidgetResponse response = updateWidgetContent(id, request);
+        persistClickConfig(response.id(), request.clickConfig());
+        return applyVisualStyle(responseWithClickConfig(response.id()), request.visualStyle(), request.visualColor());
+    }
+
+    private PageWidgetResponse responseWithClickConfig(Integer id) {
+        return PageWidgetResponse.from(widgetSupport.findWidget(id));
+    }
+
+    private void persistClickConfig(Integer id, Map<String, Object> config) {
+        if (config == null) return;
+        Object actionValue = config.get("action");
+        if (!(actionValue instanceof String action) || !Set.of("none", "chart", "device", "rack", "page").contains(action))
+            throw new IllegalArgumentException("지원하지 않는 위젯 클릭 동작입니다");
+        validateOption(config, "chartStyle", Set.of("line", "bar", "area"));
+        validateOption(config, "rangePreset", Set.of("last_1h", "last_6h", "last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month"));
+        validateOption(config, "window", Set.of("1m", "5m", "15m", "1h", "1d"));
+        validateOption(config, "seriesMode", Set.of("per_device", "sum", "by_phase", "by_path"));
+        if ("device".equals(action) || "rack".equals(action) || "page".equals(action)) {
+            Object target = config.get("target");
+            if (!(target instanceof Map<?, ?> map)) throw new IllegalArgumentException("클릭 이동 대상을 지정하세요");
+            if ("device".equals(action)) {
+                Object deviceId = map.get("deviceId");
+                if (!(deviceId instanceof Number number) || deviceRepository.findById(number.intValue()).isEmpty())
+                    throw new IllegalArgumentException("장비 상세 대상을 찾을 수 없습니다");
+            }
+            if ("page".equals(action)) {
+                Object pageCode = map.get("pageCode");
+                if (!(pageCode instanceof String code) || widgetSupport.findPageCode(code) == null)
+                    throw new IllegalArgumentException("페이지 이동 대상을 찾을 수 없습니다");
+            }
+            if ("rack".equals(action) && !(map.get("rackLocationCode") instanceof String code && !code.isBlank()))
+                throw new IllegalArgumentException("랙 상세 대상을 지정하세요");
+        }
+        Object pointNames = config.get("pointNames");
+        if (pointNames != null && !(pointNames instanceof List<?>)) throw new IllegalArgumentException("pointNames 형식이 올바르지 않습니다");
+        try {
+            PageWidget widget = widgetSupport.findWidget(id);
+            widget.changeClickConfig(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(config));
+            pageWidgetRepository.save(widget);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("클릭 설정을 저장할 수 없습니다", e);
+        }
+    }
+
+    private static void validateOption(Map<String, Object> config, String key, Set<String> allowed) {
+        Object value = config.get(key);
+        if (value != null && (!(value instanceof String text) || !allowed.contains(text)))
+            throw new IllegalArgumentException("지원하지 않는 위젯 클릭 설정: " + key);
     }
 
     private PageWidgetResponse updateWidgetContent(Integer id, PageWidgetUpdateRequest request) {
@@ -334,6 +392,12 @@ public class PageWidgetQueryService {
         PageWidget widget = widgetSupport.findWidget(id);
         widget.changeVisualStyle(style);
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
+    }
+
+    @Transactional
+    public PageWidgetResponse setClickConfig(Integer id, Map<String, Object> config) {
+        persistClickConfig(id, config);
+        return PageWidgetResponse.from(widgetSupport.findWidget(id));
     }
 
     private PageWidgetResponse applyVisualStyle(PageWidgetResponse response, String style, String color) {

@@ -46,6 +46,15 @@ public class PageWidgetController {
             @jakarta.validation.constraints.NotBlank String rangePreset,
             @jakarta.validation.constraints.NotBlank String window) {}
 
+    public record ClickConfigRequest(java.util.Map<String, Object> clickConfig) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{id}/click-config")
+    public ResponseEntity<ApiResponse<PageWidgetResponse>> setClickConfig(
+            @PathVariable Integer id, @RequestBody ClickConfigRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(pageWidgetQueryService.setClickConfig(id, request.clickConfig())));
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/trend-defaults")
     @org.springframework.transaction.annotation.Transactional

@@ -69,6 +69,13 @@ public class PageWidget extends BaseEntity {
     @Column(name = "trend_window", nullable = false, length = 8)
     private String trendWindow = "15m";
 
+    @Column(name = "click_config", columnDefinition = "TEXT")
+    private String clickConfig;
+
+    public void changeClickConfig(String value) {
+        this.clickConfig = value;
+    }
+
     public void changeTrendDefaults(String rangePreset, String window) {
         if (!Set.of("last_1h", "last_6h", "last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month").contains(rangePreset)) {
             throw new IllegalArgumentException("지원하지 않는 상세 차트 기간입니다");
@@ -78,6 +85,8 @@ public class PageWidget extends BaseEntity {
         }
         this.trendRangePreset = rangePreset;
         this.trendWindow = window;
+        this.clickConfig = "{\"action\":\"chart\",\"rangePreset\":\"" + rangePreset
+                + "\",\"window\":\"" + window + "\"}";
     }
 
     @Column(name = "table_columns_json", columnDefinition = "TEXT")

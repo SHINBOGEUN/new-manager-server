@@ -87,10 +87,6 @@ public class ChartQueryService {
         List<String> queryPointNames = pointNames;
         ChartPointContext pointContext = buildPointContext(devices, pointNames);
         ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames);
-        if (unitContext.units().size() > 2) {
-            throw new IllegalArgumentException("chart supports at most two units, but found: "
-                    + String.join(", ", unitContext.units()));
-        }
         if (unitContext.units().size() > 1 && mode != PageWidgetChartSeriesMode.per_device) {
             throw new IllegalArgumentException(
                     "two-unit charts support only per_device series mode; select per_device to avoid summing different units");

@@ -39,8 +39,11 @@ public record PageWidgetResponse(
         List<Integer> deviceGroupIds,
         List<Integer> modelIds,
         List<String> pointNames,
-        PageWidgetLayoutResponse layout
+        PageWidgetLayoutResponse layout,
+        java.util.Map<String, Object> clickConfig
 ) {
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
 
     public static PageWidgetResponse from(PageWidget widget) {
         return new PageWidgetResponse(
@@ -93,7 +96,34 @@ public record PageWidgetResponse(
                 widget.deviceGroupIds(),
                 widget.modelIds(),
                 widget.pointNames(),
-                PageWidgetLayoutResponse.from(widget.getLayout())
+                PageWidgetLayoutResponse.from(widget.getLayout()),
+                resolveClickConfig(widget)
         );
+    }
+
+    private static java.util.Map<String, Object> resolveClickConfig(PageWidget widget) {
+        if (widget.getClickConfig() != null && !widget.getClickConfig().isBlank()) {
+            try {
+                return JSON.readValue(widget.getClickConfig(), new com.fasterxml.jackson.core.type.TypeReference<>() {});
+            } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+                // A malformed legacy value falls back to the safe per-kind default.
+            }
+        }
+        java.util.Map<String, Object> config = new java.util.LinkedHashMap<>();
+        String kind = widget.getQueryKind().name();
+        if ("count".equals(kind) || "cctv".equals(kind)) {
+            config.put("action", "none");
+            return config;
+        }
+        config.put("action", "chart");
+        config.put("chartStyle", "aggregate".equals(kind) ? "bar" : "line");
+        String range = "aggregate".equals(kind) && widget.getAggregateRangePreset() != null
+                ? widget.getAggregateRangePreset().name()
+                : widget.getTrendRangePreset();
+        config.put("rangePreset", range == null ? "last_3d" : range);
+        config.put("window", widget.getTrendWindow() == null ? "15m" : widget.getTrendWindow());
+        config.put("seriesMode", widget.getChartSeriesMode() == null ? "per_device" : widget.getChartSeriesMode().name());
+        config.put("pointNames", widget.pointNames() == null ? java.util.List.of() : widget.pointNames());
+        return config;
     }
 }

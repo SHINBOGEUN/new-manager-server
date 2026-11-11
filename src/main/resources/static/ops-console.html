@@ -3049,13 +3049,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <div class="muted" style="align-self:end;font-size:12px;padding-bottom:8px">기준을 넘은 값은 수집 지연으로 표시됩니다.</div>
           </div>
           <div id="wTrendDefaults" class="fields" data-widget-stage="3" style="margin-top:14px">
+            <label class="field">클릭 시
+              <select id="wClickAction"><option value="chart">차트 팝업</option><option value="device">장비 상세</option><option value="rack">랙 상세</option><option value="page">페이지 이동</option><option value="none">없음</option></select>
+            </label>
+            <label class="field">이동 대상<input id="wClickTarget" placeholder="장비 ID, 랙 위치 코드 또는 페이지 코드" /></label>
+            <label class="field">차트 형태
+              <select id="wTrendStyle"><option value="line">선</option><option value="bar">막대</option><option value="area">영역</option></select>
+            </label>
             <label class="field">상세 차트 기본 기간
               <select id="wTrendRange"><option value="last_3d">최근 3일</option><option value="last_24h">최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option><option value="last_month">지난 달</option></select>
             </label>
             <label class="field">상세 차트 집계 간격
               <select id="wTrendWindow"><option value="1m">1분</option><option value="5m">5분</option><option value="15m" selected>15분</option><option value="1h">1시간</option><option value="1d">1일</option></select>
             </label>
-            <div class="muted full">위젯을 눌러 여는 상세 차트에 적용됩니다.</div>
+            <label class="field">상세 차트 묶음
+              <select id="wClickSeries"><option value="per_device">장비별</option><option value="sum">합계</option><option value="by_phase">상별</option><option value="by_path">위치별</option></select>
+            </label>
+            <div class="muted full">클릭 동작과 차트 기본값입니다. 팝업 안에서 바꾼 값은 저장하지 않습니다.</div>
           </div>
           <div class="widget-review" id="wReview" data-widget-stage="3" aria-live="polite"></div>
           <section class="widget-page-preview" data-widget-stage="3" aria-label="페이지 화면 미리보기">
@@ -4509,6 +4519,23 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const code = String(event.data.rackLocationCode || "").trim();
         if (!code) return;
         openRackFromScene(code).catch((error) => toast(`랙 상세 조회 실패: ${error.message}`, true));
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:open-device") {
+        const deviceId = Number(event.data.deviceId);
+        if (!Number.isSafeInteger(deviceId) || deviceId <= 0) return;
+        api(`/api/manager/devices/${deviceId}`).then((device) => {
+          goTab("devices");
+          openDeviceDetail(device);
+        }).catch((error) => toast(`장비 상세 조회 실패: ${error.message}`, true));
+        return;
+      }
+      if (event.data?.type === "dcim:dashboard:open-page") {
+        const pageCode = String(event.data.pageCode || "").toLowerCase();
+        const tab = ({ dashboard: "dashboard-page", environment: "environment-page", cooling: "cooling-page" })[pageCode]
+          || [...state.dynamicPageTabs.keys()].find((key) => key.toLowerCase() === pageCode);
+        if (tab) goTab(tab);
+        else toast("이동할 페이지를 찾을 수 없습니다.", true);
         return;
       }
       if (event.data?.type === "dcim:dashboard:page-device-settings") {
@@ -12876,6 +12903,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("wDataFreshnessMinutes").value = "15";
       $("wTrendRange").value = "last_3d";
       $("wTrendWindow").value = "15m";
+      $("wClickAction").value = "chart";
+      $("wTrendStyle").value = "line";
+      $("wClickSeries").value = "per_device";
+      $("wClickTarget").value = "";
       $("wPueDefinition").value = "";
       $("wOp").value = "";
       if ($("wAggRangePreset")) $("wAggRangePreset").value = "today";
@@ -12919,6 +12950,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wName").value = w.name || "";
         $("wTrendRange").value = w.trendRangePreset || "last_3d";
         $("wTrendWindow").value = w.trendWindow || "15m";
+        $("wClickAction").value = w.clickConfig?.action || "chart";
+        $("wTrendStyle").value = w.clickConfig?.chartStyle || "line";
+        $("wClickSeries").value = w.clickConfig?.seriesMode || w.chartSeriesMode || "per_device";
+        $("wClickTarget").value = w.clickConfig?.target?.deviceId || w.clickConfig?.target?.rackLocationCode || w.clickConfig?.target?.pageCode || "";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
         setWidgetVisualStyle(w.visualStyle || "classic");
@@ -13738,9 +13773,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     async function saveWidgetTrendDefaults(widget) {
       try {
-        await api(`/api/manager/widgets/${widget.id}/trend-defaults`, {
+        await api(`/api/manager/widgets/${widget.id}/click-config`, {
           method: "PATCH",
-          body: JSON.stringify({ rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value }),
+          body: JSON.stringify({ clickConfig: (() => {
+            const action = $("wClickAction")?.value || "chart";
+            const rawTarget = $("wClickTarget")?.value.trim();
+            const config = { action, chartStyle: $("wTrendStyle")?.value || "line",
+              rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value,
+              seriesMode: $("wClickSeries")?.value || "per_device" };
+            if (action === "device") config.target = { deviceId: Number(rawTarget) };
+            if (action === "rack") config.target = { rackLocationCode: rawTarget };
+            if (action === "page") config.target = { pageCode: rawTarget };
+            return config;
+          })()}),
         });
       } catch (error) {
         state.editingWidgetId = widget.id;

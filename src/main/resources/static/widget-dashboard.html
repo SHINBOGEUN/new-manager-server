@@ -1060,7 +1060,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <button type="button" id="trendModalClose" aria-label="닫기">×</button>
       </div>
       <div id="trendModalMeta" class="trend-dialog-meta">최근 3일 데이터를 불러오는 중…</div>
-      <div class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
+      <div id="trendModalCharts" class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
     </div>
   </div>
   <div id="loginModal" class="login-modal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
@@ -3040,7 +3040,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
     }
 
-    function createChartInstance(canvas, data) {
+    function createChartInstance(canvas, data, chartStyle = "line") {
       if (typeof Chart === "undefined" || !data || data.error || !canvas) return null;
       const series = data.series || [];
       if (!series.length) return null;
@@ -3067,7 +3067,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           }),
           borderColor: color,
           backgroundColor: color + "33",
-          fill: series.length === 1,
+          fill: chartStyle === "area" || series.length === 1,
           tension: 0.25,
           pointRadius: times.length > 80 ? 0 : 2,
           borderWidth: 2,
@@ -3077,7 +3077,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
 
       const chart = new Chart(canvas, {
-        type: "line",
+        type: chartStyle === "bar" ? "bar" : "line",
         data: { labels, datasets },
         options: {
           animation: false,
@@ -3142,37 +3142,69 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
         state.trendModalChart = null;
       }
+      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
+      state.trendModalCharts = [];
     }
 
-    async function openTrendModal(widgetId) {
-      if (state.editMode) return;
-      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-      if (!widget) return;
-      if (widget.queryKind === "calculated") {
-        return openPueTrendModal(widgetId);
-      }
-      if (widget.queryKind === "count") return;
-      const range = widget.trendRangePreset || "last_3d";
-      const windowSize = widget.trendWindow || "15m";
-      const data = widget.queryKind === "chart"
-        ? await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: "per_device" })
-        : await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
-      if (data.error) throw new Error(data.error);
-      if (!(data.series || []).some((series) => (series.values || []).length)) {
-        log(`trend skipped #${widget.id}: Influx 시계열 데이터 없음`);
+    async function openWidgetDetail(widget) {
+      if (state.editMode || !widget) return;
+      const config = widget.clickConfig || { action: ["count", "cctv"].includes(widget.queryKind) ? "none" : "chart" };
+      const target = config.target || {};
+      if (config.action === "none") return;
+      if (["device", "rack", "page"].includes(config.action)) {
+        const type = config.action === "rack" ? "dcim:dashboard:open-rack"
+          : config.action === "device" ? "dcim:dashboard:open-device" : "dcim:dashboard:open-page";
+        window.parent.postMessage({ type, ...target }, location.origin);
         return;
       }
+      if (config.action !== "chart") return;
       const modal = $("trendModal");
-      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      if (state.trendModalChart) {
-        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
-        state.trendModalChart = null;
+      const dialog = modal.querySelector(".trend-dialog");
+      let controls = $("trendModalControls");
+      if (!controls) {
+        controls = document.createElement("div"); controls.id = "trendModalControls";
+        controls.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin:10px 0";
+        const select = (id, values) => { const el = document.createElement("select"); el.id = id; values.forEach(([v,l]) => { const o=document.createElement("option");o.value=v;o.textContent=l;el.append(o); }); controls.append(el); return el; };
+        select("detailRange", [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]]);
+        select("detailWindow", [["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]]);
+        select("detailSeries", [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]]);
+        select("detailStyle", [["line","선"],["bar","막대"],["area","영역"]]);
+        dialog.insertBefore(controls, dialog.querySelector(".trend-dialog-chart"));
+        controls.addEventListener("change", () => renderWidgetDetailChart(state.detailWidget, state.detailConfig).catch((e) => { $("trendModalMeta").textContent = e.message; }));
       }
+      state.detailWidget = widget;
+      state.detailConfig = config;
+      $("trendModalTitle").textContent = `${widget.name} 상세`;
+      $("detailRange").value = config.rangePreset || widget.trendRangePreset || "last_3d";
+      $("detailWindow").value = config.window || widget.trendWindow || "15m";
+      $("detailSeries").value = config.seriesMode || widget.chartSeriesMode || "per_device";
+      $("detailStyle").value = config.chartStyle || "line";
+      modal.classList.add("open");
+      await renderWidgetDetailChart(widget, config);
+    }
+
+    async function renderWidgetDetailChart(widget, config) {
+      const range = $("detailRange").value, windowSize = $("detailWindow").value;
+      let data;
+      if (widget.queryKind === "chart") data = await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: $("detailSeries").value });
+      else if (widget.queryKind === "calculated") data = pueTrendChartData(await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`));
+      else data = await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
+      if (data.error) throw new Error(data.error);
+      if (state.trendModalChart) { try { state.trendModalChart.destroy(); } catch (_) {} state.trendModalChart = null; }
+      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
+      state.trendModalCharts = [];
+      const hasData = (data.series || []).some((series) => (series.values || series.data || []).some((v) => v != null));
+      if (!hasData) { $("trendModalMeta").textContent = "이 기간에 데이터가 없습니다 · 기간 바꾸기"; return; }
       const units = data.units || (data.unit ? [data.unit] : []);
       $("trendModalMeta").textContent = [trendRangeLabel(range), trendWindowLabel(windowSize) + " 평균", ...units].filter(Boolean).join(" · ");
-      modal.classList.add("open");
-      state.trendModalChart = createChartInstance($("trendModalCanvas"), data);
-      if (!state.trendModalChart) closeTrendModal();
+      const container = $("trendModalCharts"), groups = data.unitGroups || [];
+      if (groups.length > 2) {
+        container.innerHTML = groups.map((group, index) => `<section class="trend-unit-group"><strong>${escapeHtml(group.unit || "단위 없음")}</strong><div style="height:280px"><canvas id="trendModalCanvas${index}"></canvas></div></section>`).join("");
+        state.trendModalCharts = groups.map((group, index) => createChartInstance($(`trendModalCanvas${index}`), { ...data, unit: group.unit, units: [group.unit], series: group.series }, $("detailStyle").value)).filter(Boolean);
+      } else {
+        container.innerHTML = '<canvas id="trendModalCanvas"></canvas>';
+        state.trendModalChart = createChartInstance($("trendModalCanvas"), data, $("detailStyle").value);
+      }
     }
 
     function pueTrendChartData(data) {
@@ -3185,28 +3217,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
     }
 
-    async function openPueTrendModal(widgetId) {
-      if (state.editMode) return;
-      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-      if (!widget || widget.queryKind !== "calculated") return;
-      const range = widget.trendRangePreset || "last_3d";
-      const windowSize = widget.trendWindow || "15m";
-      const data = await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
-      if (!data.trend?.length) {
-        log(`trend skipped #${widget.id}: 최근 3일 계산 결과 없음`);
-        return;
-      }
-      const modal = $("trendModal");
-      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      if (state.trendModalChart) {
-        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
-        state.trendModalChart = null;
-      }
-      $("trendModalMeta").textContent = `${trendRangeLabel(range)} · ${trendWindowLabel(windowSize)} 평균 · ${data.unit || "값"}`;
-      modal.classList.add("open");
-      state.trendModalChart = createChartInstance($("trendModalCanvas"), pueTrendChartData(data));
-    }
-
     function trendRangeLabel(range) {
       return ({last_24h:"최근 24시간", today:"오늘", yesterday:"어제", last_3d:"최근 3일", last_7d:"최근 7일", this_month:"이번 달", last_month:"지난 달"})[range] || range;
     }
@@ -3215,26 +3225,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return ({"1m":"1분", "5m":"5분", "15m":"15분", "1h":"1시간", "1d":"1일"})[windowSize] || windowSize;
     }
 
-    function trendAvailability(widget) {
-      if (widget.queryKind === "last") {
-        const points = (state.lastByWidget.get(widget.id)?.devices || []).flatMap((device) => device.points || [])
-          .filter((point) => point.value != null);
-        const units = new Set(points.map((point) => point.unit || "(단위 없음)"));
-        return points.length > 0 && units.size <= 2;
-      }
-      if (widget.queryKind === "aggregate") {
-        const data = state.aggregateByWidget.get(widget.id);
-        return !!data && (data.devices || []).some((device) => device.value != null) && !!data.unit;
-      }
-      if (widget.queryKind === "chart") {
-        const data = state.chartByWidget.get(widget.id);
-        const units = data?.units || (data?.unit ? [data.unit] : []);
-        return units.length <= 2 && (data?.series || []).some((series) => (series.values || []).length);
-      }
-      if (widget.queryKind === "calculated") return state.pueByWidget.get(widget.id)?.value != null;
-      if (widget.queryKind === "psychrometric") return psychrometricPoints(state.psychrometricByWidget.get(widget.id)).length > 0;
-      if (widget.queryKind === "power_distribution") return state.powerDistributionByWidget.get(widget.id)?.totalPowerW != null;
-      return false;
+    function widgetClickEnabled(widget) {
+      const action = widget.clickConfig?.action || (["count", "cctv"].includes(widget.queryKind) ? "none" : "chart");
+      return action !== "none";
     }
 
     function saturationPressureKpa(temperature) {
@@ -3527,8 +3520,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           body = `<div class="empty">위젯을 표시하지 못했습니다. ${escapeHtml(error.message || "화면을 새로고침해 주세요.")}</div>`;
           cardClass = "card";
         }
-        const trendAvailable = trendAvailability(w);
-        if (trendAvailable) cardClass += " trend-card trend-available";
+        const clickEnabled = widgetClickEnabled(w);
+        if (clickEnabled) cardClass += " trend-card trend-available";
         const chartHeadTools = w.queryKind === "chart"
           ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
           : "";
@@ -3541,7 +3534,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 <div class="sub" title="${escapeHtml(w.queryKind)}">${escapeHtml(widgetKindLabel(w.queryKind))}${subExtra}<span class="layout-meta"> · (${layout.gridX},${layout.gridY}) ${layout.w}×${layout.h}</span></div>
                 ${renderDataStatus(dataStatus)}
               </div>
-              ${chartHeadTools}
+              ${chartHeadTools}${clickEnabled ? '<span class="widget-click-indicator" title="클릭 동작">↗</span>' : ''}
             </div>
             <div class="card-body">${body}</div>
             <div class="resize-handle resize-n" data-resize="n" title="위쪽 크기 조절"></div>
@@ -3619,7 +3612,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("board").querySelectorAll(".trend-available").forEach((card) => {
         card.addEventListener("click", (event) => {
           if (state.editMode || event.target.closest("select, button, .resize-handle, details, summary")) return;
-          openTrendModal(Number(card.dataset.widgetId)).catch((error) => {
+          const widget = state.widgets.find((item) => Number(item.id) === Number(card.dataset.widgetId));
+          openWidgetDetail(widget).catch((error) => {
             $("trendModalMeta").textContent = error.message || "트렌드 조회 실패";
           });
         });
