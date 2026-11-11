@@ -658,6 +658,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .scene-summary-item b { color:#e7f7ff; font-size:13px; }
     .scene-summary-item.is-alert b { color:#ff9ba8; }
     .scene-summary-item.is-ok b { color:#75d9ad; }
+    button.scene-summary-item { font:inherit; cursor:pointer; }
+    .scene-problem-details { flex-basis:100%; max-height:210px; overflow:auto; padding:8px 12px; border:1px solid #304b60; border-radius:8px; background:#0e1a27; color:#c8d5e3; font-size:12px; }
+    .scene-problem-details ul { margin:0; padding-left:18px; }
+    .scene-problem-details li + li { margin-top:5px; }
+    .scene-problem-badge { max-width:min(280px,60vw); cursor:help; }
     .page-scene-nav .page-edit-icon { min-height:36px; padding:7px 12px; border-color:var(--accent); color:#dff5ff; background:#173b50; font-size:12px; font-weight:650; white-space:nowrap; }
     .page-scene-nav .page-edit-icon:hover { background:#204c63; }
     .page-device-data-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; padding:12px; }
@@ -1604,7 +1609,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     const sceneSummaryCache = new Map();
-    let sceneProblemDeviceIds = [];
+    let sceneProblemDevices = [];
     let sceneProblemPageCode = '';
     async function populateSceneSummary(page, devices, element) {
       const code = String(page.pageCode || '');
@@ -1633,22 +1638,47 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!element.isConnected) return;
       const rows = status.status === 'fulfilled' && Array.isArray(status.value?.devices) ? status.value.devices : null;
       const statusById = new Map();
-      if (rows) rows.forEach(row => statusById.set(Number(row.deviceId), row.status));
+      if (rows) rows.forEach(row => statusById.set(Number(row.deviceId), row));
+      const alarmById = new Map();
+      if (alarm.status === 'fulfilled' && Array.isArray(alarm.value?.devices)) {
+        alarm.value.devices.forEach(row => alarmById.set(Number(row.deviceId), row));
+      }
       const affected = new Set(alarm.status === 'fulfilled' && Array.isArray(alarm.value?.deviceIds) ? alarm.value.deviceIds.map(Number) : []);
-      if (rows) for (const id of ids) if (['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusById.get(id))) affected.add(id);
+      if (rows) for (const id of ids) if (['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusById.get(id)?.status)) affected.add(id);
       const unknown = !rows || ids.some(id => !statusById.has(id));
       const partial = incomplete || unknown || alarm.status !== 'fulfilled';
-      sceneProblemDeviceIds = [...affected];
-      state.pageScene3dApi?.setProblemDevices?.(sceneProblemDeviceIds);
+      sceneProblemDevices = [...affected].map((deviceId) => {
+        const alarmInfo = alarmById.get(deviceId), statusInfo = statusById.get(deviceId), reasons = [];
+        if (alarmInfo) {
+          const latest = alarmInfo.latest || {};
+          const severity = latest.severity || alarmInfo.worstSeverity || 'WARNING';
+          const severityLabel = severity === 'CRITICAL' || severity === 'DANGER' ? '위험 알람' : '주의 알람';
+          const latestText = latest.pointName
+            ? ` · 최근 ${latest.pointName} ${formatValue(latest.value)}${latest.unit ? ' ' + latest.unit : ''}${latest.operator ? ' ' + latest.operator : ' ≥'}${latest.threshold == null ? '' : ' ' + formatValue(latest.threshold) + (latest.unit ? ' ' + latest.unit : '')}`
+            : '';
+          const time = latest.occurredAt ? ` (${new Date(latest.occurredAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})})` : '';
+          reasons.push({kind:'ALARM', severity, text:`미복구 알람 ${alarmInfo.openCount}건 · ${severityLabel}${latestText}${time}`, time:latest.occurredAt || null});
+        }
+        if (statusInfo && ['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusInfo.status)) {
+          const time = statusInfo.latestCollectedAt ? ` · 마지막 수집 ${new Date(statusInfo.latestCollectedAt).toLocaleString('ko-KR')}` : '';
+          reasons.push({kind:'COLLECTION', severity:'COLLECTION', text:`${statusInfo.statusMessage || statusInfo.status || '수집 문제'}${time}`, time:statusInfo.latestCollectedAt || null});
+        }
+        const name = statusInfo?.deviceName || alarmInfo?.deviceName || `장비 #${deviceId}`;
+        return {deviceId, deviceName:name, reasons};
+      });
+      state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
       const countText = `${ids.length}대${incomplete ? ' 이상' : ''}`;
       const problemText = `${affected.size}대${partial ? ' · 일부 확인 불가' : ''}`;
-      element.innerHTML = `<span class="scene-summary-item"><span>연결된 장비</span><b>${escapeHtml(countText)}</b></span><span class="scene-summary-item ${affected.size ? 'is-alert' : !partial ? 'is-ok' : ''}"><span>문제 장비</span><b>${escapeHtml(problemText)}</b></span>`;
+      const list = sceneProblemDevices.map(problem => `<li><b>${escapeHtml(problem.deviceName)}</b> · ${escapeHtml(problem.reasons.map(reason => reason.text).join(' / '))}</li>`).join('');
+      element.innerHTML = `<span class="scene-summary-item"><span>연결된 장비</span><b>${escapeHtml(countText)}</b></span><button type="button" class="scene-summary-item scene-problem-toggle ${affected.size ? 'is-alert' : !partial ? 'is-ok' : ''}" aria-expanded="false"><span>문제 장비</span><b>${escapeHtml(problemText)}</b></button><div class="scene-problem-details" hidden><ul>${list || '<li>문제 장비가 없습니다.</li>'}</ul></div>`;
+      const toggle = element.querySelector('.scene-problem-toggle'), details = element.querySelector('.scene-problem-details');
+      toggle?.addEventListener('click', () => { const expanded = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(expanded)); details.hidden = !expanded; });
     }
 
     function createSceneHeader(page, modeLabel, devices) {
       const head = document.createElement("div"); head.className = "page-visualization-head";
       if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
-        if (sceneProblemPageCode !== page.pageCode) { sceneProblemDeviceIds = []; sceneProblemPageCode = page.pageCode; }
+        if (sceneProblemPageCode !== page.pageCode) { sceneProblemDevices = []; sceneProblemPageCode = page.pageCode; }
         const summary = document.createElement('div'); summary.className = 'scene-summary'; summary.setAttribute('aria-label', '페이지 장비 요약');
         summary.innerHTML = `<span class="scene-summary-item">연결 상태 조회 중…</span>`;
         head.append(summary);
@@ -1952,6 +1982,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             onLockedRack: () => {
               window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
             },
+            onProblemDeviceClick: (problem) => {
+              if (problem?.deviceId) window.parent.postMessage({ type: "dcim:dashboard:open-device", deviceId: Number(problem.deviceId) }, location.origin);
+            },
             onDeviceLink: function openDeviceLink(host, forceConnection = false) {
               const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN";
               const key = findSceneItemKey(host), scene = state.pageScene3dApi;
@@ -2093,7 +2126,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               if (status) status.textContent = "선택한 설비에 장착할 장비를 고르세요.";
             },
           });
-          state.pageScene3dApi?.setProblemDevices?.(sceneProblemDeviceIds);
+          state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
           for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
             refreshSceneRack(code).catch((error) => console.warn("랙 배치 조회 실패", error));
           }
