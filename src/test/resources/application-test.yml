@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:mariadb://${MARIADB_HOST}:${MARIADB_PORT}/dcim_new
     username: ${DB_USER}

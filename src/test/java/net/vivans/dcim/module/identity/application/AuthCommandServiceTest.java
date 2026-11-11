@@ -53,8 +53,9 @@ class AuthCommandServiceTest {
 
     @Test
     void register_whenPublicRegistrationDisabled_firstAccountBecomesAdmin() {
-        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
         given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
+        given(jdbcTemplate.queryForList("SELECT id FROM users ORDER BY id LIMIT 1 FOR UPDATE", Integer.class)).willReturn(List.of());
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.findByUsername("admin")).willReturn(Optional.empty());
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -62,28 +63,30 @@ class AuthCommandServiceTest {
         UserResponse response = authCommandService.register("admin", "password123");
 
         assertThat(response.role()).isEqualTo("ADMIN");
-        InOrder order = inOrder(jdbcTemplate, userRepository);
-        order.verify(jdbcTemplate).queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
+        InOrder order = inOrder(userRepository, jdbcTemplate);
         order.verify(userRepository).findAllByOrderByUsernameAsc();
+        order.verify(jdbcTemplate).queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
+        order.verify(jdbcTemplate).queryForList("SELECT id FROM users ORDER BY id LIMIT 1 FOR UPDATE", Integer.class);
         assertThat(authCommandService.registrationPolicy().initialAdmin()).isTrue();
     }
 
     @Test
-    void register_whenPublicRegistrationDisabled_rejectsAfterFirstAccount() {
-        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
+    void register_whenPublicRegistrationDisabled_rejectsExistingUsersBeforeLocking() {
         given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of(User.createNew("admin", "encoded")));
 
         assertThatThrownBy(() -> authCommandService.register("intruder", "password123"))
                 .isInstanceOf(AccessDeniedException.class);
+        org.mockito.Mockito.verifyNoInteractions(jdbcTemplate);
         assertThat(authCommandService.registrationPolicy().open()).isFalse();
     }
 
     @Test
     void register_whenBootstrapLockMissing_failsClosed() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
         given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of());
         assertThatThrownBy(() -> authCommandService.register("admin", "password123"))
                 .isInstanceOf(IllegalStateException.class);
-        org.mockito.Mockito.verifyNoInteractions(userRepository);
+        verify(userRepository).findAllByOrderByUsernameAsc();
     }
 
     @Test

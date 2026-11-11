@@ -71,10 +71,18 @@ public class AuthCommandService {
     public UserResponse register(String username, String password) {
         UserRole role = UserRole.USER;
         if (!publicRegistrationEnabled) {
-            // The fixed row serializes bootstrap across instances until this transaction commits.
+            if (!userRepository.findAllByOrderByUsernameAsc().isEmpty()) {
+                throw new AccessDeniedException("회원가입이 꺼져 있습니다. 관리자에게 계정 생성을 요청하세요.");
+            }
+
+            // Only a first-user attempt needs serialization. This fixed row coordinates all Manager instances.
             var lockRows = jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
             if (lockRows.size() != 1) throw new IllegalStateException("Initial administrator lock row is missing");
-            if (!userRepository.findAllByOrderByUsernameAsc().isEmpty()) {
+
+            // Locking reads see the latest committed state even if the first query established an older snapshot.
+            var usersAfterLock = jdbcTemplate.queryForList(
+                    "SELECT id FROM users ORDER BY id LIMIT 1 FOR UPDATE", Integer.class);
+            if (!usersAfterLock.isEmpty()) {
                 throw new AccessDeniedException("회원가입이 꺼져 있습니다. 관리자에게 계정 생성을 요청하세요.");
             }
             role = UserRole.ADMIN;
