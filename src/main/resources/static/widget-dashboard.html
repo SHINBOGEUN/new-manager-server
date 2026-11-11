@@ -663,6 +663,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .scene-problem-details ul { margin:0; padding-left:18px; }
     .scene-problem-details li + li { margin-top:5px; }
     .scene-problem-badge { max-width:min(280px,60vw); cursor:help; }
+    .scene-view-toggle { display:inline-flex; gap:2px; padding:3px; border:1px solid #35536a; border-radius:9px; background:#0d1c29; }
+    .scene-view-toggle button { min-height:30px; padding:4px 11px; border:0; border-radius:6px; background:transparent; color:#a8bfd0; font-size:12px; cursor:pointer; }
+    .scene-view-toggle button[aria-pressed="true"] { background:#1b4a62; color:#effaff; font-weight:700; }
     .page-scene-nav .page-edit-icon { min-height:36px; padding:7px 12px; border-color:var(--accent); color:#dff5ff; background:#173b50; font-size:12px; font-weight:650; white-space:nowrap; }
     .page-scene-nav .page-edit-icon:hover { background:#204c63; }
     .page-device-data-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; padding:12px; }
@@ -1686,6 +1689,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       }
       const tools = document.createElement("div"); tools.className = "page-scene-nav";
       tools.style.marginLeft = "auto";
+      if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
+        const toggle = document.createElement("div"); toggle.className = "scene-view-toggle"; toggle.setAttribute("role", "group"); toggle.setAttribute("aria-label", "도면 보기 방식");
+        for (const [value, label] of [["PLAN_2D", "2D"], ["SCENE_3D", "3D"]]) {
+          const button = document.createElement("button"); button.type = "button"; button.textContent = label;
+          button.setAttribute("aria-pressed", String(page.viewMode === value));
+          button.onclick = () => {
+            try { localStorage.setItem(`dcim:page-scene-view:${page.pageCode}`, value); } catch (_) {}
+            renderPageVisualization();
+          };
+          toggle.appendChild(button);
+        }
+        head.append(toggle);
+      }
 
       if (consoleAuth()?.getRole?.() === "ADMIN") {
         if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
@@ -1866,7 +1882,16 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         root.innerHTML = `<div class="page-layout-empty">페이지 장면을 불러오지 못했습니다: ${escapeHtml(state.pageVisualizationError)}</div>`; root.after(board); return;
       }
       if (!page) { root.innerHTML = '<div class="page-layout-empty">페이지 데이터를 불러오는 중입니다.</div>'; root.after(board); return; }
-      const mode = page.viewMode || "DATA", devices = page.devices || [], items = page.items || [];
+      const savedMode = page.viewMode || "DATA";
+      let mode = savedMode;
+      if (savedMode === "PLAN_2D" || savedMode === "SCENE_3D") {
+        try {
+          const localMode = localStorage.getItem(`dcim:page-scene-view:${page.pageCode}`);
+          if (localMode === "PLAN_2D" || localMode === "SCENE_3D") mode = localMode;
+        } catch (_) {}
+      }
+      const visiblePage = mode === savedMode ? page : { ...page, viewMode: mode };
+      const devices = page.devices || [], items = page.items || [];
       document.body.classList.toggle("page-scene-fullscreen", mode === "PLAN_2D" || mode === "SCENE_3D");
       [...root.children].forEach((child) => { if (child !== board) child.remove(); });
       if (mode === "DATA") {
@@ -1879,7 +1904,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       root.classList.remove("widget-page-controls");
 
       const stage = document.createElement("div"); stage.className = `page-layout-stage scene-${mode === "SCENE_3D" ? "3d" : "2d"}`;
-      root.append(createSceneHeader(page, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices), stage);
+      root.append(createSceneHeader(visiblePage, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices), stage);
       const viewport = document.createElement("div"); viewport.className = "page-scene-webgl"; stage.append(viewport);
       let sceneEditor = null;
       const updateSceneEditorLists = (nextItems = items) => {
@@ -1962,7 +1987,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       if (window.DcimRoomScene3D?.mount) {
         try {
-          state.pageScene3dApi = window.DcimRoomScene3D.mount(viewport, page, {
+          state.pageScene3dApi = window.DcimRoomScene3D.mount(viewport, visiblePage, {
             editing: state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN",
             canBuild: consoleAuth()?.getRole?.() === "ADMIN",
             onBuildModeToggle: () => {
