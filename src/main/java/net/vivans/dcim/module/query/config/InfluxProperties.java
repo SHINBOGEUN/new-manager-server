@@ -10,7 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class InfluxProperties {
 
     private boolean enabled;
-    private String url = "http://localhost:8086";
+    /** 프로필 설정(INFLUX_URL)에서만 정한다. */
+    private String url;
     private String token = "";
     private String org = "vivans";
     private String bucket = "dcim";

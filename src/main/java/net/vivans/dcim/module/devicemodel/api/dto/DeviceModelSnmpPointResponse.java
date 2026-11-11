@@ -17,7 +17,8 @@ public record DeviceModelSnmpPointResponse(
         String oid,
         boolean requiresInstance,
         Double scale,
-        boolean enabled
+        boolean enabled,
+        String phase
 ) {
 
     public static DeviceModelSnmpPointResponse from(DeviceModelSnmpPoint point) {
@@ -36,7 +37,8 @@ public record DeviceModelSnmpPointResponse(
                 point.getOid(),
                 point.isRequiresInstance(),
                 point.getScale(),
-                point.isEnabled()
+                point.isEnabled(),
+                point.getPhase() == null ? null : point.getPhase().getCode()
         );
     }
 }

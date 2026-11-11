@@ -5,7 +5,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RackWidgetValidationTest {
-    private final DeviceMeasurementSourceCatalog.Source available = new DeviceMeasurementSourceCatalog.Source(8, "PDU", 1, "snmp", "WATT", "W", null, 8, "MODEL_POINT", false);
+    private final DeviceMeasurementSourceCatalog.Source available = new DeviceMeasurementSourceCatalog.Source(8, "PDU", 1, "snmp", "WATT", "W", "POWER", 8, "MODEL_POINT", false, 1, false, null);
     private RackWidgetService.Widget widget(RackWidgetService.Source source) {
         return new RackWidgetService.Widget("전력", "VALUE", 1, List.of(source));
     }
@@ -21,7 +21,7 @@ class RackWidgetValidationTest {
         assertDoesNotThrow(() -> RackWidgetService.validateWidgets(List.of(), List.of()));
     }
     @Test void validatesPowerSourcesAndIntervals() {
-        var other = new DeviceMeasurementSourceCatalog.Source(9, "PDU B", 1, "snmp", "WATT", "W", null, 9, "MODEL_POINT", false);
+        var other = new DeviceMeasurementSourceCatalog.Source(9, "PDU B", 1, "snmp", "WATT", "W", "POWER", 9, "MODEL_POINT", false, 1, false, null);
         var a = new RackWidgetService.Source(8, "WATT", "snmp");
         var b = new RackWidgetService.Source(9, "WATT", "snmp");
         var valid = List.of(available, other);
@@ -40,7 +40,8 @@ class RackWidgetValidationTest {
         var definitions = new java.util.ArrayList<DeviceMeasurementSourceCatalog.Source>();
         var chosen = new java.util.ArrayList<RackWidgetService.Source>();
         for (int device : List.of(8, 9)) for (String point : List.of("L1_AMP", "L2_AMP", "L3_AMP")) {
-            definitions.add(new DeviceMeasurementSourceCatalog.Source(device, "PDU", 1, "snmp", point, "A", null, device, "MODEL_POINT", false));
+            String phase = point.startsWith("L1_") ? "P1" : point.startsWith("L2_") ? "P2" : "P3";
+            definitions.add(new DeviceMeasurementSourceCatalog.Source(device, "PDU", 1, "snmp", point, "A", "CURRENT", device, "MODEL_POINT", false, 2, false, phase));
             chosen.add(new RackWidgetService.Source(device, point, "snmp"));
         }
         assertDoesNotThrow(() -> RackWidgetService.validateWidgets(List.of(new RackWidgetService.Widget("상별", "PHASE_BALANCE", 2, chosen)), definitions));
@@ -76,10 +77,23 @@ class RackWidgetValidationTest {
         var path = new RackWidgetService.Widget("경로", "PATH_BALANCE", 1, List.of(a,b));
         var aDevice = new RackWidgetService.RackWidgetDevice(8,"A PDU","model","PDU","A","A",false);
         var bDevice = new RackWidgetService.RackWidgetDevice(9,"B PDU","model","PDU","B","B",true);
-        assertDoesNotThrow(() -> RackWidgetService.validateRackAssignments(List.of(path), java.util.Map.of(8,aDevice,9,bDevice)));
-        assertThrows(IllegalArgumentException.class, () -> RackWidgetService.validateRackAssignments(List.of(path), java.util.Map.of(8,bDevice,9,aDevice)));
+        var service = new RackWidgetService(null, null, null, null, null);
+        assertDoesNotThrow(() -> service.validateRackAssignments(List.of(path), java.util.Map.of(8,aDevice,9,bDevice)));
+        assertThrows(IllegalArgumentException.class, () -> service.validateRackAssignments(List.of(path), java.util.Map.of(8,bDevice,9,aDevice)));
         var phase = new RackWidgetService.Widget("상", "PHASE_BALANCE", 1, List.of(a,a,a));
-        assertThrows(IllegalArgumentException.class, () -> RackWidgetService.validateRackAssignments(List.of(phase), java.util.Map.of(8,aDevice)));
+        assertThrows(IllegalArgumentException.class, () -> service.validateRackAssignments(List.of(phase), java.util.Map.of(8,aDevice)));
+    }
+    @Test void powerDeviceTypesAndPathsComeFromConfiguration() {
+        var a = new RackWidgetService.Source(8,"WATT","snmp");
+        var b = new RackWidgetService.Source(9,"WATT","snmp");
+        var path = new RackWidgetService.Widget("경로", "PATH_BALANCE", 1, List.of(a,b));
+        var left = new RackWidgetService.RackWidgetDevice(8,"Busway L","model","BUSWAY","L","L",false);
+        var right = new RackWidgetService.RackWidgetDevice(9,"Busway R","model","BUSWAY","R","R",false);
+        var service = new RackWidgetService(null, null, null, null, null);
+        assertThrows(IllegalArgumentException.class, () -> service.validateRackAssignments(List.of(path), java.util.Map.of(8,left,9,right)));
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "powerDeviceTypes", "PDU, BUSWAY");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "redundantPaths", "L,R");
+        assertDoesNotThrow(() -> service.validateRackAssignments(List.of(path), java.util.Map.of(8,left,9,right)));
     }
     @Test void rejectsDuplicateNamesAndEquivalentDefinitionsWithinRack() {
         var other = new DeviceMeasurementSourceCatalog.Source(9, "PDU B", 1, "snmp", "WATT", "W", null, 9, "MODEL_POINT", false);

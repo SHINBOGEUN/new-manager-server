@@ -30,6 +30,8 @@ public record DevicePageDisplayResponse(
             boolean locked,
             String rackColor,
             String panelPhoto,
-            boolean panelLayoutInitialized
+            boolean panelLayoutInitialized,
+            /** 카탈로그의 모델 역할(RACK/PANEL/FRAME) 또는 null. 화면은 SR_* 키 이름 대신 이 값으로 판단한다. */
+            String modelRole
     ) {}
 }

@@ -46,7 +46,13 @@ public class AuthController {
         return withRefreshCookie(issued);
     }
 
-    @Operation(summary = "회원 아이디와 비밀번호를 입력받아 신규 회원을 추가하는 API")
+    @Operation(summary = "회원가입 가능 여부. open=false면 로그인 화면에서 회원가입 버튼을 숨긴다. initialAdmin=true면 첫 계정이 관리자가 된다.")
+    @GetMapping("/registration")
+    public ResponseEntity<ApiResponse<AuthCommandService.RegistrationPolicy>> registration() {
+        return ResponseEntity.ok(ApiResponse.ok(authCommandService.registrationPolicy()));
+    }
+
+    @Operation(summary = "회원 아이디와 비밀번호를 입력받아 신규 회원을 추가하는 API. 공개 가입이 꺼져 있으면 첫 관리자 생성에만 쓴다.")
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@RequestBody AuthRequest request) {
         UserResponse user = authCommandService.register(request.username(), request.password());

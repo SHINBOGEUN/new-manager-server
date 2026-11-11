@@ -116,4 +116,14 @@ class ThresholdEvaluatorRealtimeTest {
         evaluator.evaluateSample(34, "mqtt", "TEMP", 32, Instant.now().minusSeconds(360));
         verifyNoInteractions(rules);
     }
+    @Test
+    void configuredFreshnessAllowsLongerCollectionIntervals() {
+        var rules = mock(ThresholdRuleRepository.class);
+        var evaluator = new ThresholdEvaluator(rules, mock(AlarmEventRepository.class),
+                mock(ThresholdAlarmEventDetailRepository.class), mock(PointQuery.class),
+                mock(DeviceMeasurementSourceCatalog.class), mock(ApplicationEventPublisher.class));
+        ReflectionTestUtils.setField(evaluator, "maxSampleAge", java.time.Duration.ofMinutes(10));
+        evaluator.evaluateSample(34, "mqtt", "TEMP", 32, Instant.now().minusSeconds(360));
+        verify(rules).findFirstByDevice_IdAndPointNameAndEnabledTrue(34, "TEMP");
+    }
 }

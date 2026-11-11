@@ -42,7 +42,7 @@ public class MqttSourceService {
     }
 
     /**
-     * Sensor Data가 시작/1분 재조정 시 쓰는 소스 설정 목록.
+     * Collector(MQTT 수신)가 시작/1분 재조정 시 쓰는 소스 설정 목록.
      * 비활성 소스도 함께 내려야 이미 연결된 client를 끊고 DISABLED 상태로 전환할 수 있다.
      */
     public List<MqttSourceResponse> getAllForSensorData() {
@@ -83,7 +83,7 @@ public class MqttSourceService {
         return id;
     }
 
-    /** 운영 화면의 즉시 동기화 버튼용. DB 변경 없이 Sensor Data에 refresh 요청만 보낸다. */
+    /** 운영 화면의 즉시 동기화 버튼용. DB 변경 없이 Collector(MQTT 수신)에 refresh 요청만 보낸다. */
     public void requestImmediateSync() {
         syncClient.requestRefresh("manual");
     }

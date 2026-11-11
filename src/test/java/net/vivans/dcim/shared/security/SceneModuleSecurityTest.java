@@ -9,6 +9,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
@@ -22,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = SceneModuleSecurityTest.ProtectedController.class,
         properties = "security.auth-enabled=true")
+@ActiveProfiles("local")
 @ContextConfiguration(classes = SceneModuleSecurityTest.TestConfig.class)
 @TestExecutionListeners(listeners = {ServletTestExecutionListener.class, DependencyInjectionTestExecutionListener.class},
         mergeMode = TestExecutionListeners.MergeMode.REPLACE_DEFAULTS)
@@ -43,6 +45,9 @@ class SceneModuleSecurityTest {
     }
 
     @Test void sceneModuleLoadsWithoutBearerTokenWhileApiRemainsProtected() throws Exception {
+        mvc.perform(get("/vendor/chartjs/chart.umd.min.js")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/mqtt/mqtt.min.js")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/pretendard/PretendardVariable.woff2")).andExpect(status().isOk());
         mvc.perform(get("/page-scene-3d.js")).andExpect(status().isOk());
         mvc.perform(get("/scene-group-lock.js")).andExpect(status().isOk());
         mvc.perform(get("/rack-widget-layout.js")).andExpect(status().isOk());

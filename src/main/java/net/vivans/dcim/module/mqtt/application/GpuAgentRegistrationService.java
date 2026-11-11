@@ -13,7 +13,7 @@ import net.vivans.dcim.module.mqtt.domain.repository.DeviceMqttIdentityRepositor
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Sensor Data가 신뢰할 수 있는 에이전트로 판별한 UUID만 등록한다. */
+/** Collector(MQTT 수신)가 신뢰할 수 있는 에이전트로 판별한 UUID만 등록한다. */
 @Service
 @RequiredArgsConstructor
 public class GpuAgentRegistrationService {

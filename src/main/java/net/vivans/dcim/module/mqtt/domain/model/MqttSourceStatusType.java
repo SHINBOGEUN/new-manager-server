@@ -1,6 +1,6 @@
 package net.vivans.dcim.module.mqtt.domain.model;
 
-/** Sensor Data가 보고하는 MQTT 수집 소스의 현재 연결 상태. */
+/** Collector(MQTT 수신)가 보고하는 MQTT 수집 소스의 현재 연결 상태. */
 public enum MqttSourceStatusType {
     NOT_SYNCED,
     CONNECTING,

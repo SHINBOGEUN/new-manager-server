@@ -60,10 +60,10 @@ class MqttSourceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body("Updated " + id, "AGENT", "gpu/+/telemetry", false)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(id))
                 .andExpect(jsonPath("$.data.configVersion").value(2)).andExpect(jsonPath("$.data.enabled").value(false));
-        mvc.perform(post("/api/manager/mqtt/sources/{id}/status", id).header("X-Api-Key", "sensor-data-service")
+        mvc.perform(post("/api/manager/mqtt/sources/{id}/status", id).header("X-Api-Key", "test-collector-service-key")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"CONNECTED\",\"messageCount\":10}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.messageCount").value(10));
-        mvc.perform(get("/api/manager/mqtt/sources/bulk").header("X-Api-Key", "sensor-data-service"))
+        mvc.perform(get("/api/manager/mqtt/sources/bulk").header("X-Api-Key", "test-collector-service-key"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[?(@.id == " + id + ")].enabled").value(org.hamcrest.Matchers.contains(false)));
         mvc.perform(delete("/api/manager/mqtt/sources/{id}", id).header("Authorization", auth)).andExpect(status().isOk());
         assertThat(statuses.findBySourceId(id)).isEmpty();
@@ -73,14 +73,14 @@ class MqttSourceIntegrationTest {
     void legacyBulkCannotSendAgentsToOldLoraSubscriber() throws Exception {
         int agent = create("AGENT", true);
         int lora = create("CHIRPSTACK_LORA", false);
-        var result = mvc.perform(get("/api/manager/lora/sources/bulk").header("X-Api-Key", "sensor-data-service"))
+        var result = mvc.perform(get("/api/manager/lora/sources/bulk").header("X-Api-Key", "test-collector-service-key"))
                 .andExpect(status().isOk()).andReturn();
         var data = mapper.readTree(result.getResponse().getContentAsString()).path("data");
         assertThat(data.findValuesAsText("id")).contains(Integer.toString(lora)).doesNotContain(Integer.toString(agent));
-        mvc.perform(post("/api/manager/lora/sources/{id}/status", agent).header("X-Api-Key", "sensor-data-service")
+        mvc.perform(post("/api/manager/lora/sources/{id}/status", agent).header("X-Api-Key", "test-collector-service-key")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"CONNECTED\"}"))
                 .andExpect(status().isBadRequest());
-        mvc.perform(post("/api/manager/lora/sources/{id}/status", lora).header("X-Api-Key", "sensor-data-service")
+        mvc.perform(post("/api/manager/lora/sources/{id}/status", lora).header("X-Api-Key", "test-collector-service-key")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"DISABLED\"}"))
                 .andExpect(status().isOk());
     }

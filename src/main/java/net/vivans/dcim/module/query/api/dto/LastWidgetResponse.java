@@ -2,6 +2,7 @@ package net.vivans.dcim.module.query.api.dto;
 
 import java.math.BigDecimal;
 import java.util.List;
+import net.vivans.dcim.module.query.application.UnitDisplay;
 
 public record LastWidgetResponse(
         Integer widgetId,
@@ -11,6 +12,14 @@ public record LastWidgetResponse(
         BigDecimal total,
         String totalUnit,
         List<LastDeviceResponse> devices,
-        WidgetDataStatusResponse dataStatus
+        WidgetDataStatusResponse dataStatus,
+        String displayTotal,
+        String displayTotalUnit
 ) {
+    public LastWidgetResponse(Integer widgetId, String widgetName, String pageCode, BigDecimal total,
+                              String totalUnit, List<LastDeviceResponse> devices,
+                              WidgetDataStatusResponse dataStatus) {
+        this(widgetId, widgetName, pageCode, total, totalUnit, devices, dataStatus,
+                UnitDisplay.of(total, totalUnit).displayValue(), UnitDisplay.of(total, totalUnit).displayUnit());
+    }
 }

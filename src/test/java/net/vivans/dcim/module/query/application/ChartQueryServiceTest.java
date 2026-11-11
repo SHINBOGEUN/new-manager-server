@@ -155,12 +155,20 @@ class ChartQueryServiceTest {
         PageWidget widget = chartWidget(
                 PageWidgetChartScope.devices,
                 PageWidgetChartSeriesMode.by_phase,
-                List.of("L1", "L2"),
+                List.of("L1", "L2", "L3"),
                 List.of(d1, d2),
                 List.of()
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        List<DeviceMeasurementSourceCatalog.Source> phaseSources = List.of(
+                source(1, model, "L1", "A", "CURRENT", "P1"),
+                source(1, model, "L2", "A", "CURRENT", "P2"),
+                source(1, model, "L3", "A", "CURRENT", "P3"),
+                source(2, model, "L1", "A", "CURRENT", "P1"),
+                source(2, model, "L2", "A", "CURRENT", "P2"),
+                source(2, model, "L3", "A", "CURRENT", "P3")
+        );
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(phaseSources);
         Instant t = Instant.parse("2026-08-27T01:00:00Z");
         when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
                 .thenReturn(List.of(
@@ -172,7 +180,7 @@ class ChartQueryServiceTest {
         ChartWidgetResponse response = service.getChart(12, null, null, null);
 
         assertThat(response.series()).hasSize(2);
-        assertThat(response.series().get(0).key()).isEqualTo("L1");
+        assertThat(response.series().get(0).key()).isEqualTo("P1");
         assertThat(response.series().get(0).values().get(0)).isEqualTo(3.0);
     }
 
@@ -192,11 +200,11 @@ class ChartQueryServiceTest {
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
         List<DeviceMeasurementSourceCatalog.Source> modelPoints = List.of(
-                source(1, threePhaseModel, "TOTAL_WT", "W"),
-                source(1, threePhaseModel, "L1_WATT", "W"),
-                source(1, threePhaseModel, "L2_WATT", "W"),
-                source(1, threePhaseModel, "L3_WATT", "W"),
-                source(2, singlePhaseModel, "TOTAL_WT", "W")
+                source(1, threePhaseModel, "TOTAL_WT", "W", "POWER", null),
+                source(1, threePhaseModel, "L1_WATT", "W", "POWER", "P1"),
+                source(1, threePhaseModel, "L2_WATT", "W", "POWER", "P2"),
+                source(1, threePhaseModel, "L3_WATT", "W", "POWER", "P3"),
+                source(2, singlePhaseModel, "TOTAL_WT", "W", "POWER", null)
         );
         when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(modelPoints);
         Instant t = Instant.parse("2026-08-27T01:00:00Z");
@@ -213,7 +221,7 @@ class ChartQueryServiceTest {
         ChartWidgetResponse sum = service.getChart(12, null, null, "sum");
 
         assertThat(phase.series()).extracting(series -> series.label())
-                .containsExactly("L1_WATT", "L2_WATT", "L3_WATT", "단상");
+                .containsExactly("L1상", "L2상", "L3상", "단상");
         assertThat(sum.series().get(0).values()).containsExactly(10.0);
     }
 
@@ -357,6 +365,13 @@ class ChartQueryServiceTest {
     private static DeviceMeasurementSourceCatalog.Source source(int deviceId, DeviceModel model, String name, String unit) {
         return new DeviceMeasurementSourceCatalog.Source(deviceId, "device-" + deviceId, model.getId(),
                 "snmp", name, unit, "POWER", deviceId, "MODEL_POINT", false);
+    }
+
+    private static DeviceMeasurementSourceCatalog.Source source(int deviceId, DeviceModel model, String name, String unit,
+                                                                 String type, String phase) {
+        return new DeviceMeasurementSourceCatalog.Source(deviceId, "device-" + deviceId, model.getId(),
+                "snmp", name, unit, type, deviceId, "MODEL_POINT", false, 1, false, phase,
+                phase == null ? null : switch (phase) { case "P1" -> "L1"; case "P2" -> "L2"; case "P3" -> "L3"; case "N" -> "N"; default -> null; }, 1);
     }
 
     private static CommonCode pageCode(String code) {

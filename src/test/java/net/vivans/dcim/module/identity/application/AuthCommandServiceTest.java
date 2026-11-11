@@ -15,7 +15,13 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.List;
 import java.util.Optional;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.InOrder;
+import static org.mockito.Mockito.inOrder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,11 +45,53 @@ class AuthCommandServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
     @InjectMocks
     private AuthCommandService authCommandService;
 
     @Test
+    void register_whenPublicRegistrationDisabled_firstAccountBecomesAdmin() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of(1));
+        given(jdbcTemplate.queryForList("SELECT id FROM users ORDER BY id LIMIT 1 FOR UPDATE", Integer.class)).willReturn(List.of());
+        given(passwordEncoder.encode("password123")).willReturn("encoded-password");
+        given(userRepository.findByUsername("admin")).willReturn(Optional.empty());
+        given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        UserResponse response = authCommandService.register("admin", "password123");
+
+        assertThat(response.role()).isEqualTo("ADMIN");
+        InOrder order = inOrder(userRepository, jdbcTemplate);
+        order.verify(userRepository).findAllByOrderByUsernameAsc();
+        order.verify(jdbcTemplate).queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class);
+        order.verify(jdbcTemplate).queryForList("SELECT id FROM users ORDER BY id LIMIT 1 FOR UPDATE", Integer.class);
+        assertThat(authCommandService.registrationPolicy().initialAdmin()).isTrue();
+    }
+
+    @Test
+    void register_whenPublicRegistrationDisabled_rejectsExistingUsersBeforeLocking() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of(User.createNew("admin", "encoded")));
+
+        assertThatThrownBy(() -> authCommandService.register("intruder", "password123"))
+                .isInstanceOf(AccessDeniedException.class);
+        org.mockito.Mockito.verifyNoInteractions(jdbcTemplate);
+        assertThat(authCommandService.registrationPolicy().open()).isFalse();
+    }
+
+    @Test
+    void register_whenBootstrapLockMissing_failsClosed() {
+        given(userRepository.findAllByOrderByUsernameAsc()).willReturn(List.of());
+        given(jdbcTemplate.queryForList("SELECT id FROM initial_admin_lock WHERE id = 1 FOR UPDATE", Integer.class)).willReturn(List.of());
+        assertThatThrownBy(() -> authCommandService.register("admin", "password123"))
+                .isInstanceOf(IllegalStateException.class);
+        verify(userRepository).findAllByOrderByUsernameAsc();
+    }
+
+    @Test
     void register_createsNewUser() {
+        ReflectionTestUtils.setField(authCommandService, "publicRegistrationEnabled", true);
         given(passwordEncoder.encode("password123")).willReturn("encoded-password");
         given(userRepository.findByUsername("newuser")).willReturn(Optional.empty());
         given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
@@ -57,6 +105,7 @@ class AuthCommandServiceTest {
 
     @Test
     void register_returnsExistingUserWithoutUpdatingPassword() {
+        ReflectionTestUtils.setField(authCommandService, "publicRegistrationEnabled", true);
         User existing = User.createNew("existing", "encoded-password");
         given(passwordEncoder.encode("any-password")).willReturn("new-encoded-password");
         given(userRepository.findByUsername("existing")).willReturn(Optional.of(existing));

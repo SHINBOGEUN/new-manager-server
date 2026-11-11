@@ -9,7 +9,7 @@ import net.vivans.dcim.shared.api.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/** 전환 전 Sensor Data 호환용. AGENT를 기존 LoRa 파서에 전달하지 않는다. */
+/** 전환 전 Collector(MQTT 수신) 호환용. AGENT를 기존 LoRa 파서에 전달하지 않는다. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/manager/lora/sources")

@@ -63,7 +63,6 @@ public class WidgetTrendQueryService {
         List<Source> sources = standardSources(widget);
         List<ChartSeriesResponse> series = toSourceSeries(sources, range, window);
         List<String> units = units(sources);
-        validateUnitCount(units);
         return response(widget, preset, window, range, "devices", "per_device", units, series);
     }
 
@@ -203,13 +202,7 @@ public class WidgetTrendQueryService {
     ) {
         return new ChartWidgetResponse(widget.getId(), widget.getName(), widget.getPageCode().getCode(), scope, mode,
                 preset.name(), window, range.start(), range.end(), units.size() == 1 ? units.get(0) : null,
-                units, series, null);
-    }
-
-    private static void validateUnitCount(List<String> units) {
-        if (units.size() > 2) {
-            throw new IllegalArgumentException("trend supports at most two units, but found: " + String.join(", ", units));
-        }
+                units, series, null, List.of("sum", "per_device"));
     }
 
     private static String resolveWindow(String window) {

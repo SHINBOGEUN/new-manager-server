@@ -100,7 +100,7 @@ public class QueryController {
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getChart(
             @Parameter(description = "page_widget id", example = "12", required = true)
             @RequestParam Integer widgetId,
-            @Parameter(description = "기간 preset override: last_24h|today|yesterday|last_3d|last_7d|this_month|last_month")
+            @Parameter(description = "기간 preset override: last_1h|last_6h|last_24h|today|yesterday|last_3d|last_7d|this_month|last_month")
             @RequestParam(required = false) String rangePreset,
             @Parameter(description = "aggregateWindow override: 1m|5m|15m|1h|1d")
             @RequestParam(required = false) String window,
@@ -120,7 +120,7 @@ public class QueryController {
     public ResponseEntity<ApiResponse<AggregateWidgetResponse>> getAggregate(
             @Parameter(description = "page_widget id", example = "12", required = true)
             @RequestParam Integer widgetId,
-            @Parameter(description = "기간 preset: last_24h|today|yesterday|last_7d|this_month|last_month")
+            @Parameter(description = "기간 preset: last_1h|last_6h|last_24h|today|yesterday|last_7d|this_month|last_month")
             @RequestParam(required = false) String rangePreset
     ) {
         return ResponseEntity.ok(ApiResponse.ok(

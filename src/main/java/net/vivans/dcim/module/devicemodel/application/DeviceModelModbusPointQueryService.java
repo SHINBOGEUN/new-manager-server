@@ -85,6 +85,8 @@ public class DeviceModelModbusPointQueryService {
                 enabled
         );
 
+        point.setPhase(resolvePhase(request.phase()));
+
         DeviceModelModbusPoint saved = deviceModelModbusPointRepository.save(point);
         collectionScriptSyncService.regenerateByModelId(modelId);
         return DeviceModelModbusPointResponse.from(saved);
@@ -123,6 +125,8 @@ public class DeviceModelModbusPointQueryService {
                 enabled
         );
 
+        point.setPhase(resolvePhase(request.phase()));
+
         DeviceModelModbusPoint saved = deviceModelModbusPointRepository.save(point);
         collectionScriptSyncService.regenerateByModelId(modelId);
         return DeviceModelModbusPointResponse.from(saved);
@@ -152,6 +156,13 @@ public class DeviceModelModbusPointQueryService {
     private DeviceModelModbusPoint findModbusPoint(Integer pointId, Integer protocolId) {
         return deviceModelModbusPointRepository.findByIdAndModelProtocolId(pointId, protocolId)
                 .orElseThrow(() -> new EntityNotFoundException("DeviceModelModbusPoint not found: " + pointId));
+    }
+
+    private CommonCode resolvePhase(String code) {
+        if (code == null || code.isBlank()) return null;
+        String normalized = code.trim().toUpperCase(java.util.Locale.ROOT);
+        return commonCodeRepository.findByCodeGroupGroupKeyAndCode("PHASE", normalized)
+                .orElseThrow(() -> new IllegalArgumentException("phase must be a PHASE code (P1, P2, P3, N)"));
     }
 
     private CommonCode resolveDataPointType(Integer id) {

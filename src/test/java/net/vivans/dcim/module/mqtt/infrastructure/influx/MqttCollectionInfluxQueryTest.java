@@ -5,6 +5,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MqttCollectionInfluxQueryTest {
+    @Test void usesConfiguredLookback() {
+        assertThat(MqttCollectionInfluxQuery.buildQuery("bucket", "sensor", List.of(1), 36))
+                .contains("range(start: -36h)");
+    }
+
     @Test void separatesGpuSlotsButMergesReplacedUuidsAndUsesTimeOrder() {
         String flux = MqttCollectionInfluxQuery.buildQuery("dcim", "dcim_sensor", List.of(33));
         assertThat(flux).contains("range(start: -168h)", "r[\"device_id\"] == \"33\"",

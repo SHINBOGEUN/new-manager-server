@@ -23,7 +23,8 @@ public record DeviceModelModbusPointResponse(
         boolean requiresInstance,
         Double scale,
         Double offset,
-        boolean enabled
+        boolean enabled,
+        String phase
 ) {
 
     public static DeviceModelModbusPointResponse from(DeviceModelModbusPoint point) {
@@ -46,7 +47,8 @@ public record DeviceModelModbusPointResponse(
                 point.isRequiresInstance(),
                 point.getScale(),
                 point.getOffset(),
-                point.isEnabled()
+                point.isEnabled(),
+                point.getPhase() == null ? null : point.getPhase().getCode()
         );
     }
 }

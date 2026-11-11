@@ -26,6 +26,15 @@ public class SceneModelController {
         return ResponseEntity.ok(ApiResponse.ok(service.setPanelInstallable(key, request.panelInstallable())));
     }
 
+    /** sceneRole: RACK, PANEL, FRAME 또는 null(일반 설비). */
+    public record SceneRoleRequest(net.vivans.dcim.module.device.domain.model.SceneModelRole sceneRole) {}
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/{key}/scene-role")
+    public ResponseEntity<ApiResponse<SceneModelService.ModelResponse>> setSceneRole(@PathVariable String key, @RequestBody SceneRoleRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(service.setSceneRole(key, request.sceneRole())));
+    }
+
     public record DeviceLinkableRequest(@jakarta.validation.constraints.NotNull Boolean deviceLinkable) {}
 
     @PreAuthorize("hasRole('ADMIN')")

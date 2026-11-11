@@ -1,8 +1,10 @@
 spring:
+  flyway:
+    enabled: false
   datasource:
-    url: jdbc:mariadb://${MARIADB_HOST:192.168.10.14}:${MARIADB_PORT:20181}/dcim_new
-    username: ${DB_USER:dcim}
-    password: ${DB_PASS:dcim123}
+    url: jdbc:mariadb://${MARIADB_HOST}:${MARIADB_PORT}/dcim_new
+    username: ${DB_USER}
+    password: ${DB_PASS}
     driver-class-name: org.mariadb.jdbc.Driver
   jpa:
     hibernate:

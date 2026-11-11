@@ -32,7 +32,20 @@ public class SecurityConfig {
     @Value("${security.auth-enabled:false}")
     private boolean authEnabled;
 
+    /**
+     * 브라우저 교차 출처 호출을 허용할 Origin 목록(쉼표 구분, 패턴 가능). 개발 기본값은 *, 운영(prod)은 기본으로 비워 같은 출처만 허용한다.
+     * React 개발 서버 등 다른 주소의 화면을 쓰면 CORS_ALLOWED_ORIGINS에 그 주소를 넣는다.
+     */
+    @Value("${security.cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     private final ApiKeyAuthFilter apiKeyAuthFilter;
+
+    /** CORS와 WebSocket 핸드셰이크가 같은 Origin 목록을 쓰도록 공용으로 제공한다. */
+    public static List<String> parseOrigins(String value) {
+        if (value == null) return List.of();
+        return java.util.Arrays.stream(value.split(",")).map(String::strip).filter(origin -> !origin.isEmpty()).toList();
+    }
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
@@ -53,9 +66,9 @@ public class SecurityConfig {
 
         if (authEnabled) {
             http.authorizeHttpRequests(request -> request
-                .requestMatchers("/api/manager/auth/login", "/api/manager/auth/register", "/api/manager/auth/refresh", "/api/manager/auth/logout", "/api/manager/auth/validate").permitAll()
+                .requestMatchers("/api/manager/auth/login", "/api/manager/auth/register", "/api/manager/auth/refresh", "/api/manager/auth/logout", "/api/manager/auth/validate", "/api/manager/auth/registration").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                .requestMatchers("/", "/index.html", "/analysis.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html", "/page-scene-3d.js", "/floor-placement.js", "/inrow-placement.js", "/scene-group-lock.js", "/asset-model-preview.js", "/vendor/three/**").permitAll()
+                .requestMatchers("/", "/index.html", "/analysis.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html", "/page-scene-3d.js", "/floor-placement.js", "/inrow-placement.js", "/scene-group-lock.js", "/scene-item-role.js", "/asset-model-preview.js", "/vendor/three/**", "/vendor/chartjs/**", "/vendor/mqtt/**", "/vendor/pretendard/**").permitAll()
                 .requestMatchers("/scene-assets/showroom/**", "/showroom-models.js", "/rack-widget-layout.js", "/rack-widget-chart.js", "/rack-door-attachment.js", "/rack-scene-display.js", "/ops-navigation.js", "/ops-workspace.css").permitAll()
                 .requestMatchers("/favicon.svg", "/favicon.ico").permitAll()
                 .requestMatchers("/ws/mqtt-monitor").permitAll()
@@ -84,7 +97,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(parseOrigins(allowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("*"));

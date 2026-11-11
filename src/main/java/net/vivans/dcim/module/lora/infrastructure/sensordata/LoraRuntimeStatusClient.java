@@ -10,9 +10,9 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 /**
- * Manager가 "LoRa 수집 상태" 화면을 조합할 때 Sensor Data의 장비별 런타임 상태(메모리)를 조회한다.
- * Sensor Data가 꺼져 있거나 응답이 없어도 오류로 취급하지 않고 빈 목록을 반환한다 — 이 경우 Manager는
- * InfluxDB 저장 이력과 설정 정보만으로 상태를 계산한다(요청 기준: "Sensor Data runtime status가 없으면
+ * Manager가 "LoRa 수집 상태" 화면을 조합할 때 Collector(MQTT 수신)의 장비별 런타임 상태(메모리)를 조회한다.
+ * Collector(MQTT 수신)가 꺼져 있거나 응답이 없어도 오류로 취급하지 않고 빈 목록을 반환한다 — 이 경우 Manager는
+ * InfluxDB 저장 이력과 설정 정보만으로 상태를 계산한다(요청 기준: "Collector(MQTT 수신) runtime status가 없으면
  * 오류로 처리하지 않는다").
  */
 @Slf4j

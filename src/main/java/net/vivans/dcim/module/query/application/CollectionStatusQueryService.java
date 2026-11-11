@@ -203,12 +203,15 @@ public class CollectionStatusQueryService {
             Map<Integer, Map<String, Set<Integer>>> byStorageDevice = protocolEntry.getValue();
             Set<String> pointNames = new LinkedHashSet<>();
             byStorageDevice.values().forEach(names -> pointNames.addAll(names.keySet()));
-            for (LastPoint point : pointQuery.findLast(List.copyOf(byStorageDevice.keySet()),
-                    List.copyOf(pointNames), lookback, protocolEntry.getKey())) {
-                Set<Integer> sourceIds = byStorageDevice.getOrDefault(point.deviceId(), Map.of())
-                        .getOrDefault(point.pointName(), Set.of());
-                for (Integer sourceId : sourceIds) {
-                    result.computeIfAbsent(sourceId, ignored -> new ArrayList<>()).add(point);
+            List<Integer> storageIds = List.copyOf(byStorageDevice.keySet());
+            for (int offset = 0; offset < storageIds.size(); offset += DEVICE_PAGE_SIZE) {
+                List<Integer> batch = storageIds.subList(offset, Math.min(offset + DEVICE_PAGE_SIZE, storageIds.size()));
+                for (LastPoint point : pointQuery.findLast(batch, List.copyOf(pointNames), lookback, protocolEntry.getKey())) {
+                    Set<Integer> sourceIds = byStorageDevice.getOrDefault(point.deviceId(), Map.of())
+                            .getOrDefault(point.pointName(), Set.of());
+                    for (Integer sourceId : sourceIds) {
+                        result.computeIfAbsent(sourceId, ignored -> new ArrayList<>()).add(point);
+                    }
                 }
             }
         }

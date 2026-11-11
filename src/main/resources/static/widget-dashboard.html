@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="/vendor/chartjs/chart.umd.min.js"></script>
   <script>
 (function (global) {
   'use strict';
@@ -105,7 +105,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261109panel-accura"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261110roles"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1060,7 +1060,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <button type="button" id="trendModalClose" aria-label="닫기">×</button>
       </div>
       <div id="trendModalMeta" class="trend-dialog-meta">최근 3일 데이터를 불러오는 중…</div>
-      <div class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
+      <div id="trendModalCharts" class="trend-dialog-chart"><canvas id="trendModalCanvas"></canvas></div>
     </div>
   </div>
   <div id="loginModal" class="login-modal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
@@ -1251,6 +1251,25 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       }
       return json.data;
     }
+
+    let sharedWidgetOptionsPromise;
+    function loadSharedWidgetOptions() {
+      if (!sharedWidgetOptionsPromise) sharedWidgetOptionsPromise = api("/api/manager/widgets/options");
+      return sharedWidgetOptionsPromise;
+    }
+    async function hydrateTrendOverrideOptions() {
+      const options = await loadSharedWidgetOptions();
+      const range = $("chartRangeOverride"), windowSelect = $("chartWindowOverride"), seriesSelect = $("chartSeriesOverride");
+      const selectedRange = range.value, selectedWindow = windowSelect.value, selectedSeries = seriesSelect.value;
+      range.innerHTML = '<option value="">위젯 설정</option>' + options.rangePresets.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join("");
+      windowSelect.innerHTML = '<option value="">위젯 설정</option>' + options.windows.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join("");
+      const seriesLabels = {sum:"합계", by_phase:"상별", by_path:"위치별", per_device:"장비별"};
+      seriesSelect.innerHTML = '<option value="">위젯 설정</option>' + options.seriesModes.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(seriesLabels[value] || value)}</option>`).join("");
+      range.value = selectedRange; windowSelect.value = selectedWindow; seriesSelect.value = selectedSeries;
+    }
+    $("chartRangeOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
+    $("chartWindowOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
+    $("chartSeriesOverride").addEventListener("focus", () => hydrateTrendOverrideOptions().catch((error) => log("위젯 허용값을 불러오지 못했습니다: " + error.message)));
 
     const analysisState = { options: null, selectedDevices: new Set(), selectedPoints: new Map(), charts: [], response: null, mode: "device", viewMode: fixedAnalysisPage ? "trend" : "widgets" };
     const analysisPalette = ["#35bdf4", "#47d58c", "#ffbd54", "#ff7484", "#a78bfa", "#2dd4bf", "#fb923c", "#94a3b8"];
@@ -1793,6 +1812,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const scene = state.pageScene3dApi;
       if (!page || !scene) return;
       const items = scene.getItems();
+      const { isPanelItem } = await import("/scene-item-role.js?v=20261110roles");
       const request = {
         viewMode: page.viewMode || "SCENE_3D",
         layoutAssetKey: page.layoutAssetKey || null,
@@ -1805,8 +1825,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
           rackColor: item.rackColor || null,
-          panelPhoto: item.modelKey === 'SR_INROW_PANEL' ? (item.panelPhoto || '') : null,
-          panelLayoutInitialized: item.modelKey === 'SR_INROW_PANEL' ? Boolean(item.panelLayoutInitialized) : false,
+          panelPhoto: isPanelItem(item) ? (item.panelPhoto || '') : null,
+          panelLayoutInitialized: isPanelItem(item) ? Boolean(item.panelLayoutInitialized) : false,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),
@@ -2687,29 +2707,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return { label: labels[key] || String(pointName || '측정값').replaceAll('_', ' '), kind, icon: paths[kind] };
     }
 
-    function knownMetricUnit(pointName) {
-      const key = String(pointName || '').trim().toUpperCase();
-      if (key === 'TOTAL_KWH') return 'kWh';
-      if (['TOTAL_WT', 'TOTAL_WATT', 'L1_WATT', 'L2_WATT', 'L3_WATT'].includes(key)) return 'W';
-      if (['TEMPC_SHT', 'TEMPC_TMP117'].includes(key)) return '°C';
-      if (key === 'DEVICE_COUNT') return '대';
-      return '';
-    }
-
-    function knownWidgetUnit(widget) {
-      const units = [...new Set((widget?.pointNames || []).map(knownMetricUnit).filter(Boolean))];
-      return units.length === 1 ? units[0] : '';
-    }
-
     function latestMetricValue(value, unit, pointName) {
       let number = value == null || value === '' ? NaN : Number(value);
-      let displayUnit = String(unit || knownMetricUnit(pointName));
+      let displayUnit = String(unit || "");
       if (!Number.isFinite(number)) return { number: '—', unit: displayUnit, missing: true };
-      const scaledUnits = { W: 'kW', Wh: 'kWh' };
-      if (scaledUnits[displayUnit] && Math.abs(number) >= 1000) {
-        number /= 1000;
-        displayUnit = scaledUnits[displayUnit];
-      }
       return { number: number.toLocaleString('ko-KR', { maximumFractionDigits: 2 }), unit: displayUnit, missing: false };
     }
 
@@ -2719,7 +2720,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!points.length) return '<div class="empty" style="padding:12px">표시할 측정값이 없습니다.</div>';
       const tiles = points.map((point) => {
         const presentation = latestMetricPresentation(point.pointName, point.unit);
-        const value = latestMetricValue(point.value, point.unit, point.pointName);
+        const value = latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName);
         const time = point.time ? new Date(point.time) : null;
         const collectedAt = time && Number.isFinite(time.getTime()) ? time.toLocaleString('ko-KR') : null;
         const stale = time && Number.isFinite(time.getTime()) && Number(last.dataStatus?.freshnessMinutes) > 0
@@ -2733,8 +2734,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div></div>`;
       });
       if (points.length > 1 && last.total != null && ['W','kW','Wh','kWh','MWh'].includes(last.totalUnit)
-          && points.every((point) => !latestMetricValue(point.value, point.unit, point.pointName).missing && point.unit === last.totalUnit)) {
-        const value = latestMetricValue(last.total, last.totalUnit, points[0]?.pointName);
+          && points.every((point) => !latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName).missing && point.unit === last.totalUnit)) {
+        const value = latestMetricValue(last.displayTotal ?? last.total, last.displayTotalUnit ?? last.totalUnit, points[0]?.pointName);
         const presentation = latestMetricPresentation('TOTAL', last.totalUnit);
         tiles.unshift(`<div class="metric-tile ${presentation.kind}"><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span>
           <div class="metric-content"><div class="metric-label">${presentation.kind === 'energy' ? '누적 전력량 합계' : '전력 합계'}</div>
@@ -2746,24 +2747,24 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     function renderAggregateBody(agg, widget) {
       if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
-      const resolvedUnit = agg.unit || knownWidgetUnit(widget);
+      const resolvedUnit = agg.displayUnit || agg.unit || "";
       const unit = resolvedUnit ? " " + escapeHtml(resolvedUnit) : "";
       if (agg.aggregatePreset === "demand") {
-        return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : formatValue(agg.value)}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
+        return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : escapeHtml(agg.displayValue ?? formatValue(agg.value))}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
       }
       if (agg.aggregatePreset === "usage_rank" || agg.aggregatePreset === "power_rank") {
         const ranked = [...(agg.devices || [])].filter(d => d.value != null).sort((a,b) => Number(b.value) - Number(a.value));
         const max = Math.max(0, ...ranked.map(d => Number(d.value)).filter(Number.isFinite));
-        return `<div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>` + (ranked.length ? `<div class="power-rank">${ranked.slice(0,10).map((d,i) => `<div class="power-rank-row"><span class="power-rank-index">${String(i+1).padStart(2,"0")}</span><span class="power-rank-name" title="${escapeHtml(d.deviceName || ("#" + d.deviceId))}">${escapeHtml(d.deviceName || ("#" + d.deviceId))}</span><span class="power-rank-track"><span class="power-rank-bar" style="width:${max > 0 ? Math.max(0,Math.min(100,Number(d.value)/max*100)) : 0}%"></span></span><span class="power-rank-value">${formatValue(d.value)}${unit}</span></div>`).join("")}</div>` : '<div class="meta">표시할 데이터가 없습니다.</div>');
+        return `<div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>` + (ranked.length ? `<div class="power-rank">${ranked.slice(0,10).map((d,i) => `<div class="power-rank-row"><span class="power-rank-index">${String(i+1).padStart(2,"0")}</span><span class="power-rank-name" title="${escapeHtml(d.deviceName || ("#" + d.deviceId))}">${escapeHtml(d.deviceName || ("#" + d.deviceId))}</span><span class="power-rank-track"><span class="power-rank-bar" style="width:${max > 0 ? Math.max(0,Math.min(100,Number(d.value)/max*100)) : 0}%"></span></span><span class="power-rank-value">${escapeHtml(d.displayValue ?? formatValue(d.value))}${d.displayUnit ? ` ${escapeHtml(d.displayUnit)}` : unit}</span></div>`).join("")}</div>` : '<div class="meta">표시할 데이터가 없습니다.</div>');
       }
       const rows = (agg.devices || []).map((d) => `
         <div class="point-row">
           <span>${escapeHtml(d.deviceName || ("#" + d.deviceId))}${d.role && d.role !== "default" ? ` <span class="chip">${escapeHtml(d.role)}</span>` : ""}</span>
-          <span class="val">${formatValue(d.value)}${unit}</span>
+          <span class="val">${escapeHtml(d.displayValue ?? formatValue(d.value))}${d.displayUnit ? ` ${escapeHtml(d.displayUnit)}` : unit}</span>
         </div>`).join("") || '<div class="meta">장비별 값 없음</div>';
       return `
         <div class="count-label">${escapeHtml(aggregatePresetLabel(agg.aggregatePreset))} · ${escapeHtml(agg.rangePreset || "")}</div>
-        <div class="count-total">${formatValue(agg.value)}${unit}</div>
+        <div class="count-total">${escapeHtml(agg.displayValue ?? formatValue(agg.value))}${unit}</div>
         <div class="count-label">장비별</div>
         ${rows}`;
     }
@@ -2941,24 +2942,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     function chartSeriesModesForWidget(widget) {
       const chart = state.chartByWidget.get(widget.id);
-      const units = chart?.units || (chart?.unit ? [chart.unit] : []);
-      if (units.length > 1) return [["per_device", "장비별"]];
-      const targets = (widget.chartScope || "devices") === "models"
-        ? (widget.modelIds || []).map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
-        : (widget.deviceIds || []).map((id) => state.devices.find((device) => Number(device.id) === Number(id))).filter(Boolean);
-      const allPdu = targets.length > 0
-        && targets.every((target) => String(target.deviceTypeCode || "").toUpperCase() === "PDU");
-      const pointNames = widget.pointNames || [];
-      const hasPhaseFamily = [...new Set(pointNames
-        .map((name) => /^L[123]_(.+)$/.exec(name)?.[1])
-        .filter(Boolean))]
-        .some((suffix) => ["L1_", "L2_", "L3_"].every((prefix) => pointNames.includes(prefix + suffix)));
-      const modes = [["sum", "합계"], ["per_device", "장비별"]];
-      if (allPdu && hasPhaseFamily) modes.push(["by_phase", "상별"]);
-      if (allPdu) modes.push(["by_path", "위치별"]);
-      return modes;
+      const supported = Array.isArray(chart?.availableSeriesModes) ? chart.availableSeriesModes : ["per_device"];
+      const labels = { sum: "합계", per_device: "장비별", by_phase: "상별", by_path: "위치별" };
+      return supported.map((mode) => [mode, labels[mode] || mode]);
     }
-
     function chartSeriesModeForWidget(widget) {
       const requested = state.chartSeriesModeByWidget.get(widget.id)
         || $("chartSeriesOverride")?.value
@@ -3037,13 +3024,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <div class="chart-legend">${legend}</div>`;
     }
 
-    function chartWithKnownUnit(widget, chart) {
-      if (!chart || chart.error || chart.unit || (chart.units || []).some(Boolean)) return chart;
-      const unit = knownWidgetUnit(widget);
-      if (!unit) return chart;
-      return { ...chart, unit, units: [unit], series: (chart.series || []).map((series) => ({ ...series, unit: series.unit || unit })) };
-    }
-
     function destroyChartInstances() {
       for (const chart of state.chartInstances.values()) {
         try { chart.destroy(); } catch (_) { /* ignore */ }
@@ -3061,7 +3041,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
     }
 
-    function createChartInstance(canvas, data) {
+    function createChartInstance(canvas, data, chartStyle = "line") {
       if (typeof Chart === "undefined" || !data || data.error || !canvas) return null;
       const series = data.series || [];
       if (!series.length) return null;
@@ -3088,7 +3068,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           }),
           borderColor: color,
           backgroundColor: color + "33",
-          fill: series.length === 1,
+          fill: chartStyle === "area" || series.length === 1,
           tension: 0.25,
           pointRadius: times.length > 80 ? 0 : 2,
           borderWidth: 2,
@@ -3098,7 +3078,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       });
 
       const chart = new Chart(canvas, {
-        type: "line",
+        type: chartStyle === "bar" ? "bar" : "line",
         data: { labels, datasets },
         options: {
           animation: false,
@@ -3153,7 +3133,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       destroyChartInstances();
       for (const [widgetId, data] of state.chartByWidget) {
         const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-        mountChartInstance(widgetId, chartWithKnownUnit(widget, data));
+        mountChartInstance(widgetId, data);
       }
     }
 
@@ -3163,37 +3143,70 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
         state.trendModalChart = null;
       }
+      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
+      state.trendModalCharts = [];
     }
 
-    async function openTrendModal(widgetId) {
-      if (state.editMode) return;
-      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-      if (!widget) return;
-      if (widget.queryKind === "calculated") {
-        return openPueTrendModal(widgetId);
-      }
-      if (widget.queryKind === "count") return;
-      const range = widget.trendRangePreset || "last_3d";
-      const windowSize = widget.trendWindow || "15m";
-      const data = widget.queryKind === "chart"
-        ? await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: "per_device" })
-        : await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
-      if (data.error) throw new Error(data.error);
-      if (!(data.series || []).some((series) => (series.values || []).length)) {
-        log(`trend skipped #${widget.id}: Influx 시계열 데이터 없음`);
+    async function openWidgetDetail(widget) {
+      if (state.editMode || !widget) return;
+      const config = widget.clickConfig || { action: ["count", "cctv"].includes(widget.queryKind) ? "none" : "chart" };
+      const target = config.target || {};
+      if (config.action === "none") return;
+      if (["device", "rack", "page"].includes(config.action)) {
+        const type = config.action === "rack" ? "dcim:dashboard:open-rack"
+          : config.action === "device" ? "dcim:dashboard:open-device" : "dcim:dashboard:open-page";
+        window.parent.postMessage({ type, ...target }, location.origin);
         return;
       }
+      if (config.action !== "chart") return;
       const modal = $("trendModal");
-      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      if (state.trendModalChart) {
-        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
-        state.trendModalChart = null;
+      const dialog = modal.querySelector(".trend-dialog");
+      let controls = $("trendModalControls");
+      if (!controls) {
+        controls = document.createElement("div"); controls.id = "trendModalControls";
+        controls.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin:10px 0";
+        const select = (id, values) => { const el = document.createElement("select"); el.id = id; values.forEach(([v,l]) => { const o=document.createElement("option");o.value=v;o.textContent=l;el.append(o); }); controls.append(el); return el; };
+        select("detailRange", [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]]);
+        select("detailWindow", [["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]]);
+        select("detailSeries", [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]]);
+        select("detailStyle", [["line","선"],["bar","막대"],["area","영역"]]);
+        dialog.insertBefore(controls, dialog.querySelector(".trend-dialog-chart"));
+        controls.addEventListener("change", () => renderWidgetDetailChart(state.detailWidget, state.detailConfig).catch((e) => { $("trendModalMeta").textContent = e.message; }));
       }
+      state.detailWidget = widget;
+      state.detailConfig = config;
+      $("detailSeries").hidden = widget.queryKind !== "chart";
+      $("trendModalTitle").textContent = `${widget.name} 상세`;
+      $("detailRange").value = config.rangePreset || widget.trendRangePreset || "last_3d";
+      $("detailWindow").value = config.window || widget.trendWindow || "15m";
+      $("detailSeries").value = config.seriesMode || widget.chartSeriesMode || "per_device";
+      $("detailStyle").value = config.chartStyle || "line";
+      modal.classList.add("open");
+      await renderWidgetDetailChart(widget, config);
+    }
+
+    async function renderWidgetDetailChart(widget, config) {
+      const range = $("detailRange").value, windowSize = $("detailWindow").value;
+      let data;
+      if (widget.queryKind === "chart") data = await fetchChart(widget, { rangePreset: range, window: windowSize, seriesMode: $("detailSeries").value });
+      else if (widget.queryKind === "calculated") data = pueTrendChartData(await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`));
+      else data = await api(`/api/manager/query/widget-trend?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
+      if (data.error) throw new Error(data.error);
+      if (state.trendModalChart) { try { state.trendModalChart.destroy(); } catch (_) {} state.trendModalChart = null; }
+      (state.trendModalCharts || []).forEach((chart) => { try { chart.destroy(); } catch (_) {} });
+      state.trendModalCharts = [];
+      const hasData = (data.series || []).some((series) => (series.values || series.data || []).some((v) => v != null));
+      if (!hasData) { $("trendModalMeta").textContent = "이 기간에 데이터가 없습니다 · 기간 바꾸기"; return; }
       const units = data.units || (data.unit ? [data.unit] : []);
       $("trendModalMeta").textContent = [trendRangeLabel(range), trendWindowLabel(windowSize) + " 평균", ...units].filter(Boolean).join(" · ");
-      modal.classList.add("open");
-      state.trendModalChart = createChartInstance($("trendModalCanvas"), data);
-      if (!state.trendModalChart) closeTrendModal();
+      const container = $("trendModalCharts"), groups = data.unitGroups || [];
+      if (groups.length > 2) {
+        container.innerHTML = groups.map((group, index) => `<section class="trend-unit-group"><strong>${escapeHtml(group.unit || "단위 없음")}</strong><div style="height:280px"><canvas id="trendModalCanvas${index}"></canvas></div></section>`).join("");
+        state.trendModalCharts = groups.map((group, index) => createChartInstance($(`trendModalCanvas${index}`), { ...data, unit: group.unit, units: [group.unit], series: group.series }, $("detailStyle").value)).filter(Boolean);
+      } else {
+        container.innerHTML = '<canvas id="trendModalCanvas"></canvas>';
+        state.trendModalChart = createChartInstance($("trendModalCanvas"), data, $("detailStyle").value);
+      }
     }
 
     function pueTrendChartData(data) {
@@ -3206,56 +3219,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
     }
 
-    async function openPueTrendModal(widgetId) {
-      if (state.editMode) return;
-      const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-      if (!widget || widget.queryKind !== "calculated") return;
-      const range = widget.trendRangePreset || "last_3d";
-      const windowSize = widget.trendWindow || "15m";
-      const data = await api(`/api/manager/query/calculated?widgetId=${widget.id}&rangePreset=${encodeURIComponent(range)}&window=${encodeURIComponent(windowSize)}`);
-      if (!data.trend?.length) {
-        log(`trend skipped #${widget.id}: 최근 3일 계산 결과 없음`);
-        return;
-      }
-      const modal = $("trendModal");
-      $("trendModalTitle").textContent = `${widget.name} 트렌드`;
-      if (state.trendModalChart) {
-        try { state.trendModalChart.destroy(); } catch (_) { /* ignore */ }
-        state.trendModalChart = null;
-      }
-      $("trendModalMeta").textContent = `${trendRangeLabel(range)} · ${trendWindowLabel(windowSize)} 평균 · ${data.unit || "값"}`;
-      modal.classList.add("open");
-      state.trendModalChart = createChartInstance($("trendModalCanvas"), pueTrendChartData(data));
-    }
-
     function trendRangeLabel(range) {
-      return ({last_24h:"최근 24시간", today:"오늘", yesterday:"어제", last_3d:"최근 3일", last_7d:"최근 7일", this_month:"이번 달", last_month:"지난 달"})[range] || range;
+      return ({last_1h:"최근 1시간", last_6h:"최근 6시간", last_24h:"최근 24시간", today:"오늘", yesterday:"어제", last_3d:"최근 3일", last_7d:"최근 7일", this_month:"이번 달", last_month:"지난 달"})[range] || range;
     }
 
     function trendWindowLabel(windowSize) {
       return ({"1m":"1분", "5m":"5분", "15m":"15분", "1h":"1시간", "1d":"1일"})[windowSize] || windowSize;
     }
 
-    function trendAvailability(widget) {
-      if (widget.queryKind === "last") {
-        const points = (state.lastByWidget.get(widget.id)?.devices || []).flatMap((device) => device.points || [])
-          .filter((point) => point.value != null);
-        const units = new Set(points.map((point) => point.unit || "(단위 없음)"));
-        return points.length > 0 && units.size <= 2;
-      }
-      if (widget.queryKind === "aggregate") {
-        const data = state.aggregateByWidget.get(widget.id);
-        return !!data && (data.devices || []).some((device) => device.value != null) && !!data.unit;
-      }
-      if (widget.queryKind === "chart") {
-        const data = state.chartByWidget.get(widget.id);
-        const units = data?.units || (data?.unit ? [data.unit] : []);
-        return units.length <= 2 && (data?.series || []).some((series) => (series.values || []).length);
-      }
-      if (widget.queryKind === "calculated") return state.pueByWidget.get(widget.id)?.value != null;
-      if (widget.queryKind === "psychrometric") return psychrometricPoints(state.psychrometricByWidget.get(widget.id)).length > 0;
-      if (widget.queryKind === "power_distribution") return state.powerDistributionByWidget.get(widget.id)?.totalPowerW != null;
-      return false;
+    function widgetClickEnabled(widget) {
+      const action = widget.clickConfig?.action || (["count", "cctv"].includes(widget.queryKind) ? "none" : "chart");
+      return action !== "none";
     }
 
     function saturationPressureKpa(temperature) {
@@ -3493,7 +3467,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } else if (w.queryKind === "chart") {
           const chart = state.chartByWidget.get(w.id);
           dataStatus = chart?.dataStatus;
-          body = renderChartBody(chartWithKnownUnit(w, chart));
+          body = renderChartBody(chart);
           const sm = chartSeriesModeForWidget(w);
           subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
           cardClass = "card chart-card";
@@ -3501,8 +3475,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           const aggregate = state.aggregateByWidget.get(w.id);
           dataStatus = aggregate?.dataStatus;
           if (aggregate && !aggregate.error && ["usage", "power", "demand"].includes(aggregate.aggregatePreset)) {
-            const pointName = aggregate.aggregatePreset === "usage" ? "TOTAL_ENERGY" : "TOTAL_WT";
-            const unit = aggregate.unit || knownWidgetUnit(w);
+            const pointName = w.pointNames?.[0] || "";
+            const unit = aggregate.displayUnit || aggregate.unit || "";
             body = renderLastBody({ devices: [{ points: [{ pointName, value: aggregate.value, unit }] }] }, w.name);
             const statusLabel = ({ PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" })[dataStatus?.status];
             let detail = statusLabel || "";
@@ -3548,8 +3522,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           body = `<div class="empty">위젯을 표시하지 못했습니다. ${escapeHtml(error.message || "화면을 새로고침해 주세요.")}</div>`;
           cardClass = "card";
         }
-        const trendAvailable = trendAvailability(w);
-        if (trendAvailable) cardClass += " trend-card trend-available";
+        const clickEnabled = widgetClickEnabled(w);
+        if (clickEnabled) cardClass += " trend-card trend-available";
         const chartHeadTools = w.queryKind === "chart"
           ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
           : "";
@@ -3562,7 +3536,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 <div class="sub" title="${escapeHtml(w.queryKind)}">${escapeHtml(widgetKindLabel(w.queryKind))}${subExtra}<span class="layout-meta"> · (${layout.gridX},${layout.gridY}) ${layout.w}×${layout.h}</span></div>
                 ${renderDataStatus(dataStatus)}
               </div>
-              ${chartHeadTools}
+              ${chartHeadTools}${clickEnabled ? '<span class="widget-click-indicator" title="클릭 동작">↗</span>' : ''}
             </div>
             <div class="card-body">${body}</div>
             <div class="resize-handle resize-n" data-resize="n" title="위쪽 크기 조절"></div>
@@ -3640,7 +3614,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("board").querySelectorAll(".trend-available").forEach((card) => {
         card.addEventListener("click", (event) => {
           if (state.editMode || event.target.closest("select, button, .resize-handle, details, summary")) return;
-          openTrendModal(Number(card.dataset.widgetId)).catch((error) => {
+          const widget = state.widgets.find((item) => Number(item.id) === Number(card.dataset.widgetId));
+          openWidgetDetail(widget).catch((error) => {
             $("trendModalMeta").textContent = error.message || "트렌드 조회 실패";
           });
         });

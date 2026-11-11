@@ -59,6 +59,7 @@ public class DeviceModelQueryService {
         validateUniqueNameAndManufacturer(request.name(), manufacturer, null);
 
         DeviceModel clone = DeviceModel.create(request.name(), manufacturer, source.getDeviceType(), description);
+        clone.setPhaseNotation(source.getPhaseNotation());
         List<DeviceModelProtocol> protocols = source.getProtocols().stream()
                 .map(protocol -> DeviceModelProtocol.of(clone, protocol.getProtocolType()))
                 .toList();
@@ -73,19 +74,20 @@ public class DeviceModelQueryService {
             for (DeviceModelSnmpPoint point : snmpPointRepository.findAllByModelProtocolIdOrderByIdAsc(original.getId())) {
                 snmpPointRepository.save(DeviceModelSnmpPoint.create(target, point.getName(), point.getOid(),
                         point.isRequiresInstance(), point.getUnitCode(), point.getScale(), point.isEnabled(),
-                        point.getDataPointType(), point.getCategoryCode()));
+                        point.getDataPointType(), point.getCategoryCode()).withPhase(point.getPhase()));
             }
             for (DeviceModelModbusPoint point : modbusPointRepository.findAllByModelProtocolIdOrderByIdAsc(original.getId())) {
                 modbusPointRepository.save(DeviceModelModbusPoint.create(target, point.getName(), point.getDataPointType(),
                         point.getCategoryCode(), point.getRegisterType(), point.getDataType(), point.getByteOrder(),
                         point.getAddress(), point.isRequiresInstance(), point.getScale(), point.getOffset(),
-                        point.getUnitCode(), point.isEnabled()));
+                        point.getUnitCode(), point.isEnabled()).withPhase(point.getPhase()));
             }
         }
         for (DeviceModelMqttPoint point : mqttPointRepository.findAllByDeviceModelIdOrderByIdAsc(sourceId)) {
             DeviceModelMqttPoint copied = DeviceModelMqttPoint.create(clone, point.getPayloadField(), point.getPointName(),
                     point.getDataPointType(), point.getUnitCode(), point.getScale(), point.getValueMap(),
                     point.isEnabled(), point.getCategoryCode());
+            copied.setPhase(point.getPhase());
             if (point.getComponentScope() == MqttPointScope.COMPONENT) {
                 copied.configureComponent(point.getComponentType(), point.getComponentPath(),
                         point.getComponentIndexField(), point.getComponentUuidField());
@@ -106,6 +108,7 @@ public class DeviceModelQueryService {
                 deviceType,
                 request.description()
         );
+        deviceModel.setPhaseNotation(resolvePhaseNotation(request.phaseNotation()));
         replaceProtocolsFromRequest(deviceModel, request.protocols());
 
         return DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
@@ -118,6 +121,7 @@ public class DeviceModelQueryService {
 
         CommonCode deviceType = findDeviceType(request.deviceTypeId());
         deviceModel.update(request.name(), request.manufacturer(), deviceType, request.description());
+        if (request.phaseNotation() != null) deviceModel.setPhaseNotation(resolvePhaseNotation(request.phaseNotation()));
         replaceProtocolsFromRequest(deviceModel, request.protocols());
 
         DeviceModelResponse response = DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
@@ -131,6 +135,7 @@ public class DeviceModelQueryService {
         validateUniqueNameAndManufacturer(request.name(), request.manufacturer(), id);
         deviceModel.update(request.name(), request.manufacturer(), findDeviceType(request.deviceTypeId()),
                 request.description());
+        if (request.phaseNotation() != null) deviceModel.setPhaseNotation(resolvePhaseNotation(request.phaseNotation()));
         DeviceModelResponse response = DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
         collectionScriptSyncService.regenerateByModelId(id);
         return response;
@@ -227,5 +232,12 @@ public class DeviceModelQueryService {
             throw new IllegalArgumentException("deviceType must belong to MODEL_TYPE group");
         }
         return deviceType;
+    }
+
+    private CommonCode resolvePhaseNotation(String code) {
+        if (code == null || code.isBlank()) return null;
+        String normalized = code.trim().toUpperCase(java.util.Locale.ROOT);
+        return commonCodeRepository.findByCodeGroupGroupKeyAndCode("PHASE_NOTATION", normalized)
+                .orElseThrow(() -> new IllegalArgumentException("phaseNotation must be a PHASE_NOTATION code"));
     }
 }

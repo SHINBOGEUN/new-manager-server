@@ -3,8 +3,9 @@ import { OrbitControls } from "/vendor/three/controls/OrbitControls.js";
 import { floorRect, floorRectsOverlap, floorBatchPositions, wallBatchGrid, keyboardMoveDelta, snapFloorPosition, wallCornerCandidates } from "/floor-placement.js?v=20261028ae";
 import { GLTFLoader } from "/vendor/three/loaders/GLTFLoader.js";
 import { prepareShowroomObject, showroomDisplaySize, showroomFramePreviewSize, showroomModelByKey, showroomModelUrl } from "/showroom-models.js?v=20261109paneledit";
-import { allowsInrowInteriorOverlap, fitEquipmentInsideFrame, fitFrameAroundEquipment, inrowFrameScale, isEquipmentFrameKey, isFrameEquipmentItem, resizedInrowFrame } from "/inrow-placement.js?v=20261029b";
-import { setGroupLockState, rackDetailAction } from "/scene-group-lock.js?v=20261101b";
+import { allowsInrowInteriorOverlap, fitEquipmentInsideFrame, fitFrameAroundEquipment, inrowFrameScale, isEquipmentFrameKey, isFrameEquipmentItem, resizedInrowFrame } from "/inrow-placement.js?v=20261110roles";
+import { setGroupLockState, rackDetailAction } from "/scene-group-lock.js?v=20261110roles";
+import { isFrameItem, isPanelItem, isRackItem, sceneRoleForModelKey } from "/scene-item-role.js?v=20261110roles";
 
 import { isDoorAttachment, updateDoorAttachmentTransform, prepareDoorSensorParts, setDoorSensorPartsAttached } from "/rack-door-attachment.js?v=20261103c";
 
@@ -178,7 +179,7 @@ function makeRoom(scene, flat = false) {
 }
 
 function isColorableRack(item) {
-  return item?.itemType === "RACK" || (/^SR_.*RACK$/.test(item?.modelKey || "") && item.modelKey !== "SR_PDU_RACK");
+  return isRackItem(item);
 }
 
 // Doors named front_door_left/right have separate hinges; a single front_door
@@ -1193,7 +1194,7 @@ function mount(container, page, options = {}) {
     const isBuildingPart = isWallModel(modelKey) || isDoorModel(modelKey) || isWindowModel(modelKey)
       || ["FLOOR", "CEILING", "CEILING_CLEAR", "LIGHT", "PIPE", "STAIR"].includes(modelKey);
     const inrowDefaultSize = modelKey === "SR_INROW_PANEL" ? 4 : modelKey === "SR_INROW_RACK" ? 8 : modelKey === "SR_INROW" ? 7 : null;
-    const item = { id: null, clientKey: makeKey(), parentId: null, parentClientKey: null, itemType: "EQUIPMENT", label: `${builtinAssetLabels.get(modelKey) || showroomModelByKey(modelKey)?.label || modelKey} ${n}`, modelKey, deviceId: null, pointName: null, x: 0, y: 0, z: 0, rotationY: initialRotation == null ? (mirrorNext ? 180 : 0) : THREE.MathUtils.euclideanModulo(initialRotation, 360), sizeX: isBuildingPart ? 5 : (inrowDefaultSize ?? (showroomModelByKey(modelKey) ? 12 : 6)), sizeY: isEquipmentFrameKey(modelKey) ? (inrowDefaultSize ?? 12) : 4, sizeZ: isEquipmentFrameKey(modelKey) ? 12 : isBuildingPart ? 5 : 4 };
+    const item = { id: null, clientKey: makeKey(), parentId: null, parentClientKey: null, itemType: "EQUIPMENT", modelRole: sceneRoleForModelKey(modelKey), label: `${builtinAssetLabels.get(modelKey) || showroomModelByKey(modelKey)?.label || modelKey} ${n}`, modelKey, deviceId: null, pointName: null, x: 0, y: 0, z: 0, rotationY: initialRotation == null ? (mirrorNext ? 180 : 0) : THREE.MathUtils.euclideanModulo(initialRotation, 360), sizeX: isBuildingPart ? 5 : (inrowDefaultSize ?? (showroomModelByKey(modelKey) ? 12 : 6)), sizeY: isEquipmentFrameKey(modelKey) ? (inrowDefaultSize ?? 12) : 4, sizeZ: isEquipmentFrameKey(modelKey) ? 12 : isBuildingPart ? 5 : 4 };
     if (!isBuildingPart && !isEquipmentFrameKey(modelKey)) item.sizeY = item.sizeZ = item.sizeX;
     // Match the server rack already placed in the Environment scene.
     if (!copySource && modelKey === "SR_RACK") { item.sizeX = 14; item.sizeY = 16; item.sizeZ = 16; }
@@ -2484,7 +2485,7 @@ function mount(container, page, options = {}) {
     if (walking || placement || areaSelectMode || areaMoveMode || wholeSceneMoveMode) return;
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     const item = hit && nearestSceneItemRoot(hit.object)?.userData?.sceneItem;
-    if (item?.modelKey === "SR_INROW_PANEL") { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
+    if (isPanelItem(item)) { event.preventDefault(); options.onPanelDetail?.(structuredClone(item)); return; }
     if (item?.itemType === "EQUIPMENT" && showroomModelByKey(item.modelKey)?.deviceLinkable) {
       event.preventDefault();
       options.onDeviceLink?.(structuredClone(item));
@@ -3042,7 +3043,7 @@ function mount(container, page, options = {}) {
       return count;
     },
     setPanelComponents(hostKey, components, photo) {
-      const host = items.find((item) => findItemKey(item) === hostKey && item.modelKey === "SR_INROW_PANEL");
+      const host = items.find((item) => findItemKey(item) === hostKey && isPanelItem(item));
       if (!host || host.locked) return false;
       if (components.some((component) => !showroomModelByKey(component.modelKey)?.panelInstallable)) {
         options.onHint?.("분전반 설치 설정이 해제된 모델이 있습니다."); return false;

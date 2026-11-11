@@ -13,5 +13,13 @@ public record MqttPointRequest(
         @Size(max = 50) String componentType,
         @Size(max = 255) String componentPath,
         @Size(max = 255) String componentIndexField,
-        @Size(max = 255) String componentUuidField
-) {}
+        @Size(max = 255) String componentUuidField, String phase
+) {
+    public MqttPointRequest(String payloadField, String pointName, Integer dataPointTypeId,
+                            Integer categoryCodeId, Integer unitCodeId, Double scale, String valueMap,
+                            Boolean enabled, MqttPointScope componentScope, String componentType,
+                            String componentPath, String componentIndexField, String componentUuidField) {
+        this(payloadField, pointName, dataPointTypeId, categoryCodeId, unitCodeId, scale, valueMap,
+                enabled, componentScope, componentType, componentPath, componentIndexField, componentUuidField, null);
+    }
+}

@@ -9,7 +9,7 @@ import net.vivans.dcim.module.mqtt.domain.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Sensor Data가 사용하는 공통 MQTT 설정 조회. LoRa 전용 API는 호환용으로 유지한다. */
+/** Collector(MQTT 수신)가 사용하는 공통 MQTT 설정 조회. LoRa 전용 API는 호환용으로 유지한다. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

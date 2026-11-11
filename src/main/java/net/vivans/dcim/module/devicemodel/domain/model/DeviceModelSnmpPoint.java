@@ -60,6 +60,10 @@ public class DeviceModelSnmpPoint extends BaseEntity {
     @JoinColumn(name = "unit_code_id")
     private CommonCode unitCode;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phase_code_id")
+    private CommonCode phase;
+
     @Column(nullable = false, length = 512)
     private String oid;
 
@@ -173,6 +177,17 @@ public class DeviceModelSnmpPoint extends BaseEntity {
         return oid.replace(INSTANCE_ID_PLACEHOLDER, String.valueOf(instanceId));
     }
 
+    public void setPhase(CommonCode phase) {
+        if (phase != null && !"PHASE".equals(phase.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("phase must belong to PHASE group");
+        }
+        this.phase = phase;
+    }
+
+    public DeviceModelSnmpPoint withPhase(CommonCode phase) {
+        setPhase(phase);
+        return this;
+    }
     private static void validateModelProtocol(DeviceModelProtocol modelProtocol) {
         if (modelProtocol == null) {
             throw new IllegalArgumentException("modelProtocol is required");

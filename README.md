@@ -1,71 +1,12 @@
 # DCIM Manager Server
 
-Defog ShowRoom용 DCIM(Data Center Infrastructure Management) 백엔드 서버입니다.  
-기존 `manager-server`를 DDD 기반 구조로 재작성한 프로젝트입니다.
+> **주의:** 로컬 `test` 프로필은 공용 개발 DB(`192.168.10.14:20191/dcim`)에 연결됩니다. 화면에서 저장·삭제한 내용은 다른 개발자와 배포 서버에도 반영됩니다.
 
-## 기술 스택
+DCIM 장비·도면·위젯·계정과 수집 설정을 관리하는 서버입니다.
 
-- Java 17, Spring Boot 3.5.3
-- MariaDB (JPA), H2 (테스트)
-- Spring Security + JWT
-- SpringDoc OpenAPI (Swagger)
-
-## 요구 사항
-
-- JDK 17+
-- MariaDB (로컬 개발 시 `test` 프로파일)
-
-## 실행
-
-```bash
-# Windows
-.\mvnw.cmd spring-boot:run
-
-# Linux / macOS
-./mvnw spring-boot:run
-```
-
-기본 프로파일은 `test`이며, `application-test.yml`의 MariaDB에 연결합니다.
-
-## 테스트
-
-```bash
-.\mvnw.cmd verify
-```
-
-테스트는 `local` 프로파일 + H2 in-memory DB를 사용합니다. (CI 포함)
-
-| 종류 | 위치 | 설명 |
-|------|------|------|
-| 단위 | `module/identity/domain`, `application` | 도메인 규칙, 서비스 로직 (Mockito) |
-| Repository | `module/identity/infrastructure/persistence` | JPA 저장/조회 |
-| 통합 | `module/identity/api` | Auth API MockMvc E2E |
-
-> 로컬에서 JDK 17이 필요합니다. `JAVA_HOME`이 Java 8이면 테스트 실행이 실패합니다.
-
-## API 문서
-
-서버 실행 후:
-
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI JSON: http://localhost:8080/api-docs
-
-## 프로파일
-
-| 프로파일 | 용도 |
-|----------|------|
-| `test` | 로컬/개발 (기본) |
-| `prod` | 운영 (환경변수 필수) |
-| `local` | 테스트 전용 H2 (test resources) |
-
-## 문서
-
-- [기능 명세](docs/FEATURES.md) — 기존 manager-server API·기능 정리
-- [배포·운영 가이드](docs/ops/DEPLOYMENT.md) — 신규 현장 설치, 환경변수, 백업·복구, 점검 기준
-- [외부 데이터 API](docs/external-data/EXTERNAL_DATA_API.md) — 공통 저장 요청과 자료별 조회 경로
-
-## API prefix
-
-```
-/api/manager
-```
+- 요구 사항: JDK 17, 로컬 실행에 필요한 MariaDB 및 설정값.
+- 실행 설정: 작업 폴더의 `config/application.yml`(Git 제외)에 로컬 설정을 입력합니다.
+- 실행: Windows `./mvnw.cmd spring-boot:run`, Linux/macOS `./mvnw spring-boot:run`.
+- 테스트: Windows `./mvnw.cmd verify`, Linux/macOS `./mvnw verify`.
+- Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) (활성화된 경우).
+- 기준 문서: [DCIM_NEW 문서](../docs/README.md).

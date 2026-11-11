@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    enabled: false
   application:
     name: new-manager-server
   jackson:
@@ -19,10 +21,11 @@ server:
 springdoc:
   api-docs:
     path: /api-docs
-    enabled: true
+    # 운영(prod) 프로필은 기본으로 끈다. 필요하면 SWAGGER_ENABLED=true.
+    enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true
+    enabled: ${SWAGGER_ENABLED:true}
     operations-sorter: alpha
     tags-sorter: alpha
     try-it-out-enabled: true
@@ -49,12 +52,18 @@ app:
   version: @project.version@
 
 jwt:
-  secret: ${JWT_SECRET}
+  # 필수값은 기본값을 두지 않는다. 비어 있으면 RequiredSettingsValidator가 누락 목록을 한 번에 보여주고 기동을 멈춘다.
+  secret: ${JWT_SECRET:}
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:1800}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:1209600}
 
 security:
   auth-enabled: true
+  # 공개 회원가입. 끄면(기본) 빈 DB의 첫 계정만 가입되어 ADMIN이 되고, 이후 계정은 관리자가 사용자 관리에서 만든다.
+  public-registration-enabled: ${PUBLIC_REGISTRATION_ENABLED:false}
+  cors:
+    # 교차 출처 호출을 허용할 화면 주소(쉼표 구분). 예: http://dj.vivans.net:20174
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
   refresh-cookie:
     # HTTPS 배포에서는 AUTH_REFRESH_COOKIE_SECURE=true로 설정한다.
     secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
@@ -63,7 +72,7 @@ security:
 collector:
   service:
     url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
-    api-key: ${COLLECTOR_API_KEY}
+    api-key: ${COLLECTOR_API_KEY:}
     enabled: ${COLLECTOR_SYNC_ENABLED:true}
     fail-fast: ${COLLECTOR_SYNC_FAIL_FAST:true}
     retry-max-attempts: ${COLLECTOR_SYNC_RETRY_MAX_ATTEMPTS:3}
@@ -71,13 +80,14 @@ collector:
   reconciliation:
     fixed-delay-ms: ${COLLECTOR_RECONCILIATION_FIXED_DELAY_MS:60000}
 
-# LoRa MQTT 수집 소스 변경을 Sensor Data에 즉시 전달한다.
-# 실제 MQTT 비밀번호는 Manager DB가 아닌 Sensor Data 환경변수에서 credentialKey로 해석한다.
+# MQTT 수신(구 Sensor Data)은 Collector에 통합되었다. LoRa·GPU MQTT 소스 변경을 Collector에 즉시 전달한다.
+# 접속 주소와 키는 Collector와 같은 값을 쓴다. 실제 MQTT 비밀번호는 Collector 환경변수에서 credentialKey로 해석한다.
+# (Java 설정 클래스 이름은 호환을 위해 SensorDataServiceProperties를 유지한다.)
 sensor-data:
   service:
-    url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
-    api-key: ${SENSOR_DATA_API_KEY}
-    enabled: ${SENSOR_DATA_SYNC_ENABLED:true}
+    url: ${COLLECTOR_SERVICE_URL:http://localhost:8081}
+    api-key: ${COLLECTOR_API_KEY:}
+    enabled: ${INGEST_SYNC_ENABLED:true}
 
 # 외부 데이터 수신 API 인증키. 배포 환경에서는 별도 키로 덮어쓰는 것을 권장한다.
 external-data:
@@ -85,8 +95,6 @@ external-data:
 
 operations:
   health:
-    sensor-data-url: ${SENSOR_DATA_SERVICE_URL:http://localhost:8082}
-    sensor-data-enabled: ${SENSOR_DATA_HEALTH_ENABLED:true}
     mqtt-enabled: ${MQTT_HEALTH_ENABLED:true}
     mqtt-host: ${MQTT_HOST:localhost}
     mqtt-port: ${MQTT_PORT:1883}
@@ -95,11 +103,15 @@ operations:
 live:
   telemetry:
     session-timeout-minutes: ${LIVE_SESSION_TIMEOUT_MINUTES:30}
+    interval-ms: ${LIVE_INTERVAL_MS:1000}
+    timeout-ms: ${LIVE_TIMEOUT_MS:800}
+    retries: ${LIVE_RETRIES:0}
+    max-concurrency: ${LIVE_MAX_CONCURRENCY:10}
 
 manager:
   inbound:
-    sensor-data-api-key: ${MANAGER_API_KEY:}
-    collector-api-key: ${COLLECTOR_MANAGER_API_KEY:}
+    # Collector(MQTT 수신 포함) -> Manager 호출 키. Collector의 MANAGER_API_KEY와 같은 값이어야 한다.
+    service-api-key: ${MANAGER_API_KEY:}
 
 collection:
   snmp:
@@ -120,3 +132,22 @@ asset:
     storage-path: ${ASSET_IMAGE_STORAGE_PATH:./uploads/device-images}
   document:
     storage-path: ${ASSET_DOCUMENT_STORAGE_PATH:./uploads/device-documents}
+
+query:
+  collection:
+    latest-lookback-hours: ${COLLECTION_LATEST_LOOKBACK_HOURS:168}
+  widget:
+    latest-lookback: ${WIDGET_LATEST_LOOKBACK:PT24H}
+
+widgets:
+  defaults:
+    environmental-sources: ${WIDGET_ENVIRONMENTAL_SOURCES:8}
+    equipment-value-widgets: ${EQUIPMENT_VALUE_WIDGETS:20}
+  rack:
+    # 전력 균형·상별 위젯 대상 장비 유형(DEVICE_TYPE 코드, 쉼표 구분)과 이중화 경로 코드 2개
+    power-device-types: ${RACK_POWER_DEVICE_TYPES:PDU}
+    redundant-paths: ${RACK_REDUNDANT_PATHS:A,B}
+
+alarms:
+  thresholds:
+    max-sample-age: ${ALARM_MAX_SAMPLE_AGE:PT5M}

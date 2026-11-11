@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * 공통 MQTT 수집 상태. 저장 확인은 최근 7일 Influx 이력 기준이며 현재 발행 보장은 아니다.
  * 소스는 형식별 집계이며 장비와 특정 브로커의 직접 연결을 추정하지 않는다.
- * Sensor Data 런타임 오류 API는 아직 LoRa만 지원하므로 AGENT의 오류 여부를 단정하지 않는다.
+ * Collector(MQTT 수신) 런타임 오류 API는 아직 LoRa만 지원하므로 AGENT의 오류 여부를 단정하지 않는다.
  */
 @Service
 @RequiredArgsConstructor

@@ -9,10 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "operations.health")
 public class OperationsHealthProperties {
 
-    private String sensorDataUrl = "http://localhost:8082";
-    private boolean sensorDataEnabled = true;
     private boolean mqttEnabled = true;
-    private String mqttHost = "localhost";
+    /** 기본값은 application.yml(MQTT_HOST)에서만 정한다. */
+    private String mqttHost;
     private int mqttPort = 1883;
     private int timeoutMillis = 2000;
 }

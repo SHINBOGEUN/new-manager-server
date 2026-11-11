@@ -13,7 +13,7 @@ import net.vivans.dcim.shared.persistence.BaseEntity;
 
 import java.time.Instant;
 
-/** Source 설정과 분리된, Sensor Data가 보고하는 연결/수신 상태 스냅샷. */
+/** Source 설정과 분리된, Collector(MQTT 수신)가 보고하는 연결/수신 상태 스냅샷. */
 @Entity
 @Table(name = "mqtt_source_status")
 @Getter

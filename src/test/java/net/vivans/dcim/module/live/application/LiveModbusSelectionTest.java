@@ -99,4 +99,22 @@ class LiveModbusSelectionTest {
             assertThat(target.units()).containsKey("VALVE_1").doesNotContainKey("VALVE_RAW");
         });
     }
+    @Test
+    void usesConfiguredSnmpAndLiveCollectionSettings() {
+        var query = mock(LiveTelemetryQueryService.class);
+        when(query.getSelectableDevices()).thenReturn(List.of());
+        when(capabilities.getCapabilities(null, null, null)).thenReturn(List.of());
+        var service = new LiveTelemetrySpecService(capabilities, devices, groupSpecs, query);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "community", "private-community");
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "intervalMs", 2500);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "timeoutMs", 1600);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "retries", 2);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "maxConcurrency", 4);
+        var spec = service.build(List.of());
+        assertThat(spec.community()).isEqualTo("private-community");
+        assertThat(spec.intervalMs()).isEqualTo(2500);
+        assertThat(spec.timeoutMs()).isEqualTo(1600);
+        assertThat(spec.retries()).isEqualTo(2);
+        assertThat(spec.maxConcurrency()).isEqualTo(4);
+    }
 }

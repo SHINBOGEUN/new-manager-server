@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    enabled: false
   application:
     name: new-manager-server
   profiles:
@@ -22,21 +24,31 @@ app:
   version: "1.0.2-new-TEST"
 
 jwt:
-  secret: ${JWT_SECRET:lusR6p5tGwGKEWC2rWRYyCVbOzsVOMxMCtxOtHT+V4SiKE8ODJbomdCOl7cy5qbv7JQVHNRPKnwvxhmo9NYmlg==}
+  secret: ${JWT_SECRET:dGVzdC1vbmx5LXNpZ25pbmcta2V5LW5ldmVyLXVzZS1pbi1wcm9kdWN0aW9u}
   access-token-expiration: ${ACCESS_TOKEN_EXPIRATION:3600}
   refresh-token-expiration: ${REFRESH_TOKEN_EXPIRATION:7200}
 
 manager:
   inbound:
-    sensor-data-api-key: sensor-data-service
-    collector-api-key: collector-service
+    service-api-key: test-collector-service-key
 
 security:
   auth-enabled: true
+  # 테스트 도우미가 /auth/register로 사용자를 만든다.
+  public-registration-enabled: true
 
 collector:
   service:
+    url: http://127.0.0.1:1
     enabled: false
+
+sensor-data:
+  service:
+    url: http://127.0.0.1:1
+
+operations:
+  health:
+    mqtt-host: 127.0.0.1
 
 live:
   telemetry:

@@ -1,9 +1,10 @@
+import { isFrameItem } from "/scene-item-role.js?v=20261110roles";
+
 // The frame is hollow; only an actual equipment item may occupy its interior.
 // Whether an item is equipment is decided by the scene, not its model key.
-const FRAME_KEYS = new Set(["SR_INROW_MOLD", "SR_WALL_COIL"]);
-export const isEquipmentFrameKey = (key) => FRAME_KEYS.has(key);
+export const isEquipmentFrameKey = (key) => isFrameItem({ modelKey: key });
 export const isFrameEquipmentItem = (item) => Boolean(item && ["RACK", "EQUIPMENT"].includes(item.itemType)
-  && !isEquipmentFrameKey(item.modelKey)
+  && !isFrameItem(item)
   && !/^(WALL|DOOR|WINDOW)/.test(String(item.modelKey || ""))
   && !["FLOOR", "CEILING", "CEILING_CLEAR", "LIGHT", "PIPE", "STAIR"].includes(item.modelKey));
 

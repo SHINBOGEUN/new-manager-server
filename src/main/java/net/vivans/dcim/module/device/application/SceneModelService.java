@@ -3,6 +3,7 @@ package net.vivans.dcim.module.device.application;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.device.domain.model.SceneModel;
+import net.vivans.dcim.module.device.domain.model.SceneModelRole;
 import net.vivans.dcim.module.device.infrastructure.persistence.DevicePageSceneItemRepository;
 import net.vivans.dcim.module.device.infrastructure.persistence.SceneModelRepository;
 import net.vivans.dcim.module.device.infrastructure.storage.SceneModelFileStorage;
@@ -29,12 +30,13 @@ public class SceneModelService {
     private final net.vivans.dcim.module.device.infrastructure.persistence.RackModelPlacementRepository modelPlacements;
 
     public record ModelResponse(String key, String label, String category, String file, double width, double height,
-                                double depth, boolean enabled, boolean builtin, String url, boolean inUse, boolean rackInstallable, boolean rackUInstallable, boolean rackAttachmentInstallable, boolean deviceLinkable, boolean panelInstallable) {
+                                double depth, boolean enabled, boolean builtin, String url, boolean inUse, boolean rackInstallable, boolean rackUInstallable, boolean rackAttachmentInstallable, boolean deviceLinkable, boolean panelInstallable, String sceneRole) {
         static ModelResponse from(SceneModel model, boolean inUse) {
             return new ModelResponse(model.getKey(), model.getName(), model.getCategory(), model.getFileName(),
                     model.getWidth(), model.getHeight(), model.getDepth(), model.isEnabled(),
                     model.isBuiltin(), "/api/manager/scene-models/" + model.getKey() + "/content?v="
-                    + (model.getUpdatedDt() == null ? 0 : model.getUpdatedDt().toEpochMilli()), inUse, model.isRackInstallable(), model.isRackUInstallable(), model.isRackAttachmentInstallable(), model.isDeviceLinkable(), model.isPanelInstallable());
+                    + (model.getUpdatedDt() == null ? 0 : model.getUpdatedDt().toEpochMilli()), inUse, model.isRackInstallable(), model.isRackUInstallable(), model.isRackAttachmentInstallable(), model.isDeviceLinkable(), model.isPanelInstallable(),
+                    model.getSceneRole() == null ? null : model.getSceneRole().name());
         }
     }
 
@@ -50,6 +52,27 @@ public class SceneModelService {
 
     public boolean usable(String key) {
         return repository.existsById(key);
+    }
+
+    /** 도면 저장 검증용: 카탈로그 모델 키 -> 역할. 역할이 없는 모델은 Optional.empty()로 들어간다. */
+    public java.util.Map<String, java.util.Optional<SceneModelRole>> catalogRoles() {
+        java.util.Map<String, java.util.Optional<SceneModelRole>> roles = new java.util.HashMap<>();
+        repository.findAll().forEach(model -> roles.put(model.getKey(), java.util.Optional.ofNullable(model.getSceneRole())));
+        return roles;
+    }
+
+    /** 업로드 모델인지(기본 제공 모델이 아닌지). 업로드 모델은 설비·분전반 구성품으로만 배치할 수 있다. */
+    public java.util.Set<String> uploadedKeys() {
+        return repository.findAll().stream().filter(model -> !model.isBuiltin()).map(SceneModel::getKey)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    @Transactional
+    public ModelResponse setSceneRole(String key, SceneModelRole role) {
+        SceneModel model = find(key);
+        model.setSceneRole(role);
+        repository.flush();
+        return ModelResponse.from(model, sceneItemRepository.existsByModelKey(key) || rackPlacements.existsBySceneModelKey(key) || modelPlacements.existsBySceneModelKey(key));
     }
 
     public boolean panelInstallable(String key) {

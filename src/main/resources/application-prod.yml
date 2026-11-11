@@ -1,4 +1,11 @@
 spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    validate-on-migrate: true
+    out-of-order: false
+    locations: classpath:db/migration
   datasource:
     url: jdbc:mariadb://${MARIADB_HOST}:${MARIADB_PORT}/dcim
     driver-class-name: org.mariadb.jdbc.Driver
@@ -6,7 +13,7 @@ spring:
     password: ${DB_PASS}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: ${SHOW_SQL:false}
     properties.hibernate:
       format_sql: false
@@ -26,3 +33,10 @@ influx:
   org: ${INFLUX_ORG:vivans}
   bucket: ${INFLUX_BUCKET:dcim}
   measurement: ${INFLUX_MEASUREMENT:dcim_sensor}
+
+# 운영에서는 API 문서를 기본으로 공개하지 않는다(SWAGGER_ENABLED=true로 켤 수 있음).
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}

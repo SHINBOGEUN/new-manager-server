@@ -30,7 +30,8 @@ class MqttPointServiceTest {
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final DeviceModel model = mock(DeviceModel.class);
     private final MqttPointService service = new MqttPointService(points, models, types,
-            mock(UnitCodeResolver.class), mock(CategoryCodeResolver.class), mock(LoraValueMapValidator.class), events);
+            mock(UnitCodeResolver.class), mock(CategoryCodeResolver.class), mock(LoraValueMapValidator.class), events,
+            mock(net.vivans.dcim.module.common.domain.repository.CommonCodeRepository.class));
 
     @BeforeEach void setup() {
         when(model.getId()).thenReturn(1);

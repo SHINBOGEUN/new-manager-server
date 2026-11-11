@@ -2,6 +2,8 @@ package net.vivans.dcim.module.device.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -58,6 +60,13 @@ public class SceneModel extends BaseEntity {
 
     @Column(name = "panel_installable", nullable = false)
     private boolean panelInstallable;
+
+    /** 도면에서의 역할(RACK/PANEL/FRAME). 없으면 일반 설비. 모델 키 이름 규칙 대신 이 값으로 판단한다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scene_role", length = 20)
+    private SceneModelRole sceneRole;
+
+    public void setSceneRole(SceneModelRole role) { this.sceneRole = role; }
 
     public void setPanelInstallable(boolean allowed) { this.panelInstallable = allowed; }
 
