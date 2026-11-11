@@ -104,7 +104,9 @@ public record PageWidgetResponse(
     private static java.util.Map<String, Object> resolveClickConfig(PageWidget widget) {
         if (widget.getClickConfig() != null && !widget.getClickConfig().isBlank()) {
             try {
-                return JSON.readValue(widget.getClickConfig(), new com.fasterxml.jackson.core.type.TypeReference<>() {});
+                java.util.Map<String, Object> config = JSON.readValue(widget.getClickConfig(), new com.fasterxml.jackson.core.type.TypeReference<>() {});
+                config.putIfAbsent("chartCompareMode", widget.getChartCompareMode());
+                return config;
             } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
                 // A malformed legacy value falls back to the safe per-kind default.
             }
@@ -123,6 +125,7 @@ public record PageWidgetResponse(
         config.put("rangePreset", range == null ? "last_3d" : range);
         config.put("window", widget.getTrendWindow() == null ? "15m" : widget.getTrendWindow());
         config.put("seriesMode", widget.getChartSeriesMode() == null ? "per_device" : widget.getChartSeriesMode().name());
+        config.put("chartCompareMode", widget.getChartCompareMode());
         config.put("pointNames", widget.pointNames() == null ? java.util.List.of() : widget.pointNames());
         return config;
     }

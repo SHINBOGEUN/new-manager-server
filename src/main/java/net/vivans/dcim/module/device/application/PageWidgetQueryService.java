@@ -252,6 +252,8 @@ public class PageWidgetQueryService {
         if (config.get("rangePreset") instanceof String rangePreset) PageWidgetChartRangePreset.from(rangePreset);
         validateOption(config, "window", Set.of("1m", "5m", "15m", "1h", "1d"));
         if (config.get("seriesMode") instanceof String seriesMode) PageWidgetChartSeriesMode.from(seriesMode);
+        validateOption(config, "compare", Set.of("none", "previous_period", "previous_day", "previous_week"));
+        validateOption(config, "chartCompareMode", Set.of("none", "previous_period", "previous_day", "previous_week"));
         if ("device".equals(action) || "rack".equals(action) || "page".equals(action)) {
             Object target = config.get("target");
             if (!(target instanceof Map<?, ?> map)) throw new IllegalArgumentException("클릭 이동 대상을 지정하세요");

@@ -105,10 +105,11 @@ public class QueryController {
             @Parameter(description = "aggregateWindow override: 1m|5m|15m|1h|1d")
             @RequestParam(required = false) String window,
             @Parameter(description = "seriesMode override: per_device(PDU) | sum(Total) | by_phase | by_path")
-            @RequestParam(required = false) String seriesMode
+            @RequestParam(required = false) String seriesMode,
+            @RequestParam(required = false) String compare
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                chartQueryService.getChart(widgetId, rangePreset, window, seriesMode)));
+                chartQueryService.getChart(widgetId, rangePreset, window, seriesMode, compare)));
     }
 
     @GetMapping("/aggregate")
@@ -132,9 +133,10 @@ public class QueryController {
     public ResponseEntity<ApiResponse<CalculatedMetricQueryResponse>> getCalculated(
             @RequestParam Integer widgetId,
             @RequestParam(required = false) String rangePreset,
-            @RequestParam(required = false) String window
+            @RequestParam(required = false) String window,
+            @RequestParam(required = false) String compare
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(calculatedMetricQueryService.getCalculated(widgetId, rangePreset, window)));
+        return ResponseEntity.ok(ApiResponse.ok(calculatedMetricQueryService.getCalculated(widgetId, rangePreset, window, compare)));
     }
 
     @GetMapping("/psychrometric")
@@ -171,8 +173,9 @@ public class QueryController {
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getWidgetTrend(
             @RequestParam Integer widgetId,
             @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
-            @RequestParam(required = false, defaultValue = "15m") String window
+            @RequestParam(required = false, defaultValue = "15m") String window,
+            @RequestParam(required = false) String compare
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.getTrend(widgetId, rangePreset, window)));
+        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.getTrend(widgetId, rangePreset, window, compare)));
     }
 }
