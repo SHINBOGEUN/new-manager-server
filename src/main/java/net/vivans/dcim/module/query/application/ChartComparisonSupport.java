@@ -40,16 +40,17 @@ final class ChartComparisonSupport {
                 if (preset == PageWidgetChartRangePreset.today || preset == PageWidgetChartRangePreset.yesterday) {
                     start = current.start().minus(Duration.ofDays(1));
                     end = current.end().minus(Duration.ofDays(1));
-                } else if (preset == PageWidgetChartRangePreset.this_month || preset == PageWidgetChartRangePreset.last_month) {
-                    LocalDate currentDate = current.end().atZone(ZoneOffset.UTC).toLocalDate();
-                    LocalDate previousDate = currentDate.minusMonths(1);
-                    Instant shiftedEnd = current.end().minus(Duration.between(
-                            previousDate.atStartOfDay(ZoneOffset.UTC).toInstant(),
-                            currentDate.atStartOfDay(ZoneOffset.UTC).toInstant()));
-                    start = current.start().minus(Duration.between(
-                            previousDate.withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
-                            currentDate.withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant()));
-                    end = shiftedEnd;
+                } else if (preset == PageWidgetChartRangePreset.this_month) {
+                    LocalDate currentMonthStart = current.start().atZone(ZoneOffset.UTC).toLocalDate();
+                    LocalDate previousMonthStart = currentMonthStart.minusMonths(1).withDayOfMonth(1);
+                    start = previousMonthStart.atStartOfDay(ZoneOffset.UTC).toInstant();
+                    end = current.end().minus(Duration.between(
+                            currentMonthStart.atStartOfDay(ZoneOffset.UTC).toInstant(),
+                            previousMonthStart.atStartOfDay(ZoneOffset.UTC).toInstant()));
+                } else if (preset == PageWidgetChartRangePreset.last_month) {
+                    LocalDate lastMonthStart = current.start().atZone(ZoneOffset.UTC).toLocalDate();
+                    start = lastMonthStart.minusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                    end = current.start();
                 } else {
                     Duration span = Duration.between(current.start(), current.end());
                     start = current.start().minus(span);

@@ -2620,7 +2620,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         else if (widget.chartWindow) params.set("window", widget.chartWindow);
         if (seriesMode) params.set("seriesMode", seriesMode);
         const compare = overrides.compare || widget.clickConfig?.chartCompareMode;
-        if (compare && compare !== "none") params.set("compare", compare);
+        params.set("compare", compare || "none");
         return await api(`/api/manager/query/chart?${params}`);
       } catch (err) {
         return { widgetId: widget.id, widgetName: widget.name, series: [], error: err.message };
@@ -2988,9 +2988,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!series.length) {
         return `<div class="count-label">${escapeHtml(meta)}</div><div class="empty" style="padding:12px">시리즈 없음</div>`;
       }
-      const legend = series.slice(0, 8).map((s, i) =>
-        `<span><i style="background:${CHART_PALETTE[i % CHART_PALETTE.length]}"></i>${escapeHtml(s.label || s.key || "")}</span>`
-      ).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
+      const legend = series.slice(0, 8).map((s, i) => {
+        const baseKey = s.compare && s.key ? s.key.replace(/:compare$/, "") : null;
+        const baseIndex = baseKey ? series.findIndex((item) => item.key === baseKey) : -1;
+        const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : i) % CHART_PALETTE.length];
+        const line = s.compare ? `background:transparent;border-top:2px dashed ${color}` : `background:${color}`;
+        return `<span><i style="${line}"></i>${escapeHtml(s.label || s.key || "")}</span>`;
+      }).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
       return `
         <div class="count-label">${escapeHtml(meta)} · ${series.length} series</div>
         <div class="chart-wrap"><canvas data-chart-id="${chart.widgetId}"></canvas></div>
@@ -3049,7 +3053,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         showCompare: true,
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
-          if (compare && compare !== "none") params.set("compare", compare);
+          params.set("compare", compare || "none");
           if (widget.queryKind === "chart") {
             params.set("widgetId", String(widget.id));
             params.set("seriesMode", seriesMode);

@@ -14051,10 +14051,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         : "장비·포인트별 선으로 표시하며, 합계·상별·위치별 묶음은 저장 후 적용됩니다.";
       await window.DcimWidgetDetail.open({
         title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
-        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: true, note: note,
+        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: Boolean(existingId), note: note + (existingId ? "" : " · 기간 비교는 저장 후 미리 볼 수 있습니다."),
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
-          if (compare && compare !== "none") params.set("compare", compare);
+          params.set("compare", compare || "none");
           if (existingId) {
             params.set("widgetId", String(existingId));
             if (kind === "chart") {
