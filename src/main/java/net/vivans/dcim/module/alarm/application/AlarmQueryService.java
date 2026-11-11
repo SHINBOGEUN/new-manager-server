@@ -21,6 +21,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.time.Instant;
@@ -152,12 +153,53 @@ public class AlarmQueryService {
 
     public Map<String, Object> openDeviceSummary(Authentication auth, List<Integer> deviceIds) {
         requireReader(auth);
-        if (deviceIds == null || deviceIds.isEmpty()) return Map.of("openCount", 0, "deviceIds", List.of());
+        if (deviceIds == null || deviceIds.isEmpty()) return Map.of("openCount", 0, "deviceIds", List.of(), "devices", List.of());
         if (deviceIds.size() > 1000 || deviceIds.stream().anyMatch(id -> id == null || id < 1)) throw new IllegalArgumentException("장비 목록을 확인하세요");
-        var rows = events.findOpenDeviceIds(deviceIds, isAdmin(auth));
+        boolean includeAdmin = isAdmin(auth);
+        var rows = events.findOpenDeviceIds(deviceIds, includeAdmin);
         Set<Integer> affected = new HashSet<>();
         for (Object[] row : rows) for (Object value : row) if (value instanceof Number number) affected.add(number.intValue());
-        return Map.of("openCount", rows.size(), "deviceIds", affected.stream().sorted().toList());
+        Map<Integer, Map<String, Object>> byDevice = new LinkedHashMap<>();
+        for (AlarmEvent event : events.findOpenEventsForDevices(deviceIds, includeAdmin)) {
+            ThresholdAlarmEventDetail threshold = event.getThresholdDetail();
+            CollectionGapAlarmDetail gap = event.getCollectionGapDetail();
+            Integer deviceId = threshold != null ? threshold.getDevice().getId() : gap != null ? gap.getDevice().getId() : null;
+            if (deviceId == null || !deviceIds.contains(deviceId)) continue;
+            Map<String, Object> summary = byDevice.computeIfAbsent(deviceId, ignored -> {
+                Map<String, Object> value = new LinkedHashMap<>();
+                value.put("deviceId", deviceId);
+                value.put("deviceName", threshold != null ? threshold.getDevice().getName() : gap.getDevice().getName());
+                value.put("openCount", 0);
+                value.put("worstSeverity", event.getSeverity());
+                value.put("latest", null);
+                return value;
+            });
+            summary.put("openCount", ((Number) summary.get("openCount")).intValue() + 1);
+            if (severityRank(event.getSeverity()) > severityRank((String) summary.get("worstSeverity"))) {
+                summary.put("worstSeverity", event.getSeverity());
+            }
+            if (summary.get("latest") == null) {
+                Map<String, Object> latest = new LinkedHashMap<>();
+                latest.put("pointName", threshold == null ? null : threshold.getPointName());
+                latest.put("severity", event.getSeverity());
+                latest.put("value", threshold == null || threshold.getMeasuredValue() == null ? null : threshold.getMeasuredValue().doubleValue());
+                latest.put("unit", threshold == null ? null : threshold.getUnit());
+                latest.put("operator", threshold == null ? null : threshold.getOperator());
+                latest.put("threshold", threshold == null || threshold.getThresholdValue() == null ? null : threshold.getThresholdValue().doubleValue());
+                latest.put("occurredAt", event.getRaisedDt());
+                summary.put("latest", latest);
+            }
+        }
+        return Map.of("openCount", rows.size(), "deviceIds", affected.stream().sorted().toList(),
+                "devices", byDevice.values().stream().toList());
+    }
+
+    private static int severityRank(String severity) {
+        return switch (severity == null ? "" : severity) {
+            case "CRITICAL", "DANGER" -> 3;
+            case "WARNING" -> 2;
+            default -> 1;
+        };
     }
 
     public List<AlarmEventResponse> updates(Authentication auth, long afterId, int limit) {

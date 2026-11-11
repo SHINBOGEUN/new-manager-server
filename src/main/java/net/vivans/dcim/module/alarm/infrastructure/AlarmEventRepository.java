@@ -40,6 +40,9 @@ public interface AlarmEventRepository extends JpaRepository<AlarmEvent, Long>, J
     @Query("select t.device.id, g.device.id from AlarmEvent e left join e.thresholdDetail t left join e.collectionGapDetail g where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE') and (t.device.id in :deviceIds or g.device.id in :deviceIds)")
     List<Object[]> findOpenDeviceIds(@Param("deviceIds") java.util.Collection<Integer> deviceIds, @Param("includeAdmin") boolean includeAdmin);
 
+    @Query("select distinct e from AlarmEvent e left join fetch e.thresholdDetail t left join fetch t.device td left join fetch e.collectionGapDetail g left join fetch g.device gd where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE') and (td.id in :deviceIds or gd.id in :deviceIds) order by e.raisedDt desc, e.id desc")
+    List<AlarmEvent> findOpenEventsForDevices(@Param("deviceIds") java.util.Collection<Integer> deviceIds, @Param("includeAdmin") boolean includeAdmin);
+
     @Query("select e.severity, count(e) from AlarmEvent e where e.clearedDt is null and (:includeAdmin = true or e.visibility = 'USER_VISIBLE') group by e.severity")
     List<Object[]> countOpenBySeverityForSummary(@Param("includeAdmin") boolean includeAdmin);
 

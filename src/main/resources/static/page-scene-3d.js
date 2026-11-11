@@ -2640,7 +2640,12 @@ function mount(container, page, options = {}) {
     rack.add(overlay);
   }
   const problemMarkers = new Map();
-  let problemDeviceIds = new Set(), lastProblemPositionUpdate = 0;
+  let problemDevicesById = new Map(), lastProblemPositionUpdate = 0;
+  const problemBadgeLayer = document.createElement("div");
+  problemBadgeLayer.className = "scene-problem-badge-layer";
+  Object.assign(problemBadgeLayer.style, {position:"absolute", inset:"0", pointerEvents:"none", overflow:"hidden", zIndex:"8"});
+  if (getComputedStyle(container).position === "static") container.style.position = "relative";
+  container.appendChild(problemBadgeLayer);
   const problemCanvas = document.createElement('canvas'); problemCanvas.width = problemCanvas.height = 64;
   const problemContext = problemCanvas.getContext('2d');
   const problemGradient = problemContext.createRadialGradient(32, 32, 3, 32, 32, 31);
@@ -2648,20 +2653,69 @@ function mount(container, page, options = {}) {
   problemContext.fillStyle = problemGradient; problemContext.fillRect(0, 0, 64, 64);
   const problemTexture = new THREE.CanvasTexture(problemCanvas);
   const problemMaterial = new THREE.SpriteMaterial({map:problemTexture, transparent:true, depthTest:false, depthWrite:false});
+  function problemColor(devices) {
+    const severities = devices.flatMap(problem => (problem.reasons || []).map(reason => reason.severity));
+    if (severities.some(value => value === "CRITICAL" || value === "DANGER")) return 0xff3344;
+    if (severities.some(value => value === "WARNING")) return 0xff9f1c;
+    return 0xffd43b;
+  }
+  function problemTitle(devices) {
+    return devices.map(problem => `${problem.deviceName || `장비 #${problem.deviceId}`} · ${(problem.reasons || []).map(reason => reason.text).join(" / ") || "문제 상태"}`).join("\n");
+  }
   function syncProblemMarkers() {
-    const affected = new Set();
+    const affected = new Map();
+    const add = (group, problem) => {
+      if (!group || !problem) return;
+      if (!affected.has(group)) affected.set(group, new Map());
+      affected.get(group).set(Number(problem.deviceId), problem);
+    };
     for (const item of items) {
-      if (!item.deviceId || !problemDeviceIds.has(Number(item.deviceId))) continue;
+      const problem = problemDevicesById.get(Number(item.deviceId));
+      if (!problem || !item.deviceId) continue;
       const parentKey = item.parentId != null ? `db-${item.parentId}` : item.parentClientKey;
-      const group = itemGroups.get(parentKey || findItemKey(item)); if (group) affected.add(group);
+      add(itemGroups.get(parentKey || findItemKey(item)), problem);
     }
     for (const group of itemGroups.values()) {
-      if ((group.userData.rackLayout?.placements || []).some(entry => entry.deviceId && problemDeviceIds.has(Number(entry.deviceId)))) affected.add(group);
+      for (const placement of group.userData.rackLayout?.placements || []) {
+        const problem = problemDevicesById.get(Number(placement.deviceId));
+        if (problem) add(group, problem);
+      }
     }
-    for (const [group, sprite] of problemMarkers) if (!affected.has(group) || !group.parent) { scene.remove(sprite); problemMarkers.delete(group); }
-    for (const group of affected) if (!problemMarkers.has(group)) {
-      const sprite = new THREE.Sprite(problemMaterial); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
-      scene.add(sprite); problemMarkers.set(group, sprite);
+    for (const [group, marker] of problemMarkers) if (!affected.has(group) || !group.parent) {
+      scene.remove(marker.sprite); marker.sprite.material.dispose(); marker.badge.remove(); problemMarkers.delete(group);
+    }
+    for (const [group, problemMap] of affected) {
+      const devices = [...problemMap.values()];
+      let marker = problemMarkers.get(group);
+      if (!marker) {
+        const sprite = new THREE.Sprite(problemMaterial.clone()); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
+        scene.add(sprite);
+        const badge = document.createElement("button"); badge.type = "button"; badge.className = "scene-problem-badge";
+        Object.assign(badge.style, {position:"absolute", transform:"translate(-50%, -100%)", pointerEvents:"auto", maxWidth:"240px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", padding:"4px 8px", border:"1px solid #ff6674", borderRadius:"999px", color:"#fff", background:"rgba(82,14,22,.94)", font:"600 11px/1.3 sans-serif", boxShadow:"0 2px 10px rgba(0,0,0,.38)"});
+        badge.addEventListener("pointerdown", event => event.stopPropagation());
+        badge.addEventListener("click", event => {
+          event.preventDefault(); event.stopPropagation();
+          const current = marker?.devices || [];
+          if (current.length === 1) options.onProblemDeviceClick?.(current[0]);
+        });
+        problemBadgeLayer.appendChild(badge);
+        marker = {sprite, badge, devices}; problemMarkers.set(group, marker);
+      }
+      marker.devices = devices;
+      const color = problemColor(devices);
+      marker.sprite.material.color.setHex(color);
+      const first = devices[0];
+      const firstReason = first?.reasons?.[0]?.text || "문제 상태";
+      marker.badge.textContent = devices.length > 1
+        ? `${devices.length}대 문제 장비`
+        : `${first?.deviceName || `장비 #${first?.deviceId}`} · ${firstReason}`;
+      marker.badge.title = problemTitle(devices);
+      marker.badge.style.borderColor = `#${color.toString(16).padStart(6,"0")}`;
+      marker.badge.style.background = devices.some(problem => (problem.reasons || []).some(reason => reason.kind === "COLLECTION"))
+        && devices.every(problem => (problem.reasons || []).every(reason => reason.kind !== "ALARM"))
+        ? "rgba(83,67,12,.96)" : "rgba(82,14,22,.94)";
+      marker.badge.style.cursor = devices.length === 1 ? "pointer" : "help";
+      marker.badge.setAttribute("aria-label", problemTitle(devices));
     }
     lastProblemPositionUpdate = 0;
   }
@@ -2669,11 +2723,21 @@ function mount(container, page, options = {}) {
     if (destroyed) return;
     const deltaSeconds = Math.min(.05, Math.max(0, (now - lastFrameTime) / 1000));
     lastFrameTime = now;
-    problemMaterial.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
     if (problemMarkers.size && now - lastProblemPositionUpdate > 350) {
-      for (const [group, sprite] of problemMarkers) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      for (const [group, marker] of problemMarkers) {
         const bounds = new THREE.Box3().setFromObject(group);
-        if (!bounds.isEmpty()) { bounds.getCenter(sprite.position); sprite.position.y = bounds.max.y + .35; }
+        if (!bounds.isEmpty()) {
+          bounds.getCenter(marker.sprite.position); marker.sprite.position.y = bounds.max.y + .35;
+          marker.sprite.material.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
+          const projected = marker.sprite.position.clone().project(camera);
+          const visible = projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) <= 1.2 && Math.abs(projected.y) <= 1.2;
+          marker.badge.hidden = !visible;
+          if (visible) {
+            marker.badge.style.left = `${(projected.x * .5 + .5) * rect.width}px`;
+            marker.badge.style.top = `${(-projected.y * .5 + .5) * rect.height - 12}px`;
+          }
+        }
       }
       lastProblemPositionUpdate = now;
     }
@@ -2692,7 +2756,12 @@ function mount(container, page, options = {}) {
     renderer.render(scene, camera); raf = requestAnimationFrame(animate);
   }; animate();
   const api = {
-    setProblemDevices(deviceIds) { problemDeviceIds = new Set((deviceIds || []).map(Number)); syncProblemMarkers(); },
+    setProblemDevices(problems) {
+      problemDevicesById = new Map((problems || []).map(problem => typeof problem === "object"
+        ? [Number(problem.deviceId), problem]
+        : [Number(problem), {deviceId:Number(problem), deviceName:`장비 #${problem}`, reasons:[]}]).filter(([id]) => Number.isFinite(id)));
+      syncProblemMarkers();
+    },
     setRackLayout(locationCode, layout) {
       for (const item of items.filter((entry) => entry.locationNodeCode === locationCode)) {
         const key = findItemKey(item), group = itemGroups.get(key);
@@ -3063,7 +3132,7 @@ function mount(container, page, options = {}) {
     },
     setWalking,
     getItems() { return structuredClone(items); },
-    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
+    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemMarkers.forEach(marker => marker.sprite.material.dispose()); problemBadgeLayer.remove(); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
   };
   views.set(container, api); return api;
 }
