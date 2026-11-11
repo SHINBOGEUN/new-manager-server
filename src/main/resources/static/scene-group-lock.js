@@ -1,3 +1,5 @@
+import { isRackItem } from "/scene-item-role.js?v=20261110roles";
+
 // Update only the requested group; return the number of members changed.
 export function setGroupLockState(items, groupKey, locked) {
   if (!groupKey || typeof locked !== "boolean") return 0;
@@ -11,6 +13,6 @@ export function setGroupLockState(items, groupKey, locked) {
 }
 
 export function rackDetailAction(item) {
-  if (!item || !(item.itemType === "RACK" || (/(?:^|_)RACK$/.test(String(item.modelKey || "")) && item.modelKey !== "SR_PDU_RACK"))) return "ignore";
+  if (!isRackItem(item)) return "ignore";
   return item.locked ? "locked" : "open";
 }

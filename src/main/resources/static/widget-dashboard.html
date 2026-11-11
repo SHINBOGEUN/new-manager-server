@@ -105,7 +105,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261109panel-accura"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261110roles"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1793,6 +1793,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const scene = state.pageScene3dApi;
       if (!page || !scene) return;
       const items = scene.getItems();
+      const { isPanelItem } = await import("/scene-item-role.js?v=20261110roles");
       const request = {
         viewMode: page.viewMode || "SCENE_3D",
         layoutAssetKey: page.layoutAssetKey || null,
@@ -1805,8 +1806,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           sizeY: Number(item.sizeY) || 4,
           sizeZ: Number(item.sizeZ) || 4,
           rackColor: item.rackColor || null,
-          panelPhoto: item.modelKey === 'SR_INROW_PANEL' ? (item.panelPhoto || '') : null,
-          panelLayoutInitialized: item.modelKey === 'SR_INROW_PANEL' ? Boolean(item.panelLayoutInitialized) : false,
+          panelPhoto: isPanelItem(item) ? (item.panelPhoto || '') : null,
+          panelLayoutInitialized: isPanelItem(item) ? Boolean(item.panelLayoutInitialized) : false,
           groupKey: item.groupKey || null,
           groupName: item.groupName || null,
           locked: Boolean(item.locked),

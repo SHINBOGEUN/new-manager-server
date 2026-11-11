@@ -68,7 +68,7 @@ public class SecurityConfig {
             http.authorizeHttpRequests(request -> request
                 .requestMatchers("/api/manager/auth/login", "/api/manager/auth/register", "/api/manager/auth/refresh", "/api/manager/auth/logout", "/api/manager/auth/validate", "/api/manager/auth/registration").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                .requestMatchers("/", "/index.html", "/analysis.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html", "/page-scene-3d.js", "/floor-placement.js", "/inrow-placement.js", "/scene-group-lock.js", "/asset-model-preview.js", "/vendor/three/**", "/vendor/chartjs/**", "/vendor/mqtt/**", "/vendor/pretendard/**").permitAll()
+                .requestMatchers("/", "/index.html", "/analysis.html", "/live-test.html", "/mqtt-monitor.html", "/widget-dashboard.html", "/ops-console.html", "/page-scene-3d.js", "/floor-placement.js", "/inrow-placement.js", "/scene-group-lock.js", "/scene-item-role.js", "/asset-model-preview.js", "/vendor/three/**", "/vendor/chartjs/**", "/vendor/mqtt/**", "/vendor/pretendard/**").permitAll()
                 .requestMatchers("/scene-assets/showroom/**", "/showroom-models.js", "/rack-widget-layout.js", "/rack-widget-chart.js", "/rack-door-attachment.js", "/rack-scene-display.js", "/ops-navigation.js", "/ops-workspace.css").permitAll()
                 .requestMatchers("/favicon.svg", "/favicon.ico").permitAll()
                 .requestMatchers("/ws/mqtt-monitor").permitAll()
