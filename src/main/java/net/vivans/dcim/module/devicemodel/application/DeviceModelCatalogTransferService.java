@@ -28,6 +28,7 @@ public class DeviceModelCatalogTransferService {
     public static final String FORMAT = "dcim-model-catalog";
     public static final int VERSION = 1;
     private static final int MAX_MODELS = 500;
+    private static final Set<String> PHASE_CODES = Set.of("P1", "P2", "P3", "N");
 
     private final DeviceModelRepository modelRepository;
     private final DeviceModelSnmpPointRepository snmpRepository;
@@ -69,6 +70,7 @@ public class DeviceModelCatalogTransferService {
         List<String> disabled = new ArrayList<>(), warnings = new ArrayList<>();
         List<DeviceModelCatalogImportReport.Error> errors = new ArrayList<>();
         validateDocument(document, errors);
+        validatePhaseMetadata(document, errors);
         if (!errors.isEmpty()) return report(created, updated, skipped, disabled, warnings, errors);
 
         List<DeviceModel> existingModels = modelRepository.findAll(null, null);
@@ -116,18 +118,18 @@ public class DeviceModelCatalogTransferService {
             String code = protocol.getProtocolType().getCode().toLowerCase(Locale.ROOT);
             if ("snmp".equals(code)) {
                 for (DeviceModelSnmpPoint p : snmpRepository.findAllByModelProtocolIdOrderByIdAsc(protocol.getId())) {
-                    snmp.add(new DeviceModelCatalogDocument.SnmpPoint(p.getName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getOid(), p.isRequiresInstance(), p.getScale(), p.isEnabled()));
+                    snmp.add(new DeviceModelCatalogDocument.SnmpPoint(p.getName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getOid(), p.isRequiresInstance(), p.getScale(), p.isEnabled(), code(p.getPhase())));
                 }
             } else if ("modbus".equals(code)) {
                 for (DeviceModelModbusPoint p : modbusRepository.findAllByModelProtocolIdOrderByIdAsc(protocol.getId())) {
-                    modbus.add(new DeviceModelCatalogDocument.ModbusPoint(p.getName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getRegisterType().name(), p.getDataType().name(), p.getByteOrder() == null ? null : p.getByteOrder().name(), p.getAddress(), p.isRequiresInstance(), p.getScale(), p.getOffset(), p.isEnabled()));
+                    modbus.add(new DeviceModelCatalogDocument.ModbusPoint(p.getName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getRegisterType().name(), p.getDataType().name(), p.getByteOrder() == null ? null : p.getByteOrder().name(), p.getAddress(), p.isRequiresInstance(), p.getScale(), p.getOffset(), p.isEnabled(), code(p.getPhase())));
                 }
             }
         }
         List<DeviceModelCatalogDocument.MqttPoint> mqtt = mqttRepository.findAllByDeviceModelIdOrderByIdAsc(model.getId()).stream()
-                .map(p -> new DeviceModelCatalogDocument.MqttPoint(p.getPayloadField(), p.getPointName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getComponentScope().name(), p.getComponentType(), p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField(), p.getScale(), p.getValueMap(), p.isEnabled()))
+                .map(p -> new DeviceModelCatalogDocument.MqttPoint(p.getPayloadField(), p.getPointName(), code(p.getDataPointType()), code(p.getCategoryCode()), code(p.getUnitCode()), p.getComponentScope().name(), p.getComponentType(), p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField(), p.getScale(), p.getValueMap(), p.isEnabled(), code(p.getPhase())))
                 .toList();
-        return new DeviceModelCatalogDocument.Model(model.getName(), model.getManufacturer(), model.getDeviceType().getCode(), model.getDescription(), protocols, snmp, modbus, mqtt);
+        return new DeviceModelCatalogDocument.Model(model.getName(), model.getManufacturer(), model.getDeviceType().getCode(), model.getDescription(), protocols, snmp, modbus, mqtt, code(model.getPhaseNotation()));
     }
 
     private PreparedModel validateModel(DeviceModelCatalogDocument.Model file, DeviceModel existing) {
@@ -153,7 +155,9 @@ public class DeviceModelCatalogTransferService {
         if ((file.snmpPoints() != null && !file.snmpPoints().isEmpty()) && !protocols.containsKey("snmp")) throw new IllegalArgumentException("snmpPoints require snmp protocol");
         if ((file.modbusPoints() != null && !file.modbusPoints().isEmpty()) && !protocols.containsKey("modbus")) throw new IllegalArgumentException("modbusPoints require modbus protocol");
         if ((file.mqttPoints() != null && !file.mqttPoints().isEmpty()) && !protocols.containsKey("mqtt") && !"LORA_SENSOR".equalsIgnoreCase(type.getCode())) throw new IllegalArgumentException("mqttPoints require mqtt protocol");
-        return new PreparedModel(file, existing, type, protocols);
+        CommonCode phaseNotation = file.phaseNotation() == null || file.phaseNotation().isBlank()
+                ? null : requiredCode("PHASE_NOTATION", normalizeCode(file.phaseNotation()), "phaseNotation");
+        return new PreparedModel(file, existing, type, protocols, phaseNotation);
     }
 
     private void validateSnmp(DeviceModelCatalogDocument.Model file, DeviceModelProtocol protocol, DeviceModel existing) {
@@ -215,12 +219,13 @@ public class DeviceModelCatalogTransferService {
     private void applyModel(PreparedModel item, List<String> disabled, List<String> warnings) {
         Integer modelId;
         if (item.existing() == null) {
-            DeviceModelCreateRequest request = new DeviceModelCreateRequest(item.file().name(), item.file().manufacturer(), item.type().getId(), item.file().description(), item.protocols().values().stream().map(code -> new DeviceModelProtocolRequest(code.getId())).toList());
+            DeviceModelCreateRequest request = new DeviceModelCreateRequest(item.file().name(), item.file().manufacturer(), item.type().getId(), item.file().description(), item.protocols().values().stream().map(code -> new DeviceModelProtocolRequest(code.getId())).toList(), code(item.phaseNotation()));
             modelId = modelService.createDeviceModel(request).id();
         } else {
             modelId = item.existing().getId();
-            modelService.updateDeviceModelDetails(modelId, new DeviceModelDetailsUpdateRequest(item.file().name(), item.file().manufacturer(), item.type().getId(), item.file().description()));
+            modelService.updateDeviceModelDetails(modelId, new DeviceModelDetailsUpdateRequest(item.file().name(), item.file().manufacturer(), item.type().getId(), item.file().description(), code(item.phaseNotation())));
             DeviceModel managed = modelRepository.findById(modelId).orElseThrow();
+            managed.setPhaseNotation(item.phaseNotation());
             Set<String> existingProtocols = managed.getProtocols().stream().map(p -> p.getProtocolType().getCode().toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
             for (Map.Entry<String, CommonCode> protocol : item.protocols().entrySet()) {
                 if (!existingProtocols.contains(protocol.getKey())) managed.getProtocols().add(DeviceModelProtocol.of(managed, protocol.getValue()));
@@ -272,12 +277,12 @@ public class DeviceModelCatalogTransferService {
         Set<Integer> consumed = new HashSet<>();
         for (var p : nullToEmpty(file.snmpPoints())) {
             DeviceModelSnmpPointResponse old = byName.get(p.name().toLowerCase(Locale.ROOT));
-            DeviceModelSnmpPointCreateRequest request = new DeviceModelSnmpPointCreateRequest(codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), p.name(), p.oid(), p.requiresInstance(), p.scale(), !Boolean.FALSE.equals(p.enabled()));
+            DeviceModelSnmpPointCreateRequest request = new DeviceModelSnmpPointCreateRequest(codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), p.name(), p.oid(), p.requiresInstance(), p.scale(), !Boolean.FALSE.equals(p.enabled()), normalizeOptionalPhase(p.phase()));
             if (old == null) snmpService.createDeviceModelSnmpPoint(modelId, protocolId, request);
             else { consumed.add(old.id()); snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, old.id(), request); }
         }
         for (DeviceModelSnmpPointResponse p : current) if (!consumed.contains(p.id()) && p.enabled()) {
-            snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, p.id(), new DeviceModelSnmpPointCreateRequest(p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.name(), p.oid(), p.requiresInstance(), p.scale(), false));
+            snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, p.id(), new DeviceModelSnmpPointCreateRequest(p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.name(), p.oid(), p.requiresInstance(), p.scale(), false, p.phase()));
             disabled.add(display(file) + " · snmp · " + p.name());
         }
     }
@@ -289,12 +294,12 @@ public class DeviceModelCatalogTransferService {
         Set<Integer> consumed = new HashSet<>();
         for (var p : nullToEmpty(file.modbusPoints())) {
             DeviceModelModbusPointResponse old = byName.get(p.name().toLowerCase(Locale.ROOT));
-            DeviceModelModbusPointCreateRequest request = new DeviceModelModbusPointCreateRequest(p.name(), codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), enumValue(ModbusRegisterType.class, p.registerType(), "registerType"), enumValue(ModbusDataType.class, p.dataType(), "dataType"), enumValue(ModbusByteOrder.class, p.byteOrder(), "byteOrder"), p.address(), p.requiresInstance(), p.scale(), p.offset(), !Boolean.FALSE.equals(p.enabled()));
+            DeviceModelModbusPointCreateRequest request = new DeviceModelModbusPointCreateRequest(p.name(), codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), enumValue(ModbusRegisterType.class, p.registerType(), "registerType"), enumValue(ModbusDataType.class, p.dataType(), "dataType"), enumValue(ModbusByteOrder.class, p.byteOrder(), "byteOrder"), p.address(), p.requiresInstance(), p.scale(), p.offset(), !Boolean.FALSE.equals(p.enabled()), normalizeOptionalPhase(p.phase()));
             if (old == null) modbusService.createDeviceModelModbusPoint(modelId, protocolId, request);
             else { consumed.add(old.id()); modbusService.updateDeviceModelModbusPoint(modelId, protocolId, old.id(), request); }
         }
         for (DeviceModelModbusPointResponse p : current) if (!consumed.contains(p.id()) && p.enabled()) {
-            modbusService.updateDeviceModelModbusPoint(modelId, protocolId, p.id(), new DeviceModelModbusPointCreateRequest(p.name(), p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.registerType(), p.dataType(), p.byteOrder(), p.address(), p.requiresInstance(), p.scale(), p.offset(), false));
+            modbusService.updateDeviceModelModbusPoint(modelId, protocolId, p.id(), new DeviceModelModbusPointCreateRequest(p.name(), p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.registerType(), p.dataType(), p.byteOrder(), p.address(), p.requiresInstance(), p.scale(), p.offset(), false, p.phase()));
             disabled.add(display(file) + " · modbus · " + p.name());
         }
     }
@@ -305,12 +310,12 @@ public class DeviceModelCatalogTransferService {
         Set<Integer> consumed = new HashSet<>();
         for (var p : nullToEmpty(file.mqttPoints())) {
             DeviceModelMqttPoint old = byName.get(p.pointName().trim().toLowerCase(Locale.ROOT));
-            MqttPointRequest request = new MqttPointRequest(p.payloadField(), p.pointName(), codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), p.scale(), p.valueMap(), !Boolean.FALSE.equals(p.enabled()), enumValue(MqttPointScope.class, p.componentScope() == null ? "DEVICE" : p.componentScope(), "componentScope"), p.componentType(), p.componentPath(), p.componentIndexField(), p.componentUuidField());
+            MqttPointRequest request = new MqttPointRequest(p.payloadField(), p.pointName(), codeId("DATA_POINT_TYPE", p.dataPointType()), codeIdOrNull("CATEGORY", p.category()), codeIdOrNull("UNIT", p.unit()), p.scale(), p.valueMap(), !Boolean.FALSE.equals(p.enabled()), enumValue(MqttPointScope.class, p.componentScope() == null ? "DEVICE" : p.componentScope(), "componentScope"), p.componentType(), p.componentPath(), p.componentIndexField(), p.componentUuidField(), normalizeOptionalPhase(p.phase()));
             if (old == null) mqttService.save(modelId, null, request);
             else { consumed.add(old.getId()); mqttService.save(modelId, old.getId(), request); }
         }
         for (DeviceModelMqttPoint p : current) if (!consumed.contains(p.getId()) && p.isEnabled()) {
-            mqttService.save(modelId, p.getId(), new MqttPointRequest(p.getPayloadField(), p.getPointName(), p.getDataPointType().getId(), p.getCategoryCode() == null ? null : p.getCategoryCode().getId(), p.getUnitCode() == null ? null : p.getUnitCode().getId(), p.getScale(), p.getValueMap(), false, p.getComponentScope(), p.getComponentType(), p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField()));
+            mqttService.save(modelId, p.getId(), new MqttPointRequest(p.getPayloadField(), p.getPointName(), p.getDataPointType() == null ? null : p.getDataPointType().getId(), p.getCategoryCode() == null ? null : p.getCategoryCode().getId(), p.getUnitCode() == null ? null : p.getUnitCode().getId(), p.getScale(), p.getValueMap(), false, p.getComponentScope(), p.getComponentType(), p.getComponentPath(), p.getComponentIndexField(), p.getComponentUuidField(), code(p.getPhase())));
             disabled.add(display(file) + " · mqtt · " + p.getPointName());
         }
     }
@@ -318,12 +323,12 @@ public class DeviceModelCatalogTransferService {
     private void disableProtocolPoints(Integer modelId, String protocol, Integer protocolId, List<String> disabled) {
         if ("snmp".equals(protocol)) {
             for (var p : snmpService.getDeviceModelSnmpPoints(modelId, protocolId)) if (p.enabled()) {
-                snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, p.id(), new DeviceModelSnmpPointCreateRequest(p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.name(), p.oid(), p.requiresInstance(), p.scale(), false));
+                snmpService.updateDeviceModelSnmpPoint(modelId, protocolId, p.id(), new DeviceModelSnmpPointCreateRequest(p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.name(), p.oid(), p.requiresInstance(), p.scale(), false, p.phase()));
                 disabled.add(displayModel(modelId) + " · snmp · " + p.name());
             }
         } else if ("modbus".equals(protocol)) {
             for (var p : modbusService.getDeviceModelModbusPoints(modelId, protocolId)) if (p.enabled()) {
-                modbusService.updateDeviceModelModbusPoint(modelId, protocolId, p.id(), new DeviceModelModbusPointCreateRequest(p.name(), p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.registerType(), p.dataType(), p.byteOrder(), p.address(), p.requiresInstance(), p.scale(), p.offset(), false));
+                modbusService.updateDeviceModelModbusPoint(modelId, protocolId, p.id(), new DeviceModelModbusPointCreateRequest(p.name(), p.dataPointTypeId(), p.categoryCodeId(), p.unitCodeId(), p.registerType(), p.dataType(), p.byteOrder(), p.address(), p.requiresInstance(), p.scale(), p.offset(), false, p.phase()));
                 disabled.add(displayModel(modelId) + " · modbus · " + p.name());
             }
         }
@@ -343,6 +348,43 @@ public class DeviceModelCatalogTransferService {
         else if (document.models().size() > MAX_MODELS) errors.add(error("(file)", "models", "at most " + MAX_MODELS + " models are allowed"));
     }
 
+    private void validatePhaseMetadata(DeviceModelCatalogDocument document, List<DeviceModelCatalogImportReport.Error> errors) {
+        if (document == null || document.models() == null) return;
+        for (DeviceModelCatalogDocument.Model model : document.models()) {
+            if (model == null) continue;
+            String modelName = display(model);
+            String notation = model.phaseNotation();
+            if (notation != null && !notation.isBlank()) {
+                String normalized = normalizeCode(notation);
+                if (commonCodes.findByCodeGroupGroupKeyAndCode("PHASE_NOTATION", normalized).isEmpty()) {
+                    errors.add(error(modelName, "phaseNotation", "missing code PHASE_NOTATION/" + normalized));
+                }
+            }
+            validatePointPhases(modelName, "snmpPoints", model.snmpPoints(), DeviceModelCatalogDocument.SnmpPoint::phase, errors);
+            validatePointPhases(modelName, "modbusPoints", model.modbusPoints(), DeviceModelCatalogDocument.ModbusPoint::phase, errors);
+            validatePointPhases(modelName, "mqttPoints", model.mqttPoints(), DeviceModelCatalogDocument.MqttPoint::phase, errors);
+        }
+    }
+
+    private <T> void validatePointPhases(String model, String listName, List<T> points,
+                                         Function<T, String> phaseGetter,
+                                         List<DeviceModelCatalogImportReport.Error> errors) {
+        List<T> safePoints = nullToEmpty(points);
+        for (int index = 0; index < safePoints.size(); index++) {
+            T point = safePoints.get(index);
+            if (point == null) continue;
+            String phase = phaseGetter.apply(point);
+            if (phase == null) continue;
+            String normalized = normalizeCode(phase);
+            String field = listName + "[" + index + "].phase";
+            if (!PHASE_CODES.contains(normalized)) {
+                errors.add(error(model, field, "phase must be P1, P2, P3, N, or null"));
+            } else if (commonCodes.findByCodeGroupGroupKeyAndCode("PHASE", normalized).isEmpty()) {
+                errors.add(error(model, field, "missing code PHASE/" + normalized));
+            }
+        }
+    }
+
     private Optional<DeviceModelProtocol> existingProtocol(DeviceModel model, String code) {
         if (model == null) return Optional.empty();
         return model.getProtocols().stream().filter(p -> p.getProtocolType().getCode().equalsIgnoreCase(code)).findFirst();
@@ -355,6 +397,8 @@ public class DeviceModelCatalogTransferService {
     private Integer codeId(String group, String value) { return requiredCode(group, value, group).getId(); }
     private Integer codeIdOrNull(String group, String value) { return optionalCode(group, value, group) == null ? null : requiredCode(group, value, group).getId(); }
     private static String code(CommonCode value) { return value == null ? null : value.getCode(); }
+    private static String normalizeOptionalPhase(String value) { return value == null ? null : normalizeCode(value); }
+    private static String normalizeCode(String value) { return value.trim().toUpperCase(Locale.ROOT); }
     private static String normalizeProtocol(String value) {
         if (value == null) throw new IllegalArgumentException("protocol code is required");
         String code = value.trim().toLowerCase(Locale.ROOT);
@@ -373,5 +417,5 @@ public class DeviceModelCatalogTransferService {
     private static String safeMessage(RuntimeException ex) { return ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage(); }
     private static DeviceModelCatalogImportReport.Error error(String model, String field, String message) { return new DeviceModelCatalogImportReport.Error(model, field, message); }
     private static DeviceModelCatalogImportReport report(List<String> created, List<String> updated, List<String> skipped, List<String> disabled, List<String> warnings, List<DeviceModelCatalogImportReport.Error> errors) { return new DeviceModelCatalogImportReport(List.copyOf(created), List.copyOf(updated), List.copyOf(skipped), List.copyOf(disabled), List.copyOf(warnings), List.copyOf(errors)); }
-    private record PreparedModel(DeviceModelCatalogDocument.Model file, DeviceModel existing, CommonCode type, Map<String, CommonCode> protocols) {}
+    private record PreparedModel(DeviceModelCatalogDocument.Model file, DeviceModel existing, CommonCode type, Map<String, CommonCode> protocols, CommonCode phaseNotation) {}
 }
