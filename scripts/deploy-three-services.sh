@@ -173,7 +173,8 @@ if [[ " ${services[*]} " == *" manager-server "* ]]; then
   mkdir -p "$app_dir/.cd-releases"
   backup_tmp="$app_dir/.cd-releases/.${release_id}.db-backup.sql.gz.tmp"
   [[ ! -e "$backup_tmp" ]] || { echo 'Database backup staging file already exists' >&2; exit 1; }
-  if ! docker exec -i "$database_container" sh -c '
+  # Keep stdin attached to the remote Bash script; mariadb-dump does not need container stdin.
+  if ! docker exec "$database_container" sh -c '
     db=${MARIADB_DATABASE:-${MYSQL_DATABASE:-}}
     user=${MARIADB_USER:-${MYSQL_USER:-}}
     pass=${MARIADB_PASSWORD:-${MYSQL_PASSWORD:-}}
