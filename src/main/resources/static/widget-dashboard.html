@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261111"></script>
+  <script src="/widget-detail-popup.js?v=20261111-r015"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3044,8 +3044,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         config: { rangePreset: rangePreset, window: windowSize, seriesMode: seriesMode,
           chartStyle: config.chartStyle || "line", compare: config.compare || "none" },
         showSeries: widget.queryKind === "chart",
-        load: async function ({ rangePreset, window, seriesMode, compare }) {
-          const params = new URLSearchParams({ rangePreset: rangePreset, window: window });
+        load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
+          const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
           if (compare && compare !== "none") params.set("compare", compare);
           if (widget.queryKind === "chart") {
             params.set("widgetId", String(widget.id));

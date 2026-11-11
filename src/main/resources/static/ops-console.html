@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261111"></script>
+  <script src="/widget-detail-popup.js?v=20261111-r015"></script>
   <script>
 (function (global) {
   'use strict';
@@ -14036,8 +14036,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       await window.DcimWidgetDetail.open({
         title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
         config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: false, note: note,
-        load: async function ({ rangePreset, window, seriesMode, compare }) {
-          const params = new URLSearchParams({ rangePreset: rangePreset, window: window });
+        load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
+          const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
           if (compare && compare !== "none") params.set("compare", compare);
           if (existingId) {
             params.set("widgetId", String(existingId));
