@@ -12892,6 +12892,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("wPointSearch").value = "";
       $("wCatalogSearch").value = "";
       $("wKind").value = "last";
+      configureWidgetClickKind("last", "chart");
       $("wCountMode").value = "by_model";
       $("wChartScope").value = "devices";
       $("wChartSeriesMode").value = "per_device";
@@ -12903,7 +12904,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("wDataFreshnessMinutes").value = "15";
       $("wTrendRange").value = "last_3d";
       $("wTrendWindow").value = "15m";
-      $("wClickAction").value = "chart";
       $("wTrendStyle").value = "line";
       $("wClickSeries").value = "per_device";
       $("wClickTarget").value = "";
@@ -12958,6 +12958,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wVisualColor").value = w.visualColor || "#54cbf3";
         setWidgetVisualStyle(w.visualStyle || "classic");
         $("wKind").value = w.queryKind || "last";
+        configureWidgetClickKind(w.queryKind || "last", w.clickConfig?.action);
         widgetVisualPreviewData = null;
         updateWidgetDesignPreview();
         const previewEndpoints = { last:'last', count:'count', calculated:'calculated', aggregate:'aggregate' };
@@ -13743,6 +13744,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         .catch((e) => toast(e.message, true));
     });
     $("wKind").addEventListener("change", () => {
+      configureWidgetClickKind($("wKind").value);
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
@@ -13794,6 +13796,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wCreate").textContent = "변경 저장";
         throw new Error(`위젯은 저장됐지만 상세 차트 설정 저장에 실패했습니다. 다시 저장해 주세요. ${error.message}`);
       }
+    }
+
+    function configureWidgetClickKind(kind, preferredAction) {
+      const select = $("wClickAction");
+      if (!select) return;
+      const chartOption = [...select.options].find((option) => option.value === "chart");
+      const noChart = ["count", "cctv"].includes(kind);
+      if (chartOption) chartOption.disabled = noChart;
+      select.value = noChart ? "none" : (preferredAction || "chart");
     }
 
     $("wCreate").onclick = async () => {

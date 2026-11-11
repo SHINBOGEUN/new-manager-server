@@ -221,13 +221,18 @@ public class PageWidgetQueryService {
 
     private void persistClickConfig(Integer id, Map<String, Object> config) {
         if (config == null) return;
+        PageWidget widget = widgetSupport.findWidget(id);
         Object actionValue = config.get("action");
         if (!(actionValue instanceof String action) || !Set.of("none", "chart", "device", "rack", "page").contains(action))
             throw new IllegalArgumentException("지원하지 않는 위젯 클릭 동작입니다");
+        if ((widget.getQueryKind() == PageWidgetQueryKind.count || widget.getQueryKind() == PageWidgetQueryKind.cctv)
+                && "chart".equals(action)) {
+            throw new IllegalArgumentException("개수·CCTV 위젯에는 차트 클릭 동작을 설정할 수 없습니다");
+        }
         validateOption(config, "chartStyle", Set.of("line", "bar", "area"));
-        validateOption(config, "rangePreset", Set.of("last_1h", "last_6h", "last_24h", "today", "yesterday", "last_3d", "last_7d", "this_month", "last_month"));
+        if (config.get("rangePreset") instanceof String rangePreset) PageWidgetChartRangePreset.from(rangePreset);
         validateOption(config, "window", Set.of("1m", "5m", "15m", "1h", "1d"));
-        validateOption(config, "seriesMode", Set.of("per_device", "sum", "by_phase", "by_path"));
+        if (config.get("seriesMode") instanceof String seriesMode) PageWidgetChartSeriesMode.from(seriesMode);
         if ("device".equals(action) || "rack".equals(action) || "page".equals(action)) {
             Object target = config.get("target");
             if (!(target instanceof Map<?, ?> map)) throw new IllegalArgumentException("클릭 이동 대상을 지정하세요");
@@ -247,7 +252,6 @@ public class PageWidgetQueryService {
         Object pointNames = config.get("pointNames");
         if (pointNames != null && !(pointNames instanceof List<?>)) throw new IllegalArgumentException("pointNames 형식이 올바르지 않습니다");
         try {
-            PageWidget widget = widgetSupport.findWidget(id);
             widget.changeClickConfig(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(config));
             pageWidgetRepository.save(widget);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
