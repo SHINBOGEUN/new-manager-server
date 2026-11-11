@@ -40,12 +40,12 @@ public class DeviceMeasurementSourceCatalog {
                          String pointName, String unit, String dataPointType,
                          Integer sourceDeviceId, String origin, boolean ambiguous,
                          Integer dataPointTypeId, boolean thresholdSupported, String phase,
-                         String phaseLabel, Integer phaseNotationOrder) {
+                         String phaseLabel, Integer phaseNotationOrder, String phaseNotationCode) {
         public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
                       String pointName, String unit, String dataPointType, Integer sourceDeviceId,
                       String origin, boolean ambiguous, Integer dataPointTypeId, boolean thresholdSupported) {
             this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType,
-                    sourceDeviceId, origin, ambiguous, dataPointTypeId, thresholdSupported, null, null, null);
+                    sourceDeviceId, origin, ambiguous, dataPointTypeId, thresholdSupported, null, null, null, null);
         }
 
         public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
@@ -53,14 +53,23 @@ public class DeviceMeasurementSourceCatalog {
                       String origin, boolean ambiguous, Integer dataPointTypeId, boolean thresholdSupported,
                       String phase) {
             this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType, sourceDeviceId,
-                    origin, ambiguous, dataPointTypeId, thresholdSupported, phase, null, null);
+                    origin, ambiguous, dataPointTypeId, thresholdSupported, phase, null, null, null);
         }
 
         public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
                       String pointName, String unit, String dataPointType,
                       Integer sourceDeviceId, String origin, boolean ambiguous) {
             this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType,
-                    sourceDeviceId, origin, ambiguous, null, false, null, null, null);
+                    sourceDeviceId, origin, ambiguous, null, false, null, null, null, null);
+        }
+
+        public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
+                      String pointName, String unit, String dataPointType, Integer sourceDeviceId,
+                      String origin, boolean ambiguous, Integer dataPointTypeId, boolean thresholdSupported,
+                      String phase, String phaseLabel, Integer phaseNotationOrder) {
+            this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType, sourceDeviceId,
+                    origin, ambiguous, dataPointTypeId, thresholdSupported, phase, phaseLabel,
+                    phaseNotationOrder, null);
         }
     }
 
@@ -121,7 +130,7 @@ public class DeviceMeasurementSourceCatalog {
             return new Source(source.deviceId(), source.deviceName(), source.modelId(), source.protocol(),
                     source.pointName(), source.unit(), source.dataPointType(), source.sourceDeviceId(),
                     source.origin(), ambiguous, source.dataPointTypeId(), source.thresholdSupported(), source.phase(),
-                    source.phaseLabel(), source.phaseNotationOrder());
+                    source.phaseLabel(), source.phaseNotationOrder(), source.phaseNotationCode());
         }).sorted(Comparator.comparing(Source::deviceName).thenComparing(Source::pointName)).toList();
     }
 
@@ -134,7 +143,7 @@ public class DeviceMeasurementSourceCatalog {
     private static Source source(Device device, String protocol, String name, String unit,
                                  net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
                                  Integer sourceDeviceId, String origin, String phase) {
-        return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, phase, null, null);
+        return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, phase, null, null, null);
     }
 
     private static Source source(Device device, String protocol, String name, String unit,
@@ -145,21 +154,22 @@ public class DeviceMeasurementSourceCatalog {
         String phaseCode = phase == null ? null : phase.getCode();
         Integer notationOrder = model.getPhaseNotation() == null || model.getPhaseNotation().getSortOrder() == null
                 ? 1 : model.getPhaseNotation().getSortOrder();
+        String notationCode = model.getPhaseNotation() == null ? "L123" : model.getPhaseNotation().getCode();
         return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, phaseCode,
-                model.phaseLabel(phaseCode), notationOrder);
+                model.phaseLabel(phaseCode), notationOrder, notationCode);
     }
 
     private static Source source(Device device, String protocol, String name, String unit,
                                  net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
                                  Integer sourceDeviceId, String origin, String phase,
-                                 String phaseLabel, Integer phaseNotationOrder) {
+                                 String phaseLabel, Integer phaseNotationOrder, String phaseNotationCode) {
         boolean thresholdSupported = dataPointType != null
                 && "DATA_POINT_TYPE".equals(dataPointType.getCodeGroup().getGroupKey())
                 && dataPointType.isThresholdSupported();
         return new Source(device.getId(), device.getName(), device.getDeviceModel().getId(), protocol,
                 name, unit, dataPointType == null ? null : dataPointType.getCode(), sourceDeviceId, origin,
                 false, dataPointType == null ? null : dataPointType.getId(), thresholdSupported, phase,
-                phaseLabel, phaseNotationOrder);
+                phaseLabel, phaseNotationOrder, phaseNotationCode);
     }
 
 }

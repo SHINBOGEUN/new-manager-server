@@ -6089,7 +6089,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             manufacturer,
             deviceTypeId,
             description: $("modelDesc").value.trim() || null,
-            phaseNotation: $("modelPhaseNotation").value || null,
+            phaseNotation: $("modelPhaseNotation").value || "",
             ...(editingId ? {} : { protocols }),
           }),
         });
@@ -6949,11 +6949,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const sourceKey = (s) => s ? `${s.deviceId}|${s.protocol}|${s.pointName}` : '';
         const sourceLabel = (s) => `${s.deviceName || `장비 ${s.deviceId}`} · ${s.pointName}${s.unit ? ` (${s.unit})` : ''}`;
         const sourceFor = (s) => sources.find((item) => sourceKey(item) === sourceKey(s));
-        const pdus = devices.filter((d) => String(d.deviceType || '').toUpperCase() === 'PDU');
+        const powerDevices = devices.filter((d) => d.powerDevice);
         const phaseDevices = devices.filter((d) => d.threePhaseMeasurements);
         const sourceValue = (s) => s ? {deviceId:s.deviceId, pointName:s.pointName, protocol:s.protocol} : null;
         const powerForPath = (path) => {
-          const matching = pdus.filter((d) => String(d.pathCode || '').toUpperCase() === path);
+          const matching = powerDevices.filter((d) => String(d.pathCode || '').toUpperCase() === path);
           if (matching.length !== 1) return null;
           const candidates = sources.filter((s) => s.deviceId === matching[0].deviceId && s.dataPointType === 'POWER' && ['W','KW','MW'].includes(String(s.unit || '').toUpperCase()));
           return candidates.length === 1 ? sourceValue(candidates[0]) : null;
@@ -6976,7 +6976,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const renderRackWidget = (w, storedEntries) => {
             const defaults = w.type === 'PATH_BALANCE' ? ['#52ca61', '#edf4f6'] : colors;
             const paletteFor = (i) => /^#[0-9a-f]{6}$/i.test(w.colors?.[i] || '') ? w.colors[i] : defaults[i % defaults.length];
-            const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(pdus.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
+            const entries = ['PATH_BALANCE','POWER_TREND'].includes(w.type) ? ['A','B'].map((path, slot) => { const matches = storedEntries.slice(0,2).filter((entry) => String(powerDevices.find((d) => d.deviceId === entry.source?.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : {source:w.sources[slot],value:null,samples:[]}; }).concat(storedEntries.slice(2)) : storedEntries;
             const label = (entry) => { const source = sourceFor(entry.source) || entry.source; return `${baseOverride ? '' : `${source.deviceName || `장비 ${source.deviceId}`} · `}${source.pointName}`; };
             const value = (entry) => entry.value == null ? '—' : entry.displayValue ?? Number(entry.value).toLocaleString('ko-KR', {maximumFractionDigits: 2});
             const legendRow = (color, name, reading = '') => `<div class="rack-metric-legend-row"><span class="rack-metric-dot" style="--series-color:${color}"></span><span class="rack-metric-legend-label" title="${esc(name)}">${esc(name)}</span>${reading ? `<span class="rack-metric-legend-value">${esc(reading)}</span>` : ''}</div>`;
@@ -6993,7 +6993,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 const legend = group.map((e,j) => legendRow(palette[j % palette.length], names[j], complete && sum > 0 ? `${(e.value/sum*100).toFixed(1)}%` : '—')).join('');
                 return `<div class="rack-metric-donut-group">${heading ? `<strong class="rack-metric-donut-heading">${heading}</strong>` : ''}${graph}<div class="rack-metric-legend">${legend}</div></div>`;
               };
-              const phaseHeading = (group) => { const d = pdus.find((item) => item.deviceId === group[0]?.source?.deviceId); return esc(d ? `${d.deviceName}${d.pathCode ? ` · ${d.pathCode} 경로` : ''}` : 'PDU'); };
+              const phaseHeading = (group) => { const d = devices.find((item) => item.deviceId === group[0]?.source?.deviceId); return esc(d ? `${d.deviceName}${d.pathCode ? ` · ${d.pathCode} 경로` : ''}` : '장비'); };
               const first = entries.slice(0,3), second = entries.slice(3,6);
               const phaseNames = (group) => group.map((entry) => `${sourceFor(entry.source)?.phaseLabel || entry.source?.phase || ''}상`);
               content = w.type === 'PATH_BALANCE' ? donut(entries.slice(0,2), '', ['A 경로','B 경로'], false) : `<div class="rack-metric-donuts">${donut(first,phaseHeading(first),phaseNames(first),true)}${second.length ? donut(second,phaseHeading(second),phaseNames(second),true) : ''}</div>`;
@@ -7056,13 +7056,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         if (editing) {
           for (const widget of widgets) if (['PATH_BALANCE','POWER_TREND'].includes(widget.type)) {
             const old = widget.sources || [];
-            const matchPath = (path) => { const matches = old.slice(0,2).filter((s) => s && String(pdus.find((d) => d.deviceId === s.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : powerForPath(path); };
+            const matchPath = (path) => { const matches = old.slice(0,2).filter((s) => s && String(powerDevices.find((d) => d.deviceId === s.deviceId)?.pathCode || '').toUpperCase() === path); return matches.length === 1 ? matches[0] : powerForPath(path); };
             widget.sources = [matchPath('A'), matchPath('B'), ...old.slice(2)];
           }
           const layoutPanel = body.querySelector('[data-rack-widget-layout]');
           const layoutTools = body.querySelector('[data-rack-layout-tools]');
           const collapsedWidgets = new Set();
-          const widgetTypeLabel = (type) => ({VALUE:'최신값',PIE:'비율',TREND:'24시간 추이',PATH_BALANCE:'경로 밸런스',PHASE_BALANCE:'PDU 상 밸런스',POWER_TREND:'전력 추이'})[type] || '위젯';
+        const widgetTypeLabel = (type) => ({VALUE:'최신값',PIE:'비율',TREND:'24시간 추이',PATH_BALANCE:'경로 밸런스',PHASE_BALANCE:'상 밸런스',POWER_TREND:'전력 추이'})[type] || '위젯';
           const previewCache = new Map(); let previewSequence = 0, previewRunning = false, previewRepeat = false;
           const previewKey = (w) => JSON.stringify([w.type, w.sources, w.rangePreset, w.window]);
           const widgetReady = (w) => w && w.title?.trim() && Array.isArray(w.sources) && w.sources.length > 0 && !Array.from(w.sources).some((s) => !s) && w.sources.length <= 8 && (w.type !== 'VALUE' || w.sources.length === 1) && (w.type !== 'PATH_BALANCE' || w.sources.length === 2) && (w.type !== 'PHASE_BALANCE' || [3,6].includes(w.sources.length)) && (w.type !== 'POWER_TREND' || [2,3].includes(w.sources.length));
@@ -7081,7 +7081,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               const row = document.createElement('div'); row.className = 'rack-widget-card';
               const isCollapsed = collapsedWidgets.has(widget);
               row.classList.toggle('is-collapsed', isCollapsed);
-              row.innerHTML = `<div class="rack-widget-card-head"><button type="button" class="rack-widget-toggle" data-collapse aria-expanded="${!isCollapsed}"><span data-chevron>${isCollapsed ? '▸' : '▾'}</span><strong data-widget-name>${esc(widget.title || `위젯 ${index + 1}`)}</strong><small>${esc(widgetTypeLabel(widget.type))}</small></button><button type="button" data-remove>삭제</button></div><div data-widget-body ${isCollapsed ? 'hidden' : ''}><div class="rack-widget-card-grid"><label class="rack-widget-field">위젯 이름<input data-title maxlength="80" value="${esc(widget.title)}"></label><label class="rack-widget-field">표시 방식<select data-type><option value="VALUE">최신값</option><option value="PIE">비율</option><option value="TREND">24시간 추이</option><option value="PATH_BALANCE">경로 밸런스</option><option value="PHASE_BALANCE">PDU 상 밸런스</option><option value="POWER_TREND">A/B/합계 전력 추이</option></select></label></div><div data-special></div><div class="rack-widget-field" style="margin-top:14px" data-generic><span>측정 항목 · <span data-count></span></span><input data-search type="search" placeholder="장비 또는 측정 항목 검색"><div class="rack-widget-sources" data-sources></div></div></div>`;
+        row.innerHTML = `<div class="rack-widget-card-head"><button type="button" class="rack-widget-toggle" data-collapse aria-expanded="${!isCollapsed}"><span data-chevron>${isCollapsed ? '▸' : '▾'}</span><strong data-widget-name>${esc(widget.title || `위젯 ${index + 1}`)}</strong><small>${esc(widgetTypeLabel(widget.type))}</small></button><button type="button" data-remove>삭제</button></div><div data-widget-body ${isCollapsed ? 'hidden' : ''}><div class="rack-widget-card-grid"><label class="rack-widget-field">위젯 이름<input data-title maxlength="80" value="${esc(widget.title)}"></label><label class="rack-widget-field">표시 방식<select data-type><option value="VALUE">최신값</option><option value="PIE">비율</option><option value="TREND">24시간 추이</option><option value="PATH_BALANCE">경로 밸런스</option><option value="PHASE_BALANCE">상 밸런스</option><option value="POWER_TREND">A/B/합계 전력 추이</option></select></label></div><div data-special></div><div class="rack-widget-field" style="margin-top:14px" data-generic><span>측정 항목 · <span data-count></span></span><input data-search type="search" placeholder="장비 또는 측정 항목 검색"><div class="rack-widget-sources" data-sources></div></div></div>`;
               row.querySelector('[data-collapse]').onclick = (event) => { const hidden = !row.querySelector('[data-widget-body]').hidden; row.querySelector('[data-widget-body]').hidden = hidden; row.classList.toggle('is-collapsed', hidden); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); row.querySelector('[data-chevron]').textContent = hidden ? '▸' : '▾'; if (hidden) collapsedWidgets.add(widget); else collapsedWidgets.delete(widget); };
               row.querySelector('[data-type]').value = widget.type;
               const phaseTypeOption = row.querySelector('[data-type] option[value="PHASE_BALANCE"]');
@@ -7111,17 +7111,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   section.innerHTML = `<p class="muted">같은 측정 유형으로 L1·L2·L3 상 정보가 등록된 장비에서 상별 항목을 자동 선택합니다.</p><div class="rack-widget-card-grid">${[0,1].map((slot) => `<label class="rack-widget-field">${slot ? '두 번째 장비 (선택)' : '첫 번째 장비'}<select data-phase-device="${slot}"><option value="">${slot ? '선택 안 함' : '장비 선택'}</option>${phaseDevices.map((d) => `<option value="${d.deviceId}" ${selected[slot] === d.deviceId ? 'selected' : ''}>${esc(d.deviceName)} · ${esc(d.pathName || d.pathCode || 'Path 미설정')}</option>`).join('')}</select></label>`).join('')}</div>`;
                   section.querySelectorAll('[data-phase-device]').forEach((select) => select.onchange = () => {
                     const first = Number(section.querySelector('[data-phase-device="0"]').value), second = Number(section.querySelector('[data-phase-device="1"]').value);
-                    if (first && first === second) { toast('서로 다른 PDU를 선택하세요.', true); showSpecial(); return; }
+          if (first && first === second) { toast('서로 다른 전력 장비를 선택하세요.', true); showSpecial(); return; }
                     widget.sources = first ? [...(phasesFor(first) || []), ...(second ? phasesFor(second) || [] : [])] : [];
                     showSpecial();
                   });
                   return;
                 }
                 const labels = widget.type === 'POWER_TREND' ? ['A 경로 전력','B 경로 전력','전체 전력 (선택)'] : ['A 경로 전력','B 경로 전력'];
-                section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 PDU마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range>${widgetOptions.rangePresets.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label><label class="rack-widget-field">평균 집계 간격<select data-interval>${widgetOptions.windows.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
+          section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 장비마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range>${widgetOptions.rangePresets.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label><label class="rack-widget-field">평균 집계 간격<select data-interval>${widgetOptions.windows.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
                 section.querySelectorAll('[data-slot]').forEach((select) => {
                   const slot = Number(select.dataset.slot);
-                  if (slot < 2) [...select.options].slice(1).forEach((option) => { const source = sources.find((s) => sourceKey(s) === option.value), device = pdus.find((d) => d.deviceId === source?.deviceId); if (!device || String(device.pathCode || '').toUpperCase() !== (slot === 0 ? 'A' : 'B') || !['W','KW','MW'].includes(String(source.unit || '').toUpperCase())) option.remove(); });
+                  if (slot < 2) [...select.options].slice(1).forEach((option) => { const source = sources.find((s) => sourceKey(s) === option.value), device = powerDevices.find((d) => d.deviceId === source?.deviceId); if (!device || String(device.pathCode || '').toUpperCase() !== (slot === 0 ? 'A' : 'B') || !['W','KW','MW'].includes(String(source.unit || '').toUpperCase())) option.remove(); });
                   select.onchange = () => {
                   const slot = Number(select.dataset.slot), selected = sources.find((s) => sourceKey(s) === select.value);
                   if (!selected && widget.type === 'POWER_TREND' && slot === 2) widget.sources.splice(2, 1);

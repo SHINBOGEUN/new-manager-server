@@ -9,6 +9,7 @@ import net.vivans.dcim.module.common.domain.model.CodeGroup;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CodeGroupRepository;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
+import net.vivans.dcim.module.devicemodel.domain.model.DeviceModel;
 import net.vivans.dcim.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,6 +29,7 @@ public class CommonCodeQueryService {
     public CommonCodeResponse createCommonCode(CommonCodeRequest request) {
         CodeGroup codeGroup = codeGroupRepository.findById(request.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("CodeGroup not found: " + request.groupId()));
+        validatePhaseNotationName(codeGroup, request.name());
 
         if (commonCodeRepository.existsByCodeGroupIdAndCode(codeGroup.getId(), request.code())) {
             throw new IllegalArgumentException("Code already exists in this group");
@@ -46,6 +48,7 @@ public class CommonCodeQueryService {
                 .orElseThrow(() -> new EntityNotFoundException("CommonCode not found: " + id));
         CodeGroup codeGroup = codeGroupRepository.findById(request.groupId())
                 .orElseThrow(() -> new EntityNotFoundException("CodeGroup not found: " + request.groupId()));
+        validatePhaseNotationName(codeGroup, request.name());
 
         if (commonCodeRepository.existsByCodeGroupIdAndCodeAndIdNot(codeGroup.getId(), request.code(), id)) {
             throw new IllegalArgumentException("Code already exists in this group");
@@ -79,5 +82,11 @@ public class CommonCodeQueryService {
         return commonCodeRepository.findByCodeGroupId(codeGroupId).stream()
                 .map(CommonCodeResponse::from)
                 .toList();
+    }
+
+    private static void validatePhaseNotationName(CodeGroup codeGroup, String name) {
+        if ("PHASE_NOTATION".equals(codeGroup.getGroupKey())) {
+            DeviceModel.validatePhaseNotationFormat(name);
+        }
     }
 }
