@@ -14023,12 +14023,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const kind = $("wKind").value;
       const existingId = Number(state.editingWidgetId) || 0;
       if (!existingId && kind === "calculated") {
-        window.DcimWidgetDetail.setMessage("계산 지표는 저장 후 미리 볼 수 있습니다.");
-        await window.DcimWidgetDetail.open({
-          title: $("wName").value || "계산 지표", config: config,
-          note: "계산 지표는 저장 후 미리 볼 수 있습니다.",
-          load: async function () { return { series: [] }; }
-        });
+        $("wClickPreviewResult").textContent = "계산 지표는 저장 후 미리 볼 수 있습니다.";
         return;
       }
       const pairs = selectedWidgetPreviewSources();
@@ -14040,7 +14035,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         : "장비·포인트별 선으로 표시하며, 합계·상별·위치별 묶음은 저장 후 적용됩니다.";
       await window.DcimWidgetDetail.open({
         title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
-        config: config, showSeries: existingId && kind === "chart", showCompare: false, note: note,
+        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: false, note: note,
         load: async function ({ rangePreset, window, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: window });
           if (compare && compare !== "none") params.set("compare", compare);
@@ -14050,7 +14045,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               params.set("seriesMode", seriesMode);
               return api("/api/manager/query/chart?" + params);
             }
-            if (kind === "calculated") return api("/api/manager/query/calculated?" + params);
+            if (kind === "calculated") return window.DcimWidgetDetail.fromCalculated(await api("/api/manager/query/calculated?" + params));
             return api("/api/manager/query/widget-trend?" + params);
           }
           for (const source of sourceRefs) params.append("source", source);

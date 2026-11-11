@@ -2863,14 +2863,24 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function renderPueBody(pue, widgetName) {
-      if (!pue || pue.error) return `<div class="empty" style="padding:12px">${escapeHtml(pue?.error || "데이터 없음")}</div>`;
-      const previous = pue.calculationStatus === "PREVIOUS_VERSION";
-      const status = ({ OK: "정상", MISSING_DATA: "계산 결과 없음", STALE_DATA: "저장값 오래됨", PREVIOUS_VERSION: "이전 설정 결과 · 새 수집 대기" })[pue.calculationStatus] || pue.calculationStatus;
-      const savedAt = pue.dataStatus?.latestCollectedAt ? new Date(pue.dataStatus.latestCollectedAt).toLocaleString("ko-KR") : "";
+      if (!pue || pue.error) return '<div class="empty" style="padding:12px">' + escapeHtml(pue?.error || "데이터 없음") + '</div>';
       const value = latestMetricValue(pue.value, pue.unit);
-      const presentation = latestMetricPresentation('POWER_FACTOR', pue.unit);
-      const details = [pue.formula, ...Object.entries(pue.inputs || {}).map(([alias, input]) => `${alias}: ${formatValue(input)}`), previous && savedAt ? `이전 결과 ${savedAt}` : ''].filter(Boolean).join(' · ');
-      return `<div class="metric-grid"><div class="metric-tile factor${value.missing ? ' missing' : ''}" title="${escapeHtml(details)}"><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span><div class="metric-content"><div class="metric-label">${escapeHtml(widgetName || '계산 지표')}</div><div class="metric-number"><strong>${escapeHtml(value.number)}</strong><span>${escapeHtml(value.unit)}</span></div>${pue.calculationStatus && pue.calculationStatus !== 'OK' ? `<div class="metric-state">${escapeHtml(status || '')}</div>` : ''}</div></div></div>`;
+      const presentation = latestMetricPresentation("POWER_FACTOR", pue.unit);
+      const details = [pue.formula, ...Object.entries(pue.inputs || {}).map(([alias, input]) => alias + ": " + formatValue(input))]
+        .filter(Boolean).join(" · ");
+      const tile = document.createElement("div");
+      tile.className = "metric-tile factor" + (value.missing ? " missing" : "");
+      tile.title = details;
+      tile.innerHTML = '<span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">'
+        + presentation.icon + '</svg></span><div class="metric-content"><div class="metric-label">'
+        + escapeHtml(widgetName || "계산 지표") + '</div><div class="metric-number"><strong>'
+        + escapeHtml(value.number) + '</strong><span>' + escapeHtml(value.unit)
+        + '</span></div>' + (value.missing ? '<div class="metric-state">데이터 없음</div>' : '')
+        + '</div>';
+      const grid = document.createElement("div");
+      grid.className = "metric-grid";
+      grid.appendChild(tile);
+      return grid.outerHTML;
     }
 
     function psychrometricSeries(data, label) {
@@ -3014,15 +3024,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       window.DcimWidgetDetail.close();
     }
 
-    function pueTrendChartData(data) {
-      const trend = data.trend || [];
-      return {
-        units: [data.unit || "값"],
-        series: [{ label: "계산 결과", unit: data.unit || "값", axis: "left",
-          times: trend.map((point) => point.time), values: trend.map((point) => point.value) }],
-      };
-    }
-
     async function openWidgetDetail(widget) {
       if (state.editMode || !widget) return;
       const config = widget.clickConfig || { action: ["count", "cctv"].includes(widget.queryKind) ? "none" : "chart" };
@@ -3053,7 +3054,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           }
           params.set("widgetId", String(widget.id));
           if (widget.queryKind === "calculated") {
-            return pueTrendChartData(await api("/api/manager/query/calculated?" + params));
+            return window.DcimWidgetDetail.fromCalculated(await api("/api/manager/query/calculated?" + params));
           }
           return api("/api/manager/query/widget-trend?" + params);
         },

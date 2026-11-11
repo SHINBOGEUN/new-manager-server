@@ -109,6 +109,18 @@
     activeCharts = [];
   }
 
+  function fromCalculated(data) {
+    const trend = data && Array.isArray(data.trend) ? data.trend : [];
+    return {
+      units: [data && data.unit || "값"],
+      series: [{ label: "계산 결과", unit: data && data.unit || "값", axis: "left",
+        times: trend.map(function (point) { return point.time; }),
+        values: trend.map(function (point) { return point.value; }) }],
+      dataStatus: data && data.dataStatus,
+      calculationStatus: data && data.calculationStatus,
+    };
+  }
+
   function close() {
     if (modal && modal.open) modal.close();
     destroyCharts();
@@ -200,20 +212,30 @@
     const hasData = (data && data.series || []).some(function (item) {
       return (item.values || item.data || []).some(function (value) { return value != null; });
     });
+    const status = data.dataStatus || data.collectionStatus;
+    function statusSummary(value, calculationStatus) {
+      const labels = { NORMAL: "정상", PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" };
+      const parts = [];
+      if (value) {
+        parts.push(labels[value.status] || value.status);
+        if (value.missingSourceCount) parts.push("누락 " + value.missingSourceCount);
+        if (value.staleSourceCount) parts.push("지연 " + value.staleSourceCount);
+      }
+      const calculationLabels = { STALE_DATA: "저장값 오래됨", PREVIOUS_VERSION: "이전 설정 결과 · 새 수집 대기" };
+      if (calculationStatus && calculationStatus !== "OK" && calculationLabels[calculationStatus]) {
+        parts.push(calculationLabels[calculationStatus]);
+      }
+      return parts.length ? "수집 상태 " + parts.join(" · ") : "";
+    }
     if (!hasData) {
-      metaNode.textContent = "이 기간에 데이터가 없습니다 · 기간 바꾸기" + (activeNote ? " · " + activeNote : "");
+      metaNode.textContent = "이 기간에 데이터가 없습니다 · 기간 바꾸기"
+        + (statusSummary(status, data.calculationStatus) ? " · " + statusSummary(status, data.calculationStatus) : "")
+        + (activeNote ? " · " + activeNote : "");
       return;
     }
     const units = data.units || (data.unit ? [data.unit] : []);
     const meta = [trendRangeLabel(options.rangePreset), trendWindowLabel(options.window) + " 평균"].concat(units).filter(Boolean);
-    const status = data.dataStatus || data.collectionStatus;
-    if (status) {
-      const labels = { NORMAL: "정상", PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" };
-      const statusParts = [labels[status.status] || status.status];
-      if (status.missingSourceCount) statusParts.push("누락 " + status.missingSourceCount);
-      if (status.staleSourceCount) statusParts.push("지연 " + status.staleSourceCount);
-      meta.push("수집 상태 " + statusParts.join(" · "));
-    }
+    if (statusSummary(status, data.calculationStatus)) meta.push(statusSummary(status, data.calculationStatus));
     if (activeNote) meta.push(activeNote);
     metaNode.textContent = meta.join(" · ");
     const groups = data.unitGroups || [];
@@ -265,6 +287,7 @@
     open: open,
     close: close,
     createChart: createChart,
+    fromCalculated: fromCalculated,
     formatTime: formatTime,
     formatValue: formatValue,
     palette: CHART_PALETTE,
