@@ -34,7 +34,7 @@ public class DeviceRackPlacement extends BaseEntity {
     private Device device;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "rack_location_code")
+    @JoinColumn(name = "rack_location_code", columnDefinition = "char(10)")
     private LocationNode rackLocation;
 
     @Enumerated(EnumType.STRING)

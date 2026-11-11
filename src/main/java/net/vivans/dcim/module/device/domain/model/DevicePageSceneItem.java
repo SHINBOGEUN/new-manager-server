@@ -45,7 +45,7 @@ public class DevicePageSceneItem extends BaseEntity {
     private Device device;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_node_code")
+    @JoinColumn(name = "location_node_code", columnDefinition = "char(10)")
     private LocationNode locationNode;
 
     @Column(name = "item_type", nullable = false, length = 16)

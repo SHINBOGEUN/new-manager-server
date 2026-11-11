@@ -37,7 +37,7 @@ public class DeviceRackPlacementHistory extends BaseEntity {
     @Column(name = "previous_mount_type", length = 30)
     private DeviceMountType previousMountType;
 
-    @Column(name = "previous_rack_location_code", length = 10)
+    @Column(name = "previous_rack_location_code", length = 10, columnDefinition = "char(10)")
     private String previousRackLocationCode;
 
     @Enumerated(EnumType.STRING)
@@ -54,7 +54,7 @@ public class DeviceRackPlacementHistory extends BaseEntity {
     @Column(name = "current_mount_type", length = 30)
     private DeviceMountType currentMountType;
 
-    @Column(name = "current_rack_location_code", length = 10)
+    @Column(name = "current_rack_location_code", length = 10, columnDefinition = "char(10)")
     private String currentRackLocationCode;
 
     @Enumerated(EnumType.STRING)

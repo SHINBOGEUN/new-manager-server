@@ -50,7 +50,7 @@ public class Device extends BaseEntity {
     private DeviceModel deviceModel;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "location_node_code", nullable = false)
+    @JoinColumn(name = "location_node_code", nullable = false, columnDefinition = "char(10)")
     private LocationNode locationNode;
 
     /** LOCATION_PATH 그룹. PDU 전원 피드. 차트 by_path 그룹 키. */
