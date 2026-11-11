@@ -14,7 +14,9 @@ public record DeviceModelResponse(
         String deviceTypeCode,
         String deviceTypeName,
         String description,
-        List<DeviceModelProtocolResponse> protocols
+        List<DeviceModelProtocolResponse> protocols,
+        String phaseNotation,
+        java.util.Map<String, String> phaseLabels
 ) {
 
     public static DeviceModelResponse from(DeviceModel deviceModel) {
@@ -30,7 +32,9 @@ public record DeviceModelResponse(
                 deviceModel.getDeviceType().getCode(),
                 deviceModel.getDeviceType().getName(),
                 deviceModel.getDescription(),
-                protocolResponses
+                protocolResponses,
+                deviceModel.getPhaseNotation() == null ? null : deviceModel.getPhaseNotation().getCode(),
+                deviceModel.phaseLabels()
         );
     }
 }

@@ -39,12 +39,28 @@ public class DeviceMeasurementSourceCatalog {
     public record Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
                          String pointName, String unit, String dataPointType,
                          Integer sourceDeviceId, String origin, boolean ambiguous,
-                         Integer dataPointTypeId, boolean thresholdSupported) {
+                         Integer dataPointTypeId, boolean thresholdSupported, String phase,
+                         String phaseLabel, Integer phaseNotationOrder) {
+        public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
+                      String pointName, String unit, String dataPointType, Integer sourceDeviceId,
+                      String origin, boolean ambiguous, Integer dataPointTypeId, boolean thresholdSupported) {
+            this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType,
+                    sourceDeviceId, origin, ambiguous, dataPointTypeId, thresholdSupported, null, null, null);
+        }
+
+        public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
+                      String pointName, String unit, String dataPointType, Integer sourceDeviceId,
+                      String origin, boolean ambiguous, Integer dataPointTypeId, boolean thresholdSupported,
+                      String phase) {
+            this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType, sourceDeviceId,
+                    origin, ambiguous, dataPointTypeId, thresholdSupported, phase, null, null);
+        }
+
         public Source(Integer deviceId, String deviceName, Integer modelId, String protocol,
                       String pointName, String unit, String dataPointType,
                       Integer sourceDeviceId, String origin, boolean ambiguous) {
             this(deviceId, deviceName, modelId, protocol, pointName, unit, dataPointType,
-                    sourceDeviceId, origin, ambiguous, null, false);
+                    sourceDeviceId, origin, ambiguous, null, false, null, null, null);
         }
     }
 
@@ -62,18 +78,14 @@ public class DeviceMeasurementSourceCatalog {
             if (endpoints.stream().anyMatch(endpoint -> endpoint.isEnabled()
                     && "snmp".equalsIgnoreCase(endpoint.getProtocolType().getCode()))) {
                 snmpPointRepository.findAllEnabledByDeviceModelIds(Set.of(modelId)).forEach(point ->
-                        all.add(source(device, "snmp", point.getName(), point.getUnit(),
-                                point.getDataPointType(),
-                                deviceId, "MODEL_POINT")));
+                        all.add(source(device, "snmp", point.getName(), point.getUnit(), point.getDataPointType(), deviceId, "MODEL_POINT", point.getPhase())));
             }
             modbusReadingRepository.findAllByTargetDeviceIdOrderByIdAsc(deviceId).stream()
                     .filter(reading -> reading.isEnabled() && reading.getPoint().isEnabled()
                             && reading.getEndpointModbus().getEndpoint().isEnabled())
                     .forEach(reading -> {
                         int pollingDeviceId = reading.getEndpointModbus().getEndpoint().getDevice().getId();
-                        all.add(source(device, "modbus", reading.getPointName(), reading.getPoint().getUnit(),
-                                reading.getPoint().getDataPointType(),
-                                pollingDeviceId, "READING"));
+                        all.add(source(device, "modbus", reading.getPointName(), reading.getPoint().getUnit(), reading.getPoint().getDataPointType(), pollingDeviceId, "READING", reading.getPoint().getPhase()));
                         bitFieldRepository.findAllByReading_IdOrderByIdAsc(reading.getId()).forEach(field ->
                                 all.add(source(device, "modbus", field.getPointName(), null,
                                         null, pollingDeviceId, "BIT_FIELD")));
@@ -85,13 +97,13 @@ public class DeviceMeasurementSourceCatalog {
                 modbusPointRepository.findAllEnabledByDeviceModelIds(Set.of(modelId)).stream()
                         .filter(point -> !point.isRequiresInstance())
                         .forEach(point -> all.add(source(device, "modbus", point.getName(), point.getUnit(),
-                                point.getDataPointType(), deviceId, "MODEL_POINT")));
+                                point.getDataPointType(), deviceId, "MODEL_POINT", point.getPhase())));
             }
             if (mqttIdentityRepository.findAllByDeviceId(deviceId).stream().anyMatch(identity -> identity.isEnabled())) {
                 mqttPointRepository.findAllEnabledByDeviceModelIdIn(Set.of(modelId)).stream()
                         .filter(point -> point.getComponentScope().name().equals("DEVICE"))
                         .forEach(point -> all.add(source(device, "mqtt", point.getPointName(), point.getUnit(),
-                                point.getDataPointType(), deviceId, "MODEL_POINT")));
+                                point.getDataPointType(), deviceId, "MODEL_POINT", point.getPhase())));
             }
         }
         Map<String, Source> unique = new LinkedHashMap<>();
@@ -108,19 +120,46 @@ public class DeviceMeasurementSourceCatalog {
             boolean ambiguous = protocolsByValue.get(source.deviceId() + "\u0000" + source.pointName()).size() > 1;
             return new Source(source.deviceId(), source.deviceName(), source.modelId(), source.protocol(),
                     source.pointName(), source.unit(), source.dataPointType(), source.sourceDeviceId(),
-                    source.origin(), ambiguous, source.dataPointTypeId(), source.thresholdSupported());
+                    source.origin(), ambiguous, source.dataPointTypeId(), source.thresholdSupported(), source.phase(),
+                    source.phaseLabel(), source.phaseNotationOrder());
         }).sorted(Comparator.comparing(Source::deviceName).thenComparing(Source::pointName)).toList();
     }
 
     private static Source source(Device device, String protocol, String name, String unit,
                                  net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
                                  Integer sourceDeviceId, String origin) {
+        return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, (String) null);
+    }
+
+    private static Source source(Device device, String protocol, String name, String unit,
+                                 net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
+                                 Integer sourceDeviceId, String origin, String phase) {
+        return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, phase, null, null);
+    }
+
+    private static Source source(Device device, String protocol, String name, String unit,
+                                 net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
+                                 Integer sourceDeviceId, String origin,
+                                 net.vivans.dcim.module.common.domain.model.CommonCode phase) {
+        var model = device.getDeviceModel();
+        String phaseCode = phase == null ? null : phase.getCode();
+        Integer notationOrder = model.getPhaseNotation() == null || model.getPhaseNotation().getSortOrder() == null
+                ? 1 : model.getPhaseNotation().getSortOrder();
+        return source(device, protocol, name, unit, dataPointType, sourceDeviceId, origin, phaseCode,
+                model.phaseLabel(phaseCode), notationOrder);
+    }
+
+    private static Source source(Device device, String protocol, String name, String unit,
+                                 net.vivans.dcim.module.common.domain.model.CommonCode dataPointType,
+                                 Integer sourceDeviceId, String origin, String phase,
+                                 String phaseLabel, Integer phaseNotationOrder) {
         boolean thresholdSupported = dataPointType != null
                 && "DATA_POINT_TYPE".equals(dataPointType.getCodeGroup().getGroupKey())
                 && dataPointType.isThresholdSupported();
         return new Source(device.getId(), device.getName(), device.getDeviceModel().getId(), protocol,
                 name, unit, dataPointType == null ? null : dataPointType.getCode(), sourceDeviceId, origin,
-                false, dataPointType == null ? null : dataPointType.getId(), thresholdSupported);
+                false, dataPointType == null ? null : dataPointType.getId(), thresholdSupported, phase,
+                phaseLabel, phaseNotationOrder);
     }
 
 }

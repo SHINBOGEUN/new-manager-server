@@ -45,6 +45,10 @@ public class DeviceModel extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phase_notation_code_id")
+    private CommonCode phaseNotation;
+
     @OneToMany(mappedBy = "deviceModel", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<DeviceModelProtocol> protocols = new ArrayList<>();
 
@@ -70,6 +74,39 @@ public class DeviceModel extends BaseEntity {
         this.manufacturer = manufacturer;
         this.deviceType = deviceType;
         this.description = description;
+    }
+
+    public void setPhaseNotation(CommonCode phaseNotation) {
+        if (phaseNotation != null && !"PHASE_NOTATION".equals(phaseNotation.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("phaseNotation must belong to PHASE_NOTATION group");
+        }
+        if (phaseNotation != null) validatePhaseNotation(phaseNotation.getName());
+        this.phaseNotation = phaseNotation;
+    }
+
+    public String phaseLabel(String phaseCode) {
+        String[] labels = phaseNotation == null ? new String[]{"L1", "L2", "L3", "N"}
+                : validatePhaseNotation(phaseNotation.getName());
+        return switch (phaseCode == null ? "" : phaseCode) {
+            case "P1" -> labels[0];
+            case "P2" -> labels[1];
+            case "P3" -> labels[2];
+            case "N" -> labels[3];
+            default -> null;
+        };
+    }
+
+    public java.util.Map<String, String> phaseLabels() {
+        return java.util.Map.of("P1", phaseLabel("P1"), "P2", phaseLabel("P2"),
+                "P3", phaseLabel("P3"), "N", phaseLabel("N"));
+    }
+
+    private static String[] validatePhaseNotation(String notation) {
+        String[] labels = notation == null ? new String[0] : notation.split("/", -1);
+        if (labels.length != 4 || java.util.Arrays.stream(labels).anyMatch(String::isBlank)) {
+            throw new IllegalArgumentException("phase notation must contain four slash-separated labels");
+        }
+        return labels;
     }
 
     public void replaceProtocols(List<DeviceModelProtocol> newProtocols) {

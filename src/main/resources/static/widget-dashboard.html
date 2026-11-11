@@ -2706,23 +2706,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return { label: labels[key] || String(pointName || '측정값').replaceAll('_', ' '), kind, icon: paths[kind] };
     }
 
-    function knownMetricUnit(pointName) {
-      const key = String(pointName || '').trim().toUpperCase();
-      if (key === 'TOTAL_KWH') return 'kWh';
-      if (['TOTAL_WT', 'TOTAL_WATT', 'L1_WATT', 'L2_WATT', 'L3_WATT'].includes(key)) return 'W';
-      if (['TEMPC_SHT', 'TEMPC_TMP117'].includes(key)) return '°C';
-      if (key === 'DEVICE_COUNT') return '대';
-      return '';
-    }
-
-    function knownWidgetUnit(widget) {
-      const units = [...new Set((widget?.pointNames || []).map(knownMetricUnit).filter(Boolean))];
-      return units.length === 1 ? units[0] : '';
-    }
-
     function latestMetricValue(value, unit, pointName) {
       let number = value == null || value === '' ? NaN : Number(value);
-      let displayUnit = String(unit || knownMetricUnit(pointName));
+      let displayUnit = String(unit || "");
       if (!Number.isFinite(number)) return { number: '—', unit: displayUnit, missing: true };
       return { number: number.toLocaleString('ko-KR', { maximumFractionDigits: 2 }), unit: displayUnit, missing: false };
     }
@@ -2760,7 +2746,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     function renderAggregateBody(agg, widget) {
       if (!agg) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (agg.error) return `<div class="empty" style="padding:12px">${escapeHtml(agg.error)}</div>`;
-      const resolvedUnit = agg.displayUnit || agg.unit || knownWidgetUnit(widget);
+      const resolvedUnit = agg.displayUnit || agg.unit || "";
       const unit = resolvedUnit ? " " + escapeHtml(resolvedUnit) : "";
       if (agg.aggregatePreset === "demand") {
         return `<div class="count-label">15분 평균 전력 합계의 최댓값</div><div class="demand-value">${agg.value == null ? "—" : escapeHtml(agg.displayValue ?? formatValue(agg.value))}${unit}</div><div class="demand-time">${agg.peakTime ? `발생 시각: ${escapeHtml(new Date(agg.peakTime).toLocaleString("ko-KR"))}` : "완전한 15분 데이터가 없습니다."}</div>`;
@@ -2955,24 +2941,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     function chartSeriesModesForWidget(widget) {
       const chart = state.chartByWidget.get(widget.id);
-      const units = chart?.units || (chart?.unit ? [chart.unit] : []);
-      if (units.length > 1) return [["per_device", "장비별"]];
-      const targets = (widget.chartScope || "devices") === "models"
-        ? (widget.modelIds || []).map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
-        : (widget.deviceIds || []).map((id) => state.devices.find((device) => Number(device.id) === Number(id))).filter(Boolean);
-      const allPdu = targets.length > 0
-        && targets.every((target) => String(target.deviceTypeCode || "").toUpperCase() === "PDU");
-      const pointNames = widget.pointNames || [];
-      const hasPhaseFamily = [...new Set(pointNames
-        .map((name) => /^L[123]_(.+)$/.exec(name)?.[1])
-        .filter(Boolean))]
-        .some((suffix) => ["L1_", "L2_", "L3_"].every((prefix) => pointNames.includes(prefix + suffix)));
-      const modes = [["sum", "합계"], ["per_device", "장비별"]];
-      if (allPdu && hasPhaseFamily) modes.push(["by_phase", "상별"]);
-      if (allPdu) modes.push(["by_path", "위치별"]);
-      return modes;
+      const supported = Array.isArray(chart?.availableSeriesModes) ? chart.availableSeriesModes : ["per_device"];
+      const labels = { sum: "합계", per_device: "장비별", by_phase: "상별", by_path: "위치별" };
+      return supported.map((mode) => [mode, labels[mode] || mode]);
     }
-
     function chartSeriesModeForWidget(widget) {
       const requested = state.chartSeriesModeByWidget.get(widget.id)
         || $("chartSeriesOverride")?.value
@@ -3049,13 +3021,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <div class="count-label">${escapeHtml(meta)} · ${series.length} series</div>
         <div class="chart-wrap"><canvas data-chart-id="${chart.widgetId}"></canvas></div>
         <div class="chart-legend">${legend}</div>`;
-    }
-
-    function chartWithKnownUnit(widget, chart) {
-      if (!chart || chart.error || chart.unit || (chart.units || []).some(Boolean)) return chart;
-      const unit = knownWidgetUnit(widget);
-      if (!unit) return chart;
-      return { ...chart, unit, units: [unit], series: (chart.series || []).map((series) => ({ ...series, unit: series.unit || unit })) };
     }
 
     function destroyChartInstances() {
@@ -3167,7 +3132,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       destroyChartInstances();
       for (const [widgetId, data] of state.chartByWidget) {
         const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
-        mountChartInstance(widgetId, chartWithKnownUnit(widget, data));
+        mountChartInstance(widgetId, data);
       }
     }
 
@@ -3507,7 +3472,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } else if (w.queryKind === "chart") {
           const chart = state.chartByWidget.get(w.id);
           dataStatus = chart?.dataStatus;
-          body = renderChartBody(chartWithKnownUnit(w, chart));
+          body = renderChartBody(chart);
           const sm = chartSeriesModeForWidget(w);
           subExtra = ` · ${escapeHtml(chartSeriesModeLabel(sm))} · ${escapeHtml(w.chartRangePreset || "")}`;
           cardClass = "card chart-card";
@@ -3515,8 +3480,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           const aggregate = state.aggregateByWidget.get(w.id);
           dataStatus = aggregate?.dataStatus;
           if (aggregate && !aggregate.error && ["usage", "power", "demand"].includes(aggregate.aggregatePreset)) {
-            const pointName = aggregate.aggregatePreset === "usage" ? "TOTAL_ENERGY" : "TOTAL_WT";
-            const unit = aggregate.unit || knownWidgetUnit(w);
+            const pointName = w.pointNames?.[0] || "";
+            const unit = aggregate.displayUnit || aggregate.unit || "";
             body = renderLastBody({ devices: [{ points: [{ pointName, value: aggregate.value, unit }] }] }, w.name);
             const statusLabel = ({ PARTIAL: "일부 지연", PREVIOUS: "새 수집 대기", STALE: "수집 지연", MISSING: "데이터 없음" })[dataStatus?.status];
             let detail = statusLabel || "";

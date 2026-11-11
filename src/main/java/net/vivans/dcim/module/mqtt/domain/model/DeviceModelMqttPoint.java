@@ -66,6 +66,10 @@ public class DeviceModelMqttPoint extends BaseEntity {
     @JoinColumn(name = "unit_code_id")
     private CommonCode unitCode;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phase_code_id")
+    private CommonCode phase;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "component_scope", nullable = false, length = 20)
     private MqttPointScope componentScope = MqttPointScope.DEVICE;
@@ -180,6 +184,17 @@ public class DeviceModelMqttPoint extends BaseEntity {
         return categoryCode == null ? null : categoryCode.getName();
     }
 
+    public void setPhase(CommonCode phase) {
+        if (phase != null && !"PHASE".equals(phase.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("phase must belong to PHASE group");
+        }
+        this.phase = phase;
+    }
+
+    public DeviceModelMqttPoint withPhase(CommonCode phase) {
+        setPhase(phase);
+        return this;
+    }
     private static void validateDeviceModel(DeviceModel deviceModel) {
         if (deviceModel == null) {
             throw new IllegalArgumentException("deviceModel is required");

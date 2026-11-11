@@ -16,6 +16,14 @@ public record ChartWidgetResponse(
         String unit,
         List<String> units,
         List<ChartSeriesResponse> series,
-        WidgetDataStatusResponse dataStatus
+        WidgetDataStatusResponse dataStatus,
+        List<String> availableSeriesModes
 ) {
+    public ChartWidgetResponse(Integer widgetId, String widgetName, String pageCode, String chartScope,
+                               String seriesMode, String rangePreset, String window, Instant start, Instant end,
+                               String unit, List<String> units, List<ChartSeriesResponse> series,
+                               WidgetDataStatusResponse dataStatus) {
+        this(widgetId, widgetName, pageCode, chartScope, seriesMode, rangePreset, window, start, end,
+                unit, units, series, dataStatus, List.of("sum", "per_device"));
+    }
 }

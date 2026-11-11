@@ -27,6 +27,11 @@ public record DeviceModelCreateRequest(
         @Schema(description = "지원 프로토콜 목록 (1개 이상)")
         @NotEmpty(message = "at least one protocol required")
         @Valid
-        List<DeviceModelProtocolRequest> protocols
+        List<DeviceModelProtocolRequest> protocols,
+        @Schema(description = "PHASE_NOTATION 코드") String phaseNotation
 ) {
+    public DeviceModelCreateRequest(String name, String manufacturer, Integer deviceTypeId, String description,
+                                    List<DeviceModelProtocolRequest> protocols) {
+        this(name, manufacturer, deviceTypeId, description, protocols, null);
+    }
 }

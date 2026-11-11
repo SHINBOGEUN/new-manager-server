@@ -3259,6 +3259,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                     <th>OID</th>
                     <th class="col-unit">단위</th>
                     <th>데이터 유형</th>
+                    <th>상</th>
                     <th class="col-scale">scale</th>
                     <th class="col-inst">inst</th>
                     <th class="col-actions"></th>
@@ -3281,6 +3282,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   <th>OID</th>
                   <th class="col-unit">단위</th>
                   <th>데이터 유형</th>
+                  <th>상</th>
                   <th class="col-scale">scale</th>
                   <th class="col-actions">작업</th>
                 </tr>
@@ -3299,6 +3301,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               </label>
               <label class="field">데이터 유형
                 <select id="mpEditDataPointTypeId"></select>
+              </label>
+              <label class="field">상
+                <select id="mpEditPhase"><option value="">없음</option><option value="P1">L1</option><option value="P2">L2</option><option value="P3">L3</option><option value="N">N</option></select>
               </label>
               <label class="field">scale
                 <input id="mpEditScale" class="mono" type="number" step="any" placeholder="비우면 1" title="raw × scale" />
@@ -3337,12 +3342,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               <label class="field">scale<input id="mbPointScale" type="number" step="any" placeholder="비우면 1" /></label>
               <label class="field">offset<input id="mbPointOffset" type="number" step="any" placeholder="비우면 0 · 최종값 = raw × scale + offset" /></label>
               <label class="field">단위<input id="mbPointUnit" placeholder="예: W" /></label>
+              <label class="field">상<select id="mbPointPhase"><option value="">없음</option><option value="P1">L1</option><option value="P2">L2</option><option value="P3">L3</option><option value="N">N</option></select></label>
               <label class="field">사용<select id="mbPointEnabled"><option value="true">사용</option><option value="false">중지</option></select></label>
               <label class="field"><span>주소 설정 방식</span><span><input id="mbPointRequiresInstance" type="checkbox" /> 장비별 주소 (Unit ID·주소는 장비 화면에서 설정)</span></label>
             </div>
             <div class="row" style="margin-top:12px"><button type="button" class="primary" id="mbPointSave" data-role-gate="admin">Modbus 항목 등록</button><button type="button" class="ghost" id="mbPointCancel" style="display:none">취소</button></div>
             </div>
-            <div class="mp-table-wrap" style="margin-top:14px"><table class="mp-table"><thead><tr><th>항목</th><th>레지스터</th><th>형식</th><th>주소 방식</th><th>단위</th><th>scale</th><th>offset</th><th>작업</th></tr></thead><tbody id="mbPointBody"></tbody></table></div>
+            <div class="mp-table-wrap" style="margin-top:14px"><table class="mp-table"><thead><tr><th>항목</th><th>레지스터</th><th>형식</th><th>주소 방식</th><th>단위</th><th>상</th><th>scale</th><th>offset</th><th>작업</th></tr></thead><tbody id="mbPointBody"></tbody></table></div>
           </div>
           <div id="mpMqttContent" style="display:none;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
             <div class="empty">MQTT/LoRa 측정 항목은 OID·레지스터가 아니라 payload 필드 매핑으로 관리합니다.</div>
@@ -3357,6 +3363,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <label class="field">이름<input id="modelName" placeholder="예: AP8959" /></label>
             <label class="field">제조사<input id="modelMfr" placeholder="예: APC" /></label>
             <label class="field">장비 유형<select id="modelType"></select></label>
+            <label class="field">상 표기 방식<select id="modelPhaseNotation"></select></label>
             <fieldset class="wizard-protocol-choices" id="modelProtocolsField"><legend>지원 프로토콜 (하나 이상)</legend><div id="modelProtocols"></div></fieldset>
             <p class="muted field full" id="modelProtocolHint" style="display:none;margin:0">수정 시 기존 프로토콜과 측정항목 연결을 보호하기 위해 프로토콜은 변경할 수 없습니다.</p>
             <label class="field full">설명<input id="modelDesc" placeholder="선택" /></label>
@@ -3601,7 +3608,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           <div class="row" style="justify-content:space-between"><h2>매핑 항목 <span id="loraMpSelectedModel" class="muted mono"></span></h2><button type="button" class="primary" id="loraMpOpen" data-role-gate="admin">＋ 매핑 등록</button></div>
           <div style="overflow:auto;max-height:320px">
             <table>
-              <thead><tr><th>payload_field</th><th>point_name</th><th>데이터 유형</th><th>단위</th><th>scale</th><th>value_map</th><th>사용</th><th>작업</th></tr></thead>
+              <thead><tr><th>payload_field</th><th>point_name</th><th>데이터 유형</th><th>단위</th><th>상</th><th>scale</th><th>value_map</th><th>사용</th><th>작업</th></tr></thead>
               <tbody id="loraMpBody"><tr><td colspan="8"><div class="empty">왼쪽에서 모델을 선택하세요</div></td></tr></tbody>
             </table>
           </div>
@@ -3639,6 +3646,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               <label class="field">단위
                 <select id="loraMpUnit"></select>
               </label>
+              <label class="field">상<select id="loraMpPhase"><option value="">없음</option><option value="P1">L1</option><option value="P2">L2</option><option value="P3">L3</option><option value="N">N</option></select></label>
               <label class="field">scale
                 <input id="loraMpScale" class="mono" type="number" step="any" placeholder="비우면 1" />
               </label>
@@ -4889,6 +4897,30 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         `<label><input type="checkbox" value="${Number(c.id)}" /><span>${esc(c.name)} (${esc(c.code)})</span></label>`).join("");
       const snmp = (state.codes.PROTOCOL_TYPE || []).find((c) => c.code === "snmp");
       if (snmp) $("modelProtocols").querySelector(`input[value="${snmp.id}"]`).checked = true;
+      fillSelect($("modelPhaseNotation"), state.codes.PHASE_NOTATION || [], (code) =>
+        `<option value="${esc(code.code)}">${esc(code.name)} (${esc(code.code)})</option>`, "기본 (L1/L2/L3/N)");
+      updateModelPhaseOptions();
+    }
+
+    function updateModelPhaseOptions(model = state.selectedModel) {
+      const labels = model?.phaseLabels || { P1: "L1", P2: "L2", P3: "L3", N: "N" };
+      const selects = [$("mpEditPhase"), $("mbPointPhase"), $("loraMpPhase"), ...document.querySelectorAll(".mp-phase")].filter(Boolean);
+      for (const select of selects) {
+        const current = select.value;
+        select.innerHTML = `<option value="">없음</option>${["P1","P2","P3","N"].map((phase) => `<option value="${phase}">${esc(labels[phase] || phase)}</option>`).join("")}`;
+        if (["P1","P2","P3","N"].includes(current)) select.value = current;
+      }
+    }
+
+    function phaseAssignmentWarning(point) {
+      return !point.phase && /_(?:R|S|T|A|B|C|U|V|W)$/i.test(point.name || point.pointName || "")
+        ? ' <span class="chip warn" title="이름만으로 상을 자동 지정하지 않습니다.">상 지정 확인</span>' : "";
+    }
+
+    function phaseDisplay(code, model = state.selectedModel) {
+      if (!code) return "–";
+      const label = model?.phaseLabels?.[code] || ({ P1: "L1", P2: "L2", P3: "L3", N: "N" })[code] || code;
+      return `${esc(label)}상`;
     }
 
     function closeEntityDialog(id) {
@@ -4916,6 +4948,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("modelName").value = model?.name || "";
       $("modelMfr").value = model?.manufacturer || "";
       $("modelDesc").value = model?.description || "";
+      $("modelPhaseNotation").value = model?.phaseNotation || "";
       if (model) $("modelType").value = String(model.deviceTypeId);
       const selectedIds = new Set((model?.protocols || []).map((p) => Number(p.protocolTypeId)));
       if (model) $("modelProtocols").querySelectorAll("input").forEach((input) => {
@@ -5559,6 +5592,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const m = state.models.find((x) => x.id === id);
       if (!m) return;
       state.selectedModel = m;
+      updateModelPhaseOptions(m);
       $("mpModel").value = m.name;
       fillSelect($("mpProtocol"), m.protocols || [], (p) =>
         `<option value="${p.id}">${esc(p.protocolName || p.protocolCode)}</option>`);
@@ -5574,6 +5608,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("mpPointSummary").textContent = "측정항목을 불러오는 중…";
       clearMpEdit();
       resetMpRows(3);
+      updateModelPhaseOptions(m);
       updateModelPointUi();
       loadModelPointsUi().catch((error) => { $("mpPointSummary").textContent = `조회 실패: ${error.message}`; });
     }
@@ -5616,6 +5651,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <td class="mono oid-cell">${esc(p.oid)}</td>
             <td>${esc(p.unit || "–")}</td>
             <td>${esc(p.dataPointType || "UNCLASSIFIED")}</td>
+            <td>${phaseDisplay(p.phase, m)}${phaseAssignmentWarning(p)}</td>
             <td class="mono">${p.scale == null ? "–" : esc(String(p.scale))}</td>
             <td class="actions">
               <div class="row" data-role-gate="admin">
@@ -5624,7 +5660,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               </div>
             </td>
           </tr>`
-        ).join("") || `<tr><td colspan="6"><div class="empty">측정 항목 없음</div></td></tr>`;
+        ).join("") || `<tr><td colspan="7"><div class="empty">측정 항목 없음</div></td></tr>`;
         $("mpBody").querySelectorAll("[data-edit-point]").forEach((btn) => {
           btn.onclick = () => {
             const point = (state.mpPoints || []).find((x) => String(x.id) === String(btn.dataset.editPoint));
@@ -5723,6 +5759,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("mpEditScale").value = "";
       $("mpEditInst").value = "false";
       $("mpEditEnabled").value = "true";
+      $("mpEditPhase").value = "";
     }
 
     function fillMpEdit(point) {
@@ -5736,6 +5773,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("mpEditScale").value = point.scale == null ? "" : String(point.scale);
       $("mpEditInst").value = point.requiresInstance ? "true" : "false";
       $("mpEditEnabled").value = point.enabled === false ? "false" : "true";
+      $("mpEditPhase").value = point.phase || "";
       $("mpEditDialog").showModal();
       $("mpEditName").focus();
     }
@@ -5764,6 +5802,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             requiresInstance: $("mpEditInst").value === "true",
             enabled: $("mpEditEnabled").value === "true",
             dataPointTypeId: Number($("mpEditDataPointTypeId").value),
+            phase: $("mpEditPhase").value || null,
           }),
         });
         toast("측정 항목을 저장했고 수집 spec을 재생성했습니다");
@@ -5779,6 +5818,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         <td><input class="mp-oid mono" placeholder="1.3.6.1… 또는 {instanceId}" style="width:100%" /></td>
         <td><select class="mp-unit" style="width:100%"></select></td>
         <td><select class="mp-data-point-type" style="width:100%"></select></td>
+        <td><select class="mp-phase" style="width:100%"><option value="">없음</option><option value="P1">L1</option><option value="P2">L2</option><option value="P3">L3</option><option value="N">N</option></select></td>
         <td><input class="mp-scale mono" type="number" step="any" placeholder="1" style="width:100%" title="raw × scale (비우면 1)" /></td>
         <td class="col-inst" style="text-align:center"><input type="checkbox" class="mp-inst" title="requiresInstance" /></td>
         <td class="actions"><button type="button" class="danger mp-del-row" style="padding:5px 10px;font-size:12px">×</button></td>
@@ -5835,6 +5875,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           scale: scaleRaw === "" ? null : Number(scaleRaw),
           requiresInstance: tr.querySelector(".mp-inst").checked,
           enabled: true,
+          phase: tr.querySelector(".mp-phase").value || null,
         };
       }).filter((p) => p.name || p.oid);
       if (!points.length) return toast("등록할 행을 입력하세요", true);
@@ -5866,6 +5907,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("mbPointScale").value = "";
       $("mbPointOffset").value = "";
       $("mbPointUnit").value = "";
+      $("mbPointPhase").value = "";
       $("mbPointEnabled").value = "true";
       $("mbPointSave").textContent = "Modbus 항목 등록";
       $("mbPointCancel").style.display = "none";
@@ -5907,6 +5949,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         scale,
         offset,
         unit: $("mbPointUnit").value.trim() || null,
+        phase: $("mbPointPhase").value || null,
         enabled: $("mbPointEnabled").value === "true",
       };
     }
@@ -5925,7 +5968,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           <td>${esc(point.registerType)}</td>
           <td>${esc(point.dataType)}${point.byteOrder ? ` · ${esc(point.byteOrder)}` : ""}</td>
           <td>${point.requiresInstance ? '<span class="chip">장비별 주소</span>' : `공통 ${esc(String(point.address))}`}</td>
-          <td>${esc(point.unit || "–")}</td><td>${point.scale == null ? "–" : esc(String(point.scale))}</td>
+            <td>${esc(point.unit || "–")}</td><td>${phaseDisplay(point.phase, m)}${phaseAssignmentWarning(point)}</td><td>${point.scale == null ? "–" : esc(String(point.scale))}</td>
           <td>${point.offset == null ? "–" : esc(String(point.offset))}</td>
           <td class="actions"><div class="row" data-role-gate="admin"><button type="button" class="ghost" data-edit-mb-point="${point.id}">수정</button><button type="button" class="danger" data-delete-mb-point="${point.id}">삭제</button></div></td></tr>`
         ).join("") || '<tr><td colspan="8"><div class="empty">등록된 Modbus 측정 항목이 없습니다</div></td></tr>';
@@ -5944,6 +5987,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             $("mbPointScale").value = point.scale ?? "";
             $("mbPointOffset").value = point.offset ?? "";
             $("mbPointUnit").value = point.unit || "";
+            $("mbPointPhase").value = point.phase || "";
             $("mbPointEnabled").value = String(point.enabled !== false);
             $("mbPointSave").textContent = `Modbus 항목 #${point.id} 저장`;
             $("mbPointCancel").style.display = "";
@@ -6012,6 +6056,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             manufacturer,
             deviceTypeId,
             description: $("modelDesc").value.trim() || null,
+            phaseNotation: $("modelPhaseNotation").value || null,
             ...(editingId ? {} : { protocols }),
           }),
         });
@@ -6872,23 +6917,22 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const sourceLabel = (s) => `${s.deviceName || `장비 ${s.deviceId}`} · ${s.pointName}${s.unit ? ` (${s.unit})` : ''}`;
         const sourceFor = (s) => sources.find((item) => sourceKey(item) === sourceKey(s));
         const pdus = devices.filter((d) => String(d.deviceType || '').toUpperCase() === 'PDU');
-        const phasePdus = pdus.filter((d) => d.threePhaseMeasurements);
+        const phaseDevices = devices.filter((d) => d.threePhaseMeasurements);
         const sourceValue = (s) => s ? {deviceId:s.deviceId, pointName:s.pointName, protocol:s.protocol} : null;
         const powerForPath = (path) => {
           const matching = pdus.filter((d) => String(d.pathCode || '').toUpperCase() === path);
           if (matching.length !== 1) return null;
-          const candidates = sources.filter((s) => s.deviceId === matching[0].deviceId && ['W','KW','MW'].includes(String(s.unit || '').toUpperCase()));
-          for (const name of ['TOTAL_WT','TOTAL_POWER','ACTIVE_POWER','WATT']) { const found = candidates.filter((s) => s.pointName.toUpperCase() === name); if (found.length === 1) return sourceValue(found[0]); if (found.length > 1) return null; }
+          const candidates = sources.filter((s) => s.deviceId === matching[0].deviceId && s.dataPointType === 'POWER' && ['W','KW','MW'].includes(String(s.unit || '').toUpperCase()));
           return candidates.length === 1 ? sourceValue(candidates[0]) : null;
         };
         const phasesFor = (id) => {
-          const group = sources.filter((s) => s.deviceId === id && String(s.unit || '').toUpperCase() === 'A');
-          for (const protocol of [...new Set(group.map((s) => s.protocol))]) { const values = ['L1_AMP','L2_AMP','L3_AMP'].map((name) => group.find((s) => s.protocol === protocol && s.pointName.toUpperCase() === name)); if (values.every(Boolean)) return values.map(sourceValue); }
+          const group = sources.filter((s) => s.deviceId === id && s.dataPointType === 'CURRENT' && ['P1','P2','P3'].includes(s.phase));
+          for (const type of [...new Set(group.map((s) => s.dataPointType))]) { const values = ['P1','P2','P3'].map((phase) => group.find((s) => s.dataPointType === type && s.phase === phase)); if (values.every(Boolean)) return values.map(sourceValue); }
           return null;
         };
         const defaultPhases = () => {
-          if (phasePdus.length === 1) return phasesFor(phasePdus[0].deviceId) || [];
-          const a = phasePdus.filter((d) => String(d.pathCode || '').toUpperCase() === 'A'), b = phasePdus.filter((d) => String(d.pathCode || '').toUpperCase() === 'B');
+          if (phaseDevices.length === 1) return phasesFor(phaseDevices[0].deviceId) || [];
+          const a = phaseDevices.filter((d) => String(d.pathCode || '').toUpperCase() === 'A'), b = phaseDevices.filter((d) => String(d.pathCode || '').toUpperCase() === 'B');
           return a.length === 1 && b.length === 1 ? [...phasesFor(a[0].deviceId), ...phasesFor(b[0].deviceId)] : [];
         };
         const assignWidgetPositions = () => {
@@ -6918,7 +6962,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               };
               const phaseHeading = (group) => { const d = pdus.find((item) => item.deviceId === group[0]?.source?.deviceId); return esc(d ? `${d.deviceName}${d.pathCode ? ` · ${d.pathCode} 경로` : ''}` : 'PDU'); };
               const first = entries.slice(0,3), second = entries.slice(3,6);
-              content = w.type === 'PATH_BALANCE' ? donut(entries.slice(0,2), '', ['A 경로','B 경로'], false) : `<div class="rack-metric-donuts">${donut(first,phaseHeading(first),['L1','L2','L3'],true)}${second.length ? donut(second,phaseHeading(second),['L1','L2','L3'],true) : ''}</div>`;
+              const phaseNames = (group) => group.map((entry) => `${sourceFor(entry.source)?.phaseLabel || entry.source?.phase || ''}상`);
+              content = w.type === 'PATH_BALANCE' ? donut(entries.slice(0,2), '', ['A 경로','B 경로'], false) : `<div class="rack-metric-donuts">${donut(first,phaseHeading(first),phaseNames(first),true)}${second.length ? donut(second,phaseHeading(second),phaseNames(second),true) : ''}</div>`;
             } else if (w.type === 'POWER_TREND') {
               const unit = sourceFor(entries[0]?.source)?.unit || '';
               const series = entries.slice(0, 2).map((e,j) => ({name:j ? 'B 경로' : 'A 경로', unit:sourceFor(e.source)?.unit || unit, color:paletteFor(j), samples:e.samples || []}));
@@ -7007,7 +7052,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               row.querySelector('[data-collapse]').onclick = (event) => { const hidden = !row.querySelector('[data-widget-body]').hidden; row.querySelector('[data-widget-body]').hidden = hidden; row.classList.toggle('is-collapsed', hidden); event.currentTarget.setAttribute('aria-expanded', String(!hidden)); row.querySelector('[data-chevron]').textContent = hidden ? '▸' : '▾'; if (hidden) collapsedWidgets.add(widget); else collapsedWidgets.delete(widget); };
               row.querySelector('[data-type]').value = widget.type;
               const phaseTypeOption = row.querySelector('[data-type] option[value="PHASE_BALANCE"]');
-              if (!phasePdus.length && widget.type !== 'PHASE_BALANCE') { phaseTypeOption.disabled = true; phaseTypeOption.textContent += ' (3상 전류 항목 없음)'; }
+              if (!phaseDevices.length && widget.type !== 'PHASE_BALANCE') { phaseTypeOption.disabled = true; phaseTypeOption.textContent += ' (상 정보가 있는 측정 항목 없음)'; }
               row.querySelector('[data-title]').oninput = (e) => { widget.title = e.target.value; row.querySelector('[data-widget-name]').textContent = widget.title || `위젯 ${index + 1}`; };
               const showSources = () => {
                 const list = row.querySelector('[data-sources]'), filter = row.querySelector('[data-search]').value.trim().toLowerCase();
@@ -7030,7 +7075,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 if (!advanced) { section.innerHTML = ''; return; }
                 if (widget.type === 'PHASE_BALANCE') {
                   const selected = [widget.sources[0]?.deviceId, widget.sources[3]?.deviceId];
-                  section.innerHTML = `<p class="muted">L1_AMP·L2_AMP·L3_AMP가 모두 등록된 PDU만 표시하며, 상별 항목을 자동 선택합니다. 단상 PDU는 대상이 아닙니다.</p><div class="rack-widget-card-grid">${[0,1].map((slot) => `<label class="rack-widget-field">${slot ? '두 번째 PDU (선택)' : '첫 번째 PDU'}<select data-phase-device="${slot}"><option value="">${slot ? '선택 안 함' : 'PDU 선택'}</option>${phasePdus.map((d) => `<option value="${d.deviceId}" ${selected[slot] === d.deviceId ? 'selected' : ''}>${esc(d.deviceName)} · ${esc(d.pathName || d.pathCode || 'Path 미설정')}</option>`).join('')}</select></label>`).join('')}</div>`;
+                  section.innerHTML = `<p class="muted">같은 측정 유형으로 L1·L2·L3 상 정보가 등록된 장비에서 상별 항목을 자동 선택합니다.</p><div class="rack-widget-card-grid">${[0,1].map((slot) => `<label class="rack-widget-field">${slot ? '두 번째 장비 (선택)' : '첫 번째 장비'}<select data-phase-device="${slot}"><option value="">${slot ? '선택 안 함' : '장비 선택'}</option>${phaseDevices.map((d) => `<option value="${d.deviceId}" ${selected[slot] === d.deviceId ? 'selected' : ''}>${esc(d.deviceName)} · ${esc(d.pathName || d.pathCode || 'Path 미설정')}</option>`).join('')}</select></label>`).join('')}</div>`;
                   section.querySelectorAll('[data-phase-device]').forEach((select) => select.onchange = () => {
                     const first = Number(section.querySelector('[data-phase-device="0"]').value), second = Number(section.querySelector('[data-phase-device="1"]').value);
                     if (first && first === second) { toast('서로 다른 PDU를 선택하세요.', true); showSpecial(); return; }
@@ -9258,17 +9303,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function suggestAggregatePoint(catalog, op) {
-      const preferred = {
-        usage: ["TOTAL_KWH", "KWH", "L1_KWH"],
-        usage_rank: ["TOTAL_KWH", "KWH", "L1_KWH"],
-        power: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
-        power_rank: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
-        demand: ["TOTAL_WT", "W", "WT", "TOTAL_WATT"],
-      }[op] || [];
-      for (const name of preferred) {
-        if (catalog.some((p) => p.name === name)) return name;
-      }
-      return catalog[0]?.name || null;
+      const type = ["usage", "usage_rank"].includes(op) ? "ENERGY" : "POWER";
+      const candidates = catalog.filter((point) => point.dataPointType === type);
+      const unphased = candidates.filter((point) => !point.metadata?.some((source) => source.phase));
+      return (unphased.length === 1 ? unphased[0] : candidates.length === 1 ? candidates[0] : null)?.name || null;
     }
 
     function formatPointLabel(point) {
@@ -9456,6 +9494,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 modelIds: new Set(),
                 deviceIds: new Set(),
                 sourceIds: new Set(),
+                metadata: [],
               });
             }
             const row = byName.get(key);
@@ -9464,6 +9503,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             row.models.add(modelLabel);
             row.modelIds.add(Number(modelId));
             row.deviceIds.add(Number(p.deviceId));
+            row.metadata.push({ deviceId: Number(p.deviceId), dataPointType, phase: p.phase || null });
           }
         }
         const catalog = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
@@ -9538,7 +9578,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               fillWidgetDevicePick();
             }
             if (!syncChartPointUnit(input)) return;
-            syncChartPointFamily(input);
+
             refreshChartSeriesOptions();
           });
         });
@@ -9573,30 +9613,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         .map((el) => el.dataset.point))];
     }
 
-    function syncChartPointFamily(input) {
-      if ($("wKind")?.value !== "chart" || !input) return;
-      const phaseMatch = /^L[123]_(.+)$/.exec(input.dataset.point || "");
-      if (phaseMatch) {
-        for (const prefix of ["L1_", "L2_", "L3_"]) {
-          const sibling = $("wPointGrid").querySelector(`input[data-point="${prefix}${phaseMatch[1]}"]`);
-          if (sibling) sibling.checked = input.checked;
-        }
-        const totalName = chartTotalPointName(phaseMatch[1]);
-        const total = $("wPointGrid").querySelector(`input[data-point="${totalName}"]`);
-        if (total) total.checked = input.checked;
-        return;
-      }
-      const suffix = chartTotalPointSuffix(input.dataset.point || "");
-      if (suffix) {
-        const siblings = ["L1_", "L2_", "L3_"]
-          .map((prefix) => $("wPointGrid").querySelector(`input[data-point="${prefix}${suffix}"]`))
-          .filter(Boolean);
-        if (siblings.length === 3) {
-          siblings.forEach((sibling) => sibling.checked = input.checked);
-        }
-      }
-    }
-
     function syncChartPointUnit(input) {
       if ($("wKind")?.value !== "chart" || !input?.checked) return true;
       const units = new Set(selectedWidgetPoints().flatMap((name) => {
@@ -9612,80 +9628,54 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return true;
     }
 
-    function chartTotalPointName(suffix) {
-      if (suffix === "WATT") return "TOTAL_WT";
-      if (suffix === "AMP" || suffix === "PF") return suffix;
-      return `TOTAL_${suffix}`;
-    }
-
-    function chartTotalPointSuffix(name) {
-      if (name === "TOTAL_WT") return "WATT";
-      if (name === "AMP" || name === "PF") return name;
-      if (name.startsWith("TOTAL_")) return name.substring(6);
-      return null;
-    }
-
     function refreshChartSeriesOptions() {
       if ($("wKind")?.value !== "chart" || !$("wChartSeriesMode")) return;
       const select = $("wChartSeriesMode");
       const hint = $("wChartSeriesHint");
-      let points = selectedWidgetPoints();
-      const selectedUnits = [...new Set(points.flatMap((name) => {
-        const point = state.widgetPointCatalog.find((item) => item.name === name);
-        return point?.units ? [...point.units] : point?.unit ? [point.unit] : [];
-      }).filter(Boolean).map((unit) => String(unit).trim()))];
-      const hasTwoUnits = selectedUnits.length === 2;
-      select.disabled = points.length === 0;
-      if (!points.length) {
+      const selectedNames = selectedWidgetPoints();
+      const selectedPoints = (state.widgetPointCatalog || []).filter((point) => selectedNames.includes(point.name));
+      const selectedUnits = [...new Set(selectedPoints.flatMap((point) => point.units ? [...point.units] : point.unit ? [point.unit] : []).filter(Boolean).map((unit) => String(unit).trim()))];
+      const hasTwoUnits = selectedUnits.length > 1;
+      select.disabled = selectedNames.length === 0;
+      if (!selectedNames.length) {
         select.title = "장비와 측정항목을 먼저 선택하세요.";
         if (hint) hint.textContent = "측정항목을 선택하면 사용할 수 있는 표시 방식이 나타납니다.";
         return;
       }
       select.title = "";
-      const hasAllPhases = [...new Set(points
-        .map((name) => /^L[123]_(.+)$/.exec(name)?.[1])
-        .filter(Boolean))]
-        .some((suffix) => ["L1_", "L2_", "L3_"].every((prefix) => points.includes(prefix + suffix)));
-      const phaseOption = select.querySelector('option[value="by_phase"]');
+      const phaseSets = new Map();
+      for (const point of selectedPoints) for (const source of point.metadata || []) {
+        if (!source.dataPointType || !["P1", "P2", "P3"].includes(source.phase)) continue;
+        const key = `${source.deviceId}:${source.dataPointType}`;
+        if (!phaseSets.has(key)) phaseSets.set(key, new Set());
+        phaseSets.get(key).add(source.phase);
+      }
+      const supportsPhase = [...phaseSets.values()].some((phases) => ["P1", "P2", "P3"].every((phase) => phases.has(phase)));
       const pathOption = select.querySelector('option[value="by_path"]');
+      const phaseOption = select.querySelector('option[value="by_phase"]');
       const sumOption = select.querySelector('option[value="sum"]');
-      const chartScope = $("wChartScope").value || "devices";
-      const targets = chartScope === "models"
-        ? state.widgetModelIds.map((id) => state.models.find((model) => Number(model.id) === Number(id))).filter(Boolean)
+      const scope = $("wChartScope").value || "devices";
+      const modelIds = state.widgetModelIds.map(Number);
+      const targetDevices = scope === "models"
+        ? state.devices.filter((device) => modelIds.includes(Number(device.modelId)))
         : state.widgetDeviceIds.map((id) => state.devices.find((device) => Number(device.id) === Number(id))).filter(Boolean);
-      const allPdu = targets.length > 0
-        && targets.every((target) => String(target.deviceTypeCode || "").toUpperCase() === "PDU");
-      const supportsPhase = allPdu && hasAllPhases;
-      if (phaseOption) {
-        phaseOption.hidden = hasTwoUnits || !supportsPhase;
-        phaseOption.disabled = hasTwoUnits || !supportsPhase;
-      }
-      if (pathOption) {
-        pathOption.hidden = hasTwoUnits || !allPdu;
-        pathOption.disabled = hasTwoUnits || !allPdu;
-      }
-      if (sumOption) {
-        sumOption.hidden = hasTwoUnits;
-        sumOption.disabled = hasTwoUnits;
-      }
+      const locatedCount = targetDevices.filter((device) => device.locationNodeId || device.locationNodeCode || device.pathCode).length;
+      const supportsPath = locatedCount >= 2;
+      if (phaseOption) { phaseOption.hidden = hasTwoUnits || !supportsPhase; phaseOption.disabled = hasTwoUnits || !supportsPhase; }
+      if (pathOption) { pathOption.hidden = hasTwoUnits || !supportsPath; pathOption.disabled = hasTwoUnits || !supportsPath; }
+      if (sumOption) { sumOption.hidden = hasTwoUnits; sumOption.disabled = hasTwoUnits; }
       if (hasTwoUnits && select.value !== "per_device") select.value = "per_device";
       if (!supportsPhase && select.value === "by_phase") select.value = "per_device";
-      if (!allPdu && select.value === "by_path") select.value = "per_device";
-      if (!select.dataset.userSelected) {
-        if (hasTwoUnits) select.value = "per_device";
-        else if (supportsPhase) select.value = "by_phase";
-        else if (allPdu && targets.length > 1) select.value = "sum";
-        else select.value = "per_device";
-      }
+      if (!supportsPath && select.value === "by_path") select.value = "per_device";
+      if (!select.dataset.userSelected) select.value = hasTwoUnits ? "per_device" : supportsPhase ? "by_phase" : targetDevices.length > 1 ? "sum" : "per_device";
       if (hint) hint.textContent = hasTwoUnits
-        ? `두 단위(${selectedUnits.join(" · ")}) 차트입니다. 서로 다른 단위는 합산할 수 없어 장비별 표시와 좌·우 축으로 표시합니다.`
-        : allPdu
-        ? supportsPhase
-          ? "3상 PDU가 포함됩니다. 위젯 보드에서 합계·장비별·상별·위치별을 전환할 수 있습니다."
-          : "단상 PDU 대상입니다. 위젯 보드에서 합계·장비별·위치별을 전환할 수 있습니다."
-        : "일반 장비/모델 대상입니다. 위젯 보드에서 장비별·합계를 전환할 수 있습니다.";
+        ? `두 단위(${selectedUnits.join(" · ")}) 차트입니다. 합산할 수 없어 장비별 표시와 좌·우 축을 사용합니다.`
+        : supportsPhase
+          ? "측정 유형과 상 정보로 상별 묶음을 사용할 수 있습니다."
+          : supportsPath
+            ? "대상 장비의 위치 정보로 위치별 묶음을 사용할 수 있습니다."
+            : "합계와 장비별 표시를 사용할 수 있습니다.";
     }
-
     function syncAggregateOpFromPoint(pointName) {
       const point = selectedAggregatePoint()
         || (state.widgetPointCatalog || []).find((p) => p.name === pointName);
@@ -14270,12 +14260,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     function renderLoraModelPoints() {
       const points = state.loraModelPoints || [];
+      const model = state.models.find((item) => Number(item.id) === Number(state.selectedLoraModelId)) || state.selectedModel;
       $("loraMpBody").innerHTML = points.map((p) => `
         <tr data-id="${p.id}">
           <td class="mono">${esc(p.payloadField)}<div class="muted">${esc(p.componentScope || "DEVICE")}${p.componentScope === "COMPONENT" ? ` · ${esc(p.componentType)} · ${esc(p.componentPath)} · index=${esc(p.componentIndexField)} · uuid=${esc(p.componentUuidField || "—")}` : ""}</div><div class="muted">${esc(p.categoryName || "카테고리 미지정")}</div></td>
           <td>${esc(p.pointName)}</td>
           <td>${esc(p.dataPointTypeCode || "—")}</td>
           <td>${esc(p.unit || "—")}</td>
+          <td>${phaseDisplay(p.phase, model)}${phaseAssignmentWarning(p)}</td>
           <td class="mono">${p.scale ?? "—"}</td>
           <td class="mono muted">${esc(p.valueMap || "—")}</td>
           <td>${p.enabled ? '<span class="chip ok">사용</span>' : '<span class="chip bad">중지</span>'}</td>
@@ -14299,6 +14291,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           syncMqttPointScope();
           $("loraMpPayloadField").value = p.payloadField || "";
           $("loraMpPointName").value = p.pointName || "";
+          $("loraMpPhase").value = p.phase || "";
           fillDataPointTypeSelect($("loraMpDataPointTypeId"), p.dataPointTypeId);
           fillUnitSelect($("loraMpUnit"), p.unitCodeId);
           $("loraMpScale").value = p.scale ?? "";
@@ -14352,6 +14345,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       syncMqttPointScope();
       $("loraMpPayloadField").value = "";
       $("loraMpPointName").value = "";
+      $("loraMpPhase").value = "";
       fillDataPointTypeSelect($("loraMpDataPointTypeId"));
       fillUnitSelect($("loraMpUnit"));
       $("loraMpScale").value = "";
@@ -14480,6 +14474,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const body = {
         payloadField,
         pointName,
+        phase: $("loraMpPhase").value || null,
         componentScope: $("mqttMpScope").value,
         componentType: $("mqttMpScope").value === "COMPONENT" ? $("mqttMpType").value.trim() : null,
         componentPath: $("mqttMpScope").value === "COMPONENT" ? $("mqttMpPath").value.trim() : "",

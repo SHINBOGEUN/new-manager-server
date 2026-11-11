@@ -203,7 +203,7 @@ public class WidgetTrendQueryService {
     ) {
         return new ChartWidgetResponse(widget.getId(), widget.getName(), widget.getPageCode().getCode(), scope, mode,
                 preset.name(), window, range.start(), range.end(), units.size() == 1 ? units.get(0) : null,
-                units, series, null);
+                units, series, null, List.of("sum", "per_device"));
     }
 
     private static void validateUnitCount(List<String> units) {

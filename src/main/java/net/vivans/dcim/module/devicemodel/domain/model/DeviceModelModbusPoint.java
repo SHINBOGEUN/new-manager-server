@@ -50,6 +50,10 @@ public class DeviceModelModbusPoint extends BaseEntity {
     @JoinColumn(name = "unit_code_id")
     private CommonCode unitCode;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "phase_code_id")
+    private CommonCode phase;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "register_type", nullable = false, length = 30)
     private ModbusRegisterType registerType;
@@ -232,6 +236,17 @@ public class DeviceModelModbusPoint extends BaseEntity {
     }
 
 
+    public void setPhase(CommonCode phase) {
+        if (phase != null && !"PHASE".equals(phase.getCodeGroup().getGroupKey())) {
+            throw new IllegalArgumentException("phase must belong to PHASE group");
+        }
+        this.phase = phase;
+    }
+
+    public DeviceModelModbusPoint withPhase(CommonCode phase) {
+        setPhase(phase);
+        return this;
+    }
     private static void validateModelProtocol(DeviceModelProtocol modelProtocol) {
         if (modelProtocol == null) {
             throw new IllegalArgumentException("modelProtocol is required");

@@ -113,6 +113,7 @@ public class DeviceModelSnmpPointQueryService {
 
         point.update(request.name(), request.oid(), requiresInstance, unitCodeResolver.resolve(request.unitCodeId()), request.scale(), enabled,
                 resolveDataPointType(request.dataPointTypeId()), categoryCodeResolver.resolve(request.categoryCodeId()));
+        point.setPhase(resolvePhase(request.phase()));
 
         DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
         collectionScriptSyncService.regenerateByModelId(modelId);
@@ -171,7 +172,7 @@ public class DeviceModelSnmpPointQueryService {
     private DeviceModelSnmpPoint createPoint(DeviceModelProtocol protocol, DeviceModelSnmpPointCreateRequest request) {
         boolean requiresInstance = Boolean.TRUE.equals(request.requiresInstance());
         boolean enabled = request.enabled() == null || request.enabled();
-        return DeviceModelSnmpPoint.create(
+        DeviceModelSnmpPoint point = DeviceModelSnmpPoint.create(
                 protocol,
                 request.name(),
                 request.oid(),
@@ -182,6 +183,15 @@ public class DeviceModelSnmpPointQueryService {
                 resolveDataPointType(request.dataPointTypeId()),
                 categoryCodeResolver.resolve(request.categoryCodeId())
         );
+        point.setPhase(resolvePhase(request.phase()));
+        return point;
+    }
+
+    private CommonCode resolvePhase(String code) {
+        if (code == null || code.isBlank()) return null;
+        String normalized = code.trim().toUpperCase(java.util.Locale.ROOT);
+        return commonCodeRepository.findByCodeGroupGroupKeyAndCode("PHASE", normalized)
+                .orElseThrow(() -> new IllegalArgumentException("phase must be a PHASE code (P1, P2, P3, N)"));
     }
 
     private CommonCode resolveDataPointType(Integer id) {
