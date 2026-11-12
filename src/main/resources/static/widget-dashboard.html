@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261111-r015"></script>
+  <script src="/widget-detail-popup.js?v=20261112-t018"></script>
   <script>
 (function (global) {
   'use strict';
@@ -904,6 +904,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .dashboard-brand .dashboard-mark { display:grid; flex:0 0 36px; margin:0; color:#06111c; font-size:18px; letter-spacing:0; }
     .dashboard-context small { color:var(--muted); letter-spacing:.06em; }
     .workspace-guide { margin:0; padding:9px 20px; border-bottom:1px solid var(--line); color:var(--muted); background:var(--panel); font-size:12px; line-height:1.6; }
+    .widget-detail-notice { margin:0; padding:9px 20px; border-bottom:1px solid var(--line); color:var(--muted); background:var(--panel); font-size:12px; line-height:1.6; }
+    .widget-detail-notice[hidden] { display:none; }
     .workspace-guide strong { color:var(--text); font-weight:600; }
     .when-editing, .board-title .when-editing { display:none; }
     body.edit-mode .when-editing { display:inline; }
@@ -1000,6 +1002,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       </div>
     </div>
     <p id="workspaceGuide" class="workspace-guide" role="status"><span class="when-viewing"><strong>배치 변경</strong> · 위젯 편집 → 카드 상단으로 이동·가장자리로 크기 조절 → 변경 저장</span><span class="when-editing"><strong>배치 편집 중</strong> · 카드 상단을 끌어 이동하세요. 더블클릭: 위젯 설정. 완료 후 변경 저장을 누르거나 편집 취소로 돌아갑니다.</span></p>
+    <p id="widgetDetailNotice" class="widget-detail-notice" role="status" hidden>차트 상세 모듈을 불러오지 못했습니다. 새로고침하거나 관리자에게 알려 주세요. 다른 위젯 표시는 계속됩니다.</p>
     <section id="dashboardControls" class="dashboard-controls">
       <div class="control-group">
         <p class="control-group-title">데이터 연결</p>
@@ -1066,7 +1069,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     const DEFAULT_W = 16;  // 화면상 예전 4/12 ≈ 같은 너비
     const DEFAULT_H = 8;   // 화면상 예전 2행 ≈ 같은 높이
     const DEFAULT_CHART_H = 16; // chart 카드는 라인 차트용으로 더 높게
-    const CHART_PALETTE = window.DcimWidgetDetail.palette;
+    const widgetDetailModule = window.DcimWidgetDetail;
+    const CHART_PALETTE = widgetDetailModule?.palette || ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
+    if (!widgetDetailModule) document.getElementById("widgetDetailNotice")?.removeAttribute("hidden");
     // 스케일: 12칸→×4, 24칸→×2, 이미 48칸이면 그대로
 
     const state = {
@@ -3101,9 +3106,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.chartInstances.clear();
     }
 
-    const formatChartTime = window.DcimWidgetDetail.formatTime;
+    const formatChartTime = window.DcimWidgetDetail?.formatTime || ((value) => value ? new Date(value).toLocaleString("ko-KR") : "");
 
     function mountChartInstance(widgetId, data) {
+      if (!window.DcimWidgetDetail?.createChart) return;
       const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
       const chart = window.DcimWidgetDetail.createChart(canvas, data);
       if (!chart) return;
@@ -3111,7 +3117,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function mountChartInstances() {
-      if (typeof Chart === "undefined") return;
+      if (typeof Chart === "undefined" || !window.DcimWidgetDetail?.createChart) return;
       destroyChartInstances();
       for (const [widgetId, data] of state.chartByWidget) {
         const widget = state.widgets.find((item) => Number(item.id) === Number(widgetId));
@@ -3120,7 +3126,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function closeTrendModal() {
-      window.DcimWidgetDetail.close();
+      window.DcimWidgetDetail?.close?.();
     }
 
     async function openWidgetDetail(widget) {
@@ -3135,6 +3141,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         return;
       }
       if (config.action !== "chart") return;
+      if (!window.DcimWidgetDetail) {
+        document.getElementById("widgetDetailNotice")?.removeAttribute("hidden");
+        return;
+      }
       const rangePreset = config.rangePreset || widget.trendRangePreset || "last_3d";
       const windowSize = config.window || widget.trendWindow || "15m";
       const seriesMode = config.seriesMode || widget.chartSeriesMode || "per_device";
@@ -3928,7 +3938,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       refreshBoard(false).catch((error) => log("배치 표시 실패: " + error.message));
     }
 
-    const formatValue = window.DcimWidgetDetail.formatValue;
+    const formatValue = window.DcimWidgetDetail?.formatValue || ((value) => {
+      if (value == null || value === "") return "-";
+      const number = Number(value);
+      return Number.isFinite(number) ? number.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) : String(value);
+    });
 
     function escapeHtml(value) {
       return String(value ?? "").replace(/[&<>"']/g, (c) => ({
