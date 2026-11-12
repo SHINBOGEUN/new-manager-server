@@ -93,6 +93,6 @@ final class ComparisonSeriesSupport {
     }
 
     private static String key(Integer deviceId, String pointName) {
-        return deviceId + "\u0000" + pointName;
+        return deviceId + "\u0000" + pointName.trim().toUpperCase(java.util.Locale.ROOT);
     }
 }

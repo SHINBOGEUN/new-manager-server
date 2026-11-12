@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t019a"></script>
+  <script src="/widget-detail-popup.js?v=20261112-t020"></script>
   <script>
 (function (global) {
   'use strict';
@@ -1522,6 +1522,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .widget-form-section .field.full { grid-column:auto; }
     .widget-form-section .grid2 { grid-template-columns:minmax(0,1fr); }
     .widget-form-section .row > select, .widget-form-section .row > input { min-width:0; }
+    .widget-form-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:none; }
+    .widget-form-section:nth-child(1), .widget-form-section:nth-child(2) { grid-area:auto; }
+    .widget-editor-basic > .fields { margin-bottom:14px; }
+    .widget-editor-basic > [data-widget-stage="2"] { margin-top:10px !important; }
+    .widget-editor-advanced > summary { cursor:pointer; color:var(--text); font-size:13px; font-weight:700; }
+    .widget-editor-advanced-body { margin-top:14px; }
+    .widget-editor-advanced-body > [data-widget-stage] { margin-top:14px !important; }
+    .widget-editor-advanced-body > .fields { margin-top:14px; }
     .widget-preview-details { margin:0 0 15px; color:var(--muted); }
     .widget-preview-details summary { cursor:pointer; padding:10px 0; font-size:12px; }
     #wEditorCard .field { font-size:12px; gap:7px; }
@@ -2847,7 +2855,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
           <div id="wChartBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">
-              1. 차트 대상 방식
+              차트 대상 방식
             </div>
             <div class="fields">
               <label class="field full">대상
@@ -2860,7 +2868,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div>
 
           <div id="wDeviceBlock" data-widget-stage="2" style="margin-top:14px">
-            <div id="wDeviceLabel" class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">1. 장비 추가</div>
+            <div id="wDeviceLabel" class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">장비 선택</div>
             <input id="wDeviceSearch" type="search" placeholder="장비 이름·모델 검색" aria-label="위젯 장비 검색" style="width:100%;margin-bottom:8px" />
             <div id="wDeviceGroupPick" style="margin-bottom:8px;display:none">
               <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">장비 그룹 추가 <span class="muted">(그룹 구성 변경이 위젯에 자동 반영됩니다)</span></div>
@@ -2890,7 +2898,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div>
 
           <div id="wModelBlock" data-widget-stage="2" style="margin-top:14px;display:none">
-            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">2. 대상 모델 선택</div>
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">대상 모델 선택</div>
             <div class="row">
               <select id="wPickModel" style="flex:1;min-width:180px"></select>
               <button type="button" class="primary" id="wAddModel">추가</button>
@@ -2899,14 +2907,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div>
 
           <div id="wPointsBlock" data-widget-stage="2" style="margin-top:14px">
-            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">2. 측정 항목 선택</div>
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">측정 항목 선택</div>
             <div id="wPointsHint" class="muted" style="font-size:12px">장비를 추가하면 항목이 나타납니다.</div>
             <input id="wCatalogSearch" type="search" placeholder="측정항목 검색" aria-label="위젯 측정항목 검색" style="width:100%;margin:8px 0" />
             <div id="wPointGrid" class="point-grid" style="display:none"></div>
           </div>
 
           <div id="wChartOptionsBlock" data-widget-stage="3" style="margin-top:14px;display:none">
-            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">4. 표시 방식과 기간</div>
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">기간과 표시 방식</div>
             <div id="wChartSeriesHint" class="muted" style="font-size:12px;margin-bottom:8px">측정항목을 선택하면 사용할 수 있는 표시 방식이 나타납니다.</div>
             <div class="fields">
               <label class="field" id="wChartSeriesField" style="display:none">기본 표시 방식
@@ -3004,7 +3012,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             </div>
             <div class="grid2">
               <div>
-                <h3 style="margin:0 0 8px;font-size:14px">1. 온도 소스</h3>
+                <h3 style="margin:0 0 8px;font-size:14px">온도 소스</h3>
                 <div class="row">
                   <select id="wPsychTemperatureDevice" style="flex:1;min-width:140px"></select>
                   <select id="wPsychTemperaturePoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
@@ -3013,7 +3021,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 <div id="wPsychTemperatureList" class="pick-list"></div>
               </div>
               <div>
-                <h3 style="margin:0 0 8px;font-size:14px">2. 상대습도 소스</h3>
+                <h3 style="margin:0 0 8px;font-size:14px">상대습도 소스</h3>
                 <div class="row">
                   <select id="wPsychHumidityDevice" style="flex:1;min-width:140px"></select>
                   <select id="wPsychHumidityPoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
@@ -7200,7 +7208,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   return;
                 }
                 const labels = widget.type === 'POWER_TREND' ? ['A 경로 전력','B 경로 전력','전체 전력 (선택)'] : ['A 경로 전력','B 경로 전력'];
-          section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 장비마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range>${widgetOptions.rangePresets.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label><label class="rack-widget-field">평균 집계 간격<select data-interval>${widgetOptions.windows.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label></div><p class="muted">각 구간의 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
+          section.innerHTML = `<p class="muted">${widget.type === 'PHASE_BALANCE' ? '각 장비마다 같은 단위의 3개 상을 선택하세요.' : '같은 단위의 전력 항목을 선택하세요.'}</p><div class="rack-widget-card-grid">${labels.map((label, slot) => `<label class="rack-widget-field">${esc(label)}<select data-slot="${slot}"><option value="">${widget.type === 'POWER_TREND' && slot === 2 ? 'A+B 자동 계산' : '항목 선택'}</option>${sources.map((s) => `<option value="${esc(sourceKey(s))}" ${widget.sources[slot] && sourceKey(widget.sources[slot]) === sourceKey(s) ? 'selected' : ''}>${esc(sourceLabel(s))}</option>`).join('')}</select></label>`).join('')}</div>${widget.type === 'POWER_TREND' ? `<div class="rack-widget-card-grid" style="margin-top:12px"><label class="rack-widget-field">조회 기간<select data-range>${widgetOptions.rangePresets.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></label></div><p class="muted">기간에 따라 자동 간격으로 평균을 표시합니다. A와 B가 모두 있는 구간만 합산합니다.</p>` : ''}`;
                 section.querySelectorAll('[data-slot]').forEach((select) => {
                   const slot = Number(select.dataset.slot);
                   if (slot < 2) [...select.options].slice(1).forEach((option) => { const source = sources.find((s) => sourceKey(s) === option.value), device = powerDevices.find((d) => d.deviceId === source?.deviceId); if (!device || String(device.pathCode || '').toUpperCase() !== (slot === 0 ? 'A' : 'B') || !['W','KW','MW'].includes(String(source.unit || '').toUpperCase())) option.remove(); });
@@ -7210,7 +7218,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                   else widget.sources[slot] = selected ? { deviceId:selected.deviceId, pointName:selected.pointName, protocol:selected.protocol } : null;
                   };
                 });
-                if (widget.type === 'POWER_TREND') { const range = section.querySelector('[data-range]'), interval = section.querySelector('[data-interval]'); range.value = widget.rangePreset || 'last_24h'; interval.value = widget.window || '15m'; range.onchange = () => widget.rangePreset = range.value; interval.onchange = () => widget.window = interval.value; }
+                if (widget.type === 'POWER_TREND') { const range = section.querySelector('[data-range]'); range.value = widget.rangePreset || 'last_24h'; range.onchange = () => widget.rangePreset = range.value; }
               };
               row.querySelector('[data-search]').oninput = showSources;
               row.querySelector('[data-type]').onchange = (e) => { widget.type = e.target.value; widget.sources = widget.type === 'PHASE_BALANCE' ? defaultPhases() : ['PATH_BALANCE','POWER_TREND'].includes(widget.type) ? [powerForPath('A'),powerForPath('B')] : []; draw(); };
@@ -8794,37 +8802,108 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       return `${source.pointName} · ${String(source.protocol || "").toUpperCase()} · ${source.unit || "단위 없음"} · ${origin}${polling}`;
     }
 
+    function updateWidgetAdvancedSummary() {
+      const summary = $("wAdvancedSummary");
+      if (!summary) return;
+      const kind = $("wKind")?.value || "last";
+      const defaultStyle = kind === "aggregate" || kind === "power_distribution" ? "bar" : "line";
+      const active = [
+        $("wClickAction")?.value && $("wClickAction").value !== "chart",
+        $("wClickTarget")?.value.trim(),
+        $("wTrendStyle")?.value && $("wTrendStyle").value !== defaultStyle,
+        $("wTrendRange")?.value && $("wTrendRange").value !== "last_3d",
+        $("wClickSeries")?.value && $("wClickSeries").value !== "sum",
+        $("wClickCompare")?.value && $("wClickCompare").value !== "none",
+        $("wChartCompareMode")?.value && $("wChartCompareMode").value !== "none",
+        $("wChartSeriesMode")?.value && $("wChartSeriesMode").value !== "sum",
+        $("wColorCustom")?.checked,
+        selectedWidgetVisualStyle() !== "classic",
+        $("wTableEnabled")?.checked,
+        Number($("wDataFreshnessMinutes")?.value || 15) !== 15,
+      ].filter(Boolean).length;
+      summary.textContent = active ? `고급 설정 ${active}개 사용 중` : "더 보기";
+    }
+
     function showWidgetEditorStep() {
       const editor = $("wEditorCard");
       if (!editor) return;
       if (!editor.querySelector(".widget-form-grid")) {
         const grid = document.createElement("div"); grid.className = "widget-form-grid";
-        const sections = ["① 종류", "② 데이터", "③ 표시", "④ 클릭", "⑤ 저장"].map((title) => {
-          const section = document.createElement("section"); section.className = "widget-form-section";
-          const heading = document.createElement("h3"); heading.textContent = title; section.append(heading); grid.append(section);
-          return section;
-        });
-        const tableChoice = $("wTableFormatChoice");
-        if (tableChoice) sections[2].append(tableChoice);
+        const basic = document.createElement("section"); basic.className = "widget-form-section widget-editor-basic";
+        const basicHeading = document.createElement("h3"); basicHeading.textContent = "기본 설정"; basic.append(basicHeading);
+        const basicFields = document.createElement("div"); basicFields.className = "fields"; basic.append(basicFields);
+        const advanced = document.createElement("details"); advanced.className = "widget-form-section widget-editor-advanced";
+        const advancedSummary = document.createElement("summary"); advancedSummary.id = "wAdvancedSummary"; advanced.append(advancedSummary);
+        const advancedBody = document.createElement("div"); advancedBody.className = "widget-editor-advanced-body"; advanced.append(advancedBody);
         const preview = document.createElement("details"); preview.className = "widget-preview-details";
-        const summary = document.createElement("summary"); summary.textContent = "선택 항목과 페이지 미리보기"; preview.append(summary);
+        const previewSummary = document.createElement("summary"); previewSummary.textContent = "미리보기"; preview.append(previewSummary);
+        grid.append(basic, advanced);
+        const tableChoice = $("wTableFormatChoice");
+        if (tableChoice) advancedBody.append(tableChoice);
+        const tableOptions = $("wTableOptions");
+        if (tableOptions) advancedBody.append(tableOptions);
+        const chartOptions = $("wChartOptionsBlock");
+        const periodLabels = [];
+        ["wChartRangePreset", "wChartCompareMode"].forEach((id) => {
+          const label = $(id)?.closest("label"); if (label) periodLabels.push(label);
+        });
+        const trendDefaults = $("wTrendDefaults");
+        ["wTrendRange", "wClickCompare"].forEach((id) => {
+          const label = $(id)?.closest("label"); if (label) periodLabels.push(label);
+        });
+        const pueFreshness = $("wPueFreshnessMinutes")?.closest("label");
+        if (pueFreshness) advancedBody.append(pueFreshness);
         const review = $("wReview"), pagePreview = editor.querySelector(".widget-page-preview");
         for (const element of [...editor.querySelectorAll(":scope > [data-widget-stage]")]) {
           if (element === review || element === pagePreview) { preview.append(element); continue; }
           if (element.classList.contains("raw")) continue;
           const stage = Number(element.dataset.widgetStage);
-          if (stage >= 1 && stage <= 5) sections[stage - 1].append(element);
+          if (element === tableChoice) continue;
+          if (stage <= 2) basic.append(element);
+          else if (stage <= 4) advancedBody.append(element);
+          else preview.append(element);
         }
+        const nameLabel = $("wName")?.closest("label"); if (nameLabel) basicFields.append(nameLabel);
+        periodLabels.forEach((label) => basicFields.append(label));
+        basic.append(basicFields);
         preview.addEventListener("toggle", () => { if (preview.open) { renderWidgetReview(); updateWidgetPagePreview(); } });
         editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
         editor.insertBefore(preview, editor.querySelector(".widget-editor-footer"));
+        if (chartOptions) advancedBody.append(chartOptions);
+        if (trendDefaults) advancedBody.append(trendDefaults);
       }
       editor.dataset.step = "3";
       const preview = editor.querySelector(".widget-preview-details");
       if (preview) preview.open = false;
+      const advanced = editor.querySelector(".widget-editor-advanced");
+      if (advanced) advanced.open = false;
       editor.querySelectorAll("[data-widget-stage]").forEach((element) => element.classList.remove("widget-step-hidden"));
       $("wCreate").style.display = "inline-flex";
+      updateWidgetAdvancedSummary();
+      updateWidgetPeriodCompareFields();
       editor.scrollTop = 0;
+    }
+
+    function updateWidgetPeriodCompareFields() {
+      const isChart = $("wKind")?.value === "chart";
+      const chartCompare = $("wChartCompareMode")?.value || "none";
+      const clickCompare = $("wClickCompare")?.value || "none";
+      const chartRangeLabel = $("wChartRangePreset")?.closest("label");
+      const clickRangeLabel = $("wTrendRange")?.closest("label");
+      const chartCompareLabel = $("wChartCompareMode")?.closest("label");
+      const clickCompareLabel = $("wClickCompare")?.closest("label");
+      if (chartRangeLabel) chartRangeLabel.hidden = !isChart || chartCompare !== "none";
+      if (chartCompareLabel) chartCompareLabel.hidden = !isChart;
+      if (clickRangeLabel) clickRangeLabel.hidden = isChart || clickCompare !== "none";
+      if (clickCompareLabel) clickCompareLabel.hidden = isChart;
+    }
+
+    function normalizeWidgetCompare(value, preset) {
+      if (value === "previous_day") return "today_yesterday";
+      if (value === "previous_week") return "week_lastweek";
+      if (value === "previous_period") return preset === "this_month" || preset === "last_month"
+        ? "month_lastmonth" : preset === "last_7d" ? "week_lastweek" : "today_yesterday";
+      return value || "none";
     }
 
     let widgetVisualPreviewData = null;
@@ -13087,7 +13166,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       configureWidgetClickKind("last", "chart");
       $("wCountMode").value = "by_model";
       $("wChartScope").value = "devices";
-      $("wChartSeriesMode").value = "per_device";
+      $("wChartSeriesMode").value = "sum";
       delete $("wChartSeriesMode").dataset.userSelected;
       $("wChartRangePreset").value = "last_24h";
       $("wChartWindow").value = "5m";
@@ -13145,10 +13224,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wTrendRange").value = w.trendRangePreset || "last_3d";
         $("wTrendWindow").value = w.trendWindow || "15m";
         $("wClickAction").value = w.clickConfig?.action || "chart";
-        $("wTrendStyle").value = w.clickConfig?.chartStyle || "line";
+        $("wTrendStyle").value = w.clickConfig?.chartStyle === "area" ? "line" : w.clickConfig?.chartStyle || "line";
         $("wClickSeries").value = w.clickConfig?.seriesMode || w.chartSeriesMode || "sum";
-        $("wClickCompare").value = w.clickConfig?.compare || "none";
-        $("wChartCompareMode").value = w.clickConfig?.chartCompareMode || "none";
+        $("wClickCompare").value = normalizeWidgetCompare(w.clickConfig?.compare, w.trendRangePreset);
+        $("wChartCompareMode").value = normalizeWidgetCompare(w.clickConfig?.chartCompareMode || w.chartCompareMode, w.chartRangePreset);
         $("wClickTarget").value = w.clickConfig?.target?.deviceId || w.clickConfig?.target?.rackLocationCode || w.clickConfig?.target?.pageCode || "";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
@@ -13894,6 +13973,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("wName").addEventListener("input", updateWidgetDesignPreview);
     $('wTableEnabled').addEventListener('change', renderWidgetTableEditor);
     $("wEditorCard").addEventListener("change", (event) => {
+      updateWidgetPeriodCompareFields();
+      updateWidgetAdvancedSummary();
       if (event.target.matches('input[name="wVisualStyle"], #wColorCustom, #wVisualColor, #wKind')) updateWidgetDesignPreview();
     });
     $("wVisualColor").addEventListener("input", updateWidgetDesignPreview);
