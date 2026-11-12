@@ -2836,7 +2836,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
           <div id="wCountBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">
-              count 집계 방식 (대상 = DB enabled 장비 전체 · 장비 추가 불필요)
+              장비 수 표시 방식
             </div>
             <div class="fields">
               <label class="field full">집계 방식
@@ -2847,7 +2847,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 </select>
               </label>
               <label class="field full" id="wCountModelWrap" style="display:none">
-                대상 모델 (countMode=model)
+              대상 모델
                 <select id="wCountModel"><option value="">모델 선택</option></select>
               </label>
             </div>
@@ -2952,19 +2952,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           </div>
 
           <div id="wAggBlock" data-widget-stage="3" style="margin-top:14px;display:none">
-            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">3. 집계 기간</div>
+            <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">집계 설정</div>
             <div class="fields">
               <label class="field" id="wOpWrap">집계 방식
                 <select id="wOp">
                   <option value="">측정 항목을 선택하세요</option>
-                  <option value="usage">사용량 (ENERGY)</option>
-                  <option value="power">전력 합 (POWER)</option>
-                  <option value="usage_rank">사용량 순위 (ENERGY)</option>
-                  <option value="power_rank">전력 순위 · 기간별 마지막 값 (POWER)</option>
-                  <option value="demand">최대수요전력 (POWER)</option>
+                  <option value="usage">사용량</option>
+                  <option value="power">전력 합</option>
+                  <option value="usage_rank">사용량 순위</option>
+                  <option value="power_rank">전력 순위 · 기간별 마지막 값</option>
+                  <option value="demand">최대 수요 전력</option>
                 </select>
               </label>
-              <label class="field">기간 (aggregateRangePreset)
+              <label class="field">기간
                 <select id="wAggRangePreset">
                   <option value="today">오늘</option>
                   <option value="yesterday">어제</option>
@@ -2976,7 +2976,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               </label>
             </div>
             <div class="muted" style="font-size:12px;margin-top:6px">
-              선택한 측정 항목의 데이터 유형(POWER/ENERGY)에 따라 집계 방식이 자동으로 결정됩니다.
+              선택한 측정 항목에 맞는 집계 방식을 자동으로 적용합니다.
             </div>
           </div>
 
@@ -8811,10 +8811,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("wClickAction")?.value && $("wClickAction").value !== "chart",
         $("wClickTarget")?.value.trim(),
         $("wTrendStyle")?.value && $("wTrendStyle").value !== defaultStyle,
-        $("wTrendRange")?.value && $("wTrendRange").value !== "last_3d",
         $("wClickSeries")?.value && $("wClickSeries").value !== "sum",
-        $("wClickCompare")?.value && $("wClickCompare").value !== "none",
-        $("wChartCompareMode")?.value && $("wChartCompareMode").value !== "none",
         $("wChartSeriesMode")?.value && $("wChartSeriesMode").value !== "sum",
         $("wColorCustom")?.checked,
         selectedWidgetVisualStyle() !== "classic",
@@ -8851,11 +8848,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         ["wTrendRange", "wClickCompare"].forEach((id) => {
           const label = $(id)?.closest("label"); if (label) periodLabels.push(label);
         });
+        const aggregateRangeLabel = $("wAggRangePreset")?.closest("label");
+        if (aggregateRangeLabel) periodLabels.push(aggregateRangeLabel);
         const pueFreshness = $("wPueFreshnessMinutes")?.closest("label");
         if (pueFreshness) advancedBody.append(pueFreshness);
         const review = $("wReview"), pagePreview = editor.querySelector(".widget-page-preview");
         for (const element of [...editor.querySelectorAll(":scope > [data-widget-stage]")]) {
           if (element === review || element === pagePreview) { preview.append(element); continue; }
+          if (element.id === "wSaveError" || element.classList.contains("widget-editor-footer")) continue;
           if (element.classList.contains("raw")) continue;
           const stage = Number(element.dataset.widgetStage);
           if (element === tableChoice) continue;
@@ -8885,17 +8885,21 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function updateWidgetPeriodCompareFields() {
-      const isChart = $("wKind")?.value === "chart";
+      const kind = $("wKind")?.value || "last";
+      const isChart = kind === "chart";
+      const isAggregate = kind === "aggregate";
       const chartCompare = $("wChartCompareMode")?.value || "none";
       const clickCompare = $("wClickCompare")?.value || "none";
       const chartRangeLabel = $("wChartRangePreset")?.closest("label");
       const clickRangeLabel = $("wTrendRange")?.closest("label");
+      const aggregateRangeLabel = $("wAggRangePreset")?.closest("label");
       const chartCompareLabel = $("wChartCompareMode")?.closest("label");
       const clickCompareLabel = $("wClickCompare")?.closest("label");
       if (chartRangeLabel) chartRangeLabel.hidden = !isChart || chartCompare !== "none";
       if (chartCompareLabel) chartCompareLabel.hidden = !isChart;
-      if (clickRangeLabel) clickRangeLabel.hidden = isChart || clickCompare !== "none";
+      if (clickRangeLabel) clickRangeLabel.hidden = isChart || isAggregate || clickCompare !== "none";
       if (clickCompareLabel) clickCompareLabel.hidden = isChart;
+      if (aggregateRangeLabel) aggregateRangeLabel.hidden = !isAggregate || clickCompare !== "none";
     }
 
     function normalizeWidgetCompare(value, preset) {
@@ -9882,7 +9886,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (hasTwoUnits && select.value !== "per_device") select.value = "per_device";
       if (!supportsPhase && select.value === "by_phase") select.value = "per_device";
       if (!supportsPath && select.value === "by_path") select.value = "per_device";
-      if (!select.dataset.userSelected) select.value = hasTwoUnits ? "per_device" : supportsPhase ? "by_phase" : targetDevices.length > 1 ? "sum" : "per_device";
+      if (!select.dataset.userSelected) select.value = hasTwoUnits ? "per_device" : "sum";
       if (hint) hint.textContent = hasTwoUnits
         ? `두 단위(${selectedUnits.join(" · ")}) 차트입니다. 합산할 수 없어 장비별 표시와 좌·우 축을 사용합니다.`
         : supportsPhase
@@ -14333,9 +14337,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           deviceIds = [...state.widgetDeviceIds];
           if (!deviceIds.length && !state.widgetDeviceGroupIds.length) throw new Error("장비 또는 장비 그룹을 하나 이상 추가하세요");
         }
-        if (kind === "aggregate" && !op) throw new Error("집계 preset을 선택하세요");
+        if (kind === "aggregate" && !op) throw new Error("집계 방식을 선택하세요");
         if (kind === "aggregate" && op === "usage" && !$("wAggRangePreset").value) {
-          throw new Error("사용량(usage)은 기간(aggregateRangePreset)이 필요합니다");
+          throw new Error("사용량을 선택하려면 기간을 지정하세요");
         }
 
         const countModelId = kind === "count" && $("wCountMode").value === "model"
