@@ -106,7 +106,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261112-t021"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261112-t025"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1652,7 +1652,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         alarm.value.devices.forEach(row => alarmById.set(Number(row.deviceId), row));
       }
       const affected = new Set(alarm.status === 'fulfilled' && Array.isArray(alarm.value?.deviceIds) ? alarm.value.deviceIds.map(Number) : []);
-      if (rows) for (const id of ids) if (['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusById.get(id)?.status)) affected.add(id);
+      if (rows) for (const id of ids) if (['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH','UNREGISTERED','STOPPED'].includes(statusById.get(id)?.status)) affected.add(id);
       const unknown = !rows || ids.some(id => !statusById.has(id));
       const partial = incomplete || unknown || alarm.status !== 'fulfilled';
       sceneProblemDevices = [...affected].map((deviceId) => {
@@ -1667,9 +1667,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           const time = latest.occurredAt ? ` (${new Date(latest.occurredAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})})` : '';
           reasons.push({kind:'ALARM', severity, text:`미복구 알람 ${alarmInfo.openCount}건 · ${severityLabel}${latestText}${time}`, time:latest.occurredAt || null});
         }
-        if (statusInfo && ['PARTIAL','STALE','MISSING','NO_POINTS','MODEL_MISMATCH'].includes(statusInfo.status)) {
+        if (statusInfo && ['PARTIAL','STALE','MISSING'].includes(statusInfo.status)) {
           const time = statusInfo.latestCollectedAt ? ` · 마지막 수집 ${new Date(statusInfo.latestCollectedAt).toLocaleString('ko-KR')}` : '';
           reasons.push({kind:'COLLECTION', severity:'COLLECTION', text:`${statusInfo.statusMessage || statusInfo.status || '수집 문제'}${time}`, time:statusInfo.latestCollectedAt || null});
+        }
+        if (statusInfo && ['NO_POINTS','MODEL_MISMATCH','UNREGISTERED','STOPPED'].includes(statusInfo.status)) {
+          const guidance = statusInfo.status === 'MODEL_MISMATCH' ? `기대 모델 ${statusInfo.expectedModelName || '미확인'} · 실제 ${statusInfo.modelName || '미확인'}` : '';
+          reasons.push({kind:'SETTING', severity:'SETTING', text:`${statusInfo.statusMessage || statusInfo.status}${guidance ? ` · ${guidance}` : ''}`});
         }
         const name = statusInfo?.deviceName || alarmInfo?.deviceName || `장비 #${deviceId}`;
         return {deviceId, deviceName:name, reasons};
@@ -1707,8 +1711,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         }
         head.append(toggle);
         const problemMode = document.createElement("div"); problemMode.className = "scene-view-toggle"; problemMode.setAttribute("role", "group"); problemMode.setAttribute("aria-label", "문제 표시 방식");
-        const savedProblemMode = (() => { try { return localStorage.getItem(`dcim:page-problem-label:${page.pageCode}`) || "light"; } catch (_) { return "light"; } })();
-        for (const [value, label] of [["label", "불+글자"], ["light", "불만"], ["off", "끄기"]]) {
+        const savedProblemMode = (() => { try { return localStorage.getItem(`dcim:page-problem-label:${page.pageCode}`) === "off" ? "off" : "on"; } catch (_) { return "on"; } })();
+        for (const [value, label] of [["on", "켜기"], ["off", "끄기"]]) {
           const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.setAttribute("aria-pressed", String(savedProblemMode === value));
           button.onclick = () => {
             try { localStorage.setItem(`dcim:page-problem-label:${page.pageCode}`, value); } catch (_) {}
@@ -2024,9 +2028,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             onLockedRack: () => {
               window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
             },
-            onProblemDeviceClick: (problem) => {
-              if (problem?.deviceId) window.parent.postMessage({ type: "dcim:dashboard:open-device", deviceId: Number(problem.deviceId), openProblem: true }, location.origin);
-            },
             onDeviceLink: function openDeviceLink(host, forceConnection = false) {
               const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN";
               const key = findSceneItemKey(host), scene = state.pageScene3dApi;
@@ -2169,7 +2170,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             },
           });
           let problemLabelMode = "light";
-          try { problemLabelMode = localStorage.getItem(`dcim:page-problem-label:${visiblePage.pageCode}`) || "light"; } catch (_) {}
+          try { problemLabelMode = localStorage.getItem(`dcim:page-problem-label:${visiblePage.pageCode}`) === "off" ? "off" : "on"; } catch (_) { problemLabelMode = "on"; }
           state.pageScene3dApi?.setProblemLabelMode?.(problemLabelMode);
           state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
           for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
