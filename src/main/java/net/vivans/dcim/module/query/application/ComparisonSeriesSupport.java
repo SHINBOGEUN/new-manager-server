@@ -27,9 +27,11 @@ final class ComparisonSeriesSupport {
                                    QueryRanges.Range range, String window,
                                    Predicate<SeriesPoint> include) {
         Map<Instant, Double> totals = new HashMap<>();
+        Map<String, String> normalizedTypes = new HashMap<>();
+        typeBySource.forEach((sourceKey, type) -> normalizedTypes.put(normalizeKey(sourceKey), type));
         List<SeriesPoint> averaged = pointQuery.findSeries(deviceIds, pointNames, range.start(), range.end(), window);
         for (SeriesPoint point : averaged) {
-            if (!"ENERGY".equalsIgnoreCase(typeBySource.get(key(point.deviceId(), point.pointName())))
+            if (!"ENERGY".equalsIgnoreCase(normalizedTypes.get(key(point.deviceId(), point.pointName())))
                     && include.test(point)) {
                 totals.merge(bucket(point.time(), window), point.value(), Double::sum);
             }
@@ -41,10 +43,11 @@ final class ComparisonSeriesSupport {
             int separator = source.getKey().indexOf('\u0000');
             int deviceId = Integer.parseInt(source.getKey().substring(0, separator));
             String pointName = source.getKey().substring(separator + 1);
-            readingsBySource.put(source.getKey(), new ArrayList<>());
+            String normalizedKey = normalizeKey(source.getKey());
+            readingsBySource.put(normalizedKey, new ArrayList<>());
             List<LastPoint> seed = pointQuery.findLastInRange(List.of(deviceId), List.of(pointName),
                     range.start().minus(Duration.ofDays(35)), range.start());
-            seed.forEach(point -> readingsBySource.get(source.getKey()).add(
+            seed.forEach(point -> readingsBySource.get(normalizedKey).add(
                     new SeriesPoint(point.deviceId(), point.pointName(), point.value(), point.time())));
         }
         List<SeriesPoint> rawEnergy = pointQuery.findRawSeries(deviceIds, pointNames, range.start(), range.end());
@@ -93,6 +96,13 @@ final class ComparisonSeriesSupport {
     }
 
     private static String key(Integer deviceId, String pointName) {
-        return deviceId + "\u0000" + pointName;
+        return deviceId + "\u0000" + pointName.trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static String normalizeKey(String sourceKey) {
+        int separator = sourceKey.indexOf('\u0000');
+        return separator < 0 ? sourceKey.toUpperCase(java.util.Locale.ROOT)
+                : sourceKey.substring(0, separator + 1)
+                + sourceKey.substring(separator + 1).trim().toUpperCase(java.util.Locale.ROOT);
     }
 }

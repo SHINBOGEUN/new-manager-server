@@ -138,7 +138,8 @@ public class ChartQueryService {
         };
         if (comparison != null) {
             Map<String, String> typeBySource = new HashMap<>();
-            pointContext.sourcesByKey().forEach((key, source) -> typeBySource.put(key, source.dataPointType()));
+            pointContext.sourcesByKey().values().forEach(source -> typeBySource.put(
+                    source.deviceId() + "\u0000" + source.pointName(), source.dataPointType()));
             ChartSeriesResponse currentSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
                     typeBySource, unitContext.singleUnit(), range, window,
                     point -> includeAggregatePoint(point, deviceById, pointContext));

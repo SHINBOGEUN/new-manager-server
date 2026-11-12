@@ -109,7 +109,7 @@ public class WidgetTrendQueryService {
                 sources.stream().map(source -> source.device().getId()).collect(java.util.stream.Collectors.toSet()))) {
             if (!item.ambiguous() && sources.stream().anyMatch(source -> source.device().getId().equals(item.deviceId())
                     && source.pointName().equalsIgnoreCase(item.pointName()))) {
-                typeBySource.put(key(item.deviceId(), item.pointName()), item.dataPointType());
+                typeBySource.put(item.deviceId() + "\u0000" + item.pointName(), item.dataPointType());
             }
         }
         return List.of(ComparisonSeriesSupport.sum(pointQuery, deviceIds, pointNames, typeBySource,

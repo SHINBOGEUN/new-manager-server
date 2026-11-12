@@ -11,6 +11,7 @@
   let metaNode;
   let chartsNode;
   let controls;
+  let advancedControls;
   let rangeSelect;
   let seriesSelect;
   let styleSelect;
@@ -54,6 +55,9 @@
       ".dcim-widget-detail-head button{padding:4px 10px;font-size:20px;line-height:1;background:transparent;color:#93a7c1;border-color:transparent}",
       ".dcim-widget-detail-controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}",
       ".dcim-widget-detail-controls select{min-width:120px;max-width:100%;padding:7px 9px;background:#121a29;color:#e7edf8;border:1px solid #34445b;border-radius:7px}",
+      ".dcim-widget-detail-advanced{margin:0 0 8px;color:#93a7c1;font-size:12px}",
+      ".dcim-widget-detail-advanced summary{cursor:pointer;padding:7px 0}",
+      ".dcim-widget-detail-advanced .dcim-widget-detail-controls{margin:4px 0 8px}",
       ".dcim-widget-detail-meta{padding:9px 0;font-size:12px;color:#93a7c1;min-height:32px}",
       ".dcim-widget-detail-chart{position:relative;min-height:0;flex:1;overflow:auto}",
       ".dcim-widget-detail-chart canvas{width:100%!important;height:100%!important}",
@@ -83,21 +87,24 @@
     modal.id = "dcimWidgetDetailModal";
     modal.setAttribute("aria-modal", "true");
     modal.setAttribute("aria-labelledby", "dcimWidgetDetailTitle");
-    modal.innerHTML = '<div class="dcim-widget-detail-dialog"><div class="dcim-widget-detail-head"><h2 id="dcimWidgetDetailTitle"></h2><button type="button" aria-label="닫기">×</button></div><div class="dcim-widget-detail-controls"></div><div class="dcim-widget-detail-meta" role="status"></div><div class="dcim-widget-detail-chart"></div></div>';
+    modal.innerHTML = '<div class="dcim-widget-detail-dialog"><div class="dcim-widget-detail-head"><h2 id="dcimWidgetDetailTitle"></h2><button type="button" aria-label="닫기">×</button></div><div class="dcim-widget-detail-controls dcim-widget-detail-basic"></div><details class="dcim-widget-detail-advanced"><summary>더 보기</summary><div class="dcim-widget-detail-controls"></div></details><div class="dcim-widget-detail-meta" role="status"></div><div class="dcim-widget-detail-chart"></div></div>';
     document.body.appendChild(modal);
     titleNode = modal.querySelector("#dcimWidgetDetailTitle");
     metaNode = modal.querySelector(".dcim-widget-detail-meta");
     chartsNode = modal.querySelector(".dcim-widget-detail-chart");
     controls = modal.querySelector(".dcim-widget-detail-controls");
+    advancedControls = modal.querySelector(".dcim-widget-detail-advanced .dcim-widget-detail-controls");
     rangeSelect = select("dcimDetailRange", RANGE_OPTIONS);
     seriesSelect = select("dcimDetailSeries", SERIES_OPTIONS);
     styleSelect = select("dcimDetailStyle", STYLE_OPTIONS);
     compareSelect = select("dcimDetailCompare", COMPARE_OPTIONS);
-    controls.append(rangeSelect, seriesSelect, styleSelect, compareSelect);
+    controls.append(rangeSelect, compareSelect);
+    advancedControls.append(seriesSelect, styleSelect);
     modal.querySelector("button").addEventListener("click", close);
     modal.addEventListener("click", function (event) { if (event.target === modal) close(); });
     modal.addEventListener("close", destroyCharts);
     controls.addEventListener("change", function () { render().catch(showError); });
+    advancedControls.addEventListener("change", function () { render().catch(showError); });
     global.addEventListener("keydown", function (event) { if (event.key === "Escape" && modal.open) close(); });
   }
 
@@ -237,6 +244,7 @@
     destroyCharts();
     chartsNode.replaceChildren();
     metaNode.textContent = "데이터를 불러오는 중…";
+    rangeSelect.hidden = compareSelect.value !== "none";
     const options = {
       rangePreset: rangeSelect.value,
       window: "",
@@ -320,6 +328,7 @@
     seriesSelect.value = activeConfig.seriesMode || "sum";
     styleSelect.value = activeConfig.chartStyle === "area" ? "line" : activeConfig.chartStyle || "line";
     compareSelect.value = normalizeCompare(activeConfig.compare, rangeSelect.value);
+    modal.querySelector(".dcim-widget-detail-advanced").open = false;
     seriesSelect.hidden = !activeShowSeries;
     compareSelect.hidden = !activeShowCompare;
     if (!modal.open) modal.showModal();
