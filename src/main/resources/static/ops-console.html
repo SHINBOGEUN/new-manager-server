@@ -1815,6 +1815,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-stage { height:100%; min-height:0; }
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack > div:last-child { height:100%; min-height:0; overflow:hidden; }
     #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal .is-rack-widget-view [data-rack-widgets] { max-height:none; overflow:hidden; }
+    #rackPreviewModal .rack-scene-problem-panel { max-height:30%; min-height:0; overflow:auto; margin-bottom:8px; }
     #rackPreviewModal .rack-widget-layout { min-height:0; outline:none; }
     #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { container-type:size; padding:clamp(6px,2cqw,12px) 12px; }
     #rackPreviewModal .rack-metric-content--value .rack-metric-title { font-size:clamp(9px,17cqh,12px); }
@@ -4622,11 +4623,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (event.data?.type === "dcim:dashboard:open-device") {
         const deviceId = Number(event.data.deviceId);
         if (!Number.isSafeInteger(deviceId) || deviceId <= 0) return;
-        api(`/api/manager/devices/${deviceId}`).then((device) => {
-          goTab("devices");
-          state.selectedDeviceId = deviceId;
-          openDeviceDetail(device, { problemTab: event.data.openProblem === true });
-        }).catch((error) => toast(`장비 상세 조회 실패: ${error.message}`, true));
+        openDeviceDetailById(deviceId, {problemTab:event.data.openProblem === true}).catch((error) => toast(`장비 상세 조회 실패: ${error.message}`, true));
         return;
       }
       if (event.data?.type === "dcim:dashboard:open-page") {
@@ -7119,11 +7116,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         };
         const viewportGrid = () => {
           const style = getComputedStyle(body);
-          const bodyHeight = body.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+      const bodyHeight = body.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
           const stageHeight = body.querySelector('[data-rack-3d]')?.clientHeight || 720;
           const monitorTabs = body.querySelector('[data-rack-monitor-tabs]');
           const tabsHeight = monitorTabs ? monitorTabs.offsetHeight + (parseFloat(getComputedStyle(monitorTabs).marginBottom) || 0) : 0;
-          return window.RackWidgetLayout.viewportGrid(widgets, Math.max(1, Math.min(stageHeight, bodyHeight || stageHeight) - tabsHeight - 2));
+      const problemPanel = body.querySelector('.rack-scene-problem-panel');
+      const problemHeight = problemPanel ? problemPanel.offsetHeight + (parseFloat(getComputedStyle(problemPanel).marginTop) || 0) + (parseFloat(getComputedStyle(problemPanel).marginBottom) || 0) : 0;
+      return window.RackWidgetLayout.viewportGrid(widgets, Math.max(1, Math.min(stageHeight, bodyHeight || stageHeight) - tabsHeight - problemHeight - 2));
         };
         const fitWidgetContent = (card) => {
           // Keep type and charts at their natural size instead of zooming the whole card out.
@@ -7348,6 +7347,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           mountRackCharts(panel);
           panel.querySelectorAll('.rack-widget-view-card').forEach((card) => requestAnimationFrame(() => fitWidgetContent(card)));
         };
+        const problemPanel = body.querySelector('.rack-scene-problem-panel');
+        if (problemPanel && window.ResizeObserver) {
+          const problemObserver = new ResizeObserver(() => { if (!problemPanel.isConnected) return problemObserver.disconnect(); if (latestViewValues && body.classList.contains('is-rack-widget-view')) renderWidgetView(latestViewValues); });
+          problemObserver.observe(problemPanel);
+        }
         panel.addEventListener('rack-widget-view-open', () => { if (latestViewValues) renderWidgetView(latestViewValues); });
         const update = async () => {
           if (!panel.isConnected) return;
@@ -7372,7 +7376,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("rackPreviewTitle").textContent = host.label || '설비 상세';
       $("rackPreviewMeta").textContent = `${editing ? '설비 편집' : '설비 모니터링'} · ${device.deviceName || device.label || '연결 장비'}`;
       body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button><button type="button" data-equip-tab="history">연결 이력</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-scene-device-problems class="rack-detail-info"><h3>문제</h3><p>문제 정보를 불러오는 중입니다.</p></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section><section data-equipment-history class="rack-detail-info" hidden></section></div></div>`;
-      renderSceneDeviceProblems([Number(device.deviceId)], body.querySelector('[data-scene-device-problems]'));
+      const problemPanel = body.querySelector('[data-scene-device-problems]');
+      problemPanel.classList.add('rack-scene-problem-panel');
+      problemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems-content><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      renderSceneDeviceProblems([Number(device.deviceId)], body.querySelector('[data-scene-device-problems-content]'));
       const connection = body.querySelector('[data-equipment-connection]');
       const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
       const change = document.createElement('button'); change.type = 'button'; change.textContent = '장비 연결 변경'; change.disabled = !!host.locked; change.onclick = () => { closeRackPreview(); openConnection(); }; connection.append(change);
@@ -7598,7 +7605,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (statusResult.status === "rejected") groups.get("수집").push(`<p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p>`);
       const markup = [...groups].filter(([, entries]) => entries.length).map(([title, entries]) => `<section class="device-problem-category"><h3>${title} · ${entries.length}</h3>${entries.join("")}</section>`);
       renderProblemCategoryMarkup(container, markup);
-      container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => selectDevice(Number(button.dataset.sceneProblemDevice), true, {problemTab:true})));
+      container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => openDeviceDetailById(Number(button.dataset.sceneProblemDevice), {problemTab:true, closeScenePreview:true}).catch(error => toast(`장비 상세 조회 실패: ${error.message}`, true))));
       const problemDevices = ids.map(deviceId => {
         const alarm = alarms.get(deviceId), status = statuses.get(deviceId), reasons = [];
         if (alarm?.openCount) reasons.push({severity:alarm.worstSeverity || alarm.latest?.severity || "WARNING"});
@@ -7637,7 +7644,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       capacityBadge.textContent = capacity ? `${used} / ${capacity}U 사용 · ${Math.max(capacity-used, 0)}U 여유` : '랙 용량 미설정';
       stage.append(capacityBadge);
       const rackInfo = $("rackPreviewBody").querySelector('[data-rack-measurements]').parentElement;
-      const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info'; rackProblemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info rack-scene-problem-panel'; rackProblemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
       rackInfo.insertBefore(rackProblemPanel, rackInfo.querySelector('[data-rack-measurements]'));
       const capacityInfo = rackInfo.firstElementChild;
       const capacityControls = capacityInfo.querySelector('[data-rack-capacity]')?.closest('.row');
@@ -10061,6 +10068,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("deviceProblemsContent").innerHTML = `<div class="empty">문제 정보를 불러오지 못했습니다: ${esc(error.message)}</div>`;
       });
       $("deviceDetailClose").focus();
+    }
+
+    async function openDeviceDetailById(deviceId, options = {}) {
+      const device = await api(`/api/manager/devices/${Number(deviceId)}`);
+      if (options.closeScenePreview) closeRackPreview();
+      goTab("devices");
+      state.selectedDeviceId = Number(deviceId);
+      openDeviceDetail(device, {problemTab:options.problemTab === true});
     }
 
     function problemActionButton(action, label) {
