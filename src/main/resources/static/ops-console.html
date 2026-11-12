@@ -1540,6 +1540,31 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #wEditorCard .point-grid b { display:block; font-size:12px; font-weight:600; }
     #wEditorCard .point-grid small { display:block; margin-top:4px; color:var(--muted); font-size:10px; font-weight:400; }
     #wEditorCard #wDeviceList .empty { border:0; background:none; text-align:left; color:var(--muted); font-size:12px; }
+    .form-compact :is(input:not([type=checkbox]):not([type=radio]), select, button) { min-height:32px; font-size:13px; }
+    .form-compact .field { gap:4px; color:var(--muted); font-size:12px; }
+    .form-compact .fields, .form-compact .grid2 { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .form-compact .field.full, .form-compact .full { grid-column:1 / -1; }
+    .form-compact .row { gap:6px; }
+    .form-compact-checklist { max-height:240px; overflow:auto; border:1px solid var(--line); border-radius:8px; padding:4px; }
+    .form-compact-checklist label { display:flex; align-items:center; gap:8px; padding:5px 7px; border-radius:6px; font-size:12px; cursor:pointer; }
+    .form-compact-checklist label:hover { background:var(--surface2); }
+    .form-compact-checklist input { flex:none; width:15px; height:15px; min-height:0; }
+    .widget-form-grid.form-compact { grid-template-columns:minmax(340px,420px) minmax(0,1fr); grid-template-areas:'basic preview' 'advanced preview'; gap:14px; align-items:start; margin:12px 0; }
+    .widget-form-grid.form-compact .widget-editor-basic { grid-area:basic; padding:12px; border:0; border-radius:0; background:transparent; }
+    .widget-form-grid.form-compact .widget-editor-advanced { grid-area:advanced; padding:10px 12px; border:0; border-top:1px solid var(--line); border-radius:0; background:transparent; }
+    .widget-form-grid.form-compact .widget-editor-preview { grid-area:preview; min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
+    .widget-editor-preview > h3 { margin:0 0 10px; font-size:13px; }
+    .widget-editor-preview .widget-review { margin:8px 0; padding:10px; }
+    .widget-editor-preview .widget-page-preview { margin:10px 0 0; }
+    .widget-editor-preview .widget-page-preview iframe { height:min(55vh,560px); min-height:260px; }
+    #wEditorCard .form-compact :is(input:not([type=checkbox]):not([type=radio]), select) { min-height:32px; font-size:13px; }
+    #wEditorCard .form-compact .point-grid { max-height:240px; overflow:auto; }
+    #wEditorCard .form-compact #wDeviceList .pick-item { display:inline-flex; width:auto; max-width:100%; min-height:30px; margin:3px; padding:4px 7px; gap:6px; border-radius:999px; vertical-align:middle; }
+    #wEditorCard .form-compact #wDeviceList .pick-item > div { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #wEditorCard .form-compact #wDeviceList .pick-item .muted { display:none; }
+    #wEditorCard .form-compact #wDeviceList .pick-item button { min-height:24px; padding:2px 7px; border-radius:999px; }
+    #wEditorCard.form-compact .widget-editor-footer .row { justify-content:flex-end; }
+    @media (max-width:900px) { .widget-form-grid.form-compact { grid-template-columns:minmax(0,1fr); grid-template-areas:'basic' 'advanced' 'preview'; } }
     #wEditorCard #wDataFreshnessBlock { margin-top:18px !important; }
     .widget-design-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:9px; }
     .widget-design-option { position:relative; cursor:pointer; min-width:0; }
@@ -2877,8 +2902,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               <div id="wDeviceGroupHint" class="muted" style="font-size:12px;margin-top:6px"></div>
               <div id="wDeviceGroupList" class="pick-list"></div>
             </div>
+            <div id="wDeviceCandidateList" class="form-compact-checklist" aria-label="장비 후보 목록"></div>
             <div class="row">
-              <select id="wPickDevice" style="flex:1;min-width:180px"></select>
+              <select id="wPickDevice" style="display:none"></select>
               <button type="button" class="primary" id="wAddDevice" disabled>선택 추가</button>
             </div>
             <div id="wDevicePointPick" style="margin-top:8px;display:none">
@@ -3893,6 +3919,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
   </div>
 
   <script>
+    let selectedWidgetCandidateIds = new Set();
     const state = {
       // Access Token은 메모리에만 둔다. 페이지 재진입 시 HttpOnly Refresh Token 쿠키로 복구한다.
       token: "",
@@ -7032,6 +7059,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     async function setupRackWidgets(code, body, editing, baseOverride = null) {
       const panel = body.querySelector('[data-rack-widgets]');
       if (!panel) return;
+      panel.classList.add('form-compact');
       body.classList.toggle('is-rack-widget-view', !editing);
       try {
         const base = baseOverride || `/api/manager/assets/racks/${encodeURIComponent(code)}`;
@@ -8669,6 +8697,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     };
     let editingPageCode = null;
     function openPageDialog(editing) {
+      $("pdPageDialog").classList.add("form-compact");
       const page = editing ? (state.codes.DEVICE_PAGE || []).find(p => p.code === $("pdPage").value) : null;
       if (editing && !page) return toast("먼저 페이지를 선택하세요.", true);
       if (hasUnsavedPageDeviceChanges() && !confirm("저장하지 않은 화면 구성이 있습니다. 계속할까요?")) return;
@@ -8890,17 +8919,18 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     function showWidgetEditorStep() {
       const editor = $("wEditorCard");
       if (!editor) return;
+      editor.classList.add("form-compact");
       if (!editor.querySelector(".widget-form-grid")) {
-        const grid = document.createElement("div"); grid.className = "widget-form-grid";
+        const grid = document.createElement("div"); grid.className = "widget-form-grid form-compact";
         const basic = document.createElement("section"); basic.className = "widget-form-section widget-editor-basic";
         const basicHeading = document.createElement("h3"); basicHeading.textContent = "기본 설정"; basic.append(basicHeading);
         const basicFields = document.createElement("div"); basicFields.className = "fields"; basic.append(basicFields);
         const advanced = document.createElement("details"); advanced.className = "widget-form-section widget-editor-advanced";
         const advancedSummary = document.createElement("summary"); advancedSummary.id = "wAdvancedSummary"; advanced.append(advancedSummary);
         const advancedBody = document.createElement("div"); advancedBody.className = "widget-editor-advanced-body"; advanced.append(advancedBody);
-        const preview = document.createElement("details"); preview.className = "widget-preview-details";
-        const previewSummary = document.createElement("summary"); previewSummary.textContent = "미리보기"; preview.append(previewSummary);
-        grid.append(basic, advanced);
+        const preview = document.createElement("section"); preview.className = "widget-editor-preview";
+        const previewHeading = document.createElement("h3"); previewHeading.textContent = "실시간 미리 보기"; preview.append(previewHeading);
+        grid.append(basic, advanced, preview);
         const tableChoice = $("wTableFormatChoice");
         if (tableChoice) advancedBody.append(tableChoice);
         const tableOptions = $("wTableOptions");
@@ -8932,21 +8962,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const nameLabel = $("wName")?.closest("label"); if (nameLabel) basicFields.append(nameLabel);
         periodLabels.forEach((label) => basicFields.append(label));
         basic.append(basicFields);
-        preview.addEventListener("toggle", () => { if (preview.open) { renderWidgetReview(); updateWidgetPagePreview(); } });
+        ["wVisualPreviewNote", "wVisualPreview", "wPowerPreview", "wTablePreview"].forEach((id) => { const element = $(id); if (element) preview.append(element); });
         editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
-        editor.insertBefore(preview, editor.querySelector(".widget-editor-footer"));
         if (chartOptions) advancedBody.append(chartOptions);
         if (trendDefaults) advancedBody.append(trendDefaults);
       }
       editor.dataset.step = "3";
-      const preview = editor.querySelector(".widget-preview-details");
-      if (preview) preview.open = false;
       const advanced = editor.querySelector(".widget-editor-advanced");
       if (advanced) advanced.open = false;
       editor.querySelectorAll("[data-widget-stage]").forEach((element) => element.classList.remove("widget-step-hidden"));
       $("wCreate").style.display = "inline-flex";
       updateWidgetAdvancedSummary();
       updateWidgetPeriodCompareFields();
+      renderWidgetReview(); updateWidgetPagePreview();
       editor.scrollTop = 0;
     }
 
@@ -9323,12 +9351,27 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         (d) => `<option value="${d.id}">${esc(d.name)} · ${esc(d.manufacturer || "")} · ${esc(d.modelName)} (#${d.id})</option>`,
         emptyLabel
       );
+      const checklist = $("wDeviceCandidateList");
+      if (checklist) {
+        const availableIds = new Set(available.map(device => Number(device.id)));
+        selectedWidgetCandidateIds = new Set([...selectedWidgetCandidateIds].filter(id => availableIds.has(id)));
+        if (kind === "last" && selectedWidgetCandidateIds.size > 1) selectedWidgetCandidateIds = new Set([[...selectedWidgetCandidateIds][0]]);
+        checklist.innerHTML = available.map(device => `<label><input type="checkbox" value="${Number(device.id)}" ${selectedWidgetCandidateIds.has(Number(device.id)) ? "checked" : ""}><span>${esc(device.name)} · ${esc(device.modelName || "모델 미지정")} (#${Number(device.id)})</span></label>`).join("") || `<div class="empty">${esc(emptyLabel || "추가할 장비 없음")}</div>`;
+        checklist.querySelectorAll("input[type=checkbox]").forEach(input => input.addEventListener("change", () => {
+          const id = Number(input.value);
+          if (kind === "last" && input.checked) { selectedWidgetCandidateIds.clear(); checklist.querySelectorAll("input[type=checkbox]").forEach(other => { if (other !== input) other.checked = false; }); }
+          if (input.checked) selectedWidgetCandidateIds.add(id); else selectedWidgetCandidateIds.delete(id);
+          $("wPickDevice").value = input.checked ? String(id) : String([...selectedWidgetCandidateIds][0] || "");
+          $("wPickDevice").dispatchEvent(new Event("change", {bubbles:true}));
+          if ($("wAddDevice")) $("wAddDevice").disabled = !selectedWidgetCandidateIds.size || (kind === "last" && !selectedLastDevicePoints().length);
+        }));
+      }
       fillWidgetItDevicePick();
       fillWidgetDeviceGroupPick();
       if ($("wAddDevice")) {
         const pointFirst = kind === "chart" || kind === "aggregate";
         $("wAddDevice").textContent = pointFirst ? "장비 추가" : "선택 추가";
-        $("wAddDevice").disabled = !$("wPickDevice").value || (!pointFirst && !selectedLastDevicePoints().length);
+        $("wAddDevice").disabled = !selectedWidgetCandidateIds.size || (kind === "last" && !selectedLastDevicePoints().length);
       }
     }
 
@@ -14122,9 +14165,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("wEditCalculatedMetric").onclick = () => { const id = Number($("wPueDefinition").value); if (!id) return; openCalculatedMetrics(true); editPueDefinition(id); };
     $("wCloseEditor").onclick = () => closeWidgetEditor();
     $("wEditPageLayout").onclick = openPageLayoutEditor;
-    $("wCreatePage").addEventListener("change", () => {
-      if ($("wEditorCard").querySelector(".widget-preview-details")?.open) updateWidgetPagePreview();
-    });
+    $("wCreatePage").addEventListener("change", updateWidgetPagePreview);
     $("wName").addEventListener("input", updateWidgetDesignPreview);
     $('wTableEnabled').addEventListener('change', renderWidgetTableEditor);
     $("wEditorCard").addEventListener("change", (event) => {
@@ -14137,7 +14178,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && $("wEditorCard").classList.contains("open")) closeWidgetEditor();
     });
-    $("wAddDevice").onclick = () => addWidgetDevice(Number($("wPickDevice").value));
+    $("wAddDevice").onclick = async () => {
+      const ids = [...selectedWidgetCandidateIds];
+      if (!ids.length) return toast("장비를 하나 이상 선택하세요", true);
+      for (const id of ids) await addWidgetDevice(id);
+      selectedWidgetCandidateIds.clear();
+      fillWidgetDevicePick();
+    };
     $("wAddDeviceGroup").onclick = async () => {
       const id = Number($("wPickDeviceGroup").value);
       if (!id || state.widgetDeviceGroupIds.includes(id)) return toast(id ? "이미 추가된 장비 그룹입니다" : "장비 그룹을 선택하세요", true);
