@@ -581,29 +581,18 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     tr.selected td { background: var(--accent-soft); }
     .muted { color: var(--muted); }
     .mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-    #codeTreeBody .code-group-row td {
-      padding-top: 13px; padding-bottom: 13px;
-      background: #edf4fb; border-top: 1px solid #c6d8eb; border-bottom-color: #c6d8eb;
-    }
-    #codeTreeBody .code-group-row:hover td { background: #e4f0fb; }
-    #codeTreeBody .code-group-row.selected td { background: #dbeaf9; }
-    #codeTreeBody .code-group-key {
-      font-size: 15px; font-weight: 800; letter-spacing: -.01em; color: #123e69; white-space: nowrap;
-    }
-    #codeTreeBody .code-group-name { font-size: 14px; }
-    #codeTreeBody .code-tree-child td { padding-top: 8px; padding-bottom: 8px; }
-    #codeTreeBody .code-tree-branch {
-      width: 42px; padding-right: 2px; text-align: right; color: #4f79a3; font-size: 16px; font-weight: 700;
-    }
-    #codeTreeBody .code-tree-actions { justify-content: flex-end; gap: 6px; }
-    #codeTreeBody .code-tree-actions button { flex: 0 0 auto; padding: 5px 9px; font-size: 12px; white-space: nowrap; }
-    #codeTreeTable { min-width: 980px; table-layout: fixed; }
-    #codeTreeTable th:nth-child(1) { width: 18%; }
-    #codeTreeTable th:nth-child(2) { width: 16%; }
-    #codeTreeTable th:nth-child(3) { width: 16%; }
-    #codeTreeTable th:nth-child(4) { width: 18%; }
-    #codeTreeTable th:nth-child(5) { width: 8%; }
-    #codeTreeTable th:nth-child(6) { width: 240px; }
+    .code-groups-list { display:grid; gap:7px; min-height:0; overflow:auto; }
+    .code-group-option { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:var(--surface2); color:var(--text); text-align:left; cursor:pointer; }
+    .code-group-option.selected { border-color:var(--accent); background:var(--accent-soft); }
+    .code-group-option strong { display:block; }
+    .code-group-option small { color:var(--muted); font-size:11px; }
+    .code-groups-panel, .code-list-panel { min-width:0; min-height:0; margin:0; }
+    .code-groups-panel { display:flex; flex-direction:column; }
+    .code-list-panel { display:flex; flex-direction:column; overflow:hidden; }
+    .code-table-scroll { flex:1 1 auto; min-height:0; overflow:auto; }
+    .code-table-scroll table { width:100%; min-width:620px; margin:0; }
+    .code-system-lock { white-space:nowrap; }
+    .code-group-mobile { display:none; }
     .empty {
       padding: 28px 12px; text-align: center; color: var(--muted);
       background: var(--surface2); border-radius: 10px; border: 1px dashed var(--line);
@@ -867,9 +856,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     tr.clickable:hover td { background: #182a42; }
     tr.selected td { background: #15334b; }
     .muted { color: #91a4bd; }
-    #codeTreeBody .code-group-row td { background: #162b42; border-color: #28506f; }
-    #codeTreeBody .code-group-row:hover td { background: #193751; }
-    #codeTreeBody .code-group-key { color: #75d2fc; }
     .rack-overview-card, .rack-preview, .asset-preview, .asset-detail {
       background: #101827; border-color: #2c405b; color: var(--text);
     }
@@ -1331,10 +1317,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     html[data-theme="light"] .readiness-grid div { border-color:#ccdae7; background:#fff; }
     html[data-theme="light"] .readiness-grid span { color:#617b93; }
     html[data-theme="light"] .readiness-grid b { color:#1a4968; }
-    html[data-theme="light"] #codeTreeBody .code-group-row td { background:#edf4fb; border-color:#c6d8eb; }
-    html[data-theme="light"] #codeTreeBody .code-group-row:hover td { background:#e4f0fb; }
-    html[data-theme="light"] #codeTreeBody .code-group-row.selected td { background:#dbeaf9; }
-    html[data-theme="light"] #codeTreeBody .code-group-key { color:#123e69; }
     html[data-theme="light"] .device-directory-head h2 { color:#172b42; }
     html[data-theme="light"] .device-directory-head p,
     html[data-theme="light"] .device-directory-meta { color:#60768d; }
@@ -1438,11 +1420,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes).panel.active { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(350px,.7fr); grid-template-rows:minmax(0,1fr); gap:14px; overflow:hidden; }
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes) > .card { height:100%; min-height:0; margin:0; overflow:auto; }
     :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users) > .workspace-table-card { overflow:hidden; }
-    #tab-codes > .workspace-table-card { overflow:hidden; }
-    #tab-codes > .grid2 { display:block; min-height:0; height:100%; overflow:auto; }
-    #tab-codes > .grid2 > * { min-width:0; }
-    #tab-codes.panel.active { display:flex; flex-direction:column; overflow:hidden; }
-    #tab-codes > .workspace-table-card { flex:1 1 auto; min-height:0; width:100%; height:auto; }
+    #tab-codes.panel.active { display:grid; grid-template-columns:minmax(250px,.55fr) minmax(0,1.45fr); grid-template-rows:minmax(0,1fr); gap:14px; overflow:hidden; }
+    #tab-codes > .code-groups-panel, #tab-codes > .code-list-panel { height:100%; }
 
     #tab-wizard.panel.active { grid-template-rows:auto minmax(0,1fr) auto auto; align-items:stretch; overflow:hidden; }
     #tab-wizard > .card { min-height:0; overflow:auto; scrollbar-gutter:stable; }
@@ -1468,9 +1447,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > *,
       :is(#tab-models,#tab-lora-model-mapping) > .models-layout > *,
       :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes) > .card { height:auto; overflow:visible; }
-      #tab-codes > .grid2 { height:auto; overflow:visible; }
-      #tab-codes.panel.active { display:block; overflow:auto; }
-      #tab-codes > .workspace-table-card { height:auto; }
+      #tab-codes.panel.active { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto; overflow:auto; }
+      #tab-codes > .code-groups-panel { display:none; }
+      #tab-codes .code-group-mobile { display:block; }
+      #tab-codes > .code-list-panel { height:auto; min-height:0; overflow:visible; }
+      #tab-codes .code-table-scroll { min-height:240px; max-height:65vh; }
       #tab-wizard > .card { overflow:visible; margin-bottom:14px; }
     }
     @media (max-width:1250px) {
@@ -3458,30 +3439,33 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     <!-- CODES -->
     <section class="panel" id="tab-codes">
       <h1 class="page-title">공통코드</h1>
-      <p class="page-desc">코드 그룹과 그 하위 코드 값을 한 표에서 관리합니다. 위치 유형·Path·모델 유형·프로토콜 등이 여기 있습니다.</p>
-      <div class="card workspace-table-card">
-        <div class="row" style="justify-content:space-between;margin-bottom:10px">
-          <div>
-            <h2 style="margin:0">코드 그룹 · 공통 코드</h2>
-            <div class="muted" style="font-size:12px;margin-top:4px">그룹 행 아래에 소속 코드가 표시됩니다.</div>
-          </div>
-          <div class="row"><button type="button" class="primary" id="cgAddOpen" data-role-gate="admin">+ 그룹 생성</button><button type="button" class="primary" id="ccAddOpen" data-role-gate="admin">+ 코드 생성</button><button type="button" class="ghost" id="cgReload">새로고침</button></div>
+      <p class="page-desc">왼쪽에서 그룹을 고르면 오른쪽에 해당 코드만 표시됩니다. 시스템 코드 값은 잠금 표시하고 이름·정렬만 바꿀 수 있습니다.</p>
+      <section class="card code-groups-panel">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">코드 그룹</h2><button type="button" class="primary" id="cgAddOpen" data-role-gate="admin">+ 그룹 추가</button></div>
+        <input id="codeGroupSearch" aria-label="그룹 검색" placeholder="그룹 이름 또는 키 검색" />
+        <div id="codeGroupList" class="code-groups-list" style="margin-top:10px"></div>
+      </section>
+      <section class="card code-list-panel">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px">
+          <div><h2 id="codeGroupTitle" style="margin:0">그룹을 선택하세요</h2><div class="muted" id="codeGroupDescription" style="font-size:12px;margin-top:5px"></div></div>
+          <div class="row"><button type="button" class="primary" id="ccAddOpen" data-role-gate="admin">+ 코드 추가</button><button type="button" class="ghost" id="cgReload">새로고침</button></div>
         </div>
-        <div class="workspace-table-scroll">
-          <table id="codeTreeTable">
-            <thead><tr><th>그룹 키</th><th>그룹 이름</th><th>코드</th><th>코드 이름</th><th>정렬</th><th>작업</th></tr></thead>
-            <tbody id="codeTreeBody"></tbody>
-          </table>
-        </div>
-      </div>
+        <label class="field code-group-mobile">그룹 선택<select id="codeGroupMobileSelect"></select></label>
+        <label class="field" style="margin-bottom:9px">코드 검색<input id="commonCodeSearch" placeholder="코드 또는 이름 검색" /></label>
+        <div class="code-table-scroll"><table id="codeTable">
+          <thead><tr><th>코드</th><th>이름</th><th>정렬</th><th>작업</th></tr></thead>
+          <tbody id="codeListBody"></tbody>
+        </table></div>
+      </section>
       <dialog class="wizard-quick-dialog" id="cgDialog" aria-labelledby="cgFormTitle">
         <div class="entity-dialog-content">
             <div class="wizard-dialog-head"><h2 id="cgFormTitle">그룹 추가</h2><button type="button" class="ghost" data-entity-dialog-close aria-label="닫기">×</button></div>
             <div class="fields">
-              <label class="field">groupKey
+              <label class="field">그룹 키
                 <input id="cgKey" placeholder="예: CUSTOM_TYPE" class="mono" />
+                <small id="cgKeyHint" class="muted">대문자·숫자·밑줄(_)만 사용할 수 있습니다.</small>
               </label>
-              <label class="field">groupName
+              <label class="field">그룹 이름
                 <input id="cgName" placeholder="표시 이름" />
               </label>
             </div>
@@ -3498,14 +3482,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               <label class="field">그룹
                 <select id="ccGroup"></select>
               </label>
-              <label class="field">정렬
+              <label class="field">정렬 순서
                 <input id="ccSort" type="number" value="0" />
               </label>
-              <label class="field">code
+              <label class="field">코드
                 <input id="ccCode" placeholder="예: A" class="mono" />
               </label>
-              <label class="field">name
+              <label class="field">코드 이름
                 <input id="ccName" placeholder="표시 이름" />
+                <small id="ccNameHint" class="muted" hidden></small>
               </label>
             </div>
             <label class="row" id="ccThresholdSupportedWrap" hidden><input type="checkbox" id="ccThresholdSupported" /> 임계값 측정항목으로 사용</label>
@@ -11206,113 +11191,80 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       await updateInstanceUiForModel(model?.id, code);
     }
 
+    const SYSTEM_CODE_GROUPS = new Set(["DEVICE_PAGE", "LOCATION_TYPE", "LOCATION_PATH", "MODEL_TYPE", "PROTOCOL_TYPE", "DATA_POINT_TYPE", "UNIT", "CATEGORY", "ASSET_STATUS", "PHASE", "PHASE_NOTATION"]);
+    const CODE_GROUP_DESCRIPTIONS = {
+      DEVICE_PAGE: "통합 모니터링에 표시할 페이지와 메뉴 이름입니다.",
+      LOCATION_TYPE: "설치 위치를 공간·층·구역·랙 등으로 구분합니다.",
+      LOCATION_PATH: "위치 트리에서 경로 단계와 부모·자식 구성을 정합니다.",
+      MODEL_TYPE: "장비 모델의 분류에 사용합니다.",
+      PROTOCOL_TYPE: "SNMP·Modbus·MQTT 등 장비 통신 방식을 구분합니다.",
+      DATA_POINT_TYPE: "측정값의 유형과 알람 지원 여부를 구분합니다.",
+      UNIT: "측정값의 단위 표시와 단위별 처리를 정합니다.",
+      CATEGORY: "측정 항목을 화면과 모델 설정에서 분류합니다.",
+      ASSET_STATUS: "장비 자산의 운영·보관 상태를 구분합니다.",
+      PHASE: "전력 측정 항목의 내부 상 순서(P1·P2·P3·N)입니다.",
+      PHASE_NOTATION: "모델별 상 표기 형식입니다. 이름은 L1/L2/L3/N처럼 네 칸을 `/`로 나눕니다.",
+    };
+    function isSystemCodeGroup(groupKey) { return SYSTEM_CODE_GROUPS.has(String(groupKey || "").toUpperCase()); }
     function renderCodeGroups() {
       const groups = state.codeGroups || [];
-      const allCodes = groups.flatMap((group) =>
-        (state.codes[group.groupKey] || []).map((code) => ({ ...code, group })));
-      $("codeTreeBody").innerHTML = groups.flatMap((group) => {
-        const codes = state.codes[group.groupKey] || [];
-        const groupRow = `
-          <tr class="clickable code-group-row ${state.selectedCodeGroupId === group.id ? "selected" : ""}" data-cg="${group.id}">
-            <td class="mono code-group-key">${esc(group.groupKey)}</td>
-            <td class="code-group-name"><b>${esc(group.groupName)}</b> <span class="muted">#${group.id}</span></td>
-            <td colspan="3" class="muted">하위 코드 ${codes.length}개</td>
-            <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
-              <button type="button" class="primary" data-add-cc="${group.id}">코드 추가</button>
-              <button type="button" class="ghost" data-edit-cg="${group.id}">그룹 수정</button>
-              <button type="button" class="danger" data-delete-cg="${group.id}">삭제</button>
-            </div></td>
-          </tr>`;
-        const codeRows = codes.length ? codes.map((code) => `
-          <tr class="code-tree-child" data-cc="${code.id}">
-            <td class="code-tree-branch">↳</td>
-            <td></td>
-            <td class="mono">${esc(code.code)}</td>
-            <td>${esc(code.name)}</td>
-            <td>${code.sortOrder ?? "–"}${code.thresholdSupported ? ' <span class="chip ok">임계값 허용</span>' : ""}</td>
-            <td class="actions"><div class="action-btns code-tree-actions" data-role-gate="admin">
-              <button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>
-              <button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>
-            </div></td>
-          </tr>`).join("") : `
-          <tr class="code-tree-child"><td class="code-tree-branch">↳</td><td></td><td colspan="4" class="muted">등록된 코드 없음</td></tr>`;
-        return groupRow + codeRows;
-      }).join("") || `<tr><td colspan="6"><div class="empty">그룹 없음</div></td></tr>`;
+      if (!groups.some((group) => Number(group.id) === Number(state.selectedCodeGroupId))) state.selectedCodeGroupId = groups.length ? Number(groups[0].id) : null;
+      const selected = groups.find((group) => Number(group.id) === Number(state.selectedCodeGroupId));
+      const groupQuery = $("codeGroupSearch").value.trim().toLowerCase();
+      const visibleGroups = groups.filter((group) => `${group.groupKey} ${group.groupName} ${CODE_GROUP_DESCRIPTIONS[group.groupKey] || ""}`.toLowerCase().includes(groupQuery));
+      $("codeGroupList").innerHTML = visibleGroups.map((group) => {
+        const system = isSystemCodeGroup(group.groupKey), count = (state.codes[group.groupKey] || []).length;
+        return `<div class="code-group-entry"><button type="button" class="code-group-option ${Number(group.id) === Number(state.selectedCodeGroupId) ? "selected" : ""}" data-select-cg="${group.id}"><span><strong>${esc(group.groupName)}</strong><small class="mono">${esc(group.groupKey)}</small></span><span class="chip">${count}</span></button><div class="row" style="justify-content:flex-end;margin-top:4px"><button type="button" class="ghost" data-edit-cg="${group.id}" data-role-gate="admin">그룹 이름 수정</button>${system ? '<span class="chip code-system-lock">🔒 시스템</span>' : `<button type="button" class="danger" data-delete-cg="${group.id}" data-role-gate="admin">삭제</button>`}</div></div>`;
+      }).join("") || '<div class="empty">검색 결과가 없습니다.</div>';
 
-      const map = (group) => `<option value="${group.id}">${esc(group.groupKey)} — ${esc(group.groupName)}</option>`;
+      const groupOptions = groups.map((group) => `<option value="${group.id}">${esc(group.groupName)} · ${esc(group.groupKey)}</option>`).join("");
+      $("codeGroupMobileSelect").innerHTML = groupOptions || '<option value="">그룹 없음</option>';
+      $("codeGroupMobileSelect").value = selected ? String(selected.id) : "";
+      $("codeGroupTitle").textContent = selected ? `${selected.groupName} · ${selected.groupKey}` : "그룹을 선택하세요";
+      $("codeGroupDescription").textContent = selected ? (CODE_GROUP_DESCRIPTIONS[selected.groupKey] || "사용자 정의 코드 그룹입니다.") : "왼쪽에서 그룹을 선택하세요.";
+      $("ccAddOpen").disabled = !selected;
+
+      const map = (group) => `<option value="${group.id}">${esc(group.groupName)} — ${esc(group.groupKey)}</option>`;
       const currentCodeGroupId = state.selectedCodeGroupId || Number($("ccGroup")?.value) || null;
       fillSelect($("ccGroup"), groups, map, "그룹 선택");
-      if (currentCodeGroupId && groups.some((group) => group.id === currentCodeGroupId)) {
-        $("ccGroup").value = String(currentCodeGroupId);
-      }
+      if (currentCodeGroupId && groups.some((group) => Number(group.id) === Number(currentCodeGroupId))) $("ccGroup").value = String(currentCodeGroupId);
+      const codes = selected ? (state.codes[selected.groupKey] || []) : [];
+      const codeQuery = $("commonCodeSearch").value.trim().toLowerCase();
+      const visibleCodes = codes.filter((code) => `${code.code} ${code.name}`.toLowerCase().includes(codeQuery));
+      const locked = isSystemCodeGroup(selected?.groupKey);
+      $("codeListBody").innerHTML = visibleCodes.map((code) => `<tr>
+        <td class="mono">${esc(code.code)}</td><td>${esc(code.name)}${code.thresholdSupported ? ' <span class="chip ok">임계값 허용</span>' : ""}</td><td>${code.sortOrder ?? "–"}</td>
+        <td class="actions">${locked ? `<span class="chip code-system-lock">🔒 코드 값</span><button type="button" class="ghost" data-edit-cc="${code.id}" data-role-gate="admin">이름·정렬</button>` : `<div class="action-btns" data-role-gate="admin"><button type="button" class="ghost" data-edit-cc="${code.id}">수정</button><button type="button" class="danger" data-delete-cc="${code.id}">삭제</button></div>`}</td>
+      </tr>`).join("") || `<tr><td colspan="4"><div class="empty">${codes.length ? "검색 결과가 없습니다." : "등록된 코드가 없습니다."}</div></td></tr>`;
 
-      $("codeTreeBody").querySelectorAll("tr[data-cg]").forEach((tr) => {
-        tr.onclick = (event) => {
-          if (event.target.closest("button")) return;
-          state.selectedCodeGroupId = Number(tr.dataset.cg);
-          $("ccGroup").value = String(state.selectedCodeGroupId);
-          document.querySelectorAll("#codeTreeBody tr[data-cg]").forEach((r) =>
-            r.classList.toggle("selected", r.dataset.cg === tr.dataset.cg));
-        };
+      $("codeGroupList").querySelectorAll("[data-select-cg]").forEach((button) => button.onclick = () => {
+        state.selectedCodeGroupId = Number(button.dataset.selectCg); $("ccGroup").value = String(state.selectedCodeGroupId); $("commonCodeSearch").value = ""; renderCodeGroups();
       });
-      $("codeTreeBody").querySelectorAll("[data-add-cc]").forEach((button) => {
-        button.onclick = () => startCreateCode(groups.find((group) => group.id === Number(button.dataset.addCc)));
+      $("codeGroupList").querySelectorAll("[data-edit-cg]").forEach((button) => button.onclick = () => {
+        const group = groups.find((item) => Number(item.id) === Number(button.dataset.editCg)); if (!group) return;
+        state.editingCodeGroupId = Number(group.id); $("cgKey").value = group.groupKey || ""; $("cgName").value = group.groupName || "";
+        const keyLocked = isSystemCodeGroup(group.groupKey); $("cgKey").readOnly = keyLocked;
+        $("cgKeyHint").textContent = keyLocked ? "🔒 시스템 그룹 키는 수정할 수 없습니다." : "대문자·숫자·밑줄(_)만 사용할 수 있습니다.";
+        $("cgFormTitle").textContent = `그룹 이름 수정 · ${group.groupKey}`; $("cgSave").textContent = "저장"; $("cgDialog").showModal(); $("cgName").focus();
       });
-      $("codeTreeBody").querySelectorAll("[data-edit-cg]").forEach((button) => {
-        button.onclick = () => {
-          const group = groups.find((item) => item.id === Number(button.dataset.editCg));
-          if (!group) return;
-          state.editingCodeGroupId = group.id;
-          $("cgKey").value = group.groupKey || "";
-          $("cgName").value = group.groupName || "";
-          $("cgFormTitle").textContent = `그룹 수정 #${group.id}`;
-          $("cgSave").textContent = "저장";
-          $("cgDialog").showModal();
-          $("cgKey").focus();
-        };
+      $("codeGroupList").querySelectorAll("[data-delete-cg]").forEach((button) => button.onclick = async () => {
+        const group = groups.find((item) => Number(item.id) === Number(button.dataset.deleteCg));
+        if (!group || !confirm(`「${group.groupKey}」 그룹을 삭제할까요?\n포함된 공통 코드가 있으면 삭제할 수 없습니다.`)) return;
+        try { await api(`/api/manager/code-groups/${group.id}`, { method: "DELETE" }); if (Number(state.selectedCodeGroupId) === Number(group.id)) state.selectedCodeGroupId = null; toast("코드 그룹을 삭제했습니다"); await loadCodes(); }
+        catch (e) { toast(e.message, true); }
       });
-      $("codeTreeBody").querySelectorAll("[data-delete-cg]").forEach((button) => {
-        button.onclick = async () => {
-          const group = groups.find((item) => item.id === Number(button.dataset.deleteCg));
-          if (!group || !confirm(`「${group.groupKey}」 그룹을 삭제할까요?\n포함된 공통 코드가 있으면 삭제할 수 없습니다.`)) return;
-          try {
-            await api(`/api/manager/code-groups/${group.id}`, { method: "DELETE" });
-            if (state.selectedCodeGroupId === group.id) state.selectedCodeGroupId = null;
-            if (state.editingCodeGroupId === group.id) clearCodeGroupEdit();
-            toast("코드 그룹을 삭제했습니다");
-            await loadCodes();
-          } catch (e) { toast(e.message, true); }
-        };
+      $("codeListBody").querySelectorAll("[data-edit-cc]").forEach((button) => button.onclick = () => {
+        const code = codes.find((item) => Number(item.id) === Number(button.dataset.editCc)); if (!code || !selected) return;
+        state.editingCodeId = Number(code.id); state.selectedCodeGroupId = Number(selected.id); $("ccGroup").value = String(selected.id);
+        $("ccGroup").disabled = locked; $("ccCode").readOnly = locked; $("ccCode").value = code.code || ""; $("ccName").value = code.name || ""; $("ccSort").value = code.sortOrder ?? 0;
+        $("ccThresholdSupported").checked = code.thresholdSupported === true; syncThresholdCodeFlag(); syncCodeFormHints();
+        $("ccFormTitle").textContent = `코드 수정 · ${selected.groupName}`; $("ccSave").textContent = "저장"; $("ccDialog").showModal(); $("ccName").focus();
       });
-      $("codeTreeBody").querySelectorAll("[data-edit-cc]").forEach((button) => {
-        button.onclick = () => {
-          const code = allCodes.find((item) => item.id === Number(button.dataset.editCc));
-          if (!code) return;
-          state.editingCodeId = code.id;
-          state.selectedCodeGroupId = code.group.id;
-          $("ccGroup").value = String(code.group.id);
-          $("ccCode").value = code.code || "";
-          $("ccName").value = code.name || "";
-          $("ccSort").value = code.sortOrder ?? 0;
-          $("ccThresholdSupported").checked = code.thresholdSupported === true;
-          syncThresholdCodeFlag();
-          $("ccFormTitle").textContent = `코드 수정 — ${code.group.groupKey}`;
-          $("ccSave").textContent = "저장";
-          $("ccDialog").showModal();
-          $("ccCode").focus();
-        };
-      });
-      $("codeTreeBody").querySelectorAll("[data-delete-cc]").forEach((button) => {
-        button.onclick = async () => {
-          const code = allCodes.find((item) => item.id === Number(button.dataset.deleteCc));
-          if (!code || !confirm(`「${code.code}」 공통 코드를 삭제할까요?\n다른 설정에서 사용 중이면 삭제할 수 없습니다.`)) return;
-          try {
-            await api(`/api/manager/common-codes/${code.id}`, { method: "DELETE" });
-            if (state.editingCodeId === code.id) clearCodeEdit();
-            toast("공통 코드를 삭제했습니다");
-            await loadCodes();
-          } catch (e) { toast(e.message, true); }
-        };
+      $("codeListBody").querySelectorAll("[data-delete-cc]").forEach((button) => button.onclick = async () => {
+        const code = codes.find((item) => Number(item.id) === Number(button.dataset.deleteCc));
+        if (!code || !confirm(`「${code.code}」 코드를 삭제할까요?\n다른 설정에서 사용 중이면 삭제할 수 없습니다.`)) return;
+        try { await api(`/api/manager/common-codes/${code.id}`, { method: "DELETE" }); toast("공통 코드를 삭제했습니다"); await loadCodes(); }
+        catch (e) { toast(e.message, true); }
       });
     }
 
@@ -11321,13 +11273,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.editingCodeId = null;
       state.selectedCodeGroupId = group.id;
       $("ccGroup").value = String(group.id);
-      document.querySelectorAll("#codeTreeBody tr[data-cg]").forEach((row) =>
-        row.classList.toggle("selected", Number(row.dataset.cg) === group.id));
+      $("ccGroup").disabled = false; $("ccCode").readOnly = false;
       $("ccCode").value = "";
       $("ccName").value = "";
       $("ccSort").value = "0";
       $("ccThresholdSupported").checked = false;
       syncThresholdCodeFlag();
+      syncCodeFormHints();
       $("ccFormTitle").textContent = `코드 추가 — ${group.groupKey}`;
       $("ccSave").textContent = "등록";
       $("ccDialog").showModal();
@@ -11347,6 +11299,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("ccSort").value = "0";
       $("ccThresholdSupported").checked = false;
       syncThresholdCodeFlag();
+      $("ccGroup").disabled = false; $("ccCode").readOnly = false;
+      syncCodeFormHints();
     }
 
     function syncThresholdCodeFlag() {
@@ -11358,8 +11312,18 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!supportedGroup) $("ccThresholdSupported").checked = false;
     }
 
+    function syncCodeFormHints() {
+      const group = (state.codeGroups || []).find((item) => Number(item.id) === Number($("ccGroup").value));
+      const notation = group?.groupKey === "PHASE_NOTATION";
+      $("ccNameHint").hidden = !notation;
+      $("ccNameHint").textContent = notation ? "상 이름 네 개를 / 로 구분하세요. 예: L1/L2/L3/N" : "";
+      $("ccName").placeholder = notation ? "예: L1/L2/L3/N" : "표시 이름";
+    }
+
     function clearCodeGroupEdit() {
       state.editingCodeGroupId = null;
+      $("cgKey").readOnly = false;
+      $("cgKeyHint").textContent = "대문자·숫자·밑줄(_)만 사용할 수 있습니다.";
       $("cgFormTitle").textContent = "그룹 추가";
       $("cgSave").textContent = "그룹 등록";
       $("cgKey").value = "";
@@ -12564,6 +12528,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("cgDialog").showModal();
       $("cgKey").focus();
     };
+    $("codeGroupSearch").addEventListener("input", renderCodeGroups);
+    $("commonCodeSearch").addEventListener("input", renderCodeGroups);
+    $("codeGroupMobileSelect").addEventListener("change", () => {
+      state.selectedCodeGroupId = Number($("codeGroupMobileSelect").value) || null;
+      $("ccGroup").value = state.selectedCodeGroupId ? String(state.selectedCodeGroupId) : "";
+      $("commonCodeSearch").value = "";
+      renderCodeGroups();
+    });
+    $("cgKey").addEventListener("input", () => {
+      if (!$('cgKey').readOnly) $('cgKey').value = $('cgKey').value.toUpperCase().replace(/[^A-Z0-9_]/g, "");
+    });
     $("ccAddOpen").onclick = () => {
       const group = (state.codeGroups || []).find((item) => item.id === state.selectedCodeGroupId)
         || state.codeGroups?.[0];
@@ -12574,7 +12549,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     $("cgSave").onclick = async () => {
       const groupKey = $("cgKey").value.trim();
       const groupName = $("cgName").value.trim();
-      if (!groupKey || !groupName) return toast("groupKey와 groupName을 입력하세요", true);
+      if (!/^[A-Z0-9_]+$/.test(groupKey) || !groupName) return toast("그룹 키는 대문자·숫자·밑줄(_)만, 그룹 이름은 필수로 입력하세요", true);
       try {
         await api(state.editingCodeGroupId
           ? `/api/manager/code-groups/${state.editingCodeGroupId}`
@@ -12598,7 +12573,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const sortOrder = Number($("ccSort").value) || 0;
       const thresholdSupported = $("ccThresholdSupported").checked &&
         (state.codeGroups || []).some((group) => Number(group.id) === groupId && group.groupKey === "DATA_POINT_TYPE");
-      if (!groupId || !code || !name) return toast("그룹·code·name을 입력하세요", true);
+      if (!groupId || !code || !name) return toast("그룹·코드·코드 이름을 입력하세요", true);
+      const selectedGroup = (state.codeGroups || []).find((group) => Number(group.id) === groupId);
+      if (selectedGroup?.groupKey === "PHASE_NOTATION") {
+        const labels = name.split("/").map((label) => label.trim());
+        if (labels.length !== 4 || labels.some((label) => !label)) return toast("상 이름 네 개를 / 로 구분하세요. 예: L1/L2/L3/N", true);
+      }
       try {
         if (state.editingCodeId) {
           await api(`/api/manager/common-codes/${state.editingCodeId}`, {
@@ -12620,7 +12600,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     };
 
     $("ccCancelEdit").onclick = () => { closeEntityDialog("ccDialog"); clearCodeEdit(); };
-    $("ccGroup").onchange = syncThresholdCodeFlag;
+    $("ccGroup").onchange = () => { syncThresholdCodeFlag(); syncCodeFormHints(); };
     $("locExpandAll").onclick = () => {
       Object.keys(state.locByCode).forEach((c) => state.locExpanded.add(c));
       paintLocationTree();
