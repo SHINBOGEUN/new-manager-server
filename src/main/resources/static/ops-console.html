@@ -1419,6 +1419,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     @media (max-width:600px) { #tab-collection-status > .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
     :is(#tab-device-groups,#tab-tasks,#tab-locations,#tab-models,#tab-lora-model-mapping).panel.active { display:flex; flex-direction:column; overflow:hidden; }
+    #tab-tasks.panel.active { display:flex; flex-direction:column; overflow:hidden; }
+    #tab-tasks > .task-page-layout { flex:1 1 auto; min-height:0; align-items:stretch; overflow:hidden; }
+    #tab-tasks .task-page-layout > .card { height:100%; min-height:0; margin-bottom:0; overflow:auto; }
+    #tab-tasks .task-page-layout > .card:first-child { display:flex; flex-direction:column; overflow:hidden; }
+    #tab-tasks #taskIndex { flex:1 1 auto; min-height:0; overflow:auto; padding:2px 5px 12px 0; scrollbar-gutter:stable; }
     :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2,
     :is(#tab-models,#tab-lora-model-mapping) > .models-layout { flex:1 1 auto; min-height:0; align-items:stretch; overflow:hidden; }
     :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > *,
@@ -1456,6 +1461,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       #tab-wizard.panel.active { display:block; overflow:auto; }
       :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2,
       :is(#tab-models,#tab-lora-model-mapping) > .models-layout { display:grid; overflow:visible; }
+      #tab-tasks > .task-page-layout { flex:none; min-height:auto; height:auto; overflow:visible; align-items:start; }
+      #tab-tasks .task-page-layout > .card,
+      #tab-tasks .task-page-layout > .card:first-child { display:block; height:auto; min-height:0; overflow:visible; }
+      #tab-tasks #taskIndex { flex:none; min-height:0; overflow:visible; padding:0; }
       :is(#tab-device-groups,#tab-tasks,#tab-locations) > .grid2 > *,
       :is(#tab-models,#tab-lora-model-mapping) > .models-layout > *,
       :is(#tab-lora-mqtt-sources,#tab-lora-endpoints,#tab-users,#tab-codes) > .card { height:auto; overflow:visible; }
