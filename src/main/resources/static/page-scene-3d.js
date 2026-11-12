@@ -1120,6 +1120,13 @@ function mount(container, page, options = {}) {
   };
   const onHover = (event) => {
     if (walking || dragState || placement) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (rect.width && rect.height && problemMarkers.size && problemLabelMode !== "off") {
+      pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(pointer, camera);
+      const markerHit = raycaster.intersectObjects([...problemMarkers.values()].map(marker => marker.sprite), false)[0];
+      renderer.domElement.title = markerHit?.object?.userData?.problemTooltip || "";
+    } else renderer.domElement.title = "";
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     hoveredItem = hit ? nearestSceneItemRoot(hit.object)?.userData?.sceneItem || null : null;
   };
@@ -2641,12 +2648,7 @@ function mount(container, page, options = {}) {
   }
   const problemMarkers = new Map();
   let problemDevicesById = new Map(), lastProblemPositionUpdate = 0;
-  let problemLabelMode = "light";
-  const problemBadgeLayer = document.createElement("div");
-  problemBadgeLayer.className = "scene-problem-badge-layer";
-  Object.assign(problemBadgeLayer.style, {position:"absolute", inset:"0", pointerEvents:"none", overflow:"hidden", zIndex:"8"});
-  if (getComputedStyle(container).position === "static") container.style.position = "relative";
-  container.appendChild(problemBadgeLayer);
+  let problemLabelMode = "on";
   const problemCanvas = document.createElement('canvas'); problemCanvas.width = problemCanvas.height = 64;
   const problemContext = problemCanvas.getContext('2d');
   const problemGradient = problemContext.createRadialGradient(32, 32, 3, 32, 32, 31);
@@ -2660,8 +2662,9 @@ function mount(container, page, options = {}) {
     if (severities.some(value => value === "WARNING")) return 0xff9f1c;
     return 0xffd43b;
   }
-  function problemTitle(devices) {
-    return devices.map(problem => `${problem.deviceName || `장비 #${problem.deviceId}`} · ${(problem.reasons || []).map(reason => reason.text).join(" / ") || "문제 상태"}`).join("\n");
+  function problemTooltip(devices) {
+    const count = devices.reduce((sum, problem) => sum + Math.max((problem.reasons || []).length, 1), 0);
+    return `문제 ${count}건 · 더블클릭해서 확인`;
   }
   function syncProblemMarkers() {
     const affected = new Map();
@@ -2683,7 +2686,7 @@ function mount(container, page, options = {}) {
       }
     }
     for (const [group, marker] of problemMarkers) if (!affected.has(group) || !group.parent) {
-      scene.remove(marker.sprite); marker.sprite.material.dispose(); marker.badge.remove(); problemMarkers.delete(group);
+      scene.remove(marker.sprite); marker.sprite.material.dispose(); problemMarkers.delete(group);
     }
     for (const [group, problemMap] of affected) {
       const devices = [...problemMap.values()];
@@ -2691,88 +2694,34 @@ function mount(container, page, options = {}) {
       if (!marker) {
         const sprite = new THREE.Sprite(problemMaterial.clone()); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
         scene.add(sprite);
-        const badge = document.createElement("button"); badge.type = "button"; badge.className = "scene-problem-badge";
-        Object.assign(badge.style, {position:"absolute", transform:"translate(-50%, -100%)", pointerEvents:"auto", maxWidth:"240px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", padding:"4px 8px", border:"1px solid #ff6674", borderRadius:"999px", color:"#fff", background:"rgba(82,14,22,.94)", font:"600 11px/1.3 sans-serif", boxShadow:"0 2px 10px rgba(0,0,0,.38)"});
-        badge.addEventListener("pointerdown", event => event.stopPropagation());
-        badge.addEventListener("click", event => {
-          event.preventDefault(); event.stopPropagation();
-          const current = marker?.devices || [];
-          if (current.length === 1) options.onProblemDeviceClick?.(current[0]);
-        });
-        problemBadgeLayer.appendChild(badge);
-        marker = {sprite, badge, devices}; problemMarkers.set(group, marker);
+        marker = {sprite, devices}; problemMarkers.set(group, marker);
       }
       marker.devices = devices;
-      const color = problemColor(devices);
-      marker.sprite.material.color.setHex(color);
-      const first = devices[0];
-      const firstReason = first?.reasons?.[0]?.text || "문제 상태";
-      marker.badge.textContent = devices.length > 1
-        ? `${devices.length}대 문제 장비`
-        : `${first?.deviceName || `장비 #${first?.deviceId}`} · ${firstReason}`;
-      marker.badge.title = problemTitle(devices);
-      marker.badge.style.borderColor = `#${color.toString(16).padStart(6,"0")}`;
-      marker.badge.style.background = devices.some(problem => (problem.reasons || []).some(reason => reason.kind === "COLLECTION"))
-        && devices.every(problem => (problem.reasons || []).every(reason => reason.kind !== "ALARM"))
-        ? "rgba(83,67,12,.96)" : "rgba(82,14,22,.94)";
-      marker.badge.style.cursor = devices.length === 1 ? "pointer" : "help";
-      marker.badge.setAttribute("aria-label", problemTitle(devices));
-      marker.badge.dataset.problemLabel = marker.badge.textContent;
+      marker.sprite.material.color.setHex(problemColor(devices));
+      marker.sprite.userData.problemTooltip = problemTooltip(devices);
+      marker.sprite.visible = problemLabelMode !== "off";
     }
-    applyProblemLabelMode();
     lastProblemPositionUpdate = 0;
   }
   function applyProblemLabelMode() {
-    for (const marker of problemMarkers.values()) {
-      const badge = marker.badge;
-      const showText = problemLabelMode === "label";
-      badge.hidden = problemLabelMode === "off";
-      badge.textContent = showText ? badge.dataset.problemLabel || "문제 상태" : "";
-      Object.assign(badge.style, showText
-        ? {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"}
-        : {width:"16px",height:"16px",padding:"0",borderRadius:"50%",fontSize:"0"});
-      badge.title = problemTitle(marker.devices || []);
-    }
     for (const marker of problemMarkers.values()) marker.sprite.visible = problemLabelMode !== "off";
     lastProblemPositionUpdate = 0;
-  }
-  const animate = (now = performance.now()) => {
+  }  const animate = (now = performance.now()) => {
     if (destroyed) return;
     const deltaSeconds = Math.min(.05, Math.max(0, (now - lastFrameTime) / 1000));
     lastFrameTime = now;
     if (problemMarkers.size && now - lastProblemPositionUpdate > 350) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      const occupiedLabels = [];
       const positioned = [...problemMarkers].sort((a, b) => b[0].position.y - a[0].position.y);
       for (const [group, marker] of positioned) {
         const bounds = new THREE.Box3().setFromObject(group);
-        if (!bounds.isEmpty()) {
-          bounds.getCenter(marker.sprite.position); marker.sprite.position.y = bounds.max.y + .35;
-          marker.sprite.material.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
-          const projected = marker.sprite.position.clone().project(camera);
-          const visible = projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) <= 1.2 && Math.abs(projected.y) <= 1.2;
-          marker.badge.hidden = !visible || problemLabelMode === "off";
-          if (visible) {
-            marker.badge.style.left = `${(projected.x * .5 + .5) * rect.width}px`;
-            marker.badge.style.top = `${(-projected.y * .5 + .5) * rect.height - 12}px`;
-            if (problemLabelMode === "label") {
-              marker.badge.textContent = marker.badge.dataset.problemLabel || "문제 상태";
-              Object.assign(marker.badge.style, {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"});
-              const box = marker.badge.getBoundingClientRect();
-              const collides = occupiedLabels.some(other => box.left < other.right + 4 && box.right + 4 > other.left && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
-              if (collides) {
-                marker.badge.textContent = "";
-                Object.assign(marker.badge.style, {width:"16px",height:"16px",padding:"0",borderRadius:"50%",fontSize:"0"});
-              } else {
-                occupiedLabels.push(box);
-              }
-            }
-          }
-        }
+        if (bounds.isEmpty()) continue;
+        bounds.getCenter(marker.sprite.position); marker.sprite.position.y = bounds.max.y + .35;
+        marker.sprite.material.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
+        const projected = marker.sprite.position.clone().project(camera);
+        marker.sprite.visible = problemLabelMode !== "off" && projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) <= 1.2 && Math.abs(projected.y) <= 1.2;
       }
       lastProblemPositionUpdate = now;
-    }
-    updateWalking(deltaSeconds);
+    }    updateWalking(deltaSeconds);
     if (options.editing && now - lastOverlapUpdate > 350) { updateFloorOverlapIndicators(); lastOverlapUpdate = now; }
     for (const group of itemGroups.values()) {
       const pivots = group.userData.sensorDoorPivots, target = group.userData.sensorDoorTarget;
@@ -2794,7 +2743,7 @@ function mount(container, page, options = {}) {
       syncProblemMarkers();
     },
     setProblemLabelMode(mode) {
-      problemLabelMode = ["label", "light", "off"].includes(mode) ? mode : "light";
+      problemLabelMode = mode === "off" ? "off" : "on";
       applyProblemLabelMode();
     },
     setRackLayout(locationCode, layout) {
@@ -3167,7 +3116,7 @@ function mount(container, page, options = {}) {
     },
     setWalking,
     getItems() { return structuredClone(items); },
-    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemMarkers.forEach(marker => marker.sprite.material.dispose()); problemBadgeLayer.remove(); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
+    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemMarkers.forEach(marker => marker.sprite.material.dispose()); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
   };
   views.set(container, api); return api;
 }
@@ -3239,7 +3188,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
       scene.add(label);
     }
   }
-  const selectablePlacements = [];
+  const selectablePlacements = [], rackPlacementEntries = [], rackProblemHighlights = new Map();
   const selectedBounds = new THREE.Box3Helper(new THREE.Box3(), 0x39e4ff);
   selectedBounds.visible = false; selectedBounds.material.depthTest = false; selectedBounds.renderOrder = 30; scene.add(selectedBounds);
   let selectedPlacement = null;
@@ -3262,6 +3211,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     if (movingHolder) { movingHolder.position.copy(holder.position); movingHolder.rotation.copy(holder.rotation); movingHolder.visible = isDoorAttachment(item); doorAttachments.add(movingHolder); }
     const placeholder = box(width, height, depth, 0, 0, 0, deviceMaterial, holder);
     const entry = { item, holder, movingHolder, sensorParts:null, isU, verticalPdu, sensor, splitDoorSensor, height, baseHeight:height };
+    rackPlacementEntries.push(entry);
     if (options.onSelectPlacement) selectablePlacements.push(entry);
     const model = models.find((entry) => entry.key === item.sceneModelKey);
     if (!model) continue;
@@ -3378,9 +3328,10 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     hinge.rotation.y = doorAngle; for (const door of actualDoorHinges) door.pivot.rotation.y = door.direction * doorAngle;
     updateDoorAttachmentTransform(doorAttachments, actualDoorHinge?.position || hinge.position, doorAngle);
     if (selectedPlacement) selectedBounds.box.setFromObject(selectedPlacement.holder);
+    for (const [entry, highlight] of rackProblemHighlights) if (entry.holder.parent) highlight.box.setFromObject(entry.holder);
     controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(tick);
   }; tick();
-  return { setDoorState(open) { if (typeof open === "boolean") doorOpen = open; }, toggleDoor() { doorOpen = !doorOpen; return doorOpen; }, applyPlacement(item) { applyPlacement(item); }, previewPlacement(item) { applyPlacement(item, false); }, selectPlacement(item) { const entry = selectablePlacements.find((candidate) => samePlacement(candidate.item, item)); if (!entry) return false; selectPlacement(entry); return true; }, clearSelection() { selectPlacement(null); },
+  return { setDoorState(open) { if (typeof open === "boolean") doorOpen = open; }, toggleDoor() { doorOpen = !doorOpen; return doorOpen; }, setProblemDevices(problems) { for (const highlight of rackProblemHighlights.values()) { scene.remove(highlight); highlight.geometry.dispose(); highlight.material.dispose(); } rackProblemHighlights.clear(); const byId = new Map((problems || []).map(problem => [Number(problem.deviceId), problem])); for (const entry of rackPlacementEntries) { const problem = byId.get(Number(entry.item.deviceId)); if (!entry.isU || !problem) continue; const severity = (problem.reasons || []).map(reason => reason.severity); const color = severity.some(value => value === "CRITICAL" || value === "DANGER") ? 0xff3344 : severity.includes("WARNING") ? 0xff9f1c : 0xffd43b; const highlight = new THREE.Box3Helper(new THREE.Box3().setFromObject(entry.holder), color); highlight.material.depthTest = false; highlight.renderOrder = 1001; scene.add(highlight); rackProblemHighlights.set(entry, highlight); } }, applyPlacement(item) { applyPlacement(item); }, previewPlacement(item) { applyPlacement(item, false); }, selectPlacement(item) { const entry = selectablePlacements.find((candidate) => samePlacement(candidate.item, item)); if (!entry) return false; selectPlacement(entry); return true; }, clearSelection() { selectPlacement(null); },
     dispose() { disposed = true; cancelAnimationFrame(raf); observer.disconnect(); controls.dispose(); renderer.domElement.removeEventListener("dblclick", click); renderer.domElement.removeEventListener("pointerdown", onPduDown, true); renderer.domElement.removeEventListener("pointermove", onPduMove, true); renderer.domElement.removeEventListener("pointerup", onPduUp, true); renderer.domElement.removeEventListener("pointercancel", onPduUp, true); scene.traverse((node) => { if (node.userData.rackSharedModel) return; node.geometry?.dispose(); if (node.material && node.material !== deviceMaterial) { node.material.map?.dispose(); node.material.dispose(); } }); deviceMaterial.dispose(); renderer.dispose(); container.replaceChildren(); } };
 }
 

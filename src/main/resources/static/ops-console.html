@@ -4317,7 +4317,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261112-t021");
+        await import("/page-scene-3d.js?v=20261112-t025");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -4353,7 +4353,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261112-t021");
+        await import("/page-scene-3d.js?v=20261112-t025");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -7371,7 +7371,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const body = $("rackPreviewBody");
       $("rackPreviewTitle").textContent = host.label || '설비 상세';
       $("rackPreviewMeta").textContent = `${editing ? '설비 편집' : '설비 모니터링'} · ${device.deviceName || device.label || '연결 장비'}`;
-      body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button><button type="button" data-equip-tab="history">연결 이력</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section><section data-equipment-history class="rack-detail-info" hidden></section></div></div>`;
+      body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button><button type="button" data-equip-tab="history">연결 이력</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-scene-device-problems class="rack-detail-info"><h3>문제</h3><p>문제 정보를 불러오는 중입니다.</p></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section><section data-equipment-history class="rack-detail-info" hidden></section></div></div>`;
+      renderSceneDeviceProblems([Number(device.deviceId)], body.querySelector('[data-scene-device-problems]'));
       const connection = body.querySelector('[data-equipment-connection]');
       const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
       const change = document.createElement('button'); change.type = 'button'; change.textContent = '장비 연결 변경'; change.disabled = !!host.locked; change.onclick = () => { closeRackPreview(); openConnection(); }; connection.append(change);
@@ -7492,7 +7493,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         showSelection(selectedPanelIndex);
         if (selectedPanelIndex != null) rackDetailViewer.selectComponent(selectedPanelIndex);
       };
-      Promise.all([import("/page-scene-3d.js?v=20261112-t021"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
+      Promise.all([import("/page-scene-3d.js?v=20261112-t025"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(catalog);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
@@ -7557,6 +7558,56 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       } catch(error) { if(panel.isConnected) panel.textContent=`도면 표시 설정을 불러오지 못했습니다: ${error.message}`; }
     }
 
+    function renderProblemCategoryMarkup(container, groups) {
+      container.innerHTML = groups.join("") || '<div class="empty">문제 없음</div>';
+    }
+
+    async function renderSceneDeviceProblems(deviceIds, container) {
+      if (!container) return;
+      const ids = [...new Set((deviceIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+      if (!ids.length) { renderProblemCategoryMarkup(container, []); return; }
+      container.innerHTML = '<p class="muted">문제 정보를 불러오는 중입니다.</p>';
+      const [alarmResult, statusResult] = await Promise.allSettled([
+        api(`/api/manager/alarms/device-summary?deviceIds=${encodeURIComponent(ids.join(","))}`, {cache:"no-store"}),
+        api("/api/manager/query/collection-status?lookbackHours=168", {cache:"no-store"}),
+      ]);
+      if (!container.isConnected) return;
+      const alarms = alarmResult.status === "fulfilled" ? new Map((alarmResult.value.devices || []).map(row => [Number(row.deviceId), row])) : new Map();
+      const statuses = statusResult.status === "fulfilled" ? new Map((statusResult.value.devices || []).map(row => [Number(row.deviceId), row])) : new Map();
+      const groups = new Map([["알람 · 위험 / 주의", []], ["수집", []], ["설정", []]]);
+      for (const id of ids) {
+        const alarm = alarms.get(id), status = statuses.get(id), name = status?.deviceName || alarm?.deviceName || `장비 #${id}`;
+        const shortcut = `<button type="button" class="ghost" data-scene-problem-device="${id}">장비 문제 상세</button>`;
+        if (alarm?.openCount) {
+          const latest = alarm.latest || {}, severity = alarm.worstSeverity || latest.severity || "WARNING";
+          const label = severity === "CRITICAL" || severity === "DANGER" ? "위험" : "주의";
+          const detail = latest.pointName ? ` · ${latest.pointName} ${latest.value ?? "—"}${latest.unit ? ` ${latest.unit}` : ""}${latest.operator ? ` ${latest.operator}` : ""}${latest.threshold == null ? "" : ` ${latest.threshold}${latest.unit ? ` ${latest.unit}` : ""}`}` : "";
+          const time = latest.occurredAt ? ` · ${new Date(latest.occurredAt).toLocaleString("ko-KR")}` : "";
+          groups.get("알람 · 위험 / 주의").push(`<div class="device-problem-item"><div><strong>${esc(name)} · 미복구 알람 ${alarm.openCount}건 · ${label}${esc(detail)}${esc(time)}</strong></div>${shortcut}</div>`);
+        }
+        if (["PARTIAL", "STALE", "MISSING"].includes(status?.status)) {
+          const time = status.latestCollectedAt ? ` · 마지막 수집 ${new Date(status.latestCollectedAt).toLocaleString("ko-KR")}` : "";
+          groups.get("수집").push(`<div class="device-problem-item"><div><strong>${esc(name)} · ${esc(status.statusMessage || status.status)}${esc(time)}</strong></div>${shortcut}</div>`);
+        }
+        if (["NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status)) {
+          const detail = status.status === "MODEL_MISMATCH" ? ` · 기대 ${status.expectedModelName || "미확인"} / 실제 ${status.modelName || "미확인"}` : "";
+          groups.get("설정").push(`<div class="device-problem-item"><div><strong>${esc(name)} · ${esc(status.statusMessage || status.status)}${esc(detail)}</strong></div>${shortcut}</div>`);
+        }
+      }
+      if (alarmResult.status === "rejected") groups.get("알람 · 위험 / 주의").push(`<p>알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}</p>`);
+      if (statusResult.status === "rejected") groups.get("수집").push(`<p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p>`);
+      const markup = [...groups].filter(([, entries]) => entries.length).map(([title, entries]) => `<section class="device-problem-category"><h3>${title} · ${entries.length}</h3>${entries.join("")}</section>`);
+      renderProblemCategoryMarkup(container, markup);
+      container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => selectDevice(Number(button.dataset.sceneProblemDevice), true, {problemTab:true})));
+      const problemDevices = ids.map(deviceId => {
+        const alarm = alarms.get(deviceId), status = statuses.get(deviceId), reasons = [];
+        if (alarm?.openCount) reasons.push({severity:alarm.worstSeverity || alarm.latest?.severity || "WARNING"});
+        if (["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status)) reasons.push({severity:"COLLECTION"});
+        return {deviceId, deviceName:status?.deviceName || alarm?.deviceName || `장비 #${deviceId}`, reasons};
+      }).filter(problem => problem.reasons.length);
+      rackDetailViewer?.setProblemDevices?.(problemDevices);
+    }
+
     function openRackPreview(rackLocationCode) {
       const layout = state.rackLayouts.find((item) => item.rackLocationCode === rackLocationCode);
       if (!layout) return;
@@ -7586,6 +7637,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       capacityBadge.textContent = capacity ? `${used} / ${capacity}U 사용 · ${Math.max(capacity-used, 0)}U 여유` : '랙 용량 미설정';
       stage.append(capacityBadge);
       const rackInfo = $("rackPreviewBody").querySelector('[data-rack-measurements]').parentElement;
+      const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info'; rackProblemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      rackInfo.insertBefore(rackProblemPanel, rackInfo.querySelector('[data-rack-measurements]'));
       const capacityInfo = rackInfo.firstElementChild;
       const capacityControls = capacityInfo.querySelector('[data-rack-capacity]')?.closest('.row');
       let selectedRackItem = null, selectedEditor = null, selectRackTab = null;
@@ -7727,7 +7780,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261112-t021")]).then(async ([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261112-t025")]).then(async ([models]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(models);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
@@ -7751,6 +7804,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         }, onPduMove: !rackDetailEditing ? null : async (item, position) => {
           await saveRackItem(item, position); toast("장비 위치를 저장했습니다.");
         } });
+        renderSceneDeviceProblems(placements.map(item => Number(item.deviceId)).filter(Number.isSafeInteger), rackProblemPanel.querySelector('[data-scene-device-problems]'));
         const doorButton = $("rackPreviewBody").querySelector("[data-rack-door]");
         const doorStatus = document.createElement('span'); doorStatus.className = 'rack-door-status'; doorStatus.textContent = '도어 센서 상태 확인 중'; canvas.parentElement.append(doorStatus);
         doorButton.onclick = () => { doorButton.textContent = rackDetailViewer.toggleDoor() ? "문 닫기" : "문 열기"; };
@@ -10072,7 +10126,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
       if (alarmResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>알람</h3><p>알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}</p></section>`);
       if (statusResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>수집</h3><p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p></section>`);
-      $("deviceProblemsContent").innerHTML = groups.join("") || '<div class="empty">문제 없음</div>';
+      renderProblemCategoryMarkup($("deviceProblemsContent"), groups);
       $("deviceProblemsContent").querySelectorAll("[data-device-problem-action]").forEach((button) => {
         button.onclick = () => {
           const action = button.dataset.deviceProblemAction;
