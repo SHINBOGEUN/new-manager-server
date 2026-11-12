@@ -10001,6 +10001,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function openDeviceDetail(device, options = {}) {
+      state.selectedDeviceId = Number(device.id);
       $("deviceDetailTitle").textContent = device.name || `장비 #${device.id}`;
       $("deviceDetailMeta").textContent = `#${device.id} · ${device.modelName || "모델 미지정"} · ${device.locationNodeName || device.locationNodeCode || "위치 미지정"}`;
       const status = (state.collectionStatus?.devices || []).find((row) => Number(row.deviceId) === Number(device.id));
@@ -10034,6 +10035,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         state.collectionStatus ? Promise.resolve(state.collectionStatus) : api("/api/manager/query/collection-status?lookbackHours=168", { cache: "no-store" }),
         api(`/api/manager/alarms?page=1&size=100&deviceId=${deviceId}`, { cache: "no-store" }),
       ]);
+      if (state.selectedDeviceId !== deviceId) return;
       if (statusResult.status === "fulfilled") state.collectionStatus = statusResult.value;
       const status = statusResult.status === "fulfilled"
         ? (statusResult.value?.devices || []).find((row) => Number(row.deviceId) === deviceId) : null;

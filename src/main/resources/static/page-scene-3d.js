@@ -2757,13 +2757,13 @@ function mount(container, page, options = {}) {
             marker.badge.style.top = `${(-projected.y * .5 + .5) * rect.height - 12}px`;
             if (problemLabelMode === "label") {
               marker.badge.textContent = marker.badge.dataset.problemLabel || "문제 상태";
+              Object.assign(marker.badge.style, {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"});
               const box = marker.badge.getBoundingClientRect();
               const collides = occupiedLabels.some(other => box.left < other.right + 4 && box.right + 4 > other.left && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
               if (collides) {
                 marker.badge.textContent = "";
                 Object.assign(marker.badge.style, {width:"16px",height:"16px",padding:"0",borderRadius:"50%",fontSize:"0"});
               } else {
-                Object.assign(marker.badge.style, {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"});
                 occupiedLabels.push(box);
               }
             }
