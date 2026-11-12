@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t020"></script>
+  <script src="/widget-detail-popup.js?v=20261112-t024"></script>
   <script>
 (function (global) {
   'use strict';
@@ -2937,7 +2937,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
                 </select>
               </label>
               <label class="field">기간 비교
-                <select id="wChartCompareMode"><option value="none">비교 안 함</option><option value="today_yesterday">오늘 vs 어제</option><option value="week_lastweek">이번 주 vs 지난주</option><option value="month_lastmonth">이번 달 vs 지난달</option></select>
+                <select id="wChartCompareMode"><option value="none">비교 안 함</option><option value="today_yesterday">오늘 / 어제</option><option value="week_lastweek">이번 주 / 지난주</option><option value="month_lastmonth">이번 달 / 지난달</option></select>
               </label>
               <label class="field" hidden>조회 간격
                 <select id="wChartWindow">
@@ -3092,7 +3092,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               <select id="wClickSeries"><option value="sum">합계</option><option value="per_device">장비별</option><option value="by_phase">상별</option><option value="by_path">위치별</option></select>
             </label>
             <label class="field">상세 차트 기간 비교
-              <select id="wClickCompare"><option value="none">비교 안 함</option><option value="today_yesterday">오늘 vs 어제</option><option value="week_lastweek">이번 주 vs 지난주</option><option value="month_lastmonth">이번 달 vs 지난달</option></select>
+              <select id="wClickCompare"><option value="none">비교 안 함</option><option value="today_yesterday">오늘 / 어제</option><option value="week_lastweek">이번 주 / 지난주</option><option value="month_lastmonth">이번 달 / 지난달</option></select>
             </label>
             <div class="full"><button type="button" class="ghost" id="wClickPreview">미리 열어 보기</button><div id="wClickPreviewResult" class="muted" role="status" hidden style="margin-top:8px"></div></div>
             <div class="muted full">클릭 동작과 차트 기본값입니다. 팝업 안에서 바꾼 값은 저장하지 않습니다.</div>

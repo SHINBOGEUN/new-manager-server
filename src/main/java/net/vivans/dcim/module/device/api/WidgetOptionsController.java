@@ -53,8 +53,8 @@ public class WidgetOptionsController {
         List<String> seriesModes = List.of(PageWidgetChartSeriesMode.values()).stream()
                 .map(Enum::name).toList();
         return ApiResponse.ok(new Options(ranges, List.of(), List.of("line", "bar"), seriesModes,
-                List.of(new Option("none", "비교 안 함"), new Option("today_yesterday", "오늘 vs 어제"),
-                        new Option("week_lastweek", "이번 주 vs 지난주"), new Option("month_lastmonth", "이번 달 vs 지난달")), KINDS));
+                List.of(new Option("none", "비교 안 함"), new Option("today_yesterday", "오늘 / 어제"),
+                        new Option("week_lastweek", "이번 주 / 지난주"), new Option("month_lastmonth", "이번 달 / 지난달")), KINDS));
     }
 
     public record Option(String value, String label) {
