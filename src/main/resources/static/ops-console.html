@@ -1062,6 +1062,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .device-detail-tabs button { padding:10px 15px; border:0; border-radius:8px 8px 0 0; background:transparent; color:#93a9c2; font-weight:700; }
     .device-detail-tabs button.active { color:#75d5ff; background:#183a50; box-shadow:inset 0 -2px 0 #4ec5f3; }
     .device-detail-content { flex:1; min-height:0; overflow:auto; padding:22px 24px 28px; }
+    .device-problem-category { margin-bottom:14px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
+    .device-problem-category h3 { margin:0 0 10px; font-size:14px; }
+    .device-problem-item { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:9px 0; border-top:1px solid var(--line); }
+    .device-problem-item:first-of-type { border-top:0; }
+    .device-problem-item p { margin:3px 0 0; color:var(--muted); font-size:12px; white-space:pre-wrap; }
+    @media (max-width:640px) { .device-problem-item { flex-direction:column; } }
     .device-detail-section { display:none; }
     .device-detail-section.active { display:block; }
     .device-detail-section > .card { margin:0; }
@@ -2500,6 +2506,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <button type="button" id="deviceDetailClose" aria-label="장비 상세 닫기">×</button>
           </div>
           <div class="device-detail-tabs" role="tablist" aria-label="장비 관리 항목">
+            <button type="button" data-device-detail-tab="problems" role="tab" aria-selected="false">문제 <span id="deviceProblemCount" class="chip" hidden></span></button>
             <button type="button" class="active" data-device-detail-tab="info" role="tab" aria-selected="true">기본 정보</button>
             <button type="button" data-device-detail-tab="endpoint" role="tab" aria-selected="false">통신 설정</button>
             <button type="button" data-device-detail-tab="collection" role="tab" aria-selected="false">수집 연결</button>
@@ -2507,6 +2514,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <button type="button" data-device-detail-tab="history" role="tab" aria-selected="false">변경 이력</button>
           </div>
           <div class="device-detail-content">
+          <section class="device-detail-section" data-device-detail-panel="problems" role="tabpanel">
+            <div class="card"><h2>문제</h2><div id="deviceProblemsContent" aria-live="polite"><div class="empty">문제를 확인하는 중입니다.</div></div></div>
+          </section>
           <section class="device-detail-section active" data-device-detail-panel="info" role="tabpanel">
           <div class="card" id="devEditCard">
             <h2>기본 정보</h2>
@@ -4313,7 +4323,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261110roles");
+        await import("/page-scene-3d.js?v=20261112-t021");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -4349,7 +4359,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261110roles");
+        await import("/page-scene-3d.js?v=20261112-t021");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -4620,7 +4630,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         if (!Number.isSafeInteger(deviceId) || deviceId <= 0) return;
         api(`/api/manager/devices/${deviceId}`).then((device) => {
           goTab("devices");
-          openDeviceDetail(device);
+          state.selectedDeviceId = deviceId;
+          openDeviceDetail(device, { problemTab: event.data.openProblem === true });
         }).catch((error) => toast(`장비 상세 조회 실패: ${error.message}`, true));
         return;
       }
@@ -7487,7 +7498,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         showSelection(selectedPanelIndex);
         if (selectedPanelIndex != null) rackDetailViewer.selectComponent(selectedPanelIndex);
       };
-      Promise.all([import("/page-scene-3d.js?v=20261110roles"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
+      Promise.all([import("/page-scene-3d.js?v=20261112-t021"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(catalog);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
@@ -7722,7 +7733,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261110roles")]).then(async ([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261112-t021")]).then(async ([models]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(models);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
@@ -9989,13 +10000,92 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       }
     }
 
-    function openDeviceDetail(device) {
+    function openDeviceDetail(device, options = {}) {
       $("deviceDetailTitle").textContent = device.name || `장비 #${device.id}`;
       $("deviceDetailMeta").textContent = `#${device.id} · ${device.modelName || "모델 미지정"} · ${device.locationNodeName || device.locationNodeCode || "위치 미지정"}`;
-      showDeviceDetailTab("info");
+      const status = (state.collectionStatus?.devices || []).find((row) => Number(row.deviceId) === Number(device.id));
+      const problemStatus = ["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
+      showDeviceDetailTab(options.problemTab || problemStatus ? "problems" : "info");
       $("deviceDetailModal").classList.add("open");
       $("deviceDetailModal").setAttribute("aria-hidden", "false");
+      loadDeviceProblems(device, true).catch((error) => {
+        $("deviceProblemsContent").innerHTML = `<div class="empty">문제 정보를 불러오지 못했습니다: ${esc(error.message)}</div>`;
+      });
       $("deviceDetailClose").focus();
+    }
+
+    function problemActionButton(action, label) {
+      return `<button type="button" class="ghost" data-device-problem-action="${action}">${label}</button>`;
+    }
+
+    function formatProblemDuration(startedAt) {
+      const seconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+      if (!Number.isFinite(seconds)) return "지속 시간 확인 불가";
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}분 지속`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}시간 ${minutes % 60}분 지속`;
+      return `${Math.floor(hours / 24)}일 ${hours % 24}시간 지속`;
+    }
+
+    async function loadDeviceProblems(device, autoSelectTab = false) {
+      const deviceId = Number(device.id);
+      const [statusResult, alarmResult] = await Promise.allSettled([
+        state.collectionStatus ? Promise.resolve(state.collectionStatus) : api("/api/manager/query/collection-status?lookbackHours=168", { cache: "no-store" }),
+        api(`/api/manager/alarms?page=1&size=100&deviceId=${deviceId}`, { cache: "no-store" }),
+      ]);
+      if (statusResult.status === "fulfilled") state.collectionStatus = statusResult.value;
+      const status = statusResult.status === "fulfilled"
+        ? (statusResult.value?.devices || []).find((row) => Number(row.deviceId) === deviceId) : null;
+      const alarmRows = alarmResult.status === "fulfilled" ? (alarmResult.value?.content || []) : [];
+      const openAlarms = alarmRows.filter((alarm) => !alarm.clearedDt && Number(alarm.details?.deviceId ?? alarm.collectionGapDetails?.deviceId) === deviceId);
+      const alarmCount = openAlarms.length;
+      const hasCollectionProblem = ["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
+      if (autoSelectTab && (alarmCount > 0 || hasCollectionProblem) && state.selectedDeviceId === deviceId && $("deviceDetailModal").classList.contains("open")) showDeviceDetailTab("problems");
+      const badge = $("deviceProblemCount");
+      badge.hidden = alarmCount === 0 && !hasCollectionProblem;
+      badge.textContent = String(alarmCount + (hasCollectionProblem ? 1 : 0));
+
+      const groups = [];
+      if (openAlarms.length) {
+        const entries = openAlarms.map((alarm) => {
+          const detail = alarm.details, gap = alarm.collectionGapDetails;
+          const title = detail ? `${detail.pointName} · ${alarm.severity === "CRITICAL" ? "위험" : "주의"}` : "수집 누락 알람";
+          const measured = detail ? `현재 ${detail.measuredValue ?? "—"}${detail.unit ? ` ${detail.unit}` : ""} · 기준 ${detail.operator === "ABOVE" ? "초과" : "미만"} ${detail.thresholdValue ?? "—"}${detail.unit ? ` ${detail.unit}` : ""}` : `${String(gap?.protocol || "").toUpperCase()} 수집 응답 없음`;
+          const raised = alarm.raisedDt ? new Date(alarm.raisedDt).toLocaleString("ko-KR") : "시각 미확인";
+          return `<div class="device-problem-item"><div><strong>${esc(title)}</strong><p>${esc(measured)} · 발생 ${esc(raised)} · ${esc(formatProblemDuration(alarm.raisedDt))}</p></div></div>`;
+        }).join("");
+        groups.push(`<section class="device-problem-category"><h3>알람 · 위험 / 주의</h3>${entries}<div class="row" style="margin-top:8px">${problemActionButton("alarms", "알람 이력 보기")}</div></section>`);
+      }
+
+      const connectionIssues = ["PARTIAL", "STALE", "MISSING"].includes(status?.status);
+      if (connectionIssues) {
+        const missingPoints = status.status === "PARTIAL" ? status.technicalDetail || status.statusMessage || "일부 측정 항목이 누락되었습니다." : "";
+        const collected = status.latestCollectedAt ? `마지막 수집 ${new Date(status.latestCollectedAt).toLocaleString("ko-KR")}` : "마지막 수집 시각 없음";
+        groups.push(`<section class="device-problem-category"><h3>수집</h3><div class="device-problem-item"><div><strong>${esc(collectionStatusChip(status.status).replace(/<[^>]*>/g, ""))}</strong><p>${esc(status.statusMessage || "수집 상태를 확인하세요.")}${missingPoints ? `\n${esc(missingPoints)}` : ""}\n${esc(collected)}</p></div>${problemActionButton("collection", "수집 연결 보기")}</div></section>`);
+      }
+
+      const setupIssues = ["NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
+      if (setupIssues) {
+        const guidance = status.status === "NO_POINTS" ? "측정 항목 설정이 필요합니다. 모델의 필수 항목을 확인하세요."
+          : status.status === "MODEL_MISMATCH" ? `기대 모델 ${status.expectedModelName || "미확인"} · 실제 모델 ${status.modelName || "미확인"}`
+            : status.status === "UNREGISTERED" ? "수집 작업 또는 연결 설정이 등록되지 않았습니다. 게이트웨이 경유 장비는 수집 연결에서 확인하세요."
+              : "장비 또는 수집이 중지되어 있습니다.";
+        groups.push(`<section class="device-problem-category"><h3>설정</h3><div class="device-problem-item"><div><strong>${esc(status.statusMessage || status.status)}</strong><p>${esc(guidance)}</p></div>${problemActionButton("collection", "수집 설정 보기")}</div></section>`);
+      }
+
+      if (alarmResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>알람</h3><p>알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}</p></section>`);
+      if (statusResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>수집</h3><p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p></section>`);
+      $("deviceProblemsContent").innerHTML = groups.join("") || '<div class="empty">문제 없음</div>';
+      $("deviceProblemsContent").querySelectorAll("[data-device-problem-action]").forEach((button) => {
+        button.onclick = () => {
+          const action = button.dataset.deviceProblemAction;
+          if (action === "alarms") {
+            closeDeviceDetail(false); goTab("alarms");
+            setTimeout(() => { $("alarmFilterDevice").value = String(deviceId); alarmUi.page = 1; loadAlarmEvents().catch((error) => toast(error.message, true)); }, 0);
+          } else showDeviceDetailTab(action === "collection" ? "collection" : "endpoint");
+        };
+      });
     }
 
     function closeDeviceDetail(restoreFocus = true) {
@@ -10027,7 +10117,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       $("editDevMfr").value = m?.manufacturer || "";
     }
 
-    async function selectDevice(id, showDetail = false) {
+    async function selectDevice(id, showDetail = false, detailOptions = {}) {
       closeModbusReadingModal();
       $("modbusReadingOpen").style.display = "none";
       state.selectedDeviceId = id;
@@ -10044,7 +10134,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("modbusReadingOpen").style.display = "none";
         return;
       }
-      if (showDetail) openDeviceDetail(d);
+      if (showDetail) openDeviceDetail(d, detailOptions);
       else if ($("deviceDetailModal").classList.contains("open")) {
         $("deviceDetailTitle").textContent = d.name || `장비 #${d.id}`;
         $("deviceDetailMeta").textContent = `#${d.id} · ${d.modelName || "모델 미지정"} · ${d.locationNodeName || d.locationNodeCode || "위치 미지정"}`;

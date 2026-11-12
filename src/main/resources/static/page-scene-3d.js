@@ -2641,6 +2641,7 @@ function mount(container, page, options = {}) {
   }
   const problemMarkers = new Map();
   let problemDevicesById = new Map(), lastProblemPositionUpdate = 0;
+  let problemLabelMode = "light";
   const problemBadgeLayer = document.createElement("div");
   problemBadgeLayer.className = "scene-problem-badge-layer";
   Object.assign(problemBadgeLayer.style, {position:"absolute", inset:"0", pointerEvents:"none", overflow:"hidden", zIndex:"8"});
@@ -2716,7 +2717,23 @@ function mount(container, page, options = {}) {
         ? "rgba(83,67,12,.96)" : "rgba(82,14,22,.94)";
       marker.badge.style.cursor = devices.length === 1 ? "pointer" : "help";
       marker.badge.setAttribute("aria-label", problemTitle(devices));
+      marker.badge.dataset.problemLabel = marker.badge.textContent;
     }
+    applyProblemLabelMode();
+    lastProblemPositionUpdate = 0;
+  }
+  function applyProblemLabelMode() {
+    for (const marker of problemMarkers.values()) {
+      const badge = marker.badge;
+      const showText = problemLabelMode === "label";
+      badge.hidden = problemLabelMode === "off";
+      badge.textContent = showText ? badge.dataset.problemLabel || "문제 상태" : "";
+      Object.assign(badge.style, showText
+        ? {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"}
+        : {width:"16px",height:"16px",padding:"0",borderRadius:"50%",fontSize:"0"});
+      badge.title = problemTitle(marker.devices || []);
+    }
+    for (const marker of problemMarkers.values()) marker.sprite.visible = problemLabelMode !== "off";
     lastProblemPositionUpdate = 0;
   }
   const animate = (now = performance.now()) => {
@@ -2725,17 +2742,31 @@ function mount(container, page, options = {}) {
     lastFrameTime = now;
     if (problemMarkers.size && now - lastProblemPositionUpdate > 350) {
       const rect = renderer.domElement.getBoundingClientRect();
-      for (const [group, marker] of problemMarkers) {
+      const occupiedLabels = [];
+      const positioned = [...problemMarkers].sort((a, b) => b[0].position.y - a[0].position.y);
+      for (const [group, marker] of positioned) {
         const bounds = new THREE.Box3().setFromObject(group);
         if (!bounds.isEmpty()) {
           bounds.getCenter(marker.sprite.position); marker.sprite.position.y = bounds.max.y + .35;
           marker.sprite.material.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
           const projected = marker.sprite.position.clone().project(camera);
           const visible = projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) <= 1.2 && Math.abs(projected.y) <= 1.2;
-          marker.badge.hidden = !visible;
+          marker.badge.hidden = !visible || problemLabelMode === "off";
           if (visible) {
             marker.badge.style.left = `${(projected.x * .5 + .5) * rect.width}px`;
             marker.badge.style.top = `${(-projected.y * .5 + .5) * rect.height - 12}px`;
+            if (problemLabelMode === "label") {
+              marker.badge.textContent = marker.badge.dataset.problemLabel || "문제 상태";
+              const box = marker.badge.getBoundingClientRect();
+              const collides = occupiedLabels.some(other => box.left < other.right + 4 && box.right + 4 > other.left && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
+              if (collides) {
+                marker.badge.textContent = "";
+                Object.assign(marker.badge.style, {width:"16px",height:"16px",padding:"0",borderRadius:"50%",fontSize:"0"});
+              } else {
+                Object.assign(marker.badge.style, {width:"",height:"",padding:"4px 8px",borderRadius:"999px",fontSize:"11px"});
+                occupiedLabels.push(box);
+              }
+            }
           }
         }
       }
@@ -2761,6 +2792,10 @@ function mount(container, page, options = {}) {
         ? [Number(problem.deviceId), problem]
         : [Number(problem), {deviceId:Number(problem), deviceName:`장비 #${problem}`, reasons:[]}]).filter(([id]) => Number.isFinite(id)));
       syncProblemMarkers();
+    },
+    setProblemLabelMode(mode) {
+      problemLabelMode = ["label", "light", "off"].includes(mode) ? mode : "light";
+      applyProblemLabelMode();
     },
     setRackLayout(locationCode, layout) {
       for (const item of items.filter((entry) => entry.locationNodeCode === locationCode)) {

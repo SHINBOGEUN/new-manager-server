@@ -106,7 +106,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261110roles"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261112-t021"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1706,6 +1706,18 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           toggle.appendChild(button);
         }
         head.append(toggle);
+        const problemMode = document.createElement("div"); problemMode.className = "scene-view-toggle"; problemMode.setAttribute("role", "group"); problemMode.setAttribute("aria-label", "문제 표시 방식");
+        const savedProblemMode = (() => { try { return localStorage.getItem(`dcim:page-problem-label:${page.pageCode}`) || "light"; } catch (_) { return "light"; } })();
+        for (const [value, label] of [["label", "불+글자"], ["light", "불만"], ["off", "끄기"]]) {
+          const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.setAttribute("aria-pressed", String(savedProblemMode === value));
+          button.onclick = () => {
+            try { localStorage.setItem(`dcim:page-problem-label:${page.pageCode}`, value); } catch (_) {}
+            state.pageScene3dApi?.setProblemLabelMode?.(value);
+            problemMode.querySelectorAll("button").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+          };
+          problemMode.appendChild(button);
+        }
+        head.append(problemMode);
       }
 
       if (consoleAuth()?.getRole?.() === "ADMIN") {
@@ -2013,7 +2025,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               window.parent.postMessage({ type: "dcim:dashboard:rack-locked" }, location.origin);
             },
             onProblemDeviceClick: (problem) => {
-              if (problem?.deviceId) window.parent.postMessage({ type: "dcim:dashboard:open-device", deviceId: Number(problem.deviceId) }, location.origin);
+              if (problem?.deviceId) window.parent.postMessage({ type: "dcim:dashboard:open-device", deviceId: Number(problem.deviceId), openProblem: true }, location.origin);
             },
             onDeviceLink: function openDeviceLink(host, forceConnection = false) {
               const editing = state.pageVisualizationEditMode && consoleAuth()?.getRole?.() === "ADMIN";
@@ -2156,6 +2168,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               if (status) status.textContent = "선택한 설비에 장착할 장비를 고르세요.";
             },
           });
+          let problemLabelMode = "light";
+          try { problemLabelMode = localStorage.getItem(`dcim:page-problem-label:${visiblePage.pageCode}`) || "light"; } catch (_) {}
+          state.pageScene3dApi?.setProblemLabelMode?.(problemLabelMode);
           state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
           for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
             refreshSceneRack(code).catch((error) => console.warn("랙 배치 조회 실패", error));
