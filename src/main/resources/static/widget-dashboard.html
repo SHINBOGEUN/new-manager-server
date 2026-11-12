@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t020"></script>
+  <script src="/widget-detail-popup.js?v=20261112-t024"></script>
   <script>
 (function (global) {
   'use strict';
@@ -1415,8 +1415,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const datasets = [];
         group.series.forEach((item,index) => {
           const color = analysisPalette[index % analysisPalette.length], label = analysisState.mode === "device" ? item.pointName : `${item.deviceName} · ${item.pointName}`;
-          if (item.aggregate === "raw") datasets.push({label,data:item.raws.map(p => ({x:Date.parse(p.time),y:p.value})),borderColor:color,backgroundColor:color,pointRadius:0,borderWidth:1.6,tension:.15});
-          else { const stats=item.stats, min=stats.map(p=>({x:Date.parse(p.time),y:p.min})),max=stats.map(p=>({x:Date.parse(p.time),y:p.max})),avg=stats.map(p=>({x:Date.parse(p.time),y:p.avg})); datasets.push({label:`${label} 최솟값`,data:min,borderColor:"transparent",pointRadius:0,_hideLegend:true},{label:`${label} 최댓값`,data:max,borderColor:"transparent",backgroundColor:`${color}25`,pointRadius:0,fill:"-1",_hideLegend:true},{label:`${label} 평균`,data:avg,borderColor:color,pointRadius:0,borderWidth:1.8,tension:.15}); }
+          if (item.aggregate === "raw") datasets.push({label,data:item.raws.map(p => ({x:Date.parse(p.time),y:p.value})),borderColor:color,backgroundColor:color,pointRadius:0,borderWidth:1.6,tension:0});
+          else { const stats=item.stats, min=stats.map(p=>({x:Date.parse(p.time),y:p.min})),max=stats.map(p=>({x:Date.parse(p.time),y:p.max})),avg=stats.map(p=>({x:Date.parse(p.time),y:p.avg})); datasets.push({label:`${label} 최솟값`,data:min,borderColor:"transparent",pointRadius:0,_hideLegend:true},{label:`${label} 최댓값`,data:max,borderColor:"transparent",backgroundColor:`${color}25`,pointRadius:0,fill:"-1",_hideLegend:true},{label:`${label} 평균`,data:avg,borderColor:color,pointRadius:0,borderWidth:1.8,tension:0}); }
         });
         analysisState.charts.push(new Chart(canvas.getContext("2d"),{type:"line",data:{datasets},options:{responsive:true,maintainAspectRatio:false,normalized:true,animation:false,interaction:{mode:"nearest",intersect:false},plugins:{legend:{position:"bottom",labels:{color:"#93a7c1",boxWidth:10,font:{size:10},filter:(item,data)=>!data.datasets[item.datasetIndex]._hideLegend}},tooltip:{callbacks:{title(items){return items.length?new Date(items[0].parsed.x).toLocaleString("ko-KR"):"";},label(context){return `${context.dataset.label}: ${Number(context.parsed.y).toLocaleString("ko-KR",{maximumFractionDigits:3})} ${group.unit}`;}}}},scales:{x:{type:"linear",grid:{color:"rgba(42,58,82,.55)"},ticks:{color:"#7188a2",maxTicksLimit:5,callback:v=>new Date(Number(v)).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}},y:{grid:{color:"rgba(42,58,82,.55)"},ticks:{color:"#7188a2",maxTicksLimit:5},title:{display:!!group.unit,text:group.unit,color:"#93a7c1"}}}}}));
       });
@@ -3091,10 +3091,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!chart) return '<div class="empty" style="padding:12px">데이터 없음</div>';
       if (chart.error) return `<div class="empty" style="padding:12px">${escapeHtml(chart.error)}</div>`;
       const series = chart.series || [];
+      const compareSeries = series.find((item) => item.compare);
+      const previousLabel = String(compareSeries?.label || "").match(/\(([^()]+)\)$/)?.[1];
+      const comparisonLabel = ({ "어제": "오늘 / 어제", "지난주": "이번 주 / 지난주", "지난달": "이번 달 / 지난달" })[previousLabel] || (previousLabel ? "현재 / " + previousLabel : "");
       const meta = [
         chart.chartScope || "",
         chartSeriesModeLabel(chart.seriesMode),
-        chart.rangePreset || "",
+        comparisonLabel || chart.rangePreset || "",
         chart.window || "",
         ...(chart.units || (chart.unit ? [chart.unit] : [])),
       ].filter(Boolean).join(" · ");
@@ -3105,7 +3108,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const baseKey = s.compare && s.key ? s.key.replace(/:compare$/, "") : null;
         const baseIndex = baseKey ? series.findIndex((item) => item.key === baseKey) : -1;
         const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : i) % CHART_PALETTE.length];
-        const line = s.compare ? `background:transparent;border-top:2px dashed ${color}` : `background:${color}`;
+        const line = s.compare ? "background:transparent;border-top:2px dashed #8A94A6" : `background:${color}`;
         return `<span><i style="${line}"></i>${escapeHtml(s.label || s.key || "")}</span>`;
       }).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
       return `
@@ -3126,7 +3129,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     function mountChartInstance(widgetId, data) {
       if (!window.DcimWidgetDetail?.createChart) return;
       const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
-      const chart = window.DcimWidgetDetail.createChart(canvas, data);
+      const hasUsageCompare = (data?.series || []).some((item) => item.compare && String(item.label || "").includes("사용량 합계"));
+      const chart = window.DcimWidgetDetail.createChart(canvas, data, hasUsageCompare ? "bar" : "line");
       if (!chart) return;
       state.chartInstances.set(widgetId, chart);
     }

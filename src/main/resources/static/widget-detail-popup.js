@@ -5,7 +5,7 @@
   const RANGE_OPTIONS = [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]];
   const SERIES_OPTIONS = [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]];
   const STYLE_OPTIONS = [["line","선"],["bar","막대"]];
-  const COMPARE_OPTIONS = [["none","비교 안 함"],["today_yesterday","오늘 vs 어제"],["week_lastweek","이번 주 vs 지난주"],["month_lastmonth","이번 달 vs 지난달"]];
+  const COMPARE_OPTIONS = [["none","비교 안 함"],["today_yesterday","오늘 / 어제"],["week_lastweek","이번 주 / 지난주"],["month_lastmonth","이번 달 / 지난달"]];
   let modal;
   let titleNode;
   let metaNode;
@@ -171,7 +171,7 @@
       const byTime = new Map((item.times || []).map(function (time, i) { return [time, item.values[i]]; }));
       const baseKey = item.compare && item.key ? item.key.replace(/:compare$/, "") : null;
       const baseIndex = baseKey ? series.findIndex(function (candidate) { return candidate.key === baseKey; }) : -1;
-      const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
+      const color = item.compare ? "#8A94A6" : CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
       const baseSeries = baseIndex >= 0 ? series[baseIndex] : null;
       const baseValues = baseSeries ? new Map((baseSeries.times || []).map(function (time, i) { return [formatTime(time), baseSeries.values[i]]; })) : new Map();
       const originalByTime = new Map((item.times || []).map(function (time, i) { return [time, (item.originalTimes || [])[i] || null]; }));
@@ -182,9 +182,9 @@
         borderColor: color,
         backgroundColor: color + "33",
         fill: false,
-        tension: 0.25,
+        tension: 0,
         pointRadius: times.length > 80 ? 0 : 2,
-        borderWidth: 2,
+        borderWidth: item.compare ? 1.5 : 2,
         borderDash: item.compare ? [6, 4] : [],
         originalTimes: times.map(function (time) { return originalByTime.get(time) || null; }),
         baseValues: baseValues,
@@ -284,8 +284,10 @@
       return;
     }
     const units = data.units || (data.unit ? [data.unit] : []);
-    const compareLabels = { today_yesterday: "오늘 vs 어제", week_lastweek: "이번 주 vs 지난주", month_lastmonth: "이번 달 vs 지난달" };
-    const meta = [options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset)].concat(units).filter(Boolean);
+    const compareLabels = { today_yesterday: "오늘 / 어제", week_lastweek: "이번 주 / 지난주", month_lastmonth: "이번 달 / 지난달" };
+    const comparedUsage = options.compare && options.compare !== "none" && (data.series || []).some(function (item) { return item.compare && String(item.label || "").includes("사용량 합계"); });
+    const meta = [options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset), trendWindowLabel(data.window || options.window)].concat(units).filter(Boolean);
+    if (comparedUsage && styleSelect.value !== "bar") meta.push("사용량 비교는 막대 권장");
     if (units.length > 1) meta.push("단위가 달라 합계를 낼 수 없습니다");
     if (statusSummary(status, data.calculationStatus)) meta.push(statusSummary(status, data.calculationStatus));
     if (activeNote) meta.push(activeNote);
