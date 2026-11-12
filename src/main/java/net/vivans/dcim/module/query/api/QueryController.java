@@ -164,9 +164,11 @@ public class QueryController {
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> previewWidgetTrend(
             @RequestParam(name = "source") java.util.List<String> sources,
             @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
-            @RequestParam(required = false, defaultValue = "15m") String window
+            @RequestParam(required = false, defaultValue = "15m") String window,
+            @RequestParam(required = false, defaultValue = "sum") String seriesMode,
+            @RequestParam(required = false, defaultValue = "none") String compare
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.previewTrend(sources, rangePreset, window)));
+        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.previewTrend(sources, rangePreset, window, seriesMode, compare)));
     }
     @GetMapping("/widget-trend")
     @Operation(summary = "공통 위젯 트렌드 조회", description = "last·aggregate·psychrometric·power_distribution 위젯의 최근 시계열을 최대 두 단위로 반환합니다.")
@@ -174,8 +176,9 @@ public class QueryController {
             @RequestParam Integer widgetId,
             @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
             @RequestParam(required = false, defaultValue = "15m") String window,
+            @RequestParam(required = false, defaultValue = "sum") String seriesMode,
             @RequestParam(required = false) String compare
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.getTrend(widgetId, rangePreset, window, compare)));
+        return ResponseEntity.ok(ApiResponse.ok(widgetTrendQueryService.getTrend(widgetId, rangePreset, window, seriesMode, compare)));
     }
 }

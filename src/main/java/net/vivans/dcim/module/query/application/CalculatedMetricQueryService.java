@@ -46,6 +46,8 @@ public class CalculatedMetricQueryService {
                 : PageWidgetChartRangePreset.from(rangePresetOverride);
         if (preset == null) preset = PageWidgetChartRangePreset.last_24h;
         QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartComparisonSupport.Comparison resolvedComparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        if (resolvedComparison != null) range = resolvedComparison.currentRange();
         Duration lookback = Duration.between(range.start(), range.end());
         CalculatedMetricLastPoint currentPoint = pointQuery.findLastCalculated(
                 definition.getId(), definition.getConfigVersion(), lookback).orElse(null);
@@ -70,14 +72,11 @@ public class CalculatedMetricQueryService {
         List<CalculatedMetricTrendPointResponse> trend = List.of();
         if ((rangePresetOverride != null && !rangePresetOverride.isBlank())
                 || (windowOverride != null && !windowOverride.isBlank())) {
-            String window = windowOverride == null || windowOverride.isBlank() ? "15m" : windowOverride.trim();
-            if (!java.util.Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {
-                throw new IllegalArgumentException("window must be 1m, 5m, 15m, 1h, or 1d");
-            }
+            String window = ChartComparisonSupport.windowForComparison(resolvedComparison, preset);
             trend = pointQuery.findCalculatedSeries(definition.getId(), range.start(), range.end(), window)
                     .stream().map(item -> new CalculatedMetricTrendPointResponse(item.time(), QueryValues.round4(item.value())))
                     .toList();
-            ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+            ChartComparisonSupport.Comparison comparison = resolvedComparison;
             if (comparison != null) {
                 List<CalculatedMetricTrendPointResponse> previous = pointQuery.findCalculatedSeries(
                                 definition.getId(), comparison.range().start(), comparison.range().end(), window)

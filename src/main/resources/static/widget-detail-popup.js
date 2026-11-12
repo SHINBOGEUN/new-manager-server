@@ -3,17 +3,15 @@
 
   const CHART_PALETTE = ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
   const RANGE_OPTIONS = [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]];
-  const WINDOW_OPTIONS = [["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]];
   const SERIES_OPTIONS = [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]];
-  const STYLE_OPTIONS = [["line","선"],["bar","막대"],["area","영역"]];
-  const COMPARE_OPTIONS = [["none","비교 안 함"],["previous_period","직전 같은 기간"],["previous_day","전날 같은 시간"],["previous_week","지난주 같은 요일"]];
+  const STYLE_OPTIONS = [["line","선"],["bar","막대"]];
+  const COMPARE_OPTIONS = [["none","비교 안 함"],["today_yesterday","오늘 vs 어제"],["week_lastweek","이번 주 vs 지난주"],["month_lastmonth","이번 달 vs 지난달"]];
   let modal;
   let titleNode;
   let metaNode;
   let chartsNode;
   let controls;
   let rangeSelect;
-  let windowSelect;
   let seriesSelect;
   let styleSelect;
   let compareSelect;
@@ -92,11 +90,10 @@
     chartsNode = modal.querySelector(".dcim-widget-detail-chart");
     controls = modal.querySelector(".dcim-widget-detail-controls");
     rangeSelect = select("dcimDetailRange", RANGE_OPTIONS);
-    windowSelect = select("dcimDetailWindow", WINDOW_OPTIONS);
     seriesSelect = select("dcimDetailSeries", SERIES_OPTIONS);
     styleSelect = select("dcimDetailStyle", STYLE_OPTIONS);
     compareSelect = select("dcimDetailCompare", COMPARE_OPTIONS);
-    controls.append(rangeSelect, windowSelect, seriesSelect, styleSelect, compareSelect);
+    controls.append(rangeSelect, seriesSelect, styleSelect, compareSelect);
     modal.querySelector("button").addEventListener("click", close);
     modal.addEventListener("click", function (event) { if (event.target === modal) close(); });
     modal.addEventListener("close", destroyCharts);
@@ -142,6 +139,16 @@
     return ({ "1m":"1분", "5m":"5분", "15m":"15분", "1h":"1시간", "1d":"1일" })[windowSize] || windowSize;
   }
 
+  function normalizeCompare(value, preset) {
+    if (value === "previous_day") return "today_yesterday";
+    if (value === "previous_week") return "week_lastweek";
+    if (value === "previous_period") {
+      return preset === "this_month" || preset === "last_month" ? "month_lastmonth"
+        : preset === "last_7d" ? "week_lastweek" : "today_yesterday";
+    }
+    return value || "none";
+  }
+
   function createChart(canvas, data, chartStyle) {
     chartStyle = chartStyle || "line";
     if (typeof global.Chart === "undefined" || !data || data.error || !canvas) return null;
@@ -167,7 +174,7 @@
         data: times.map(function (time) { const value = byTime.get(time); return value == null ? null : Number(value); }),
         borderColor: color,
         backgroundColor: color + "33",
-        fill: chartStyle === "area",
+        fill: false,
         tension: 0.25,
         pointRadius: times.length > 80 ? 0 : 2,
         borderWidth: 2,
@@ -197,7 +204,12 @@
             if (originalTime) text += " · 원래 시각 " + formatTime(originalTime);
             if (context.dataset.isCompare && value != null) {
               const base = context.dataset.baseValues.get(context.label);
-              if (base != null) text += " · 차이 " + (Number(base) === 0 ? "—" : (((Number(value) - Number(base)) / Math.abs(Number(base))) * 100).toFixed(1) + "%");
+              if (base != null) {
+                const delta = Number(base) - Number(value);
+                const percent = Number(value) === 0 ? "—" : ((delta / Math.abs(Number(value))) * 100).toFixed(1) + "%";
+                text += " · 현재 " + formatValue(base) + unit + " · 비교 " + formatValue(value) + unit
+                  + " · 차이 " + formatValue(delta) + unit + " (" + percent + ")";
+              }
             }
             return text;
           } } },
@@ -227,12 +239,18 @@
     metaNode.textContent = "데이터를 불러오는 중…";
     const options = {
       rangePreset: rangeSelect.value,
-      window: windowSelect.value,
+      window: "",
       seriesMode: seriesSelect.value,
       compare: compareSelect.value,
     };
     const data = await activeLoad(options);
     if (data && data.error) throw new Error(data.error);
+    const supportedModes = Array.isArray(data.availableSeriesModes) ? data.availableSeriesModes : ["sum", "per_device"];
+    const allowedModes = options.compare && options.compare !== "none" ? ["sum"] : supportedModes;
+    Array.from(seriesSelect.options).forEach(function (option) {
+      option.hidden = !allowedModes.includes(option.value);
+    });
+    if (!allowedModes.includes(seriesSelect.value)) seriesSelect.value = allowedModes[0] || "sum";
     const hasData = (data && data.series || []).some(function (item) {
       return (item.values || item.data || []).some(function (value) { return value != null; });
     });
@@ -258,7 +276,9 @@
       return;
     }
     const units = data.units || (data.unit ? [data.unit] : []);
-    const meta = [trendRangeLabel(options.rangePreset), trendWindowLabel(options.window) + " 평균"].concat(units).filter(Boolean);
+    const compareLabels = { today_yesterday: "오늘 vs 어제", week_lastweek: "이번 주 vs 지난주", month_lastmonth: "이번 달 vs 지난달" };
+    const meta = [options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset)].concat(units).filter(Boolean);
+    if (units.length > 1) meta.push("단위가 달라 합계를 낼 수 없습니다");
     if (statusSummary(status, data.calculationStatus)) meta.push(statusSummary(status, data.calculationStatus));
     if (activeNote) meta.push(activeNote);
     metaNode.textContent = meta.join(" · ");
@@ -297,10 +317,9 @@
     activeShowCompare = options.showCompare === true;
     titleNode.textContent = options.title || "트렌드";
     rangeSelect.value = activeConfig.rangePreset || "last_3d";
-    windowSelect.value = activeConfig.window || "15m";
-    seriesSelect.value = activeConfig.seriesMode || "per_device";
-    styleSelect.value = activeConfig.chartStyle || "line";
-    compareSelect.value = activeConfig.compare || "none";
+    seriesSelect.value = activeConfig.seriesMode || "sum";
+    styleSelect.value = activeConfig.chartStyle === "area" ? "line" : activeConfig.chartStyle || "line";
+    compareSelect.value = normalizeCompare(activeConfig.compare, rangeSelect.value);
     seriesSelect.hidden = !activeShowSeries;
     compareSelect.hidden = !activeShowCompare;
     if (!modal.open) modal.showModal();

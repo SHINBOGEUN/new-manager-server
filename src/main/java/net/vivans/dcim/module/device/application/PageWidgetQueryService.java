@@ -248,12 +248,14 @@ public class PageWidgetQueryService {
                 && "chart".equals(action)) {
             throw new IllegalArgumentException("개수·CCTV 위젯에는 차트 클릭 동작을 설정할 수 없습니다");
         }
-        validateOption(config, "chartStyle", Set.of("line", "bar", "area"));
+        validateOption(config, "chartStyle", Set.of("line", "bar", "area")); // area remains accepted only for stored-client compatibility
         if (config.get("rangePreset") instanceof String rangePreset) PageWidgetChartRangePreset.from(rangePreset);
         validateOption(config, "window", Set.of("1m", "5m", "15m", "1h", "1d"));
         if (config.get("seriesMode") instanceof String seriesMode) PageWidgetChartSeriesMode.from(seriesMode);
-        validateOption(config, "compare", Set.of("none", "previous_period", "previous_day", "previous_week"));
-        validateOption(config, "chartCompareMode", Set.of("none", "previous_period", "previous_day", "previous_week"));
+        Set<String> compareModes = Set.of("none", "today_yesterday", "week_lastweek", "month_lastmonth",
+                "previous_period", "previous_day", "previous_week");
+        validateOption(config, "compare", compareModes);
+        validateOption(config, "chartCompareMode", compareModes);
         if ("device".equals(action) || "rack".equals(action) || "page".equals(action)) {
             Object target = config.get("target");
             if (!(target instanceof Map<?, ?> map)) throw new IllegalArgumentException("클릭 이동 대상을 지정하세요");

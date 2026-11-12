@@ -70,9 +70,14 @@ public class ChartQueryService {
         PageWidget widget = findChartWidget(widgetId);
         List<String> pointNames = widget.pointNames();
         PageWidgetChartRangePreset preset = resolvePreset(widget, rangePresetOverride);
-        String window = resolveWindow(widget, windowOverride);
-        PageWidgetChartSeriesMode mode = resolveSeriesMode(widget, seriesModeOverride);
+        String requestedCompare = compareOverride == null || compareOverride.isBlank()
+                ? widget.getChartCompareMode() : compareOverride.trim();
         QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(requestedCompare, preset, range);
+        if (comparison != null) range = comparison.currentRange();
+        String window = ChartComparisonSupport.windowForComparison(comparison, preset);
+        PageWidgetChartSeriesMode mode = comparison != null ? PageWidgetChartSeriesMode.sum
+                : resolveSeriesMode(widget, seriesModeOverride, null);
 
         if (pointNames.isEmpty()) {
             return empty(widget, range.start(), range.end(), window, null, mode, preset);
@@ -93,9 +98,20 @@ public class ChartQueryService {
         List<String> queryPointNames = pointNames;
         ChartPointContext pointContext = buildPointContext(devices, pointNames);
         ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames);
+        if (comparison == null && (seriesModeOverride == null || seriesModeOverride.isBlank())
+                && unitContext.units().size() > 1 && (widget.getChartSeriesMode() == null
+                || widget.getChartSeriesMode() == PageWidgetChartSeriesMode.sum)) {
+            mode = PageWidgetChartSeriesMode.per_device;
+        }
         if (unitContext.units().size() > 1 && mode != PageWidgetChartSeriesMode.per_device) {
+            if (comparison != null) {
+                throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
+            } else if (seriesModeOverride == null || seriesModeOverride.isBlank()) {
+                mode = PageWidgetChartSeriesMode.per_device;
+            } else {
             throw new IllegalArgumentException(
-                    "two-unit charts support only per_device series mode; select per_device to avoid summing different units");
+                    "단위가 달라 합계를 낼 수 없습니다 · 장비별 보기를 선택하세요");
+            }
         }
 
         List<SeriesPoint> raw = pointQuery.findSeries(
@@ -120,20 +136,19 @@ public class ChartQueryService {
             case by_phase -> buildByPhase(raw, deviceById, pointContext, unitContext);
             case by_path -> buildByPath(raw, deviceById, pointContext, unitContext);
         };
-        String compareMode = compareOverride == null || compareOverride.isBlank()
-                ? widget.getChartCompareMode() : compareOverride.trim();
-        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
         if (comparison != null) {
-            if (series.size() > 5) throw new IllegalArgumentException(
-                    "비교는 시리즈 5개 이하에서만 가능합니다 · 묶음을 합계로 바꾸세요");
-            List<SeriesPoint> previousRaw = pointQuery.findSeries(
-                    deviceIds, queryPointNames, comparison.range().start(), comparison.range().end(), window);
-            List<ChartSeriesResponse> previous = switch (mode) {
-                case per_device -> buildPerDevice(previousRaw, deviceById, queryPointNames, pointContext, unitContext);
-                case sum -> buildSum(previousRaw, deviceById, pointContext, unitContext);
-                case by_phase -> buildByPhase(previousRaw, deviceById, pointContext, unitContext);
-                case by_path -> buildByPath(previousRaw, deviceById, pointContext, unitContext);
-            };
+            Map<String, String> typeBySource = new HashMap<>();
+            pointContext.sourcesByKey().forEach((key, source) -> typeBySource.put(key, source.dataPointType()));
+            ChartSeriesResponse currentSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
+                    typeBySource, unitContext.singleUnit(), range, window,
+                    point -> includeAggregatePoint(point, deviceById, pointContext));
+            ChartSeriesResponse previousSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
+                    typeBySource, unitContext.singleUnit(), comparison.range(), window,
+                    point -> includeAggregatePoint(point, deviceById, pointContext));
+            List<ChartSeriesResponse> previous = ChartComparisonSupport.sum(List.of(previousSum),
+                    unitContext.singleUnit(), "사용량 합계 (" + comparison.previousLabel() + ")");
+            series = ChartComparisonSupport.sum(List.of(currentSum), unitContext.singleUnit(),
+                    "사용량 합계 (" + comparison.currentLabel() + ")");
             series = ChartComparisonSupport.appendComparison(series, previous, comparison);
         }
 
@@ -155,7 +170,7 @@ public class ChartQueryService {
                 unitContext.units(),
                 series,
                 dataStatus,
-                availableSeriesModes(devices, pointContext, unitContext)
+                comparison == null ? availableSeriesModes(devices, pointContext, unitContext) : List.of("sum")
         );
     }
 
@@ -496,20 +511,16 @@ public class ChartQueryService {
                 : widget.getChartRangePreset();
     }
 
-    private static PageWidgetChartSeriesMode resolveSeriesMode(PageWidget widget, String override) {
+    private static PageWidgetChartSeriesMode resolveSeriesMode(PageWidget widget, String override, ChartUnitContext units) {
         if (override != null && !override.isBlank()) {
             return PageWidgetChartSeriesMode.from(override);
         }
-        return widget.getChartSeriesMode() == null
-                ? PageWidgetChartSeriesMode.per_device
-                : widget.getChartSeriesMode();
+        if (widget.getChartSeriesMode() != null) return widget.getChartSeriesMode();
+        return PageWidgetChartSeriesMode.sum;
     }
 
     private static String resolveWindow(PageWidget widget, String override) {
-        if (override != null && !override.isBlank()) {
-            return override.trim();
-        }
-        return widget.getChartWindow() == null ? "5m" : widget.getChartWindow();
+        return "5m";
     }
 
     private ChartWidgetResponse empty(

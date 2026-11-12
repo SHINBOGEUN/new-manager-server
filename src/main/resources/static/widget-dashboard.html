@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t018"></script>
+  <script src="/widget-detail-popup.js?v=20261112-t019a"></script>
   <script>
 (function (global) {
   'use strict';
@@ -1010,7 +1010,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       </div>
       <div class="control-group">
         <p class="control-group-title">차트 표시</p>
-        <div class="row"><span class="control-field"><label for="chartRangeOverride">기간</label><select id="chartRangeOverride" title="비우면 위젯 설정 사용"><option value="">위젯 설정</option><option value="last_24h">최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_3d">최근 3일</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option></select></span><span class="control-field"><label for="chartWindowOverride">집계 간격</label><select id="chartWindowOverride"><option value="">위젯 설정</option><option value="1m">1분</option><option value="5m">5분</option><option value="15m">15분</option><option value="1h">1시간</option><option value="1d">1일</option></select></span><span class="control-field"><label for="chartSeriesOverride">시리즈</label><select id="chartSeriesOverride"><option value="">위젯 설정</option><option value="sum">합계</option><option value="by_phase">상별</option><option value="by_path">위치별</option><option value="per_device">장비별</option></select></span></div>
+        <div class="row"><span class="control-field"><label for="chartRangeOverride">기간</label><select id="chartRangeOverride" title="비우면 위젯 설정 사용"><option value="">위젯 설정</option><option value="last_24h">최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_3d">최근 3일</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option></select></span><span class="control-field" hidden><label for="chartWindowOverride">집계 간격</label><select id="chartWindowOverride"><option value="">위젯 설정</option><option value="1m">1분</option><option value="5m">5분</option><option value="15m">15분</option><option value="1h">1시간</option><option value="1d">1일</option></select></span><span class="control-field"><label for="chartSeriesOverride">시리즈</label><select id="chartSeriesOverride"><option value="">위젯 설정</option><option value="sum">합계</option><option value="by_phase">상별</option><option value="by_path">위치별</option><option value="per_device">장비별</option></select></span></div>
       </div>
       <div class="control-group">
         <p class="control-group-title">장비 수 · 바로가기</p>
@@ -3021,7 +3021,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const requested = state.chartSeriesModeByWidget.get(widget.id)
         || $("chartSeriesOverride")?.value
         || widget.chartSeriesMode
-        || "per_device";
+        || "sum";
       const available = chartSeriesModesForWidget(widget).map(([mode]) => mode);
       return available.includes(requested) ? requested : available[0] || "per_device";
     }
@@ -3147,12 +3147,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       }
       const rangePreset = config.rangePreset || widget.trendRangePreset || "last_3d";
       const windowSize = config.window || widget.trendWindow || "15m";
-      const seriesMode = config.seriesMode || widget.chartSeriesMode || "per_device";
+      const seriesMode = config.seriesMode || widget.chartSeriesMode || "sum";
       await window.DcimWidgetDetail.open({
         title: widget.name + " 상세",
         config: { rangePreset: rangePreset, window: windowSize, seriesMode: seriesMode,
           chartStyle: config.chartStyle || "line", compare: config.compare || "none" },
-        showSeries: widget.queryKind === "chart",
+        showSeries: true,
         showCompare: true,
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
@@ -3166,6 +3166,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           if (widget.queryKind === "calculated") {
             return window.DcimWidgetDetail.fromCalculated(await api("/api/manager/query/calculated?" + params));
           }
+          params.set("seriesMode", seriesMode);
           return api("/api/manager/query/widget-trend?" + params);
         },
       });
