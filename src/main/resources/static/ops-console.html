@@ -1580,6 +1580,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .widget-editor-preview .widget-page-preview { margin:10px 0 0; }
     .widget-editor-preview .widget-page-preview iframe { height:min(38vh,360px); min-height:180px; }
     .widget-editor-preview .widget-page-preview-head { flex-wrap:wrap; }
+    .widget-editor-preview .widget-page-preview:not(.is-expanded) .widget-page-preview-head p { display:none; }
     #wEditorCard .form-compact :is(input:not([type=checkbox]):not([type=radio]), select) { min-height:32px; font-size:13px; }
     #wEditorCard .form-compact .point-grid { max-height:240px; overflow:auto; }
     #wEditorCard .form-compact #wDeviceList .pick-item { display:inline-flex; width:auto; max-width:100%; min-height:30px; margin:3px; padding:4px 7px; gap:6px; border-radius:999px; vertical-align:middle; }
@@ -1865,6 +1866,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal .is-rack-widget-view [data-rack-widgets] { max-height:none; overflow:hidden; }
     #rackPreviewModal .rack-scene-problem-panel { max-height:220px; min-height:0; overflow:auto; margin:0 0 8px; padding:10px; border:1px solid var(--line); border-radius:10px; }
     #rackPreviewModal .scene-problem-toggle { width:auto; min-width:92px; font-size:12px; font-weight:750; }
+    #rackPreviewModal .scene-problem-toggle--critical { background:#9f2c37; border-color:#e34d5d; }
+    #rackPreviewModal .scene-problem-toggle--warning { background:#a45a11; border-color:#d88832; }
+    #rackPreviewModal .scene-problem-toggle--collection { background:#82610d; border-color:#c5a430; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--critical { background:#fee2e2; border-color:#dc2626; color:#991b1b; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--warning { background:#ffedd5; border-color:#ea580c; color:#9a3412; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--collection { background:#fef3c7; border-color:#ca8a04; color:#854d0e; }
 
     #rackPreviewModal .rack-widget-layout { min-height:0; outline:none; }
     #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { container-type:size; padding:clamp(6px,2cqw,12px) 12px; }
@@ -7627,6 +7634,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const button = $("rackPreviewModal").querySelector("[data-scene-problem-toggle]");
       if (!panel || !button) return;
       button.hidden = count < 1;
+      button.classList.remove("scene-problem-toggle--critical", "scene-problem-toggle--warning", "scene-problem-toggle--collection");
+      if (container.querySelector(".problem-badge--alarm-critical")) button.classList.add("scene-problem-toggle--critical");
+      else if (container.querySelector(".problem-badge--alarm-warning, .problem-badge--setup")) button.classList.add("scene-problem-toggle--warning");
+      else if (container.querySelector(".problem-badge--collection")) button.classList.add("scene-problem-toggle--collection");
       button.textContent = `! 문제 ${count}`;
       button.setAttribute("aria-expanded", String(!panel.hidden));
       if (!count) panel.hidden = true;
@@ -7991,6 +8002,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function closeRackPreview() {
+      $("rackPreviewModal").querySelector("[data-scene-problem-toggle]")?.remove();
       window.RackWidgetChart?.dispose($("rackPreviewBody"));
       rackDetailViewer?.dispose(); rackDetailViewer = null;
       $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
@@ -9063,13 +9075,19 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           if (!toggle) {
             toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "ghost"; toggle.dataset.widgetPagePreviewToggle = "";
             pageHeader.insertBefore(toggle, editButton);
-            toggle.onclick = () => { const expanded = frame.hidden; frame.hidden = !expanded; editButton.hidden = !expanded; toggle.textContent = expanded ? "페이지 미리보기 접기" : "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", String(expanded)); };
+            toggle.onclick = () => { const expanded = frame.hidden; frame.hidden = !expanded; pagePreview.classList.toggle("is-expanded", expanded); toggle.textContent = expanded ? "페이지 미리보기 접기" : "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", String(expanded)); };
           }
-          frame.hidden = true; editButton.hidden = true; toggle.textContent = "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", "false");
+          frame.hidden = true; pagePreview.classList.remove("is-expanded"); toggle.textContent = "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", "false");
         }
         editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
         if (chartOptions) advancedBody.append(chartOptions);
         if (trendDefaults) advancedBody.append(trendDefaults);
+      }
+      const pagePreviewForOpen = editor.querySelector(".widget-page-preview");
+      if (pagePreviewForOpen) {
+        const previewFrame = $("wPagePreviewFrame"), pageLayoutButton = $("wEditPageLayout"), previewToggle = pagePreviewForOpen.querySelector("[data-widget-page-preview-toggle]");
+        previewFrame.hidden = true; pageLayoutButton.hidden = false; pagePreviewForOpen.classList.remove("is-expanded");
+        if (previewToggle) { previewToggle.textContent = "페이지에서 위치 보기"; previewToggle.setAttribute("aria-expanded", "false"); }
       }
       editor.dataset.step = "3";
       const advanced = editor.querySelector(".widget-editor-advanced");
