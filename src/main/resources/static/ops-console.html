@@ -11232,9 +11232,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const codeQuery = $("commonCodeSearch").value.trim().toLowerCase();
       const visibleCodes = codes.filter((code) => `${code.code} ${code.name}`.toLowerCase().includes(codeQuery));
       const locked = isSystemCodeGroup(selected?.groupKey);
+      const phaseLocked = selected?.groupKey === "PHASE";
       $("codeListBody").innerHTML = visibleCodes.map((code) => `<tr>
         <td class="mono">${esc(code.code)}</td><td>${esc(code.name)}${code.thresholdSupported ? ' <span class="chip ok">임계값 허용</span>' : ""}</td><td>${code.sortOrder ?? "–"}</td>
-        <td class="actions">${locked ? `<span class="chip code-system-lock">🔒 코드 값</span><button type="button" class="ghost" data-edit-cc="${code.id}" data-role-gate="admin">이름·정렬</button>` : `<div class="action-btns" data-role-gate="admin"><button type="button" class="ghost" data-edit-cc="${code.id}">수정</button><button type="button" class="danger" data-delete-cc="${code.id}">삭제</button></div>`}</td>
+        <td class="actions"><div class="action-btns" data-role-gate="admin">${locked ? `<span class="chip code-system-lock">🔒 코드 값</span><button type="button" class="ghost" data-edit-cc="${code.id}">이름·정렬</button>` : `<button type="button" class="ghost" data-edit-cc="${code.id}">수정</button>`}${phaseLocked ? '<span class="chip code-system-lock">🔒 삭제</span>' : `<button type="button" class="danger" data-delete-cc="${code.id}">삭제</button>`}</div></td>
       </tr>`).join("") || `<tr><td colspan="4"><div class="empty">${codes.length ? "검색 결과가 없습니다." : "등록된 코드가 없습니다."}</div></td></tr>`;
 
       $("codeGroupList").querySelectorAll("[data-select-cg]").forEach((button) => button.onclick = () => {
