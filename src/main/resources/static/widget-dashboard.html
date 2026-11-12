@@ -179,6 +179,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     body.edit-mode .size-match-tools { display:flex; }
     body.edit-mode .board > .card.row-selected { outline:3px solid #43e6ff; outline-offset:-3px; box-shadow:0 0 0 2px #08253a,0 0 18px #38d9ff88; }
     .size-match-tools span { flex:1; color:var(--muted); font-size:11px; line-height:1.4; }
+    .board > .card.editor-preview-target { outline:3px solid #facc15; outline-offset:4px; z-index:13; box-shadow:0 0 0 7px #facc1533,0 0 28px #facc1588 !important; }
     .board > .card.is-list-selected { outline:3px solid #4ad9ff; outline-offset:2px; z-index:12; box-shadow:0 0 0 5px #4ad9ff55,0 0 24px #4ad9ff88 !important; }
     .widget-item h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .widget-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
@@ -975,6 +976,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 <body>
   <script>
     const initialDashboardParams = new URLSearchParams(location.search);
+    const editorPreviewWidgetId = Number(initialDashboardParams.get("widgetId")) || 0;
     if (initialDashboardParams.has("embedded")) document.body.classList.add("embedded");
     if (initialDashboardParams.get("fixedPage") === "1") document.body.classList.add("fixed-page-view");
     if (initialDashboardParams.get("widgetEdit") === "1") document.body.classList.add("widget-workspace");
@@ -3482,8 +3484,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const chartHeadTools = w.queryKind === "chart"
           ? `<div class="card-head-tools">${chartSeriesSelectHtml(w, chartSeriesModeForWidget(w))}</div>`
           : "";
+        const editorTargetClass = editorPreviewWidgetId && Number(w.id) === editorPreviewWidgetId ? "editor-preview-target" : "";
         return `
-          <article class="${cardClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? 'row-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
+          <article class="${cardClass} ${editorTargetClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? 'row-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
             <div class="card-head" data-drag-handle>
               <span class="drag-handle">⠿</span>
               <div>

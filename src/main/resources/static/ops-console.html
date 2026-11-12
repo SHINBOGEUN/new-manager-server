@@ -1048,6 +1048,25 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .device-detail-tabs button { padding:10px 15px; border:0; border-radius:8px 8px 0 0; background:transparent; color:#93a9c2; font-weight:700; }
     .device-detail-tabs button.active { color:#75d5ff; background:#183a50; box-shadow:inset 0 -2px 0 #4ec5f3; }
     .device-detail-content { flex:1; min-height:0; overflow:auto; padding:22px 24px 28px; }
+    .problem-badges { display:flex; flex-wrap:wrap; gap:5px; }
+    .problem-badge { display:inline-flex; padding:3px 7px; border-radius:999px; font-size:11px; font-weight:700; white-space:nowrap; background:#26364a; color:#d8e4f1; }
+    .problem-badge--alarm-critical { background:#632b33; color:#ffd4d8; }
+    .problem-badge--alarm-warning { background:#66521e; color:#ffecad; }
+    .problem-badge--collection { background:#66521e; color:#ffecad; }
+    .problem-badge--setup { background:#33445c; color:#d3e1ff; }
+    .device-problem-row { padding:8px 0; border-bottom:1px solid var(--line); }
+    .device-problem-row-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+    .device-problem-summary { min-width:140px; flex:1; color:var(--muted); font-size:12px; }
+    .device-problem-row-details { margin:5px 0 0 4px; font-size:12px; }
+    .device-problem-row-details summary { cursor:pointer; color:var(--muted); }
+    .device-problem-details { margin:6px 0; padding-left:20px; }
+    .device-problem-details p, .device-problem-row-details p { margin:4px 0; }
+    .problem-collection-hint { color:var(--muted); }
+    .problem-actions { margin-top:8px; }
+    html[data-theme="light"] .problem-badge { background:#e7edf4; color:#34465b; }
+    html[data-theme="light"] .problem-badge--alarm-critical { background:#fee2e2; color:#991b1b; }
+    html[data-theme="light"] .problem-badge--alarm-warning, html[data-theme="light"] .problem-badge--collection { background:#fef3c7; color:#854d0e; }
+    html[data-theme="light"] .problem-badge--setup { background:#dbeafe; color:#1e40af; }
     .device-problem-category { margin-bottom:14px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
     .device-problem-category h3 { margin:0 0 10px; font-size:14px; }
     .device-problem-item { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:9px 0; border-top:1px solid var(--line); }
@@ -1555,8 +1574,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .widget-form-grid.form-compact .widget-editor-preview { grid-area:preview; min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); }
     .widget-editor-preview > h3 { margin:0 0 10px; font-size:13px; }
     .widget-editor-preview .widget-review { margin:8px 0; padding:10px; }
+    .widget-editor-preview .widget-preview-card { min-height:220px; margin:0 0 12px; padding:26px; gap:22px; }
+    .widget-editor-preview .widget-preview-card strong { font-size:clamp(32px,4vw,54px); }
+    .widget-editor-preview .widget-preview-card .widget-preview-icon { font-size:32px; }
     .widget-editor-preview .widget-page-preview { margin:10px 0 0; }
-    .widget-editor-preview .widget-page-preview iframe { height:min(55vh,560px); min-height:260px; }
+    .widget-editor-preview .widget-page-preview iframe { height:min(38vh,360px); min-height:180px; }
+    .widget-editor-preview .widget-page-preview-head { flex-wrap:wrap; }
+    .widget-editor-preview .widget-page-preview:not(.is-expanded) .widget-page-preview-head p { display:none; }
     #wEditorCard .form-compact :is(input:not([type=checkbox]):not([type=radio]), select) { min-height:32px; font-size:13px; }
     #wEditorCard .form-compact .point-grid { max-height:240px; overflow:auto; }
     #wEditorCard .form-compact #wDeviceList .pick-item { display:inline-flex; width:auto; max-width:100%; min-height:30px; margin:3px; padding:4px 7px; gap:6px; border-radius:999px; vertical-align:middle; }
@@ -1840,7 +1864,15 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-stage { height:100%; min-height:0; }
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack > div:last-child { height:100%; min-height:0; overflow:hidden; }
     #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal .is-rack-widget-view [data-rack-widgets] { max-height:none; overflow:hidden; }
-    #rackPreviewModal .rack-scene-problem-panel { max-height:30%; min-height:0; overflow:auto; margin-bottom:8px; }
+    #rackPreviewModal .rack-scene-problem-panel { max-height:220px; min-height:0; overflow:auto; margin:0 0 8px; padding:10px; border:1px solid var(--line); border-radius:10px; }
+    #rackPreviewModal .scene-problem-toggle { width:auto; min-width:92px; font-size:12px; font-weight:750; }
+    #rackPreviewModal .scene-problem-toggle--critical { background:#9f2c37; border-color:#e34d5d; }
+    #rackPreviewModal .scene-problem-toggle--warning { background:#a45a11; border-color:#d88832; }
+    #rackPreviewModal .scene-problem-toggle--collection { background:#82610d; border-color:#c5a430; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--critical { background:#fee2e2; border-color:#dc2626; color:#991b1b; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--warning { background:#ffedd5; border-color:#ea580c; color:#9a3412; }
+    html[data-theme="light"] #rackPreviewModal .scene-problem-toggle--collection { background:#fef3c7; border-color:#ca8a04; color:#854d0e; }
+
     #rackPreviewModal .rack-widget-layout { min-height:0; outline:none; }
     #rackPreviewModal .rack-widget-view-card, #rackPreviewModal .rack-widget-layout-card { container-type:size; padding:clamp(6px,2cqw,12px) 12px; }
     #rackPreviewModal .rack-metric-content--value .rack-metric-title { font-size:clamp(9px,17cqh,12px); }
@@ -7406,7 +7438,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       body.innerHTML = `<div class="rack-detail-layout rack-detail-layout--rack"><div class="rack-detail-stage" data-rack-3d><div data-equipment-canvas style="position:absolute;inset:0"></div></div><div><div data-equipment-tabs class="rack-detail-tabs" ${editing ? '' : 'hidden'}><button type="button" data-equip-tab="connection" class="primary">장비 연결</button><button type="button" data-equip-tab="widgets">위젯 설정</button><button type="button" data-equip-tab="layout">위젯 위치 설정</button><button type="button" data-equip-tab="history">연결 이력</button></div><section data-equipment-connection class="rack-detail-info" ${editing ? '' : 'hidden'}></section><section data-scene-device-problems class="rack-detail-info"><h3>문제</h3><p>문제 정보를 불러오는 중입니다.</p></section><section data-rack-widgets ${editing ? 'hidden' : ''}></section><section data-rack-widget-layout hidden></section><section data-equipment-history class="rack-detail-info" hidden></section></div></div>`;
       const problemPanel = body.querySelector('[data-scene-device-problems]');
       problemPanel.classList.add('rack-scene-problem-panel');
-      problemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems-content><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      problemPanel.innerHTML = '<div data-scene-device-problems-content><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      attachSceneProblemToggle(problemPanel);
       renderSceneDeviceProblems([Number(device.deviceId)], body.querySelector('[data-scene-device-problems-content]'));
       const connection = body.querySelector('[data-equipment-connection]');
       const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
@@ -7593,56 +7626,122 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       } catch(error) { if(panel.isConnected) panel.textContent=`도면 표시 설정을 불러오지 못했습니다: ${error.message}`; }
     }
 
-    function renderProblemCategoryMarkup(container, groups) {
-      container.innerHTML = groups.join("") || '<div class="empty">문제 없음</div>';
+    const problemCollectionStatuses = new Set(["PARTIAL", "STALE", "MISSING"]);
+    const problemSetupStatuses = new Set(["NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"]);
+
+    function setSceneProblemCount(container, count) {
+      const panel = container.closest(".rack-scene-problem-panel");
+      const button = $("rackPreviewModal").querySelector("[data-scene-problem-toggle]");
+      if (!panel || !button) return;
+      button.hidden = count < 1;
+      button.classList.remove("scene-problem-toggle--critical", "scene-problem-toggle--warning", "scene-problem-toggle--collection");
+      if (container.querySelector(".problem-badge--alarm-critical")) button.classList.add("scene-problem-toggle--critical");
+      else if (container.querySelector(".problem-badge--alarm-warning, .problem-badge--setup")) button.classList.add("scene-problem-toggle--warning");
+      else if (container.querySelector(".problem-badge--collection")) button.classList.add("scene-problem-toggle--collection");
+      button.textContent = `! 문제 ${count}`;
+      button.setAttribute("aria-expanded", String(!panel.hidden));
+      if (!count) panel.hidden = true;
     }
 
-    async function renderSceneDeviceProblems(deviceIds, container) {
+    function attachSceneProblemToggle(panel) {
+      const header = $("rackPreviewModal").querySelector(".rack-preview-head");
+      header.querySelector("[data-scene-problem-toggle]")?.remove();
+      const button = document.createElement("button");
+      button.type = "button"; button.dataset.sceneProblemToggle = "";
+      button.className = "ghost scene-problem-toggle"; button.hidden = true;
+      button.onclick = () => { panel.hidden = !panel.hidden; button.setAttribute("aria-expanded", String(!panel.hidden)); };
+      header.insertBefore(button, $("rackPreviewClose")); panel.hidden = true;
+      return button;
+    }
+
+    function problemActionButton(action, label) {
+      return `<button type="button" class="ghost" data-device-problem-action="${action}">${label}</button>`;
+    }
+
+    function formatProblemDuration(startedAt) {
+      const seconds = Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+      if (!Number.isFinite(seconds)) return "지속 시간 확인 불가";
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}분 지속`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}시간 ${minutes % 60}분 지속`;
+      return `${Math.floor(hours / 24)}일 ${hours % 24}시간 지속`;
+    }
+
+    function problemAlarmDetail(alarm) {
+      const detail = alarm.details || alarm.latest || {}, gap = alarm.collectionGapDetails || {};
+      const severity = alarm.severity || detail.severity || "WARNING";
+      const severityLabel = severity === "CRITICAL" || severity === "DANGER" ? "위험" : "주의";
+      const title = detail.pointName ? `${detail.pointName} · ${severityLabel}` : "수집 누락 알람";
+      const measured = detail.pointName
+        ? `현재 ${detail.measuredValue ?? detail.value ?? "—"}${detail.unit ? ` ${detail.unit}` : ""} · 기준 ${detail.operator === "ABOVE" ? "초과" : "미만"} ${detail.thresholdValue ?? detail.threshold ?? "—"}${detail.unit ? ` ${detail.unit}` : ""}`
+        : `${String(gap.protocol || "").toUpperCase()} 수집 응답 없음`;
+      const raisedAt = alarm.raisedDt || detail.occurredAt;
+      const raised = raisedAt ? new Date(raisedAt).toLocaleString("ko-KR") : "시각 미확인";
+      const age = raisedAt && Date.now() - new Date(raisedAt).getTime() >= 24 * 60 * 60 * 1000 ? ` · 경과 ${formatProblemDuration(raisedAt)}` : "";
+      return `<li><strong>${esc(title)}</strong><p>${esc(measured)} · 발생 ${esc(raised)}${esc(age)}</p></li>`;
+    }
+
+    async function renderSceneDeviceProblems(deviceIds, container, options = {}) {
       if (!container) return;
       const ids = [...new Set((deviceIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
-      if (!ids.length) { renderProblemCategoryMarkup(container, []); return; }
+      if (!ids.length) { container.innerHTML = '<div class="empty">문제 없음</div>'; setSceneProblemCount(container, 0); return; }
       container.innerHTML = '<p class="muted">문제 정보를 불러오는 중입니다.</p>';
-      const [alarmResult, statusResult] = await Promise.allSettled([
+      const detailId = Number(options.detailDeviceId || 0);
+      const [alarmResult, statusResult, detailAlarmResult] = await Promise.allSettled([
         api(`/api/manager/alarms/device-summary?deviceIds=${encodeURIComponent(ids.join(","))}`, {cache:"no-store"}),
-        api("/api/manager/query/collection-status?lookbackHours=168", {cache:"no-store"}),
+        state.collectionStatus && options.deviceDetail ? Promise.resolve(state.collectionStatus) : api("/api/manager/query/collection-status?lookbackHours=168", {cache:"no-store"}),
+        detailId ? api(`/api/manager/alarms?page=1&size=100&deviceId=${detailId}`, {cache:"no-store"}) : Promise.resolve(null),
       ]);
       if (!container.isConnected) return;
+      if (statusResult.status === "fulfilled") state.collectionStatus = statusResult.value;
       const alarms = alarmResult.status === "fulfilled" ? new Map((alarmResult.value.devices || []).map(row => [Number(row.deviceId), row])) : new Map();
       const statuses = statusResult.status === "fulfilled" ? new Map((statusResult.value.devices || []).map(row => [Number(row.deviceId), row])) : new Map();
-      const groups = new Map([["알람 · 위험 / 주의", []], ["수집", []], ["설정", []]]);
+      const detailRows = detailAlarmResult.status === "fulfilled" ? (detailAlarmResult.value?.content || []) : [];
+      const openDetailRows = detailRows.filter(alarm => !alarm.clearedDt && Number(alarm.details?.deviceId ?? alarm.collectionGapDetails?.deviceId) === detailId);
+      const problemDevices = [], rows = [];
       for (const id of ids) {
         const alarm = alarms.get(id), status = statuses.get(id), name = status?.deviceName || alarm?.deviceName || `장비 #${id}`;
-        const shortcut = `<button type="button" class="ghost" data-scene-problem-device="${id}">장비 문제 상세</button>`;
-        if (alarm?.openCount) {
-          const latest = alarm.latest || {}, severity = alarm.worstSeverity || latest.severity || "WARNING";
-          const label = severity === "CRITICAL" || severity === "DANGER" ? "위험" : "주의";
-          const detail = latest.pointName ? ` · ${latest.pointName} ${latest.value ?? "—"}${latest.unit ? ` ${latest.unit}` : ""}${latest.operator ? ` ${latest.operator}` : ""}${latest.threshold == null ? "" : ` ${latest.threshold}${latest.unit ? ` ${latest.unit}` : ""}`}` : "";
-          const time = latest.occurredAt ? ` · ${new Date(latest.occurredAt).toLocaleString("ko-KR")}` : "";
-          groups.get("알람 · 위험 / 주의").push(`<div class="device-problem-item"><div><strong>${esc(name)} · 미복구 알람 ${alarm.openCount}건 · ${label}${esc(detail)}${esc(time)}</strong></div>${shortcut}</div>`);
-        }
-        if (["PARTIAL", "STALE", "MISSING"].includes(status?.status)) {
-          const time = status.latestCollectedAt ? ` · 마지막 수집 ${new Date(status.latestCollectedAt).toLocaleString("ko-KR")}` : "";
-          groups.get("수집").push(`<div class="device-problem-item"><div><strong>${esc(name)} · ${esc(status.statusMessage || status.status)}${esc(time)}</strong></div>${shortcut}</div>`);
-        }
-        if (["NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status)) {
-          const detail = status.status === "MODEL_MISMATCH" ? ` · 기대 ${status.expectedModelName || "미확인"} / 실제 ${status.modelName || "미확인"}` : "";
-          groups.get("설정").push(`<div class="device-problem-item"><div><strong>${esc(name)} · ${esc(status.statusMessage || status.status)}${esc(detail)}</strong></div>${shortcut}</div>`);
-        }
+        const openCount = detailId === id && detailAlarmResult.status === "fulfilled" ? openDetailRows.length : Number(alarm?.openCount || 0);
+        const collectionProblem = problemCollectionStatuses.has(status?.status), setupProblem = problemSetupStatuses.has(status?.status);
+        if (!(openCount > 0 || collectionProblem || setupProblem)) continue;
+        problemDevices.push({deviceId:id, deviceName:name, reasons:[...(openCount ? [{severity:alarm?.worstSeverity || alarm?.latest?.severity || "WARNING"}] : []), ...((collectionProblem || setupProblem) ? [{severity:"COLLECTION"}] : [])]});
+        const badges = [];
+        if (openCount) { const severity = alarm?.worstSeverity || alarm?.latest?.severity || "WARNING"; const severityClass = severity === "CRITICAL" || severity === "DANGER" ? "problem-badge--alarm-critical" : "problem-badge--alarm-warning"; badges.push(`<span class="problem-badge ${severityClass}">알람 ${severity === "CRITICAL" || severity === "DANGER" ? "위험" : "주의"} ${openCount}</span>`); }
+        if (collectionProblem) badges.push('<span class="problem-badge problem-badge--collection">수집 지연</span>');
+        if (setupProblem) badges.push('<span class="problem-badge problem-badge--setup">설정 확인</span>');
+        const latest = alarm?.latest || {};
+        const summaryBase = collectionProblem || setupProblem ? (status.statusMessage || status.technicalDetail || status.status) : (latest.pointName ? `${latest.pointName} ${latest.value ?? "—"}${latest.unit ? ` ${latest.unit}` : ""}` : "미복구 알람 확인 필요");
+        const summaryTime = collectionProblem && status.latestCollectedAt ? ` · 마지막 수집 ${new Date(status.latestCollectedAt).toLocaleString("ko-KR")}` : latest.occurredAt ? ` · 발생 ${new Date(latest.occurredAt).toLocaleString("ko-KR")}` : "";
+        const summary = `${summaryBase}${summaryTime}`;
+        const alarmDetails = detailId === id && detailAlarmResult.status === "fulfilled" ? openDetailRows : (alarm?.latest ? [alarm.latest] : []);
+        const alarmMarkup = alarmDetails.length ? `<ul class="device-problem-details">${alarmDetails.map(problemAlarmDetail).join("")}</ul>` : "";
+        const collectionMarkup = collectionProblem ? `<p>${esc(status.statusMessage || "수집 상태를 확인하세요.")}${status.technicalDetail ? ` · ${esc(status.technicalDetail)}` : ""}${status.latestCollectedAt ? ` · 마지막 수집 ${esc(new Date(status.latestCollectedAt).toLocaleString("ko-KR"))}` : " · 마지막 수집 시각 없음"}</p>` : "";
+        const setupText = status?.status === "NO_POINTS" ? "측정 항목 설정을 확인하세요." : status?.status === "MODEL_MISMATCH" ? `기대 모델 ${status.expectedModelName || "미확인"} · 실제 모델 ${status.modelName || "미확인"}` : status?.status === "UNREGISTERED" ? "수집 작업 또는 연결 설정을 확인하세요." : status?.status === "STOPPED" ? "장비 또는 수집이 중지되어 있습니다." : "";
+        const setupMarkup = setupProblem ? `<p>${esc(setupText || status.statusMessage || status.status)}</p>` : "";
+        const hint = openCount && collectionProblem ? '<p class="muted problem-collection-hint">수집이 끊겨 알람이 해소되지 않았을 수 있음</p>' : "";
+        const actions = detailId === id ? `<div class="row problem-actions">${openCount ? problemActionButton("alarms", "알람 이력 보기") : ""}${collectionProblem ? problemActionButton("collection", "수집 연결 보기") : ""}${setupProblem ? problemActionButton("endpoint", "수집 설정 보기") : ""}</div>` : `<button type="button" class="ghost" data-scene-problem-device="${id}">장비 상세</button>`;
+        rows.push(`<article class="device-problem-row"><div class="device-problem-row-head"><strong>${esc(name)}</strong><span class="problem-badges">${badges.join("")}</span><span class="device-problem-summary">${esc(summary || "문제 상태 확인 필요")}</span>${actions}</div><details class="device-problem-row-details"><summary>문제 내용</summary>${alarmMarkup}${collectionMarkup}${setupMarkup}${hint}</details></article>`);
       }
-      if (alarmResult.status === "rejected") groups.get("알람 · 위험 / 주의").push(`<p>알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}</p>`);
-      if (statusResult.status === "rejected") groups.get("수집").push(`<p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p>`);
-      const markup = [...groups].filter(([, entries]) => entries.length).map(([title, entries]) => `<section class="device-problem-category"><h3>${title} · ${entries.length}</h3>${entries.join("")}</section>`);
-      renderProblemCategoryMarkup(container, markup);
-      container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => openDeviceDetailById(Number(button.dataset.sceneProblemDevice), {problemTab:true, closeScenePreview:true}).catch(error => toast(`장비 상세 조회 실패: ${error.message}`, true))));
-      const problemDevices = ids.map(deviceId => {
-        const alarm = alarms.get(deviceId), status = statuses.get(deviceId), reasons = [];
-        if (alarm?.openCount) reasons.push({severity:alarm.worstSeverity || alarm.latest?.severity || "WARNING"});
-        if (["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status)) reasons.push({severity:"COLLECTION"});
-        return {deviceId, deviceName:status?.deviceName || alarm?.deviceName || `장비 #${deviceId}`, reasons};
-      }).filter(problem => problem.reasons.length);
+      const loadErrors = [];
+      if (alarmResult.status === "rejected") loadErrors.push(`알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}`);
+      if (statusResult.status === "rejected") loadErrors.push(`수집 정보를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}`);
+      if (detailId && detailAlarmResult.status === "rejected") loadErrors.push(`알람 상세를 불러오지 못했습니다: ${esc(detailAlarmResult.reason?.message || "조회 오류")}`);
+      container.innerHTML = `${rows.join("") || (loadErrors.length ? "" : '<div class="empty">문제 없음</div>')}${loadErrors.map(error => `<p class="empty">${error}</p>`).join("")}`;
+      setSceneProblemCount(container, problemDevices.length + (loadErrors.length ? 1 : 0));
       rackDetailViewer?.setProblemDevices?.(problemDevices);
+      container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => openDeviceDetailById(Number(button.dataset.sceneProblemDevice), {problemTab:true, closeScenePreview:true}).catch(error => toast(`장비 상세 조회 실패: ${error.message}`, true))));
+      if (detailId) {
+        const badge = $("deviceProblemCount"), hasStatusProblem = problemCollectionStatuses.has(statuses.get(detailId)?.status) || problemSetupStatuses.has(statuses.get(detailId)?.status);
+        badge.hidden = openDetailRows.length === 0 && !hasStatusProblem; badge.textContent = String(openDetailRows.length + (hasStatusProblem ? 1 : 0));
+        if (options.autoSelectTab && (openDetailRows.length || hasStatusProblem) && state.selectedDeviceId === detailId && $("deviceDetailModal").classList.contains("open")) showDeviceDetailTab("problems");
+        container.querySelectorAll("[data-device-problem-action]").forEach(button => { button.onclick = () => {
+          const action = button.dataset.deviceProblemAction;
+          if (action === "alarms") { closeDeviceDetail(false); goTab("alarms"); setTimeout(() => { $("alarmFilterDevice").value = String(detailId); alarmUi.page = 1; loadAlarmEvents().catch(error => toast(error.message, true)); }, 0); }
+          else showDeviceDetailTab(action === "collection" ? "collection" : "endpoint");
+        }; });
+      }
     }
-
     function openRackPreview(rackLocationCode) {
       const layout = state.rackLayouts.find((item) => item.rackLocationCode === rackLocationCode);
       if (!layout) return;
@@ -7672,7 +7771,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       capacityBadge.textContent = capacity ? `${used} / ${capacity}U 사용 · ${Math.max(capacity-used, 0)}U 여유` : '랙 용량 미설정';
       stage.append(capacityBadge);
       const rackInfo = $("rackPreviewBody").querySelector('[data-rack-measurements]').parentElement;
-      const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info rack-scene-problem-panel'; rackProblemPanel.innerHTML = '<h3>문제</h3><div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
+      const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info rack-scene-problem-panel'; rackProblemPanel.innerHTML = '<div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>'; attachSceneProblemToggle(rackProblemPanel);
       rackInfo.insertBefore(rackProblemPanel, rackInfo.querySelector('[data-rack-measurements]'));
       const capacityInfo = rackInfo.firstElementChild;
       const capacityControls = capacityInfo.querySelector('[data-rack-capacity]')?.closest('.row');
@@ -7903,6 +8002,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function closeRackPreview() {
+      $("rackPreviewModal").querySelector("[data-scene-problem-toggle]")?.remove();
       window.RackWidgetChart?.dispose($("rackPreviewBody"));
       rackDetailViewer?.dispose(); rackDetailViewer = null;
       $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
@@ -8963,9 +9063,31 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         periodLabels.forEach((label) => basicFields.append(label));
         basic.append(basicFields);
         ["wVisualPreviewNote", "wVisualPreview", "wPowerPreview", "wTablePreview"].forEach((id) => { const element = $(id); if (element) preview.append(element); });
+        const previewHeadingNode = preview.querySelector("h3"), reviewNode = $("wReview");
+        const visualNote = $("wVisualPreviewNote"), visualCard = $("wVisualPreview");
+        if (visualNote && previewHeadingNode) preview.insertBefore(visualNote, previewHeadingNode.nextSibling);
+        if (visualCard && visualNote) preview.insertBefore(visualCard, visualNote.nextSibling);
+        [$("wPowerPreview"), $("wTablePreview")].filter(Boolean).forEach(element => preview.insertBefore(element, reviewNode || pagePreview || null));
+        if (reviewNode) preview.insertBefore(reviewNode, pagePreview || null);
+        if (pagePreview) {
+          const pageHeader = pagePreview.querySelector(".widget-page-preview-head"), frame = $("wPagePreviewFrame"), editButton = $("wEditPageLayout");
+          let toggle = pageHeader.querySelector("[data-widget-page-preview-toggle]");
+          if (!toggle) {
+            toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "ghost"; toggle.dataset.widgetPagePreviewToggle = "";
+            pageHeader.insertBefore(toggle, editButton);
+            toggle.onclick = () => { const expanded = frame.hidden; frame.hidden = !expanded; pagePreview.classList.toggle("is-expanded", expanded); toggle.textContent = expanded ? "페이지 미리보기 접기" : "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", String(expanded)); };
+          }
+          frame.hidden = true; pagePreview.classList.remove("is-expanded"); toggle.textContent = "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", "false");
+        }
         editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
         if (chartOptions) advancedBody.append(chartOptions);
         if (trendDefaults) advancedBody.append(trendDefaults);
+      }
+      const pagePreviewForOpen = editor.querySelector(".widget-page-preview");
+      if (pagePreviewForOpen) {
+        const previewFrame = $("wPagePreviewFrame"), pageLayoutButton = $("wEditPageLayout"), previewToggle = pagePreviewForOpen.querySelector("[data-widget-page-preview-toggle]");
+        previewFrame.hidden = true; pageLayoutButton.hidden = false; pagePreviewForOpen.classList.remove("is-expanded");
+        if (previewToggle) { previewToggle.textContent = "페이지에서 위치 보기"; previewToggle.setAttribute("aria-expanded", "false"); }
       }
       editor.dataset.step = "3";
       const advanced = editor.querySelector(".widget-editor-advanced");
@@ -9149,7 +9271,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (!pageCode || !frame) return;
       const page = (state.codes.DEVICE_PAGE || []).find((item) => String(item.code).toLowerCase() === pageCode.toLowerCase());
       $("wPagePreviewTitle").textContent = `${page?.name || pageCode} · 화면 미리보기`;
-      const src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&pageCode=${encodeURIComponent(pageCode)}&widgetEditorPreview=1`;
+      const previewWidgetId = Number(state.editingWidgetId) || 0;
+      const src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&pageCode=${encodeURIComponent(pageCode)}&widgetEditorPreview=1${previewWidgetId ? `&widgetId=${previewWidgetId}` : ""}`;
       if (frame.dataset.previewSrc !== src) {
         frame.dataset.previewSrc = src;
         frame.src = src;
@@ -10137,65 +10260,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     async function loadDeviceProblems(device, autoSelectTab = false) {
       const deviceId = Number(device.id);
-      const [statusResult, alarmResult] = await Promise.allSettled([
-        state.collectionStatus ? Promise.resolve(state.collectionStatus) : api("/api/manager/query/collection-status?lookbackHours=168", { cache: "no-store" }),
-        api(`/api/manager/alarms?page=1&size=100&deviceId=${deviceId}`, { cache: "no-store" }),
-      ]);
-      if (state.selectedDeviceId !== deviceId) return;
-      if (statusResult.status === "fulfilled") state.collectionStatus = statusResult.value;
-      const status = statusResult.status === "fulfilled"
-        ? (statusResult.value?.devices || []).find((row) => Number(row.deviceId) === deviceId) : null;
-      const alarmRows = alarmResult.status === "fulfilled" ? (alarmResult.value?.content || []) : [];
-      const openAlarms = alarmRows.filter((alarm) => !alarm.clearedDt && Number(alarm.details?.deviceId ?? alarm.collectionGapDetails?.deviceId) === deviceId);
-      const alarmCount = openAlarms.length;
-      const hasCollectionProblem = ["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
-      if (autoSelectTab && (alarmCount > 0 || hasCollectionProblem) && state.selectedDeviceId === deviceId && $("deviceDetailModal").classList.contains("open")) showDeviceDetailTab("problems");
-      const badge = $("deviceProblemCount");
-      badge.hidden = alarmCount === 0 && !hasCollectionProblem;
-      badge.textContent = String(alarmCount + (hasCollectionProblem ? 1 : 0));
-
-      const groups = [];
-      if (openAlarms.length) {
-        const entries = openAlarms.map((alarm) => {
-          const detail = alarm.details, gap = alarm.collectionGapDetails;
-          const title = detail ? `${detail.pointName} · ${alarm.severity === "CRITICAL" ? "위험" : "주의"}` : "수집 누락 알람";
-          const measured = detail ? `현재 ${detail.measuredValue ?? "—"}${detail.unit ? ` ${detail.unit}` : ""} · 기준 ${detail.operator === "ABOVE" ? "초과" : "미만"} ${detail.thresholdValue ?? "—"}${detail.unit ? ` ${detail.unit}` : ""}` : `${String(gap?.protocol || "").toUpperCase()} 수집 응답 없음`;
-          const raised = alarm.raisedDt ? new Date(alarm.raisedDt).toLocaleString("ko-KR") : "시각 미확인";
-          return `<div class="device-problem-item"><div><strong>${esc(title)}</strong><p>${esc(measured)} · 발생 ${esc(raised)} · ${esc(formatProblemDuration(alarm.raisedDt))}</p></div></div>`;
-        }).join("");
-        groups.push(`<section class="device-problem-category"><h3>알람 · 위험 / 주의</h3>${entries}<div class="row" style="margin-top:8px">${problemActionButton("alarms", "알람 이력 보기")}</div></section>`);
-      }
-
-      const connectionIssues = ["PARTIAL", "STALE", "MISSING"].includes(status?.status);
-      if (connectionIssues) {
-        const missingPoints = status.status === "PARTIAL" ? status.technicalDetail || status.statusMessage || "일부 측정 항목이 누락되었습니다." : "";
-        const collected = status.latestCollectedAt ? `마지막 수집 ${new Date(status.latestCollectedAt).toLocaleString("ko-KR")}` : "마지막 수집 시각 없음";
-        groups.push(`<section class="device-problem-category"><h3>수집</h3><div class="device-problem-item"><div><strong>${esc(collectionStatusChip(status.status).replace(/<[^>]*>/g, ""))}</strong><p>${esc(status.statusMessage || "수집 상태를 확인하세요.")}${missingPoints ? `\n${esc(missingPoints)}` : ""}\n${esc(collected)}</p></div>${problemActionButton("collection", "수집 연결 보기")}</div></section>`);
-      }
-
-      const setupIssues = ["NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
-      if (setupIssues) {
-        const guidance = status.status === "NO_POINTS" ? "측정 항목 설정이 필요합니다. 모델의 필수 항목을 확인하세요."
-          : status.status === "MODEL_MISMATCH" ? `기대 모델 ${status.expectedModelName || "미확인"} · 실제 모델 ${status.modelName || "미확인"}`
-            : status.status === "UNREGISTERED" ? "수집 작업 또는 연결 설정이 등록되지 않았습니다. 게이트웨이 경유 장비는 수집 연결에서 확인하세요."
-              : "장비 또는 수집이 중지되어 있습니다.";
-        groups.push(`<section class="device-problem-category"><h3>설정</h3><div class="device-problem-item"><div><strong>${esc(status.statusMessage || status.status)}</strong><p>${esc(guidance)}</p></div>${problemActionButton("collection", "수집 설정 보기")}</div></section>`);
-      }
-
-      if (alarmResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>알람</h3><p>알람 정보를 불러오지 못했습니다: ${esc(alarmResult.reason?.message || "조회 오류")}</p></section>`);
-      if (statusResult.status === "rejected") groups.push(`<section class="device-problem-category"><h3>수집</h3><p>수집 상태를 불러오지 못했습니다: ${esc(statusResult.reason?.message || "조회 오류")}</p></section>`);
-      renderProblemCategoryMarkup($("deviceProblemsContent"), groups);
-      $("deviceProblemsContent").querySelectorAll("[data-device-problem-action]").forEach((button) => {
-        button.onclick = () => {
-          const action = button.dataset.deviceProblemAction;
-          if (action === "alarms") {
-            closeDeviceDetail(false); goTab("alarms");
-            setTimeout(() => { $("alarmFilterDevice").value = String(deviceId); alarmUi.page = 1; loadAlarmEvents().catch((error) => toast(error.message, true)); }, 0);
-          } else showDeviceDetailTab(action === "collection" ? "collection" : "endpoint");
-        };
-      });
+      return renderSceneDeviceProblems([deviceId], $("deviceProblemsContent"), {deviceDetail:true, detailDeviceId:deviceId, autoSelectTab});
     }
-
     function closeDeviceDetail(restoreFocus = true) {
       const wasOpen = $("deviceDetailModal").classList.contains("open");
       closeModbusReadingModal();
