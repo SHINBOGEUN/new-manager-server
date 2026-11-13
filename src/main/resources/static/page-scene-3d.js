@@ -644,9 +644,6 @@ function mount(container, page, options = {}) {
     options.onChange?.(items); options.onHint?.(`${selectedItem.label} ${selectedItem.locked ? "잠금" : "잠금 해제"} · 저장하면 반영됩니다.`);
   });
   lockFocusedButton.style.fontSize = "12px";
-  const selectGroupButton = makeActionButton("묶음 전체 선택", "이 설비가 속한 묶음 전체 선택", "#8beaff", () => api.selectGroup());
-  Object.assign(selectGroupButton.style, { width: "100%", fontSize: "12px" });
-  sceneActionBar.append(selectGroupButton);
   const sizePanel = document.createElement("div");
   Object.assign(sizePanel.style, { display: "none", gap: "5px", flexDirection: "column", paddingTop: "6px", borderTop: "1px solid #36566a" });
   const sizeToggle = makeActionButton("크기 조절", "크기 조절 메뉴", "#8beaff", () => {
@@ -1105,7 +1102,6 @@ function mount(container, page, options = {}) {
     rackColorLabel.style.display = showRackColor ? "flex" : "none"; rackColorInput.disabled = Boolean(item.locked);
     rackColorInput.value = /^#[0-9a-f]{6}$/i.test(item.rackColor || "") ? item.rackColor : "#365562";
     rackColorReset.hidden = !showRackColor; rackColorReset.disabled = Boolean(item.locked);
-    selectGroupButton.hidden = !item.groupKey || Boolean(placement);
     sizeToggle.hidden = !canResize;
     if (!canResize) { sizePanel.style.display = "none"; sizeToggle.setAttribute("aria-expanded", "false"); }
     for (const { row, minus } of sizeRows) row.style.display = minus.hidden ? "none" : "flex";
@@ -2785,7 +2781,7 @@ function mount(container, page, options = {}) {
       if (!item) return false;
       areaKeys.clear(); refreshAreaHelpers(); selectItem(key);
       options.onHostSelected?.(item);
-      options.onHint?.(`‘${item.label}’ 개별 선택됨 · 묶음 전체 선택으로 함께 옮길 수 있습니다.`);
+      options.onHint?.(`‘${item.label}’ 개별 선택됨 · 묶음 목록의 전체 선택으로 함께 옮길 수 있습니다.`);
       return true;
     },
     groupSelection(name) {

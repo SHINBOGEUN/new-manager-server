@@ -4377,7 +4377,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         } catch (error) { toast(error.message, true); }
       });
       try {
-        await import("/page-scene-3d.js?v=20261112-t025");
+        await import("/page-scene-3d.js?v=20261113-t028");
         window.DcimRoomScene3D?.renderModelThumbnails(sceneModels, (key, data) => {
           const card = [...list.querySelectorAll("[data-scene-model]")].find((entry) => entry.dataset.sceneModel === key);
           const preview = card?.querySelector("[data-scene-preview]");
@@ -4413,7 +4413,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         finally { button.disabled = false; }
       });
       try {
-        await import("/page-scene-3d.js?v=20261112-t025");
+        await import("/page-scene-3d.js?v=20261113-t028");
         await window.DcimRoomScene3D?.renderBuiltinThumbnails(assets, (key, data) => {
           const card = [...list.querySelectorAll("[data-builtin-asset]")].find((entry) => entry.dataset.builtinAsset === key);
           const preview = card?.querySelector("[data-builtin-preview]");
@@ -7561,7 +7561,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         showSelection(selectedPanelIndex);
         if (selectedPanelIndex != null) rackDetailViewer.selectComponent(selectedPanelIndex);
       };
-      Promise.all([import("/page-scene-3d.js?v=20261112-t025"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
+      Promise.all([import("/page-scene-3d.js?v=20261113-t028"), api('/api/manager/scene-models')]).then(async ([, catalog]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(catalog);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;
@@ -7914,7 +7914,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       };
       const canvas = $("rackPreviewBody").querySelector("[data-rack-canvas]");
       const form = $("rackPreviewBody").querySelector("[data-rack-add-form]");
-      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261112-t025")]).then(async ([models]) => {
+      Promise.all([api("/api/manager/scene-models"), import("/page-scene-3d.js?v=20261113-t028")]).then(async ([models]) => {
         const showroom = await import("/showroom-models.js?v=20261109paneledit");
         showroom.setShowroomModels(models);
         if (!canvas.isConnected || !$("rackPreviewModal").classList.contains("open")) return;

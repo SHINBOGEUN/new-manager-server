@@ -106,7 +106,7 @@ html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
 
   </style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261112-t025"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261113-t028"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -1746,7 +1746,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         deviceSettings.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:page-device-settings", pageCode:page.pageCode }, location.origin);
         tools.append(deviceSettings);
         const edit = document.createElement("button"); edit.type="button"; edit.className="page-edit-icon";
-        edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
+        edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 도면 편집";
         edit.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
         edit.setAttribute("aria-label", edit.title);
         edit.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
@@ -2202,7 +2202,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const attachableDevices = devices.filter((device) => !mountedIds.has(Number(device.deviceId)));
         editor.classList.toggle("collapsed", !state.pageSceneEditorExpanded);
         editor.innerHTML = `<div class="scene-editor-heading"><h3>${mode === "SCENE_3D" ? "3D 편집" : "2D 편집"}</h3><button type="button" class="scene-save" data-scene-save>저장</button><button type="button" class="scene-editor-cancel" data-scene-cancel>취소</button><button type="button" class="scene-editor-collapse" data-scene-collapse aria-expanded="false" title="편집 도구 펼치기">도구 펼치기</button></div><div data-scene-dirty style="font-size:11px;color:#a9c5d6;margin-top:7px"></div><div class="scene-editor-actions"><button type="button" data-scene-undo>↶ 실행 취소</button><button type="button" data-scene-redo>↷ 다시 실행</button></div>
-          <div class="scene-editor-content"><div class="scene-editor-note">방향키로 0.1m씩 이동 · Shift + 방향키로 1m 이동<br>변경 후 저장을 눌러 반영하세요.</div>
+          <div class="scene-editor-content"><div class="scene-editor-note">방향키로 0.1m씩 이동 · Shift + 방향키로 1m 이동${mode === "SCENE_3D" ? " · WASD 이동 · Shift 달리기 · 마우스로 시점 회전 · 휠 확대/축소 · Esc 종료" : ""}<br>변경 후 저장을 눌러 반영하세요.</div>
             <div class="scene-section-label">공간과 시점</div>
             ${mode === "SCENE_3D" ? '<div class="scene-editor-actions"><button type="button" data-scene-walk>아바타 둘러보기</button></div>' : ""}
             <div class="scene-editor-actions"><button type="button" data-scene-templates>공간 템플릿</button><button type="button" data-scene-move-all>도면 전체 이동</button></div>
@@ -2216,7 +2216,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
             <div class="scene-host-picker" data-scene-host-picker hidden><strong>선택한 설비: <span data-scene-host-name></span></strong>
               <label>부착할 장비<select data-scene-device>${attachableDevices.length ? attachableDevices.map((device) => `<option value="${Number(device.deviceId)}">${escapeHtml(device.deviceName)}</option>`).join("") : '<option value="">부착 가능한 페이지 장비 없음</option>'}</select></label>
               <button type="button" data-scene-attach ${attachableDevices.length ? "" : "disabled"}>이 설비에 장비 부착</button></div>
-            <div class="scene-editor-status">${mode === "SCENE_3D" ? "아바타 둘러보기: WASD·방향키 이동, Shift 달리기 · 마우스로 시점 회전 · 휠로 확대/축소 · Esc 종료" : "평면도: 위에서 내려다보며 이동합니다."}</div></div>`;
+            <div class="scene-editor-status" aria-live="polite"></div></div>`;
         editor.querySelector("[data-scene-collapse]").onclick = (event) => {
           const collapsed = editor.classList.toggle("collapsed");
           state.pageSceneEditorExpanded = !collapsed;
@@ -3928,7 +3928,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       state.editMode = on;
       const pageEditButton = $("pageVisualization")?.querySelector(".page-edit-icon");
       if (pageEditButton) {
-        pageEditButton.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
+        pageEditButton.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 도면 편집";
         pageEditButton.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
         pageEditButton.setAttribute("aria-label", pageEditButton.title);
         pageEditButton.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
