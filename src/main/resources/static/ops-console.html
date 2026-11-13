@@ -4274,15 +4274,16 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       if (selected && [...select.options].some((option) => option.value === selected)) select.value = selected;
     }
 
-    function renderWidgetKindCards(kinds) {
-      const container = $("wKindCards");
-      if (!container) return;
-      const supported = new Set([...$("wKind").options].map((option) => option.value));
+    function renderWidgetKindCards(kinds, editorRoot = $("wEditorCard")) {
+      const container = editorRoot?.querySelector("#wKindCards") || $("wKindCards");
+      const kindSelect = editorRoot?.querySelector("#wKind") || $("wKind");
+      if (!container || !kindSelect) throw new Error("위젯 편집기 종류 선택 항목을 찾지 못했습니다. 화면을 새로고침해 주세요.");
+      const supported = new Set([...kindSelect.options].map((option) => option.value));
       state.widgetKindOptions = (kinds || []).filter((item) => supported.has(item.value));
-      container.innerHTML = state.widgetKindOptions.map((item) => `<button type="button" class="widget-kind-card${item.value === $("wKind").value ? " selected" : ""}" data-kind="${esc(item.value)}"><strong>${esc(item.label)}</strong><span>${esc(item.description)}</span><small>기본 크기 ${Number(item.defaultSize?.w) || 16}×${Number(item.defaultSize?.h) || 8}</small></button>`).join("");
+      container.innerHTML = state.widgetKindOptions.map((item) => `<button type="button" class="widget-kind-card${item.value === kindSelect.value ? " selected" : ""}" data-kind="${esc(item.value)}"><strong>${esc(item.label)}</strong><span>${esc(item.description)}</span><small>기본 크기 ${Number(item.defaultSize?.w) || 16}×${Number(item.defaultSize?.h) || 8}</small></button>`).join("");
       container.querySelectorAll("[data-kind]").forEach((button) => button.addEventListener("click", () => {
-        $("wKind").value = button.dataset.kind;
-        $("wKind").dispatchEvent(new Event("change", { bubbles: true }));
+        kindSelect.value = button.dataset.kind;
+        kindSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }));
     }
 
@@ -9403,26 +9404,35 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       });
     }
 
-    function applySharedWidgetOptions(options) {
-      const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
-      setWidgetOptionSelect($("wKind"), options.kinds.filter((option) => widgetKinds.has(option.value)), $("wKind").value);
-      renderWidgetKindCards(options.kinds);
-      setWidgetOptionSelect($("wChartRangePreset"), options.rangePresets, $("wChartRangePreset").value);
-      setWidgetOptionSelect($("wPueRangePreset"), options.rangePresets, $("wPueRangePreset").value);
-      setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
-      setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
-      setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
+    function applySharedWidgetOptions(options, editorRoot = $("wEditorCard")) {
+      const field = (id) => editorRoot?.querySelector(`#${id}`) || $(id);
+      const kindSelect = field("wKind");
+      if (!kindSelect) throw new Error("위젯 편집기 종류 선택 항목을 찾지 못했습니다. 화면을 새로고침해 주세요.");
+      const widgetKinds = new Set([...kindSelect.options].map((option) => option.value));
+      setWidgetOptionSelect(kindSelect, options.kinds.filter((option) => widgetKinds.has(option.value)), kindSelect.value);
+      renderWidgetKindCards(options.kinds, editorRoot);
+      ["wChartRangePreset", "wPueRangePreset", "wTrendRange"].forEach((id) => {
+        const select = field(id);
+        setWidgetOptionSelect(select, options.rangePresets, select?.value);
+      });
+      const trendWindow = field("wTrendWindow");
+      setWidgetOptionSelect(trendWindow, options.windows, trendWindow?.value);
+      const chartSeriesMode = field("wChartSeriesMode");
+      setWidgetOptionSelect(chartSeriesMode, options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), chartSeriesMode?.value);
       if (Array.isArray(options.compareModes)) {
-        setWidgetOptionSelect($("wChartCompareMode"), options.compareModes, $("wChartCompareMode").value);
-        setWidgetOptionSelect($("wClickCompare"), options.compareModes, $("wClickCompare").value);
+        ["wChartCompareMode", "wClickCompare"].forEach((id) => {
+          const select = field(id);
+          setWidgetOptionSelect(select, options.compareModes, select?.value);
+        });
       }
-      $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
+      const hint = field("wKindHint");
+      if (hint) hint.textContent = options.kinds.find((item) => item.value === kindSelect.value)?.description || "";
     }
 
     function openWidgetEditor() {
       mountWidgetDialogs();
       clearWidgetForm(true);
-      loadSharedWidgetOptions().then(applySharedWidgetOptions).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
+      loadSharedWidgetOptions().then((options) => applySharedWidgetOptions(options, $("wEditorCard"))).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
       $("wCreatePage").disabled = true;
       state.widgetSourcesLoaded = false;
       state.widgetSources = [];
@@ -13624,7 +13634,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           loadSharedWidgetOptions(),
         ]);
         if (requestSequence !== widgetEditorLoadSequence) return;
-        applySharedWidgetOptions(options);
+        applySharedWidgetOptions(options, editor);
         await loadDeviceGroups();
         if (requestSequence !== widgetEditorLoadSequence) return;
         fillPowerExistingGroups();
