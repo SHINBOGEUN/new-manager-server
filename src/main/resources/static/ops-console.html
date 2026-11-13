@@ -9118,9 +9118,40 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       summary.textContent = active ? `고급 설정 ${active}개 사용 중` : "더 보기";
     }
 
+    const widgetEditorInitialKindStage = (() => {
+      const editor = $("wEditorCard");
+      return editor ? [...editor.children].find((element) => element.matches('[data-widget-stage="1"]')) || null : null;
+    })();
+    const widgetEditorInitialKindLabel = $("wKind")?.closest("label") || null;
+    const widgetEditorInitialKindSelect = $("wKind") || null;
+
+    function ensureWidgetEditorKindSelect(editor = $("wEditorCard")) {
+      if (!editor) return null;
+      const current = editor.querySelector("#wKind");
+      if (current) return current;
+
+      const basic = editor.querySelector(".widget-editor-basic");
+      if (widgetEditorInitialKindStage?.querySelector("#wKind") && !editor.contains(widgetEditorInitialKindStage) && basic) {
+        basic.insertBefore(widgetEditorInitialKindStage, basic.querySelector(":scope > .fields"));
+      }
+      if (editor.querySelector("#wKind")) {
+        console.warn("[T-030 UT-6] 편집기 첫 단계 폼을 원래 위치에서 복구했습니다.");
+        return editor.querySelector("#wKind");
+      }
+
+      if (widgetEditorInitialKindSelect && !editor.contains(widgetEditorInitialKindSelect)) {
+        const target = basic?.querySelector(":scope > .fields") || basic;
+        if (target) target.append(widgetEditorInitialKindLabel || widgetEditorInitialKindSelect);
+      }
+      const restored = editor.querySelector("#wKind");
+      if (restored) console.warn("[T-030 UT-6] 위젯 종류 선택 항목을 초기 마크업에서 복구했습니다.");
+      return restored;
+    }
+
     function showWidgetEditorStep() {
       const editor = $("wEditorCard");
       if (!editor) return;
+      ensureWidgetEditorKindSelect(editor);
       editor.classList.add("form-compact");
       if (!editor.querySelector(".widget-form-grid")) {
         const grid = document.createElement("div"); grid.className = "widget-form-grid form-compact";
@@ -9406,7 +9437,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
 
     function applySharedWidgetOptions(options, editorRoot = $("wEditorCard")) {
       const field = (id) => editorRoot?.querySelector(`#${id}`) || $(id);
-      const kindSelect = field("wKind");
+      const kindSelect = ensureWidgetEditorKindSelect(editorRoot);
       if (!kindSelect) throw new Error("위젯 편집기 종류 선택 항목을 찾지 못했습니다. 화면을 새로고침해 주세요.");
       const widgetKinds = new Set([...kindSelect.options].map((option) => option.value));
       setWidgetOptionSelect(kindSelect, options.kinds.filter((option) => widgetKinds.has(option.value)), kindSelect.value);
