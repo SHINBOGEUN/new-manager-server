@@ -973,11 +973,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .home-stats .v { margin:3px 0 0; line-height:1; }
     .home-stats .v small { color:#6f849f; font-size:10px; font-weight:600; }
     .home-stats p { margin:7px 0 0; color:#6e829c; font-size:10px; }
-    .home-live-stats { grid-template-columns:repeat(3,minmax(0,1fr)); margin:0 0 12px; }
+    .home-stats { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .home-live-stats { margin:0 0 12px; }
     .home-live-stats .stat { min-height:94px; padding:13px 16px; }
     .home-live-stats .stat-icon { width:36px; height:36px; flex-basis:36px; font-size:17px; }
     .home-live-stats .v { font-size:23px; }
-    .home-live-stats .ops-detail { max-width:100%; margin-top:6px; overflow:hidden; color:#8297b1; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+    .home-live-stats .ops-detail { display:-webkit-box; max-width:100%; margin-top:6px; overflow:hidden; color:#8297b1; font-size:10px; line-height:1.35; text-overflow:ellipsis; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere; }
     .home-live-stats .stat[data-state="warning"] .v { color:#ffc968; }
     .home-live-stats .stat[data-state="bad"] .v { color:#ff7d89; }
     .home-layout { display:grid; grid-template-columns:minmax(360px,1.1fr) minmax(280px,.8fr) minmax(300px,.85fr); gap:14px; }
@@ -1085,7 +1086,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .models-layout { grid-template-columns:minmax(310px,.68fr) minmax(620px,1.5fr); }
 
     @media (max-width: 1450px) { .home-layout { grid-template-columns:1fr 1fr; } .quick-actions { grid-column:1 / -1; grid-template-columns:repeat(4,1fr); } }
-    @media (max-width: 1180px) { #tab-wizard.panel.active { grid-template-columns:1fr; } .models-layout { grid-template-columns:1fr; } .home-stats { grid-template-columns:repeat(2,1fr); } .device-directory-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width: 1180px) { #tab-wizard.panel.active { grid-template-columns:1fr; } .models-layout { grid-template-columns:1fr; } .home-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .device-directory-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (max-width: 980px) {
       body { grid-template-columns:1fr; grid-template-rows:62px minmax(0,1fr); }
       .top { grid-column:1; grid-row:1; padding:9px 14px; }
@@ -1103,7 +1104,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       .asset-detail-body { grid-template-columns:1fr; }
       .asset-detail-body > .card:first-child { grid-column:auto; }
     }
-    @media (max-width: 640px) { .home-stats,.quick-actions { grid-template-columns:1fr; } .home-hero { padding:22px 20px; } .home-hero .page-title { font-size:25px; } .top-page-context span { display:none; } .top-links { display:none; } .device-directory-head { align-items:flex-start; flex-direction:column; } .device-directory-filters { grid-template-columns:1fr; } .device-directory-meta { flex-direction:column; align-items:flex-start; } .device-detail-modal { padding:0; } .device-detail-dialog { width:100%; max-height:100vh; min-height:100vh; border-radius:0; } .device-detail-head { padding:15px 18px; } .device-detail-tabs { padding-inline:12px; } .device-detail-tabs button { flex:1; padding:10px 5px; font-size:12px; } .device-detail-content { padding:16px 12px; } .device-detail-section .fields { grid-template-columns:1fr; } }
+    .home-live-stats .stat > div:last-child { min-width:0; }
+    @media (max-width: 640px) { .home-stats,.quick-actions { grid-template-columns:repeat(2,minmax(0,1fr)); } .home-hero { padding:22px 20px; } .home-hero .page-title { font-size:25px; } .top-page-context span { display:none; } .top-links { display:none; } .device-directory-head { align-items:flex-start; flex-direction:column; } .device-directory-filters { grid-template-columns:1fr; } .device-directory-meta { flex-direction:column; align-items:flex-start; } .device-detail-modal { padding:0; } .device-detail-dialog { width:100%; max-height:100vh; min-height:100vh; border-radius:0; } .device-detail-head { padding:15px 18px; } .device-detail-tabs { padding-inline:12px; } .device-detail-tabs button { flex:1; padding:10px 5px; font-size:12px; } .device-detail-content { padding:16px 12px; } .device-detail-section .fields { grid-template-columns:1fr; } }
     @media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
 
     /* Full-screen sign-in experience */
@@ -1405,9 +1407,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #tab-collection-status > .workspace-table-card { padding:10px 12px; }
     #tab-collection-status #csGeneratedAt { margin:5px 0 !important; }
     #tab-collection-status #csBody td { padding:5px 9px; }
-    #tab-collection-status .collection-device-table { min-width:1180px; table-layout:fixed; }
+    #tab-collection-status .collection-device-table { width:100%; min-width:0; table-layout:fixed; }
     #tab-collection-status .collection-device-table :is(th,td) { vertical-align:middle; overflow-wrap:anywhere; }
-    #tab-collection-status .collection-device-table .chip { white-space:nowrap; }
+    #tab-collection-status .collection-device-table .chip { display:inline-flex; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+    #tab-collection-status .latest-value-list { display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px; min-width:0; }
+    #tab-collection-status .latest-value-list .chip { min-width:0; }
+    #tab-collection-status .latest-value-list button { flex:none; padding:2px 6px; font-size:10px; }
     #tab-collection-status #csBody td:nth-child(6) > b { white-space:nowrap; }
     body:has(#tab-collection-status.active) .workspace-context { gap:5px; margin-bottom:8px; }
     body:has(#tab-collection-status.active) .workspace-nav { padding-bottom:6px; }
@@ -2034,7 +2039,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         <div class="hero-actions"><button type="button" class="primary" id="goWizard" data-role-gate="admin">＋ 새 장비 등록</button><button type="button" class="hero-link" data-quick-tab="dashboard-page">대시보드 열기 →</button></div>
       </div>
       <div class="stats home-stats home-live-stats" aria-label="실시간 운영 요약">
-        <div class="stat" id="homeDeviceHealth" data-state="normal"><div class="stat-icon">▣</div><div><div class="k">장비 운영 상태</div><div class="v"><span id="homeEnabledDevices">–</span><small> 사용 장비</small></div><div class="ops-detail" id="homeDeviceDetail">현황 확인 중…</div></div></div>
+        <div class="stat" id="homeDeviceHealth" data-state="normal"><div class="stat-icon">▣</div><div><div class="k">장비 가동 비율</div><div class="v"><span id="homeEnabledDevices">–</span><small> 사용</small></div><div class="ops-detail" id="homeDeviceDetail">현황 확인 중…</div></div></div>
         <div class="stat" id="homeAlarmHealth" data-state="normal"><div class="stat-icon">⚑</div><div><div class="k">미복구 알람</div><div class="v"><span id="homeOpenAlarms">–</span><small> 건</small></div><div class="ops-detail" id="homeAlarmDetail">현황 확인 중…</div></div></div>
         <div class="stat" id="homeCollectionHealth" data-state="normal"><div class="stat-icon">↻</div><div><div class="k">수집 상태 정상</div><div class="v"><span id="homeCollectionNormal">–</span><small> / <span id="homeCollectionTotal">–</span>대</small></div><div class="ops-detail" id="homeCollectionDetail">현황 확인 중…</div></div></div>
       </div>
@@ -2419,8 +2424,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         </div>
         <div class="muted" id="csGeneratedAt" style="margin:12px 0 8px;font-size:12px"></div>
         <div class="table-wrap workspace-table-scroll"><table class="collection-device-table">
-          <colgroup><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:15%"><col style="width:11%"><col style="width:13%"><col style="width:33%"></colgroup>
-          <thead><tr><th>장비</th><th>위치 / 모델</th><th>프로토콜</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 3개</span></th></tr></thead>
+          <colgroup><col style="width:13%"><col style="width:14%"><col style="width:8%"><col style="width:15%"><col style="width:13%"><col style="width:15%"><col style="width:22%"></colgroup>
+          <thead><tr><th>장비</th><th>위치 / 모델</th><th>프로토콜</th><th>수집 작업</th><th>상태</th><th>마지막 저장</th><th>최신값 <span class="chip">최대 2개</span></th></tr></thead>
           <tbody id="csBody"></tbody>
         </table></div>
       </div>
@@ -7218,9 +7223,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               const points = series.flatMap((s) => s.samples), vals = points.map((p) => p.value), times = points.map((p) => Date.parse(p.time));
               if (!points.length) content = '<p class="muted">선택한 기간에 수집된 데이터가 없습니다.</p>';
               else {
-                const windowValue = w.window || '15m', windowOption = widgetOptions.windows.find((option) => option.value === windowValue), windowMinutes = windowValue === '1d' ? 1440 : windowValue.endsWith('h') ? Number(windowValue.slice(0, -1)) * 60 : Number(windowValue.slice(0, -1));
+                const windowValue = w.window || '15m', windowMinutes = windowValue === '1d' ? 1440 : windowValue.endsWith('h') ? Number(windowValue.slice(0, -1)) * 60 : Number(windowValue.slice(0, -1));
                 const start = Math.min(...times), end = Math.max(...times), gap = windowMinutes * 60 * 1000 * 1.5;
-                content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · ${esc(windowOption?.label || windowValue)} 평균</small>`;
+                content = `${chartMarkup(series,gap)}<small class="rack-metric-time">${new Date(start).toLocaleString('ko-KR')} ~ ${new Date(end).toLocaleString('ko-KR')} · 자동 간격 평균</small>`;
               }
               content += `<div class="rack-metric-legend">${series.map((s) => legendRow(s.color,s.name)).join('')}</div>`;
             } else if (w.type === 'PIE') {
@@ -8317,10 +8322,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           ? `<b>${esc(new Date(device.latestCollectedAt).toLocaleString("ko-KR"))}</b><div class="muted" style="font-size:11px">${collectionAge(device.ageSeconds)} 전 · 정상 최신값 ${device.availablePointCount || 0}/${device.expectedPointCount || 0}</div>`
           : `<span class="muted">저장값 없음</span><div class="muted" style="font-size:11px">정상 최신값 ${device.availablePointCount || 0}/${device.expectedPointCount || 0}</div>`;
         const allValues = device.latestValues || [];
-        const values = allValues.slice(0, 3).map((value) =>
+        const values = allValues.slice(0, 2).map((value) =>
           `<span class="chip">${value.targetDeviceId != null && value.targetDeviceId !== device.deviceId ? `${esc(value.targetDeviceName || `#${value.targetDeviceId}`)} · ` : ""}${esc(value.pointName)} ${Number(value.value).toLocaleString(undefined, { maximumFractionDigits: 3 })}${value.unit ? ` ${esc(value.unit)}` : ""}</span>`).join(" ") || '<span class="muted">표시할 최신값 없음</span>';
-        const valuesButton = allValues.length
-          ? `<div style="margin-top:6px"><button type="button" class="ghost" data-collection-values="${device.deviceId}" style="font-size:11px;padding:3px 8px">전체 최신값 ${allValues.length}개 보기</button></div>`
+        const hiddenValues = Math.max(0, allValues.length - 2);
+        const valuesButton = hiddenValues
+          ? `<button type="button" class="ghost" data-collection-values="${device.deviceId}" title="전체 최신값 ${allValues.length}개 보기">+${hiddenValues}</button>`
           : "";
         const detail = device.technicalDetail
           ? `<button type="button" class="ghost" data-detail-toggle style="font-size:10px;padding:1px 6px;margin-top:3px">상세</button><div class="muted mono" style="font-size:10px;margin-top:3px;display:none;white-space:pre-wrap" data-detail>${esc(device.technicalDetail)}</div>`
@@ -8335,7 +8341,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           <td>${device.protocol ? `<span class="chip">${esc(device.protocol.toUpperCase())}</span>` : '<span class="muted">–</span>'}</td>
           <td>${task}</td>
           <td>${collectionStatusChip(device.status)}<div class="muted" style="font-size:11px;margin-top:4px">${esc(device.statusMessage || "")}</div>${modelMismatchNote}${detail}</td>
-          <td>${latest}</td><td>${values}${valuesButton}</td>
+          <td>${latest}</td><td><div class="latest-value-list">${values}${valuesButton}</div></td>
         </tr>`;
       }).join("") || '<tr><td colspan="7"><div class="empty">조건에 맞는 장비가 없습니다.</div></td></tr>';
       $("csBody").querySelectorAll("[data-collection-device-id]").forEach((row) => {
@@ -9165,6 +9171,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const kind = $("wKind")?.value || "last";
       const isChart = kind === "chart";
       const isAggregate = kind === "aggregate";
+      const supportsClickChart = !["count", "cctv"].includes(kind);
       const chartCompare = $("wChartCompareMode")?.value || "none";
       const clickCompare = $("wClickCompare")?.value || "none";
       const chartRangeLabel = $("wChartRangePreset")?.closest("label");
@@ -9174,8 +9181,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const clickCompareLabel = $("wClickCompare")?.closest("label");
       if (chartRangeLabel) chartRangeLabel.hidden = !isChart || chartCompare !== "none";
       if (chartCompareLabel) chartCompareLabel.hidden = !isChart;
-      if (clickRangeLabel) clickRangeLabel.hidden = isChart || isAggregate || clickCompare !== "none";
-      if (clickCompareLabel) clickCompareLabel.hidden = isChart;
+      if (clickRangeLabel) clickRangeLabel.hidden = !supportsClickChart || isChart || isAggregate || clickCompare !== "none";
+      if (clickCompareLabel) clickCompareLabel.hidden = !supportsClickChart || isChart;
       if (aggregateRangeLabel) aggregateRangeLabel.hidden = !isAggregate || clickCompare !== "none";
     }
 
@@ -11681,6 +11688,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $(cardId).dataset.state = tone;
       $(valueId).textContent = value;
       $(detailId).textContent = detail;
+      $(detailId).title = detail;
     }
 
     async function loadHomeOverview() {
@@ -11698,8 +11706,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         const [enabled, disabled] = results[0].value;
         const active = Number(enabled?.totalElements || 0);
         const inactive = Number(disabled?.totalElements || 0);
+        const total = active + inactive;
+        const activeRate = total ? Math.round(active * 100 / total) : 0;
         setHomeSummary("homeDeviceHealth", "homeEnabledDevices", "homeDeviceDetail",
-          active.toLocaleString("ko-KR"), "미사용 " + inactive.toLocaleString("ko-KR") + "대 · 전체 " + (active + inactive).toLocaleString("ko-KR") + "대");
+          activeRate + "%", "사용 " + active.toLocaleString("ko-KR") + "대 · 미사용 " + inactive.toLocaleString("ko-KR") + "대 · 전체 " + total.toLocaleString("ko-KR") + "대");
       } else {
         setHomeSummary("homeDeviceHealth", "homeEnabledDevices", "homeDeviceDetail", "오류", "장비 상태를 불러오지 못했습니다", "bad");
       }
@@ -11727,7 +11737,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         $("homeCollectionNormal").textContent = normal.toLocaleString("ko-KR");
         $("homeCollectionTotal").textContent = total.toLocaleString("ko-KR");
         $("homeCollectionHealth").dataset.state = issues > 0 ? "warning" : "normal";
-        $("homeCollectionDetail").textContent = "수집 대상 " + total + "대 조회(최대 200) · 확인 필요 " + Math.max(0, issues) + "대 · " + detail;
+        const collectionDetail = "수집 대상 " + total + "대 조회(최대 200) · 확인 필요 " + Math.max(0, issues) + "대 · " + detail;
+        $("homeCollectionDetail").textContent = collectionDetail;
+        $("homeCollectionDetail").title = collectionDetail;
       } else {
         setHomeSummary("homeCollectionHealth", "homeCollectionNormal", "homeCollectionDetail", "오류", "수집 상태를 불러오지 못했습니다", "bad");
         $("homeCollectionTotal").textContent = "–";
@@ -14492,7 +14504,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         : "장비·포인트별 선으로 표시하며, 합계·상별·위치별 묶음은 저장 후 적용됩니다.";
       await window.DcimWidgetDetail.open({
         title: ($("wName").value.trim() || "위젯") + " 상세 미리보기",
-        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: Boolean(existingId), note: note + (existingId ? "" : " · 기간 비교는 저장 후 미리 볼 수 있습니다."),
+        config: config, showSeries: Boolean(existingId) && kind === "chart", showCompare: Boolean(existingId) && !["count", "cctv"].includes(kind), note: note + (existingId || ["count", "cctv"].includes(kind) ? "" : " · 기간 비교는 저장 후 미리 볼 수 있습니다."),
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {
           const params = new URLSearchParams({ rangePreset: rangePreset, window: windowSize });
           params.set("compare", compare || "none");
