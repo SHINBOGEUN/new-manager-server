@@ -963,11 +963,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
     /* T-030 shared card surface: quiet border and minimal shadow in both themes. */
 .card,.stat,.board>.card{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}html[data-theme="light"] .card,html[data-theme="light"] .stat,html[data-theme="light"] .board>.card{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}
+
+.widget-selection-check{display:none;min-width:24px;width:24px;height:24px;margin:0;accent-color:var(--accent);cursor:pointer}
+body.edit-mode .widget-selection-check{display:block}
+body.edit-mode .board>.card>.widget-selection-check{position:absolute;top:6px;left:6px;z-index:7}
+body.edit-mode .board>.card .card-head{padding-left:38px}
+body.edit-mode .widget-item h3>.widget-selection-check{flex:none}
 /* T-030 step 2: quiet edit affordances and narrow content. */
 body.edit-mode .board>.card{border:1px dashed color-mix(in srgb,var(--line) 65%,#a9b9cc);box-shadow:none}
 body.edit-mode .board>.card:hover{border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
 body .board>.card.is-selected:not(.editor-preview-target){outline:2px solid var(--accent);outline-offset:-2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
-body .board>.card.is-selected::before{content:"✓";position:absolute;z-index:6;top:7px;left:7px;width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:color-mix(in srgb,var(--accent) 72%,var(--panel));color:var(--panel);font-size:10px;font-weight:800;pointer-events:none}
+body:not(.edit-mode) .board>.card.is-selected::before{content:"✓";position:absolute;z-index:6;top:7px;left:7px;width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:color-mix(in srgb,var(--accent) 72%,var(--panel));color:var(--panel);font-size:10px;font-weight:800;pointer-events:none}
 .resize-handle{background:transparent!important;border-radius:0!important;opacity:1!important}
 .resize-e{top:12px;right:-3px;width:10px;bottom:12px;cursor:ew-resize}
 .resize-s{left:12px;bottom:-3px;height:10px;right:12px;cursor:ns-resize}
@@ -1069,7 +1075,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
     <aside id="widgetDrawer" aria-label="위젯 목록">
       <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div><button type="button" id="closeWidgetDrawerBtn" class="ghost" aria-label="위젯 목록 접기" title="위젯 목록 접기">접기 ‹</button></div>
       <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>카드 상단이나 가장자리를 끌어 위치와 크기를 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 위치와 크기는 변경 저장을 눌러 반영합니다.</p></details>
-      <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">도면에서 위젯을 클릭해 선택하세요.</span><button id="applySizeMatchBtn" type="button" disabled>한 줄로 채우기</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
+      <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">0개 선택 · 여러 개는 카드의 체크를 누르세요(Ctrl+클릭도 가능)</span><button id="selectAllWidgetsBtn" type="button">전체 선택</button><button id="applySizeMatchBtn" type="button" disabled>한 줄로 채우기</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -2594,6 +2600,8 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         const itemId = Number(item.dataset.id);
         const selected = selectedIds.has(itemId);
         item.classList.toggle('is-selected', selected);
+        const checkbox = item.querySelector('[data-select-widget]');
+        if (checkbox) checkbox.checked = selected;
         if (selected && itemId === currentId) item.setAttribute('aria-current', 'true');
         else item.removeAttribute('aria-current');
       });
@@ -2601,6 +2609,8 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       board.querySelectorAll('.card[data-widget-id]').forEach((card) => {
         const selected = selectedIds.has(Number(card.dataset.widgetId));
         card.classList.toggle('is-selected', selected);
+        const checkbox = card.querySelector('[data-select-widget]');
+        if (checkbox) checkbox.checked = selected;
         if (!selected || !scrollBoard) return;
         const rect = card.getBoundingClientRect();
         const outsideViewport = rect.top < 0 || rect.bottom > window.innerHeight || rect.left < 0 || rect.right > window.innerWidth;
@@ -2625,9 +2635,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       const hint = $("sizeMatchHint");
       const apply = $("applySizeMatchBtn");
       if (!hint || !apply) return;
-      hint.textContent = selected.length < 2
-        ? "Ctrl 또는 Shift를 누른 채 위젯을 클릭해 2개 이상 선택하세요."
-        : `${selected.length}개 선택 · 가장 위쪽 위치에 한 줄로 나눠 배치합니다.`;
+      hint.textContent = `${selected.length}개 선택 · 여러 개는 카드의 체크를 누르세요(Ctrl+클릭도 가능)`;
       apply.disabled = selected.length < 2 || state.saving;
     }
 
@@ -2677,6 +2685,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         return `
         <article class="widget-item ${w.enabled ? "" : "disabled"} ${state.selectedWidgetIds.includes(Number(w.id)) ? "is-selected" : ""}" data-id="${w.id}" tabindex="0" ${state.selectedWidgetIds[state.selectedWidgetIds.length - 1] === Number(w.id) ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
           <h3>
+            <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${w.enabled ? "" : "disabled"} />
             <span>${escapeHtml(w.name)}</span>
             <label class="switch" title="이 페이지에 위젯 표시">
               <input type="checkbox" data-toggle="${w.id}" aria-label="${escapeHtml(w.name)} 페이지 표시" ${w.enabled ? "checked" : ""} ${!canManage || state.saving ? "disabled" : ""} />
@@ -3574,6 +3583,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         const editorTargetClass = editorPreviewWidgetId && Number(w.id) === editorPreviewWidgetId ? "editor-preview-target" : "";
         return `
           <article class="${cardClass} ${editorTargetClass} ${state.selectedWidgetIds.includes(Number(w.id)) ? 'is-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
+            <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} />
             <div class="card-head" data-drag-handle>
               <span class="drag-handle">⠿</span>
               <div>
@@ -4319,9 +4329,22 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
     $("applySizeMatchBtn").addEventListener("click", () => {
       applyWidgetSizeMatch().catch((error) => log("위젯 크기 맞춤 실패: " + error.message));
     });
+    document.addEventListener("change", (event) => {
+      const input = event.target.closest?.("[data-select-widget]");
+      if (!input || !state.editMode) return;
+      setWidgetSelection(input.dataset.selectWidget, {ctrlKey:true, scrollBoard:false});
+    });
+    $("selectAllWidgetsBtn").addEventListener("click", () => {
+      state.selectedWidgetIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
+      selectionAnchorWidgetId = state.selectedWidgetIds[0] ?? null;
+      renderWidgetList();
+      refreshBoard(false).catch((error) => log("배치 표시 실패: " + error.message));
+    });
     $("clearSizeMatchBtn").addEventListener("click", () => {
       state.selectedWidgetIds = [];
+      selectionAnchorWidgetId = null;
       $("board").querySelectorAll(".is-selected").forEach((card) => card.classList.remove("is-selected"));
+      $("board").querySelectorAll("[data-select-widget]").forEach((input) => { input.checked = false; });
       renderWidgetList();
     });
     $("addWidgetBtn").addEventListener("click", () => {
