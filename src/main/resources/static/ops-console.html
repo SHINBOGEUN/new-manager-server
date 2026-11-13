@@ -4263,10 +4263,16 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
 
     let sharedWidgetOptionsPromise;
     function loadSharedWidgetOptions() {
-      if (!sharedWidgetOptionsPromise) sharedWidgetOptionsPromise = api("/api/manager/widgets/options");
+      if (!sharedWidgetOptionsPromise) {
+        const optionsRequest = api("/api/manager/widgets/options");
+        const retryableRequest = optionsRequest.catch((error) => {
+          if (sharedWidgetOptionsPromise === retryableRequest) sharedWidgetOptionsPromise = null;
+          throw error;
+        });
+        sharedWidgetOptionsPromise = retryableRequest;
+      }
       return sharedWidgetOptionsPromise;
     }
-
     function setWidgetOptionSelect(select, options, selected, includeBlank = false) {
       if (!select) return;
       const blank = includeBlank ? '<option value="">위젯 설정</option>' : '';
@@ -13659,8 +13665,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wFormTitle").textContent = `위젯 수정 #${id}`;
       loadStatus.hidden = false;
       loadStatus.className = "muted widget-editor-load-status";
-      loadStatus.textContent = "위젯 정보와 설정을 불러오는 중입니다…";
-      editor.dataset.loadingMessage = "위젯 정보와 설정을 불러오는 중입니다…";
+      loadStatus.textContent = "위젯 설정 · 허용 옵션 조회 중입니다…";
+      editor.dataset.loadingMessage = "위젯 설정 · 허용 옵션 조회 중입니다…";
       $("wCreate").disabled = true;
       $("wSaveError").hidden = true;
       editor.setAttribute("aria-busy", "true");
@@ -13669,24 +13675,26 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       editor.classList.add("open");
       editor.setAttribute("aria-hidden", "false");
       showWidgetEditorStep(1);
-      const waitForEditorLoad = (label, request) => {
-        loadStatus.textContent = `${label} 중입니다…`;
-        editor.dataset.loadingMessage = `${label} 중입니다…`;
+      const waitForEditorLoad = (label, request, updateMessage = true) => {
+        if (updateMessage) {
+          loadStatus.textContent = `${label} 중입니다…`;
+          editor.dataset.loadingMessage = `${label} 중입니다…`;
+        }
         return new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error(`${label} 응답 대기 시간 초과 (20초)`)), 20000);
+          const timeout = setTimeout(() => {
+            if (label === "위젯 허용 옵션 조회" && sharedWidgetOptionsPromise === request) sharedWidgetOptionsPromise = null;
+            reject(new Error(`${label} 응답 대기 시간 초과 (15초)`));
+          }, 15000);
           Promise.resolve(request).then((value) => { clearTimeout(timeout); resolve(value); }, (error) => { clearTimeout(timeout); reject(error); });
         });
       };
       try {
         const [w, options] = await Promise.all([
-          waitForEditorLoad("위젯 설정 조회", api(`/api/manager/widgets/${id}`)),
-          waitForEditorLoad("위젯 허용 옵션 조회", loadSharedWidgetOptions()),
+          waitForEditorLoad("위젯 설정 조회", api(`/api/manager/widgets/${id}`), false),
+          waitForEditorLoad("위젯 허용 옵션 조회", loadSharedWidgetOptions(), false),
         ]);
         if (requestSequence !== widgetEditorLoadSequence) return;
         applySharedWidgetOptions(options, editor);
-        await waitForEditorLoad("장비 그룹 조회", loadDeviceGroups());
-        if (requestSequence !== widgetEditorLoadSequence) return;
-        fillPowerExistingGroups();
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
@@ -13770,6 +13778,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           color: group.color || POWER_GROUP_COLORS[0],
           sources: (group.sources || []).map((source) => ({ deviceId: Number(source.deviceId), pointName: source.pointName })),
         }));
+        if (w.queryKind === "power_distribution") {
+          await waitForEditorLoad("전력 그룹 조회", loadDeviceGroups());
+          if (requestSequence !== widgetEditorLoadSequence) return;
+          fillPowerExistingGroups();
+        }
         renderWidgetDevices();
         renderWidgetDeviceGroups();
         renderWidgetItDevices();
@@ -13824,9 +13837,15 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         });
         editor.removeAttribute("aria-busy");
         editor.removeAttribute("data-loading-message");
-        if (String(e.message).includes("위젯 허용 옵션 조회")) sharedWidgetOptionsPromise = null;
         loadStatus.className = "bad widget-editor-load-status";
-        loadStatus.textContent = `수정 창을 불러오지 못했습니다: ${e.message}`;
+        loadStatus.replaceChildren(document.createTextNode(`수정 창을 불러오지 못했습니다: ${e.message} `));
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "ghost";
+        retry.textContent = "다시 시도";
+        retry.style.marginLeft = "8px";
+        retry.addEventListener("click", () => startEditWidget(id));
+        loadStatus.append(retry);
         loadStatus.hidden = false;
         toast(`위젯 수정 창을 열지 못했습니다: ${e.message}`, true);
       }

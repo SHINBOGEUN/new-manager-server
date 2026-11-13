@@ -3913,7 +3913,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         id,
         card,
         layout,
-        baseLayouts: new Map(state.widgets.filter((widget) => widget.enabled).map((widget) => [Number(widget.id), { ...widgetLayout(widget) }])),
+        baseLayouts: new Map(state.widgets.filter((widget) => widget.enabled && widgetLayout(widget)).map((widget) => [Number(widget.id), { ...widgetLayout(widget) }])),
         origin,
         pointerId: e.pointerId,
         startX: e.clientX,
