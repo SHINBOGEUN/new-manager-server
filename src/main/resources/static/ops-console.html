@@ -9179,6 +9179,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         const preview = document.createElement("section"); preview.className = "widget-editor-preview";
         const previewHeading = document.createElement("h3"); previewHeading.textContent = "실시간 미리 보기"; preview.append(previewHeading);
         grid.append(basic, advanced, preview);
+        editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
         const tableChoice = $("wTableFormatChoice");
         if (tableChoice) advancedBody.append(tableChoice);
         const tableOptions = $("wTableOptions");
@@ -9218,7 +9219,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         [$("wPowerPreview"), $("wTablePreview")].filter(Boolean).forEach(element => preview.insertBefore(element, reviewNode || pagePreview || null));
         if (reviewNode) preview.insertBefore(reviewNode, pagePreview || null);
         if (pagePreview) {
-          const pageHeader = pagePreview.querySelector(".widget-page-preview-head"), frame = $("wPagePreviewFrame"), editButton = $("wEditPageLayout");
+          const pageHeader = pagePreview.querySelector(".widget-page-preview-head"), frame = pagePreview.querySelector("#wPagePreviewFrame"), editButton = pagePreview.querySelector("#wEditPageLayout");
           let toggle = pageHeader.querySelector("[data-widget-page-preview-toggle]");
           if (!toggle) {
             toggle = document.createElement("button"); toggle.type = "button"; toggle.className = "ghost"; toggle.dataset.widgetPagePreviewToggle = "";
@@ -9227,7 +9228,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           }
           frame.hidden = true; pagePreview.classList.remove("is-expanded"); toggle.textContent = "페이지에서 위치 보기"; toggle.setAttribute("aria-expanded", "false");
         }
-        editor.insertBefore(grid, editor.querySelector(".widget-editor-footer"));
+
         if (chartOptions) advancedBody.append(chartOptions);
         if (trendDefaults) advancedBody.append(trendDefaults);
       }
