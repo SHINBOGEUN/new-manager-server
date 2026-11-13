@@ -2732,6 +2732,34 @@ function mount(container, page, options = {}) {
     renderer.render(scene, camera); raf = requestAnimationFrame(animate);
   }; animate();
   const api = {
+    getSelectionToolbar() {
+      Object.assign(sceneActionBar.style, {
+        position:"static", zIndex:"auto", flexDirection:"row", gap:"5px", padding:"0", right:"auto", bottom:"auto",
+        width:"auto", maxWidth:"min(480px, 45vw)", border:"0", borderRadius:"0", background:"transparent", boxShadow:"none",
+      });
+      mainActions.style.flexWrap = "nowrap";
+      selectedLabel.style.maxWidth = "150px";
+      return sceneActionBar;
+    },
+    focusProblemDevice(deviceId) {
+      const attachment = items.find((item) => ["DEVICE","SENSOR"].includes(item.itemType) && Number(item.deviceId) === Number(deviceId));
+      const parent = attachment && items.find((item) => attachment.parentId != null
+        ? item.id != null && Number(item.id) === Number(attachment.parentId)
+        : item.clientKey === attachment.parentClientKey);
+      const target = parent || attachment || items.find((item) => Number(item.deviceId) === Number(deviceId));
+      const group = target && itemGroups.get(findItemKey(target));
+      if (!target || !group) return false;
+      const bounds = new THREE.Box3().setFromObject(group);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const offset = camera.position.clone().sub(controls.target);
+      if (offset.lengthSq() < .001) offset.set(1, 1, 1);
+      controls.target.copy(center);
+      camera.position.copy(center).add(offset);
+      controls.update();
+      selectItem(findItemKey(target));
+      options.onHostSelected?.(target);
+      return true;
+    },
     setProblemDevices(problems) {
       problemDevicesById = new Map((problems || []).map(problem => typeof problem === "object"
         ? [Number(problem.deviceId), problem]

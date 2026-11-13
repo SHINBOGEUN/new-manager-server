@@ -102,7 +102,7 @@
 .widget-data-table td small { color:var(--muted); font-weight:400; }
 html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color:#20384e; }
 html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }</style>
-  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261113-t028"></script>
+  <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261113-t030"></script>
   <style>
     :root {
       --bg: #090e17;
@@ -995,6 +995,34 @@ body.drawer-open #widgetMain{grid-template-columns:minmax(0,1fr)}
 body.drawer-open #widgetMain>.board-wrap{grid-column:1}
 body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;width:var(--widget-drawer-width);height:auto;max-width:calc(100% - 12px);border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 12px 36px rgba(0,0,0,.38);overflow:auto}
 @media(max-width:760px){body.drawer-open #widgetDrawer{inset:0 0 auto;width:100%;max-width:none;max-height:42vh;border-radius:0 0 10px 10px}}
+/* T-030 step 3: compact scene header and unobstructed empty/selection states. */
+.page-visualization-head{display:flex;flex-flow:row nowrap;align-items:center;gap:8px;min-width:0;overflow:visible;padding:6px 10px}
+.scene-summary{position:relative;display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
+.scene-connected{display:flex;align-items:center;gap:6px;min-width:0;padding:5px 8px;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:11px;white-space:nowrap}
+.scene-connected b{color:var(--text)}
+.scene-problem-toggle{flex:none;min-height:32px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--text);font-weight:700;white-space:nowrap}
+.scene-problem-toggle[hidden]{display:none!important}.scene-problem-toggle.is-danger{border-color:#a84b58;background:#3b2029;color:#ffd4d9}.scene-problem-toggle.is-warning{border-color:#9a6b28;background:#392d1d;color:#ffdda0}.scene-problem-toggle.is-collection{border-color:#92702b;background:#332d1c;color:#ffe28e}
+.scene-problem-details{position:absolute;top:calc(100% + 7px);left:0;z-index:60;width:min(440px,80vw);max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 12px 28px #0006}
+.scene-problem-details[hidden]{display:none!important}.scene-problem-details ul{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.scene-problem-device{display:flex;align-items:flex-start;gap:8px;width:100%;min-width:0;padding:7px 8px;border:0;border-radius:7px;background:transparent;color:var(--text);text-align:left;cursor:pointer}
+.scene-problem-device:hover{background:var(--panel-2)}.scene-problem-device b{flex:none;max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scene-problem-device span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11px}
+.scene-problem-mode{display:flex;gap:6px;padding-top:8px;margin-top:8px;border-top:1px solid var(--line)}.scene-problem-mode button{min-height:30px;padding:5px 9px}.scene-problem-mode button[aria-pressed=true]{border-color:var(--accent);color:var(--text)}
+.page-scene-nav{display:flex;align-items:center;justify-content:flex-end;flex:0 1 auto;min-width:0;gap:6px;flex-wrap:nowrap;margin-left:auto}
+.page-scene-nav button,.page-scene-nav select,.page-view-menu>summary,.page-settings-menu>summary{min-height:32px;padding:5px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page-view-menu,.page-settings-menu{position:relative;flex:none}.page-view-menu>summary,.page-settings-menu>summary{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--text);cursor:pointer;list-style:none}.page-view-menu>summary::-webkit-details-marker,.page-settings-menu>summary::-webkit-details-marker{display:none}
+.page-menu-content{position:absolute;top:calc(100% + 6px);right:0;z-index:65;display:none;min-width:185px;gap:6px;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);box-shadow:0 10px 24px #0006}.page-view-menu[open] .page-menu-content,.page-settings-menu[open] .page-menu-content{display:grid}.page-menu-content button,.page-menu-content select{width:100%;max-width:260px}
+.page-scene-nav .scene-selection-toolbar{position:static!important;display:none;flex-direction:row!important;align-items:center;gap:4px!important;width:auto!important;max-width:min(480px,45vw)!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.page-scene-nav .scene-selection-toolbar[style*="display: flex"]{display:flex!important}
+.page-scene-nav .scene-selection-toolbar>div:first-child{flex:none;max-width:150px}.page-scene-nav .scene-selection-toolbar>div:first-child button{display:none}
+.page-scene-nav .scene-selection-toolbar [aria-label="선택 오브젝트 편집"]{min-width:0}
+.page-scene-nav .scene-selection-toolbar>div:nth-child(2){flex-wrap:nowrap!important;gap:3px!important;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.page-scene-nav .scene-selection-toolbar button{min-width:30px!important;height:30px!important;padding:2px 5px!important;font-size:12px!important}
+.page-scene-nav .scene-selection-toolbar>div:nth-child(3){position:absolute;top:calc(100% + 5px);right:80px;z-index:66;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 8px 18px #0005}
+.page-layout-stage{position:relative;min-width:0;min-height:0}
+.page-scene-empty{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:24px;text-align:center;background:rgba(7,17,27,.88);color:var(--text);pointer-events:none}
+.page-scene-empty strong{font-size:15px}.page-scene-empty .page-empty-edit{min-height:32px;padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);font-size:12px;pointer-events:auto;cursor:pointer}
+.scene-asset-grid .scene-model-thumbnail{aspect-ratio:3/2;height:auto;min-height:92px;max-height:112px}.scene-asset-grid .scene-model-thumbnail img{width:100%;height:100%;object-fit:contain}
+@media(max-width:760px){.page-visualization-head{flex-wrap:wrap;gap:5px}.scene-summary{flex:1 1 100%}.page-scene-nav{width:100%;max-width:100%;justify-content:flex-end}.page-scene-nav .scene-selection-toolbar{max-width:calc(100vw - 145px)!important}.page-scene-nav .scene-selection-toolbar>div:first-child{max-width:90px}.page-scene-empty{inset:0}}
 </style>
 </head>
 <body>
@@ -1705,101 +1733,98 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         return {deviceId, deviceName:name, reasons};
       });
       state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
-      const countText = `${ids.length}대${incomplete ? ' 이상' : ''}`;
-      const problemText = `${affected.size}대${partial ? ' · 일부 확인 불가' : ''}`;
-      const list = sceneProblemDevices.map(problem => `<li><b>${escapeHtml(problem.deviceName)}</b> · ${escapeHtml(problem.reasons.map(reason => reason.text).join(' / '))}</li>`).join('');
-      element.innerHTML = `<span class="scene-summary-item"><span>연결된 장비</span><b>${escapeHtml(countText)}</b></span><button type="button" class="scene-summary-item scene-problem-toggle ${affected.size ? 'is-alert' : !partial ? 'is-ok' : ''}" aria-expanded="false"><span>문제 장비</span><b>${escapeHtml(problemText)}</b></button><div class="scene-problem-details" hidden><ul>${list || '<li>문제 장비가 없습니다.</li>'}</ul></div>`;
-      const toggle = element.querySelector('.scene-problem-toggle'), details = element.querySelector('.scene-problem-details');
-      toggle?.addEventListener('click', () => { const expanded = toggle.getAttribute('aria-expanded') !== 'true'; toggle.setAttribute('aria-expanded', String(expanded)); details.hidden = !expanded; });
+      const countText = ids.length + "대" + (incomplete ? " 이상" : "");
+      const severity = sceneProblemDevices.flatMap(problem => problem.reasons).some(reason => ["CRITICAL","DANGER"].includes(reason.severity))
+        ? "danger" : sceneProblemDevices.some(problem => problem.reasons.some(reason => reason.kind === "COLLECTION")) ? "collection" : "warning";
+      const list = sceneProblemDevices.map(problem => '<li><button type="button" class="scene-problem-device" data-scene-problem-device="' + Number(problem.deviceId) + '"><b>' + escapeHtml(problem.deviceName) + '</b><span>' + escapeHtml(problem.reasons.map(reason => reason.text).join(" / ")) + '</span></button></li>').join("");
+      let savedProblemMode = "on";
+      try { savedProblemMode = localStorage.getItem("dcim:page-problem-label:" + page.pageCode) === "off" ? "off" : "on"; } catch (_) {}
+      const problemControls = '<div class="scene-problem-mode" role="group" aria-label="문제 표시등">'
+        + [['on','불 켜기'],['off','불 끄기']].map(([value,label]) => '<button type="button" data-problem-mode="' + value + '" aria-pressed="' + String(savedProblemMode === value) + '">' + label + '</button>').join("")
+        + '</div>';
+      element.innerHTML = '<span class="scene-summary-item scene-connected"><span>연결 장비</span><b>' + escapeHtml(countText) + '</b></span>'
+        + '<button type="button" class="scene-problem-toggle ' + (affected.size ? "is-" + severity : "") + '" aria-expanded="false" ' + (affected.size ? "" : "hidden") + '>! 문제 ' + affected.size + '</button>'
+        + '<div class="scene-problem-details" hidden><ul>' + (list || '<li>표시할 문제가 없습니다.</li>') + '</ul>' + problemControls + '</div>';
+      const toggle = element.querySelector(".scene-problem-toggle"), details = element.querySelector(".scene-problem-details");
+      toggle?.addEventListener("click", () => { const expanded = toggle.getAttribute("aria-expanded") !== "true"; toggle.setAttribute("aria-expanded", String(expanded)); details.hidden = !expanded; });
+      element.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => {
+        if (!state.pageScene3dApi?.focusProblemDevice?.(Number(button.dataset.sceneProblemDevice))) console.warn("문제 장비의 도면 위치를 찾을 수 없습니다.");
+      }));
+      element.querySelectorAll("[data-problem-mode]").forEach(button => button.addEventListener("click", () => {
+        const value = button.dataset.problemMode;
+        try { localStorage.setItem("dcim:page-problem-label:" + page.pageCode, value); } catch (_) {}
+        state.pageScene3dApi?.setProblemLabelMode?.(value);
+        element.querySelectorAll("[data-problem-mode]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+      }));
     }
 
     function createSceneHeader(page, modeLabel, devices) {
       const head = document.createElement("div"); head.className = "page-visualization-head";
-      if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
+      const hasScene = ["PLAN_2D", "SCENE_3D"].includes(page.viewMode);
+      if (hasScene) {
         if (sceneProblemPageCode !== page.pageCode) { sceneProblemDevices = []; sceneProblemPageCode = page.pageCode; }
-        const summary = document.createElement('div'); summary.className = 'scene-summary'; summary.setAttribute('aria-label', '페이지 장비 요약');
-        summary.innerHTML = `<span class="scene-summary-item">연결 상태 조회 중…</span>`;
+        const summary = document.createElement("div"); summary.className = "scene-summary"; summary.setAttribute("aria-label", "페이지 장비 요약");
+        summary.innerHTML = '<span class="scene-summary-item scene-connected">연결 장비 조회 중…</span>';
         head.append(summary);
-        populateSceneSummary(page, devices, summary).catch(() => { if (summary.isConnected) summary.textContent = '요약을 불러오지 못했습니다.'; });
+        populateSceneSummary(page, devices, summary).catch(() => { if (summary.isConnected) summary.textContent = "요약을 불러오지 못했습니다."; });
       }
-      const tools = document.createElement("div"); tools.className = "page-scene-nav";
-      tools.style.marginLeft = "auto";
-      if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
-        const toggle = document.createElement("div"); toggle.className = "scene-view-toggle"; toggle.setAttribute("role", "group"); toggle.setAttribute("aria-label", "도면 보기 방식");
+      if (hasScene) {
+        const viewToggle = document.createElement("div"); viewToggle.className = "scene-view-toggle"; viewToggle.setAttribute("role", "group"); viewToggle.setAttribute("aria-label", "도면 보기 방식");
         for (const [value, label] of [["PLAN_2D", "2D"], ["SCENE_3D", "3D"]]) {
           const button = document.createElement("button"); button.type = "button"; button.textContent = label;
           button.setAttribute("aria-pressed", String(page.viewMode === value));
-          button.onclick = () => {
-            try { localStorage.setItem(`dcim:page-scene-view:${page.pageCode}`, value); } catch (_) {}
-            renderPageVisualization();
-          };
-          toggle.appendChild(button);
+          button.onclick = () => { try { localStorage.setItem("dcim:page-scene-view:" + page.pageCode, value); } catch (_) {} renderPageVisualization(); };
+          viewToggle.append(button);
         }
-        head.append(toggle);
-        const problemMode = document.createElement("div"); problemMode.className = "scene-view-toggle"; problemMode.setAttribute("role", "group"); problemMode.setAttribute("aria-label", "문제 표시 방식");
-        const savedProblemMode = (() => { try { return localStorage.getItem(`dcim:page-problem-label:${page.pageCode}`) === "off" ? "off" : "on"; } catch (_) { return "on"; } })();
-        for (const [value, label] of [["on", "켜기"], ["off", "끄기"]]) {
-          const button = document.createElement("button"); button.type = "button"; button.textContent = label; button.setAttribute("aria-pressed", String(savedProblemMode === value));
-          button.onclick = () => {
-            try { localStorage.setItem(`dcim:page-problem-label:${page.pageCode}`, value); } catch (_) {}
-            state.pageScene3dApi?.setProblemLabelMode?.(value);
-            problemMode.querySelectorAll("button").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
-          };
-          problemMode.appendChild(button);
-        }
-        head.append(problemMode);
+        head.append(viewToggle);
       }
 
+      const tools = document.createElement("div"); tools.className = "page-scene-nav";
       if (consoleAuth()?.getRole?.() === "ADMIN") {
-        if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
-          if (page.viewMode === "SCENE_3D") {
-            const views = document.createElement("select");
-            views.setAttribute("aria-label", "시점 맞추기");
-            views.innerHTML = '<option value="">시점 맞추기</option><option value="down45">아래로 45°</option><option value="down60">아래로 60°</option><option value="top">위에서 보기</option><option value="front">정면 보기</option><option value="side">측면 보기</option>';
-            views.onchange = () => { state.pageScene3dApi?.alignView?.(views.value); views.value = ""; };
-            tools.append(views);
-          }
+        if (page.viewMode === "SCENE_3D") {
+          const viewMenu = document.createElement("details"); viewMenu.className = "page-view-menu";
+          const viewSummary = document.createElement("summary"); viewSummary.textContent = "시점 ▾"; viewSummary.title = "시점 맞추기와 기본 시점"; viewSummary.setAttribute("aria-label", "시점 메뉴");
+          const viewContent = document.createElement("div"); viewContent.className = "page-menu-content";
+          const views = document.createElement("select"); views.setAttribute("aria-label", "시점 맞추기");
+          views.innerHTML = '<option value="">시점 맞추기</option><option value="down45">아래로 45°</option><option value="down60">아래로 60°</option><option value="top">위에서 보기</option><option value="front">정면 보기</option><option value="side">측면 보기</option>';
+          views.onchange = () => { state.pageScene3dApi?.alignView?.(views.value); views.value = ""; };
           const defaultView = document.createElement("button"); defaultView.type = "button"; defaultView.className = "page-default-view";
-          defaultView.textContent = "현재 시점 기본값 저장";
-          defaultView.title = "현재 카메라 시점을 이 페이지의 오른쪽 클릭 기본 시점으로 저장";
+          defaultView.textContent = "현재 시점 기본값 저장"; defaultView.title = "현재 카메라 시점을 이 페이지의 기본 시점으로 저장";
           defaultView.onclick = () => state.pageScene3dApi?.saveViewAsDefault?.();
-          tools.append(defaultView);
+          viewContent.append(views, defaultView); viewMenu.append(viewSummary, viewContent); tools.append(viewMenu);
         }
-        const deviceSettings = document.createElement("button"); deviceSettings.type = "button";
-        deviceSettings.textContent = "표시 장비 설정";
+        const settings = document.createElement("details"); settings.className = "page-settings-menu";
+        settings.open = state.pageVisualizationEditMode || !!state.pageToolsOpen;
+        settings.addEventListener("toggle", () => { state.pageToolsOpen = settings.open; });
+        const settingsSummary = document.createElement("summary"); settingsSummary.textContent = "⚙"; settingsSummary.setAttribute("aria-label", "화면 설정"); settingsSummary.title = "화면 설정";
+        const settingsContent = document.createElement("div"); settingsContent.className = "page-menu-content";
+        const deviceSettings = document.createElement("button"); deviceSettings.type = "button"; deviceSettings.textContent = "표시 장비 설정";
         deviceSettings.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:page-device-settings", pageCode:page.pageCode }, location.origin);
-        tools.append(deviceSettings);
-        const edit = document.createElement("button"); edit.type="button"; edit.className="page-edit-icon";
-        edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 도면 편집";
-        edit.title = state.pageVisualizationEditMode ? "편집 종료" : "편집";
-        edit.setAttribute("aria-label", edit.title);
-        edit.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
-        edit.onclick=async()=>{
-          if (state.pageVisualizationEditMode) {
-            if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
-            state.pageVisualizationEditMode=false;
-            clearSceneDraft();
-          } else {
-            state.pageVisualizationEditMode=true;
-          }
-          window.parent.postMessage({ type:"dcim:dashboard:scene-editing", active:state.pageVisualizationEditMode }, location.origin);
-          renderPageVisualization();
-        };
-        if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) tools.append(edit);
-        if (["DATA", "PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
-          const widgetEdit = document.createElement("button"); widgetEdit.type="button"; widgetEdit.className="page-widget-edit";
-          widgetEdit.textContent = ["PLAN_2D", "SCENE_3D"].includes(page.viewMode) ? "▦ 위젯 편집" : "위젯 편집";
+        settingsContent.append(deviceSettings);
+        if (!widgetWorkspaceRequested && !layoutEditRequested && !state.pageVisualizationEditMode) {
+          const widgetEdit = document.createElement("button"); widgetEdit.type = "button"; widgetEdit.className = "page-widget-edit";
+          widgetEdit.textContent = hasScene ? "▦ 위젯 편집" : "위젯 편집";
           widgetEdit.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:open-widget-editor", pageCode:page.pageCode }, location.origin);
-          if (!widgetWorkspaceRequested && !layoutEditRequested && !state.pageVisualizationEditMode) tools.append(widgetEdit);
+          settingsContent.append(widgetEdit);
+        }
+        settings.append(settingsSummary, settingsContent); tools.append(settings);
+        if (hasScene) {
+          const edit = document.createElement("button"); edit.type = "button"; edit.className = "page-edit-icon";
+          edit.textContent = state.pageVisualizationEditMode ? "편집 종료" : "✎ 편집";
+          edit.title = state.pageVisualizationEditMode ? "편집 종료" : "도면 편집"; edit.setAttribute("aria-label", edit.title);
+          edit.setAttribute("aria-pressed", String(state.pageVisualizationEditMode));
+          edit.onclick = async () => {
+            if (state.pageVisualizationEditMode) {
+              if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
+              state.pageVisualizationEditMode = false; clearSceneDraft();
+            } else state.pageVisualizationEditMode = true;
+            window.parent.postMessage({ type:"dcim:dashboard:scene-editing", active:state.pageVisualizationEditMode }, location.origin);
+            renderPageVisualization();
+          };
+          tools.append(edit);
         }
       }
-      if (consoleAuth()?.getRole?.() === "ADMIN") {
-        const menu = document.createElement("details"); menu.className = "page-tools-menu";
-        menu.open = state.pageVisualizationEditMode || !!state.pageToolsOpen;
-        menu.addEventListener("toggle", () => { state.pageToolsOpen = menu.open; });
-        const toggle = document.createElement("summary"); toggle.textContent = "⚙"; toggle.setAttribute("aria-label", "화면 설정"); toggle.title = "화면 설정";
-        menu.append(toggle, tools); head.append(menu);
-      }
+      head.append(tools);
       return head;
     }
 
@@ -1952,8 +1977,16 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       }
       root.classList.remove("widget-page-controls");
 
-      const stage = document.createElement("div"); stage.className = `page-layout-stage scene-${mode === "SCENE_3D" ? "3d" : "2d"}`;
-      root.append(createSceneHeader(visiblePage, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices), stage);
+      const stage = document.createElement("div"); stage.className = "page-layout-stage scene-" + (mode === "SCENE_3D" ? "3d" : "2d");
+      const sceneHeader = createSceneHeader(visiblePage, mode === "SCENE_3D" ? "3D 공간" : "2D 평면도", devices);
+      root.append(sceneHeader, stage);
+      const hasPlacedEquipment = items.some((item) => ["RACK","EQUIPMENT"].includes(item.itemType));
+      if (!hasPlacedEquipment && !state.pageVisualizationEditMode) {
+        const empty = document.createElement("div"); empty.className = "page-scene-empty";
+        empty.innerHTML = '<strong>이 페이지에 배치된 설비가 없습니다</strong><button type="button" class="page-empty-edit">✎ 편집에서 3D 모델 배치</button>';
+        empty.querySelector(".page-empty-edit").onclick = () => sceneHeader.querySelector(".page-edit-icon")?.click();
+        stage.append(empty);
+      }
       const viewport = document.createElement("div"); viewport.className = "page-scene-webgl"; stage.append(viewport);
       let sceneEditor = null;
       const updateSceneEditorLists = (nextItems = items) => {
@@ -2201,6 +2234,13 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
           try { problemLabelMode = localStorage.getItem(`dcim:page-problem-label:${visiblePage.pageCode}`) === "off" ? "off" : "on"; } catch (_) { problemLabelMode = "on"; }
           state.pageScene3dApi?.setProblemLabelMode?.(problemLabelMode);
           state.pageScene3dApi?.setProblemDevices?.(sceneProblemDevices);
+          const selectionToolbar = state.pageScene3dApi?.getSelectionToolbar?.();
+          const sceneNav = sceneHeader.querySelector(".page-scene-nav");
+          if (selectionToolbar && sceneNav) {
+            selectionToolbar.classList.add("scene-selection-toolbar");
+            const editButton = sceneNav.querySelector(".page-edit-icon");
+            sceneNav.insertBefore(selectionToolbar, editButton || null);
+          }
           for (const code of new Set((page.items || []).map((item) => item.locationNodeCode).filter(Boolean))) {
             refreshSceneRack(code).catch((error) => console.warn("랙 배치 조회 실패", error));
           }
