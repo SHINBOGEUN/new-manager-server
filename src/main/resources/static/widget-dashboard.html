@@ -3603,25 +3603,12 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       drawPsychrometricCanvases();
     }
 
-    // Use remaining viewport height when the existing layout already nearly fills it.
-    // Keep its grid coordinates and deliberate gaps unchanged.
+    // Keep each grid unit stable. Scaling row height from the lowest card made
+    // every widget grow or shrink when another widget changed its height.
     function fitWidgetBoardHeight() {
       const board = $("board");
-      if (!board) return;
-      board.style.removeProperty("--row-h");
-      if (!fixedPageView || ["PLAN_2D", "SCENE_3D"].includes(state.pageVisualization?.viewMode)) return;
-      const layouts = state.widgets.filter((widget) => widget.enabled).map(widgetLayout).filter(Boolean);
-      if (!layouts.length) return;
-      const rows = Math.max(...layouts.map((layout) => layout.gridY + layout.h));
-      const viewportHeight = board.parentElement.clientHeight;
-      const gap = parseFloat(getComputedStyle(board).rowGap) || 6;
-      const naturalHeight = rows * 24 + Math.max(0, rows - 1) * gap;
-      if (rows > 0 && viewportHeight > naturalHeight && naturalHeight >= viewportHeight * .65) {
-        const rowHeight = Math.min(40, (viewportHeight - Math.max(0, rows - 1) * gap) / rows);
-        board.style.setProperty("--row-h", `${Math.max(24, rowHeight)}px`);
-      }
+      if (board) board.style.removeProperty("--row-h");
     }
-
     function bindChartCardHandlers() {
       $("board").querySelectorAll(".chart-series-select").forEach((sel) => {
         sel.addEventListener("change", (e) => {
