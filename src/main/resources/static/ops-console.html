@@ -4050,7 +4050,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     const $ = (id) => document.getElementById(id);
     const SIDEBAR_PREFERENCE_KEY = "opsSidebarCollapsed";
     let sidebarUserPreference = null;
-    let sidebarEditingMode = false;
+    const sidebarEditingSources = new Set();
     let sidebarExpandedBeforeEditing = false;
     const sidebarIcons = {
       home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/>',
@@ -4083,14 +4083,17 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         try { localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(!!collapsed)); } catch (_) { /* Storage may be unavailable. */ }
       }
     }
-    function setSidebarEditing(active) {
-      if (active && !sidebarEditingMode) {
+    function setSidebarEditing(active, source = "default") {
+      const wasEditing = sidebarEditingSources.size > 0;
+      if (active) sidebarEditingSources.add(source);
+      else sidebarEditingSources.delete(source);
+      const isEditing = sidebarEditingSources.size > 0;
+      if (!wasEditing && isEditing) {
         sidebarExpandedBeforeEditing = !document.body.classList.contains("sidebar-collapsed");
-        sidebarEditingMode = true;
         setSidebarCollapsed(true);
-      } else if (!active && sidebarEditingMode) {
-        sidebarEditingMode = false;
-        setSidebarCollapsed(sidebarExpandedBeforeEditing);
+      } else if (wasEditing && !isEditing) {
+        setSidebarCollapsed(!sidebarExpandedBeforeEditing);
+        sidebarExpandedBeforeEditing = false;
       }
     }
     function initializeSidebar() {
@@ -4700,7 +4703,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const sourceFrame = [...document.querySelectorAll(".widget-display-page iframe[data-page-key]")]
         .find((frame) => frame.contentWindow === event.source);
       if (event.origin !== location.origin || !sourceFrame) return;
-      if (event.data?.type === "dcim:dashboard:scene-editing") { setSidebarEditing(event.data.active === true); return; }
+      if (event.data?.type === "dcim:dashboard:scene-editing") { setSidebarEditing(event.data.active === true, `frame:${sourceFrame.dataset.pageKey || sourceFrame.dataset.tab || "dashboard"}`); return; }
       if (event.data?.type === "dcim:dashboard:rack-locked") {
         toast("잠긴 랙입니다. 편집에서 랙을 선택하고 잠금 해제한 뒤 설정하세요."); return;
       }
@@ -4791,7 +4794,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if (state.role !== "ADMIN") return;
         const pageCode = String(event.data.pageCode || sourceFrame.dataset.pageKey || "");
         sourceFrame.dataset.layoutEditing = "true";
-        setSidebarEditing(true);
+        setSidebarEditing(true, `frame:${sourceFrame.dataset.pageKey || sourceFrame.dataset.tab || pageCode}`);
         const mode = event.data.type === "dcim:dashboard:open-widget-editor" ? "widgetEdit=1" : "layoutEdit=1";
         sourceFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&${mode}&pageCode=${encodeURIComponent(pageCode)}`;
         return;
@@ -4800,7 +4803,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           && sourceFrame.dataset.layoutEditing === "true") {
         const pageCode = String(event.data.pageCode || sourceFrame.dataset.pageKey || "");
         sourceFrame.dataset.layoutEditing = "false";
-        setSidebarEditing(false);
+        setSidebarEditing(false, `frame:${sourceFrame.dataset.pageKey || sourceFrame.dataset.tab || pageCode}`);
         sourceFrame.src = `/widget-dashboard.html?embedded=1&fixedPage=1&displayOnly=1&boardView=1&pageCode=${encodeURIComponent(pageCode)}`;
         return;
       }
@@ -4869,14 +4872,14 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     initializeSidebar();
     $("sidebarCollapseButton").onclick = () => {
       if (window.innerWidth <= 980) { document.body.classList.toggle("side-open"); return; }
-      if (!sidebarEditingMode) setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"), true);
+      if (sidebarEditingSources.size === 0) setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"), true);
     };
     $("sidebarSearchButton").onclick = () => {
       if (window.innerWidth > 980) setSidebarCollapsed(false, true);
       $("workspaceSearch").focus();
     };
     window.addEventListener("resize", () => {
-      if (sidebarUserPreference == null && !sidebarEditingMode) setSidebarCollapsed(window.innerWidth < 1280);
+      if (sidebarUserPreference == null && sidebarEditingSources.size === 0) setSidebarCollapsed(window.innerWidth < 1280);
       if (window.innerWidth > 980) document.body.classList.remove("side-open");
     });
     $("sideToggle").onclick = () => document.body.classList.toggle("side-open");
@@ -7823,7 +7826,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       setSceneProblemCount(container, problemDevices.length + (loadErrors.length ? 1 : 0));
       rackDetailViewer?.setProblemDevices?.(problemDevices);
       container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => openDeviceDetailById(Number(button.dataset.sceneProblemDevice), {problemTab:true, closeScenePreview:true}).catch(error => toast(`장비 상세 조회 실패: ${error.message}`, true))));
-      if (detailId) {
+      if (detailId && state.selectedDeviceId === detailId) {
         const badge = $("deviceProblemCount"), hasStatusProblem = problemCollectionStatuses.has(statuses.get(detailId)?.status) || problemSetupStatuses.has(statuses.get(detailId)?.status);
         const detailProblemCount = openDetailRows.length + (hasStatusProblem ? 1 : 0);
         badge.hidden = detailProblemCount === 0; badge.textContent = String(detailProblemCount);
@@ -9400,31 +9403,33 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       });
     }
 
-    function openWidgetEditor(editing = false) {
+    function applySharedWidgetOptions(options) {
+      const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
+      setWidgetOptionSelect($("wKind"), options.kinds.filter((option) => widgetKinds.has(option.value)), $("wKind").value);
+      renderWidgetKindCards(options.kinds);
+      setWidgetOptionSelect($("wChartRangePreset"), options.rangePresets, $("wChartRangePreset").value);
+      setWidgetOptionSelect($("wPueRangePreset"), options.rangePresets, $("wPueRangePreset").value);
+      setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
+      setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
+      setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
+      if (Array.isArray(options.compareModes)) {
+        setWidgetOptionSelect($("wChartCompareMode"), options.compareModes, $("wChartCompareMode").value);
+        setWidgetOptionSelect($("wClickCompare"), options.compareModes, $("wClickCompare").value);
+      }
+      $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
+    }
+
+    function openWidgetEditor() {
       mountWidgetDialogs();
-      if (!editing) clearWidgetForm(true);
-      loadSharedWidgetOptions().then((options) => {
-        const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
-        setWidgetOptionSelect($("wKind"), options.kinds.filter((option) => widgetKinds.has(option.value)), $("wKind").value);
-        renderWidgetKindCards(options.kinds);
-        setWidgetOptionSelect($("wChartRangePreset"), options.rangePresets, $("wChartRangePreset").value);
-        setWidgetOptionSelect($("wPueRangePreset"), options.rangePresets, $("wPueRangePreset").value);
-        setWidgetOptionSelect($("wTrendRange"), options.rangePresets, $("wTrendRange").value);
-        setWidgetOptionSelect($("wTrendWindow"), options.windows, $("wTrendWindow").value);
-        setWidgetOptionSelect($("wChartSeriesMode"), options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), $("wChartSeriesMode").value);
-        if (Array.isArray(options.compareModes)) {
-          setWidgetOptionSelect($("wChartCompareMode"), options.compareModes, $("wChartCompareMode").value);
-          setWidgetOptionSelect($("wClickCompare"), options.compareModes, $("wClickCompare").value);
-        }
-        $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
-      }).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
+      clearWidgetForm(true);
+      loadSharedWidgetOptions().then(applySharedWidgetOptions).catch((error) => toast("위젯 허용값을 불러오지 못했습니다: " + error.message, true));
       $("wCreatePage").disabled = true;
       state.widgetSourcesLoaded = false;
       state.widgetSources = [];
       state.widgetPageDeviceIds = new Set();
       fillWidgetDevicePick();
       $("wEditorBackdrop").classList.add("open");
-      setSidebarEditing(true);
+      setSidebarEditing(true, "widget-editor");
       $("wEditorCard").classList.add("open");
       $("wEditorCard").setAttribute("aria-hidden", "false");
       showWidgetEditorStep(1);
@@ -9437,9 +9442,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }).catch((error) => toast("측정항목을 불러오지 못했습니다: " + error.message, true));
       loadDeviceGroups().then(() => fillPowerExistingGroups()).catch((error) => toast(`장비 그룹을 불러오지 못했습니다: ${error.message}`, true));
       $("wKind").focus();
-    }
-
-    function openWidgetEditorForPage(pageCode) {
+    }    function openWidgetEditorForPage(pageCode) {
       if (state.role !== "ADMIN") return toast("위젯 등록은 관리자만 할 수 있습니다.", true);
       const page = (state.codes.DEVICE_PAGE || []).find((item) =>
         String(item.code).toLowerCase() === String(pageCode || "").toLowerCase());
@@ -9450,11 +9453,12 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     }
 
     let metricReturnToWidgetEditor = false;
+    let metricReturnToWidgetEditor = false;
     function openCalculatedMetrics(fromWidgetEditor = false) {
       mountWidgetDialogs();
       metricReturnToWidgetEditor = fromWidgetEditor === true;
       closeWidgetEditor();
-      setSidebarEditing(true);
+      setSidebarEditing(true, "calculated-metrics");
       $("metricBackdrop").classList.add("open");
       $("calculatedMetricCard").classList.add("open");
       $("calculatedMetricCard").setAttribute("aria-hidden", "false");
@@ -9467,17 +9471,17 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("calculatedMetricCard").classList.remove("open");
       $("calculatedMetricCard").setAttribute("aria-hidden", "true");
       if (metricReturnToWidgetEditor) {
+        setSidebarEditing(false, "calculated-metrics");
         metricReturnToWidgetEditor = false;
         $("wEditorBackdrop").classList.add("open");
         $("wEditorCard").classList.add("open");
         $("wEditorCard").setAttribute("aria-hidden", "false");
         $("wPueDefinition").focus();
-        setSidebarEditing(true);
+        setSidebarEditing(true, "widget-editor");
       } else {
-        setSidebarEditing(false);
+        setSidebarEditing(false, "calculated-metrics");
       }
-    }
-    function refreshWidgetPages(pageCode) {
+    }    function refreshWidgetPages(pageCode) {
       const code = String(pageCode || "").toLowerCase();
       document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
         if (frame.dataset.loaded && frame.dataset.pageKey.toLowerCase() === code) {
@@ -9494,7 +9498,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wEditorBackdrop").classList.remove("open");
       $("wEditorCard").classList.remove("open");
       $("wEditorCard").setAttribute("aria-hidden", "true");
-      if (!metricReturnToWidgetEditor) setSidebarEditing(false);
+      if (!metricReturnToWidgetEditor) setSidebarEditing(false, "widget-editor");
       if (["tab-dashboard-page", "tab-environment-page", "tab-cooling-page"].some((id) => $(id)?.classList.contains("active"))) {
         document.querySelector(".widget-display-page.active iframe")?.focus();
       }
@@ -13607,13 +13611,20 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wSaveError").hidden = true;
       editor.setAttribute("aria-busy", "true");
       $("wEditorBackdrop").classList.add("open");
-      setSidebarEditing(true);
+      setSidebarEditing(true, "widget-editor");
       editor.classList.add("open");
       editor.setAttribute("aria-hidden", "false");
       showWidgetEditorStep(1);
       try {
-        const w = await api(`/api/manager/widgets/${id}`);
+        const [w, options] = await Promise.all([
+          api(`/api/manager/widgets/${id}`),
+          loadSharedWidgetOptions(),
+        ]);
         if (requestSequence !== widgetEditorLoadSequence) return;
+        applySharedWidgetOptions(options);
+        await loadDeviceGroups();
+        if (requestSequence !== widgetEditorLoadSequence) return;
+        fillPowerExistingGroups();
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
@@ -13643,6 +13654,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         $("wVisualColor").value = w.visualColor || "#54cbf3";
         setWidgetVisualStyle(w.visualStyle || "classic");
         $("wKind").value = w.queryKind || "last";
+        $("wKindCards")?.querySelectorAll("[data-kind]").forEach((button) => button.classList.toggle("selected", button.dataset.kind === $("wKind").value));
+        $("wKindHint").textContent = options.kinds.find((item) => item.value === $("wKind").value)?.description || "";
         configureWidgetClickKind(w.queryKind || "last", w.clickConfig?.action);
         widgetVisualPreviewData = null;
         updateWidgetDesignPreview();
@@ -14318,7 +14331,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         clearPueForm();
         await loadPueDefinitions();
         if (metricReturnToWidgetEditor) {
-          setSidebarEditing(true);
+          setSidebarEditing(true, "widget-editor");
           $("wPueDefinition").value = String(saved.id);
           updateCalculatedUnitHint();
           closeCalculatedMetrics();
