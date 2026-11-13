@@ -1761,11 +1761,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           renderPageVisualization();
         };
         if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) tools.append(edit);
-        if (page.viewMode === "DATA") {
+        if (["DATA", "PLAN_2D", "SCENE_3D"].includes(page.viewMode)) {
           const widgetEdit = document.createElement("button"); widgetEdit.type="button"; widgetEdit.className="page-widget-edit";
-          widgetEdit.textContent = "위젯 편집";
+          widgetEdit.textContent = ["PLAN_2D", "SCENE_3D"].includes(page.viewMode) ? "▦ 위젯 편집" : "위젯 편집";
           widgetEdit.onclick = () => window.parent.postMessage({ type:"dcim:dashboard:open-widget-editor", pageCode:page.pageCode }, location.origin);
-          if (!widgetWorkspaceRequested) tools.append(widgetEdit);
+          if (!widgetWorkspaceRequested && !layoutEditRequested && !state.pageVisualizationEditMode) tools.append(widgetEdit);
         }
       }
       if (consoleAuth()?.getRole?.() === "ADMIN") {

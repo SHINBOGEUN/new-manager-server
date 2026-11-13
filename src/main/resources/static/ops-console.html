@@ -9293,7 +9293,16 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       pageFrame.src = `/widget-dashboard.html?embedded=1&boardView=1&fixedPage=1&layoutEdit=1&pageCode=${encodeURIComponent(pageCode)}`;
     }
 
+    function mountWidgetDialogs() {
+      if (!document.body) return;
+      ["wEditorBackdrop", "wEditorCard", "metricBackdrop", "calculatedMetricCard"].forEach((id) => {
+        const dialog = $(id);
+        if (dialog && dialog.parentElement !== document.body) document.body.append(dialog);
+      });
+    }
+
     function openWidgetEditor(editing = false) {
+      mountWidgetDialogs();
       if (!editing) clearWidgetForm(true);
       loadSharedWidgetOptions().then((options) => {
         const widgetKinds = new Set([...$("wKind").options].map((option) => option.value));
@@ -14211,7 +14220,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     renderPueGroups();
 
     // Show the widget and calculated-metric dialogs directly over the board.
-    document.body.append($("wEditorBackdrop"), $("wEditorCard"), $("metricBackdrop"), $("calculatedMetricCard"));
+    mountWidgetDialogs();
     $("metricClose").onclick = closeCalculatedMetrics;
     $("metricBackdrop").onclick = closeCalculatedMetrics;
     window.addEventListener("keydown", (event) => {
