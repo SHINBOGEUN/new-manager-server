@@ -165,18 +165,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
     .widget-item.disabled h3 > span, .widget-item.disabled .meta { opacity: .55; }
     .widget-item { cursor:pointer; }
-    .widget-item.is-list-selected { border-color:#4ad9ff; background:color-mix(in srgb,#4ad9ff 12%,var(--panel)); box-shadow:inset 3px 0 #4ad9ff; }
-    body.edit-mode .widget-item.is-row-selected { border-color:#4ad9ff; background:color-mix(in srgb,#4ad9ff 16%,var(--panel)); box-shadow:inset 3px 0 #4ad9ff; }
-    body.edit-mode .widget-item.is-row-selected h3 > span::after { content:'✓ 선택됨'; display:inline-block; margin-left:7px; padding:2px 6px; border-radius:8px; color:#052332; background:#51e5ff; font-size:10px; font-weight:800; white-space:nowrap; }
+    .widget-item.is-selected { border-color:color-mix(in srgb,var(--accent) 68%,var(--line)); background:color-mix(in srgb,var(--accent) 8%,var(--panel)); box-shadow:inset 2px 0 color-mix(in srgb,var(--accent) 72%,var(--line)); }
     .widget-size-pick { display:none; align-items:center; gap:7px; margin:8px 0 0; color:var(--muted); font-size:11px; cursor:pointer; }
     body.edit-mode .widget-size-pick { display:flex; }
     .widget-size-pick input { width:15px; height:15px; margin:0; accent-color:var(--accent); }
     .size-match-tools { display:none; flex:none; align-items:center; gap:8px; padding:9px; margin:0 0 10px; border:1px solid var(--line); border-radius:9px; background:var(--panel-2); }
     body.edit-mode .size-match-tools { display:flex; }
-    body.edit-mode .board > .card.row-selected { outline:3px solid #43e6ff; outline-offset:-3px; box-shadow:0 0 0 2px #08253a,0 0 18px #38d9ff88; }
     .size-match-tools span { flex:1; color:var(--muted); font-size:11px; line-height:1.4; }
     .board > .card.editor-preview-target { outline:3px solid #facc15; outline-offset:4px; z-index:13; box-shadow:0 0 0 7px #facc1533,0 0 28px #facc1588 !important; }
-    .board > .card.is-list-selected { outline:3px solid #4ad9ff; outline-offset:2px; z-index:12; box-shadow:0 0 0 5px #4ad9ff55,0 0 24px #4ad9ff88 !important; }
     .widget-item h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .widget-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
     .widget-actions button { padding: 6px 10px; font-size: 12px; flex: 1; min-width: 72px; }
@@ -270,8 +266,6 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .resize-nw { left:0; top:0; cursor:nwse-resize; }
     .resize-ne { right:0; top:0; cursor:nesw-resize; }
     .resize-sw { left:0; bottom:0; cursor:nesw-resize; }
-    body.edit-mode .board > .card.row-selected { outline:4px solid #32e6ff; outline-offset:-4px; box-shadow:0 0 0 3px #27d9fa,0 0 25px #24c8f9aa; }
-    body.edit-mode .board > .card.row-selected::after { content:'✓ 선택됨'; position:absolute; z-index:6; top:9px; right:10px; padding:5px 11px; border-radius:20px; color:#052332; background:#51e5ff; font-size:12px; font-weight:800; box-shadow:0 2px 8px #0008; pointer-events:none; }
     .card-body { padding: 8px 12px 12px; overflow: auto; flex: 1; min-height: 0; }
     .card h2 { margin: 0; font-size: 14px; flex: 1; }
     /* Operational cards share the same quiet surface and compact title strip. */
@@ -972,10 +966,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 /* T-030 step 2: quiet edit affordances and narrow content. */
 body.edit-mode .board>.card{border:1px dashed color-mix(in srgb,var(--line) 65%,#a9b9cc);box-shadow:none}
 body.edit-mode .board>.card:hover{border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
-body.edit-mode .board>.card.row-selected{outline:2px solid var(--accent);outline-offset:-2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
-body.edit-mode .board>.card.row-selected::after{content:none}
-body.edit-mode .board>.card.row-selected::before{content:"✓";position:absolute;z-index:6;top:6px;left:7px;width:17px;height:17px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#08202b;font-size:11px;font-weight:800;pointer-events:none}
-body.edit-mode .widget-item.is-row-selected h3>span::after{content:none}
+body .board>.card.is-selected:not(.editor-preview-target){outline:2px solid var(--accent);outline-offset:-2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
+body .board>.card.is-selected::before{content:"✓";position:absolute;z-index:6;top:7px;left:7px;width:16px;height:16px;display:grid;place-items:center;border-radius:50%;background:color-mix(in srgb,var(--accent) 72%,var(--panel));color:var(--panel);font-size:10px;font-weight:800;pointer-events:none}
 .resize-handle{background:transparent!important;border-radius:0!important;opacity:1!important}
 .resize-e{top:12px;right:-3px;width:10px;bottom:12px;cursor:ew-resize}
 .resize-s{left:12px;bottom:-3px;height:10px;right:12px;cursor:ns-resize}
@@ -1158,7 +1150,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       dashboardReady: false,
       pollTimer: null,
       editMode: false,
-      sizeMatchWidgetIds: [],
+      selectedWidgetIds: [],
       drag: null,
       saving: false,
     };
@@ -2538,7 +2530,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       renderPageVisualization();
     });
 
-    let selectedListWidgetId = null;
+    let selectionAnchorWidgetId = null;
     let widgetCardPointer = null;
     let lastWidgetCardDragAt = 0;
     const widgetBoard = $("board");
@@ -2567,51 +2559,80 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       if (!Number.isInteger(widgetId) || widgetId <= 0) return;
       event.preventDefault();
       event.stopPropagation();
-      if (!state.sizeMatchWidgetIds.includes(widgetId)) state.sizeMatchWidgetIds.push(widgetId);
-      widgetBoard.querySelectorAll(".card[data-widget-id]").forEach((item) => item.classList.toggle("row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.widgetId))));
-      $("widgetList").querySelectorAll(".widget-item").forEach((item) => item.classList.toggle("is-row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.id))));
-      selectWidgetFromList(widgetId, { scrollBoard: false });
-      updateSizeMatchTools();
+      setWidgetSelection(widgetId, {forceSingle:true, scrollBoard:false, scrollList:true});
       requestWidgetEditor(widgetId);
     });
-    function toggleRowSelection(id) {
-      if (!state.editMode) return;
+    function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false} = {}) {
       id = Number(id);
-      if (state.sizeMatchWidgetIds.includes(id)) state.sizeMatchWidgetIds = state.sizeMatchWidgetIds.filter((item) => item !== id);
-      else state.sizeMatchWidgetIds.push(id);
-      $("board").querySelectorAll(".card[data-widget-id]").forEach((card) => card.classList.toggle("row-selected", state.sizeMatchWidgetIds.includes(Number(card.dataset.widgetId))));
-      $("widgetList").querySelectorAll(".widget-item").forEach((item) => item.classList.toggle("is-row-selected", state.sizeMatchWidgetIds.includes(Number(item.dataset.id))));
-      updateSizeMatchTools();
-    }
-    function selectWidgetFromList(id, {scrollBoard = true, scrollList = false} = {}) {
-      selectedListWidgetId = Number(id);
+      if (!Number.isInteger(id) || !state.widgets.some((widget) => Number(widget.id) === id)) return;
+      const multiSelect = state.editMode && !forceSingle;
+      const enabledIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
+      if (multiSelect && !enabledIds.includes(id)) return;
+      if (!multiSelect || (!ctrlKey && !shiftKey)) {
+        state.selectedWidgetIds = [id];
+        selectionAnchorWidgetId = id;
+      } else if (shiftKey) {
+        const anchor = enabledIds.includes(selectionAnchorWidgetId) ? selectionAnchorWidgetId : id;
+        const startIndex = enabledIds.indexOf(anchor);
+        const endIndex = enabledIds.indexOf(id);
+        if (startIndex < 0 || endIndex < 0) {
+          state.selectedWidgetIds = [id];
+          selectionAnchorWidgetId = id;
+        } else {
+          const range = enabledIds.slice(Math.min(startIndex, endIndex), Math.max(startIndex, endIndex) + 1);
+          state.selectedWidgetIds = ctrlKey ? [...new Set([...state.selectedWidgetIds, ...range])] : range;
+        }
+      } else {
+        state.selectedWidgetIds = state.selectedWidgetIds.includes(id)
+          ? state.selectedWidgetIds.filter((selectedId) => selectedId !== id)
+          : [...state.selectedWidgetIds, id];
+        selectionAnchorWidgetId = id;
+      }
+      const selectedIds = new Set(state.selectedWidgetIds);
+      const currentId = state.selectedWidgetIds[state.selectedWidgetIds.length - 1] ?? null;
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
-        const selected = Number(item.dataset.id) === selectedListWidgetId;
-        item.classList.toggle('is-list-selected', selected);
-        if (selected) { item.setAttribute('aria-current', 'true'); if (scrollList && document.body.classList.contains('drawer-open')) item.scrollIntoView({behavior:'smooth', block:'nearest', inline:'nearest'}); } else item.removeAttribute('aria-current');
+        const itemId = Number(item.dataset.id);
+        const selected = selectedIds.has(itemId);
+        item.classList.toggle('is-selected', selected);
+        if (selected && itemId === currentId) item.setAttribute('aria-current', 'true');
+        else item.removeAttribute('aria-current');
       });
       const board = $('board');
       board.querySelectorAll('.card[data-widget-id]').forEach((card) => {
-        const selected = Number(card.dataset.widgetId) === selectedListWidgetId;
-        card.classList.toggle('is-list-selected', selected);
-        if (selected && scrollBoard) card.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' });
+        const selected = selectedIds.has(Number(card.dataset.widgetId));
+        card.classList.toggle('is-selected', selected);
+        if (!selected || !scrollBoard) return;
+        const rect = card.getBoundingClientRect();
+        const outsideViewport = rect.top < 0 || rect.bottom > window.innerHeight || rect.left < 0 || rect.right > window.innerWidth;
+        if (outsideViewport) card.scrollIntoView({behavior:'auto', block:'nearest', inline:'nearest'});
       });
+      if (scrollList && document.body.classList.contains('drawer-open')) {
+        const item = document.querySelector(`#widgetList .widget-item[data-id="${id}"]`);
+        if (item) {
+          const rect = item.getBoundingClientRect();
+          if (rect.top < 0 || rect.bottom > window.innerHeight) item.scrollIntoView({behavior:'auto', block:'nearest', inline:'nearest'});
+        }
+      }
+      updateSizeMatchTools();
+    }
+    function selectWidgetFromList(id, {scrollBoard = true, scrollList = false} = {}) {
+      setWidgetSelection(id, {scrollBoard, scrollList, forceSingle:true});
     }
 
     function updateSizeMatchTools() {
-      const selected = state.sizeMatchWidgetIds.filter((id) => state.widgets.some((widget) => Number(widget.id) === id && widget.enabled));
-      state.sizeMatchWidgetIds = selected;
+      const selected = state.selectedWidgetIds.filter((id) => state.widgets.some((widget) => Number(widget.id) === id && widget.enabled));
+
       const hint = $("sizeMatchHint");
       const apply = $("applySizeMatchBtn");
       if (!hint || !apply) return;
       hint.textContent = selected.length < 2
-        ? "위젯을 직접 클릭해 2개 이상 선택하세요."
+        ? "Ctrl 또는 Shift를 누른 채 위젯을 클릭해 2개 이상 선택하세요."
         : `${selected.length}개 선택 · 가장 위쪽 위치에 한 줄로 나눠 배치합니다.`;
       apply.disabled = selected.length < 2 || state.saving;
     }
 
     async function applyWidgetSizeMatch() {
-      const selected = state.sizeMatchWidgetIds
+      const selected = state.selectedWidgetIds
         .map((id) => state.widgets.find((widget) => Number(widget.id) === id && widget.enabled))
         .filter(Boolean);
       if (selected.length < 2) return;
@@ -2654,7 +2675,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
             ? ` · ${escapeHtml(w.op || "")}${w.aggregateRangePreset ? " · " + escapeHtml(w.aggregateRangePreset) : ""}`
             : "";
         return `
-        <article class="widget-item ${w.enabled ? "" : "disabled"} ${Number(w.id) === selectedListWidgetId ? "is-list-selected" : ""} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? "is-row-selected" : ""}" data-id="${w.id}" tabindex="0" ${Number(w.id) === selectedListWidgetId ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
+        <article class="widget-item ${w.enabled ? "" : "disabled"} ${state.selectedWidgetIds.includes(Number(w.id)) ? "is-selected" : ""}" data-id="${w.id}" tabindex="0" ${state.selectedWidgetIds[state.selectedWidgetIds.length - 1] === Number(w.id) ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
           <h3>
             <span>${escapeHtml(w.name)}</span>
             <label class="switch" title="이 페이지에 위젯 표시">
@@ -2675,8 +2696,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       $("widgetList").querySelectorAll('.widget-item').forEach((item) => {
         item.addEventListener('click', (event) => {
           if (event.target.closest('button, input, select, label, a')) return;
-          if (state.editMode && !item.classList.contains('disabled')) toggleRowSelection(item.dataset.id);
-          selectWidgetFromList(item.dataset.id);
+          setWidgetSelection(item.dataset.id, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey});
         });
         item.addEventListener('keydown', (event) => {
           if (event.target !== item || !['Enter', ' '].includes(event.key)) return;
@@ -3553,7 +3573,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
           : "";
         const editorTargetClass = editorPreviewWidgetId && Number(w.id) === editorPreviewWidgetId ? "editor-preview-target" : "";
         return `
-          <article class="${cardClass} ${editorTargetClass} ${Number(w.id) === selectedListWidgetId ? 'is-list-selected' : ''} ${state.sizeMatchWidgetIds.includes(Number(w.id)) ? 'row-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
+          <article class="${cardClass} ${editorTargetClass} ${state.selectedWidgetIds.includes(Number(w.id)) ? 'is-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
             <div class="card-head" data-drag-handle>
               <span class="drag-handle">⠿</span>
               <div>
@@ -3876,8 +3896,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
         card.addEventListener("click", (event) => {
           if (!state.editMode) return;
           if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
-          toggleRowSelection(card.dataset.widgetId);
-          selectWidgetFromList(card.dataset.widgetId, {scrollBoard:false, scrollList:true});
+          setWidgetSelection(card.dataset.widgetId, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, scrollBoard:false, scrollList:true});
         });
       });
       $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
@@ -4112,7 +4131,8 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
 
     function setEditMode(on) {
       if (!on) {
-        state.sizeMatchWidgetIds = [];
+        state.selectedWidgetIds = [];
+        selectionAnchorWidgetId = null;
         const discarded = state.widgets.filter((widget) => widget._draftLayout).length;
         state.widgets.forEach((widget) => { delete widget._draftLayout; });
         if (discarded) log(`저장하지 않은 배치 변경 ${discarded}개 취소`);
@@ -4300,8 +4320,8 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       applyWidgetSizeMatch().catch((error) => log("위젯 크기 맞춤 실패: " + error.message));
     });
     $("clearSizeMatchBtn").addEventListener("click", () => {
-      state.sizeMatchWidgetIds = [];
-      $("board").querySelectorAll(".row-selected").forEach((card) => card.classList.remove("row-selected"));
+      state.selectedWidgetIds = [];
+      $("board").querySelectorAll(".is-selected").forEach((card) => card.classList.remove("is-selected"));
       renderWidgetList();
     });
     $("addWidgetBtn").addEventListener("click", () => {
