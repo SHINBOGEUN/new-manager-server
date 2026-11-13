@@ -13764,6 +13764,14 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         toast(`위젯 #${w.id} 수정 모드`);
       } catch (e) {
         if (requestSequence !== widgetEditorLoadSequence) return;
+        const kindSelect = document.getElementById("wKind");
+        console.error("[T-030 UT-6] 위젯 수정 초기화 실패", e, {
+          editorConnected: editor.isConnected,
+          kindInsideEditor: !!editor.querySelector("#wKind"),
+          kindInDocument: !!kindSelect,
+          kindParent: kindSelect?.parentElement?.id || kindSelect?.parentElement?.className || null,
+          editorChildren: [...editor.children].map((node) => node.id || node.className || node.tagName),
+        });
         editor.removeAttribute("aria-busy");
         loadStatus.className = "bad widget-editor-load-status";
         loadStatus.textContent = `수정 창을 불러오지 못했습니다: ${e.message}`;
