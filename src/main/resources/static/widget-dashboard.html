@@ -968,7 +968,34 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       *, *::before, *::after { transition:none !important; scroll-behavior:auto !important; }
     }
     /* T-030 shared card surface: quiet border and minimal shadow in both themes. */
-.card,.stat,.board>.card{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}html[data-theme="light"] .card,html[data-theme="light"] .stat,html[data-theme="light"] .board>.card{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}</style>
+.card,.stat,.board>.card{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}html[data-theme="light"] .card,html[data-theme="light"] .stat,html[data-theme="light"] .board>.card{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}
+/* T-030 step 2: quiet edit affordances and narrow content. */
+body.edit-mode .board>.card{border:1px dashed color-mix(in srgb,var(--line) 65%,#a9b9cc);box-shadow:none}
+body.edit-mode .board>.card:hover{border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+body.edit-mode .board>.card.row-selected{outline:2px solid var(--accent);outline-offset:-2px;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
+body.edit-mode .board>.card.row-selected::after{content:none}
+body.edit-mode .board>.card.row-selected::before{content:"✓";position:absolute;z-index:6;top:6px;left:7px;width:17px;height:17px;display:grid;place-items:center;border-radius:50%;background:var(--accent);color:#08202b;font-size:11px;font-weight:800;pointer-events:none}
+body.edit-mode .widget-item.is-row-selected h3>span::after{content:none}
+.resize-handle{background:transparent!important;border-radius:0!important;opacity:1!important}
+.resize-e{top:12px;right:-3px;width:10px;bottom:12px;cursor:ew-resize}
+.resize-s{left:12px;bottom:-3px;height:10px;right:12px;cursor:ns-resize}
+.resize-e:hover,.resize-e:focus-visible{background:linear-gradient(90deg,transparent calc(50% - 1px),var(--accent) calc(50% - 1px),var(--accent) calc(50% + 1px),transparent calc(50% + 1px))!important}
+.resize-s:hover,.resize-s:focus-visible{background:linear-gradient(180deg,transparent calc(50% - 1px),var(--accent) calc(50% - 1px),var(--accent) calc(50% + 1px),transparent calc(50% + 1px))!important}
+.resize-se{right:0;bottom:0;width:14px;height:14px;background:linear-gradient(135deg,transparent 46%,var(--accent) 47%)!important;clip-path:none!important;border-radius:0!important}
+.card-head>div{flex:1;min-width:0}.card h2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-head .sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body:not(.edit-mode) .board>.card .card-head .sub{display:none}
+body.edit-mode .board>.card .card-head .sub{max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.card-body{min-width:0}.card-body *{min-width:0}
+.card-body .value,.card-body .metric-value,.card-body .reading-value,.card-body .last-value{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:991px){.board>.card .card-head{gap:6px;padding-inline:8px}.board>.card .card-head h2{font-size:clamp(10px,2vw,13px)}.board>.card .card-head-tools{gap:3px;max-width:34%}.board>.card .card-head-tools select{min-width:0;max-width:100%;padding-inline:4px}.board>.card .card-body{padding:8px}.size-match-tools{flex-wrap:wrap}#sizeMatchHint{flex:1 1 100%;white-space:normal;line-height:1.35}}
+/* T-030 step 2: keep the edit list as a folded overlay so the board keeps its width. */
+#widgetMain{position:relative}
+body.drawer-open #widgetMain{grid-template-columns:minmax(0,1fr)}
+body.drawer-open #widgetMain>.board-wrap{grid-column:1}
+body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;width:var(--widget-drawer-width);height:auto;max-width:calc(100% - 12px);border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 12px 36px rgba(0,0,0,.38);overflow:auto}
+@media(max-width:760px){body.drawer-open #widgetDrawer{inset:0 0 auto;width:100%;max-width:none;max-height:42vh;border-radius:0 0 10px 10px}}
+</style>
 </head>
 <body>
   <script>
@@ -3496,13 +3523,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
               ${chartHeadTools}${clickEnabled ? '<span class="widget-click-indicator" title="클릭 동작">↗</span>' : ''}
             </div>
             <div class="card-body">${body}</div>
-            <div class="resize-handle resize-n" data-resize="n" title="위쪽 크기 조절"></div>
-            <div class="resize-handle resize-w" data-resize="w" title="왼쪽 크기 조절"></div>
-            <div class="resize-handle resize-nw" data-resize="nw" title="왼쪽 위 크기 조절"></div>
-            <div class="resize-handle resize-ne" data-resize="ne" title="오른쪽 위 크기 조절"></div>
-            <div class="resize-handle resize-sw" data-resize="sw" title="왼쪽 아래 크기 조절"></div>
-            <div class="resize-handle resize-e" data-resize="e" title="가로 크기"></div>
-            <div class="resize-handle resize-s" data-resize="s" title="세로 크기"></div>
+            <div class="resize-handle resize-e" data-resize="e" title="가로 크기 조절"></div>
+            <div class="resize-handle resize-s" data-resize="s" title="세로 크기 조절"></div>
             <div class="resize-handle resize-se" data-resize="se" title="크기 조절"></div>
           </article>`;
       }).join("");
@@ -3621,9 +3643,18 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         const snap = pixelsToLayout(live.left, live.top, live.width, live.height);
         snap.w = d.layout.w;
         snap.h = d.layout.h;
+        const { stepX } = boardMetrics();
+        const rawX = Math.max(0, Math.round(live.left / stepX));
+        if (rawX > COLS - snap.w) { snap.gridX = 0; snap.gridY += snap.h; }
+        else snap.gridX = rawX;
         snap.gridX = Math.max(0, Math.min(COLS - snap.w, snap.gridX));
         snap.gridY = Math.max(0, snap.gridY);
-        return alignWidgetLayout(snap, d.id);
+        const aligned = alignWidgetLayout(snap, d.id, d.baseLayouts);
+        const resolved = resolvePushedLayouts(aligned, d.id, d.baseLayouts);
+        d.collisionBlocked = !resolved;
+        if (!resolved) return aligned;
+        d.pendingLayouts = resolved;
+        return { ...resolved.get(Number(d.id)), alignX:aligned.alignX, alignY:aligned.alignY };
       }
       const { gap, stepX, stepY } = boardMetrics();
       const mode = d.resizeMode;
@@ -3634,15 +3665,27 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (mode.includes("e")) w = Math.max(1, Math.min(COLS - gridX, Math.round((live.width + gap) / stepX)));
       if (mode.includes("n")) { gridY = Math.max(0, Math.min(bottom - 1, Math.round(live.top / stepY))); h = bottom - gridY; if (h > 80) { h = 80; gridY = bottom - h; } }
       if (mode.includes("s")) h = Math.max(1, Math.min(80, Math.round((live.height + gap) / stepY)));
-      return { gridX, gridY, w, h };
+      const requested = { gridX, gridY, w, h };
+      const resolved = resolvePushedLayouts(requested, d.id, d.baseLayouts);
+      d.collisionBlocked = !resolved;
+      if (!resolved) return requested;
+      d.pendingLayouts = resolved;
+      return resolved.get(Number(d.id));
     }
 
-    function alignWidgetLayout(layout, movingId) {
+    function layoutOverlaps(a, b) {
+      return a.gridX < b.gridX + b.w && a.gridX + a.w > b.gridX
+        && a.gridY < b.gridY + b.h && a.gridY + a.h > b.gridY;
+    }
+    function widgetLayoutLocked(widget) {
+      return widget?.layoutLocked === true || widget?.locked === true || widget?.layout?.locked === true;
+    }
+    function alignWidgetLayout(layout, movingId, layouts = null) {
       const result = { ...layout, alignX: false, alignY: false };
       let bestX = 1.01, bestY = 1.01;
       for (const other of state.widgets) {
-        if (other.id === movingId || !other.enabled) continue;
-        const target = widgetLayout(other);
+        if (Number(other.id) === Number(movingId) || !other.enabled) continue;
+        const target = layouts?.get(Number(other.id)) || widgetLayout(other);
         if (!target) continue;
         const xCandidates = [target.gridX, target.gridX + target.w - layout.w];
         const yCandidates = [target.gridY, target.gridY + target.h - layout.h];
@@ -3661,7 +3704,107 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       if (bestY > 1) { result.gridY = layout.gridY; result.alignY = false; }
       return result;
     }
-
+    function resolvePushedLayouts(requested, movingId, baseLayouts) {
+      const layouts = new Map([...baseLayouts].map(([id, layout]) => [Number(id), { ...layout }]));
+      const widgets = new Map(state.widgets.map((widget) => [Number(widget.id), widget]));
+      const activeId = Number(movingId);
+      const active = widgets.get(activeId);
+      if (!active || widgetLayoutLocked(active)) return null;
+      layouts.set(activeId, { gridX: requested.gridX, gridY: requested.gridY, w: requested.w, h: requested.h });
+      const pinned = (id) => widgetLayoutLocked(widgets.get(Number(id)));
+      const activeLayout = () => layouts.get(activeId);
+      for (let attempts = 0; attempts < 10000; attempts++) {
+        const collision = [...layouts.entries()].find(([id, other]) =>
+          id !== activeId && pinned(id) && layoutOverlaps(activeLayout(), other));
+        if (!collision) break;
+        activeLayout().gridY = collision[1].gridY + collision[1].h;
+        if (attempts === 9999) return null;
+      }
+      let stable = false;
+      for (let pass = 0; pass < state.widgets.length * 4 + 4 && !stable; pass++) {
+        stable = true;
+        const entries = [...layouts.entries()].sort((a, b) => a[1].gridY - b[1].gridY || a[1].gridX - b[1].gridX);
+        for (let i = 0; i < entries.length; i++) {
+          for (let j = i + 1; j < entries.length; j++) {
+            let [aId, a] = entries[i], [bId, b] = entries[j];
+            if (!layoutOverlaps(a, b)) continue;
+            const aLocked = pinned(aId), bLocked = pinned(bId);
+            if (aLocked && bLocked) return null;
+            if (aId === activeId && bLocked) {
+              a.gridY = b.gridY + b.h;
+            } else if (bId === activeId && aLocked) {
+              b.gridY = a.gridY + a.h;
+            } else if (aLocked) {
+              b.gridY = a.gridY + a.h;
+            } else if (bLocked) {
+              a.gridY = b.gridY + b.h;
+            } else if (aId === activeId) {
+              b.gridY = a.gridY + a.h;
+            } else if (bId === activeId) {
+              a.gridY = b.gridY + b.h;
+            } else {
+              b.gridY = a.gridY + a.h;
+            }
+            stable = false;
+          }
+        }
+      }
+      if (!stable) return null;
+      return layouts;
+    }
+    function compactLayoutMap(layouts, anchorId = null) {
+      const widgets = new Map(state.widgets.map((widget) => [Number(widget.id), widget]));
+      const pinnedEntries = [...layouts.entries()].filter(([id]) => Number(id) === Number(anchorId) || widgetLayoutLocked(widgets.get(Number(id))));
+      const placed = new Map(pinnedEntries.map(([id, layout]) => [Number(id), { ...layout }]));
+      const pinnedValues = [...placed.values()];
+      for (let i = 0; i < pinnedValues.length; i++) {
+        for (let j = i + 1; j < pinnedValues.length; j++) if (layoutOverlaps(pinnedValues[i], pinnedValues[j])) return null;
+      }
+      const movable = [...layouts.entries()].filter(([id]) => Number(id) !== Number(anchorId) && !widgetLayoutLocked(widgets.get(Number(id))))
+        .sort((a, b) => a[1].gridY - b[1].gridY || a[1].gridX - b[1].gridX);
+      for (const [id, original] of movable) {
+        const layout = { ...original };
+        const maxY = Math.max(0, original.gridY);
+        for (let y = 0; y <= Math.max(maxY, 10000); y++) {
+          const candidate = { ...layout, gridY: y };
+          if (![...placed.values()].some((other) => layoutOverlaps(candidate, other))) {
+            layout.gridY = y;
+            break;
+          }
+        }
+        placed.set(Number(id), layout);
+      }
+      return placed;
+    }
+    function previewInteractionLayouts(interaction, layouts) {
+      interaction.pendingLayouts = layouts;
+      for (const [id, layout] of layouts) {
+        if (Number(id) === Number(interaction.id)) continue;
+        const card = [...$("board").querySelectorAll(".card[data-widget-id]")]
+          .find((item) => Number(item.dataset.widgetId) === Number(id));
+        if (!card) continue;
+        card.style.gridColumn = (layout.gridX + 1) + " / span " + layout.w;
+        card.style.gridRow = (layout.gridY + 1) + " / span " + layout.h;
+      }
+    }
+    function applyLayoutDrafts(layouts) {
+      for (const widget of state.widgets) {
+        const layout = layouts.get(Number(widget.id));
+        if (!layout) continue;
+        const baseline = widgetLayout(widget);
+        if (!baseline || ["gridX", "gridY", "w", "h"].some((key) => baseline[key] !== layout[key])) widget._draftLayout = { ...layout };
+        else delete widget._draftLayout;
+      }
+    }
+    function layoutMapHasOverlap(layouts) {
+      const entries = [...layouts.entries()];
+      for (let i = 0; i < entries.length; i++) {
+        for (let j = i + 1; j < entries.length; j++) {
+          if (layoutOverlaps(entries[i][1], entries[j][1])) return true;
+        }
+      }
+      return false;
+    }
     function placeLiveBox(left, top, width, height, snap) {
       const ghost = $("ghost");
       const guide = $("snapGuide");
@@ -3743,6 +3886,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         id,
         card,
         layout,
+        baseLayouts: new Map(state.widgets.filter((widget) => widget.enabled).map((widget) => [Number(widget.id), { ...widgetLayout(widget) }])),
         origin,
         pointerId: e.pointerId,
         startX: e.clientX,
@@ -3784,10 +3928,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       let height = d.origin.height;
 
       if (d.mode === "move") {
-        left = d.origin.left + dx;
-        top = d.origin.top + dy;
-        left = Math.max(0, Math.min(boardW - width, left));
-        top = Math.max(0, top);
+        const rawLeft = d.origin.left + dx;
+        top = Math.max(0, d.origin.top + dy);
+        const maxLeft = Math.max(0, boardW - width);
+        if (rawLeft > maxLeft) {
+          const { stepY } = boardMetrics();
+          const wraps = Math.max(1, Math.ceil((rawLeft - maxLeft) / Math.max(1, boardW)));
+          left = Math.max(0, Math.min(maxLeft, rawLeft - wraps * boardW));
+          top += wraps * (d.layout.h * stepY);
+        } else {
+          left = Math.max(0, rawLeft);
+        }
       } else {
         const mode = d.resizeMode;
         const right = d.origin.left + d.origin.width, bottom = d.origin.top + d.origin.height;
@@ -3812,6 +3963,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         d.live = live;
         const snap = snapFromInteraction(d, live);
         d.pending = snap;
+        if (d.pendingLayouts) previewInteractionLayouts(d, d.pendingLayouts);
         placeLiveBox(live.left, live.top, live.width, live.height, snap);
       });
     }
@@ -3831,7 +3983,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       const next = snapFromInteraction(d, live);
       hideGhost();
       state.drag = null;
-      if (e.type === "pointercancel") {
+      if (e.type === "pointercancel" || d.collisionBlocked || !d.pendingLayouts) {
         await refreshBoard(false);
         return;
       }
@@ -3844,7 +3996,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         return;
       }
 
-      widget._draftLayout = next;
+      const compacted = compactLayoutMap(d.pendingLayouts, d.id);
+      if (!compacted) { await refreshBoard(false); alert("잠긴 위젯을 피할 공간이 없어 배치를 바꾸지 않았습니다."); return; }
+      applyLayoutDrafts(compacted);
       const verb = d.mode === "move" ? "이동" : "크기";
       log(`${verb} 미리보기 #${d.id} → (${next.gridX},${next.gridY}) ${next.w}×${next.h}`);
       renderWidgetList();
@@ -3863,6 +4017,17 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     async function saveLayoutEdits() {
       if (state.saving) return;
+      let currentLayouts = new Map(state.widgets.filter((widget) => widget.enabled).map((widget) => [Number(widget.id), { ...widgetLayout(widget) }]));
+      if (layoutMapHasOverlap(currentLayouts)) {
+        const repaired = compactLayoutMap(currentLayouts);
+        if (!repaired || layoutMapHasOverlap(repaired)) {
+          showLayoutSaveStatus("위젯이 겹쳐 저장할 수 없습니다. 겹치는 위젯을 옮겨 주세요.", true, true);
+          alert("위젯이 겹친 상태라 저장하지 않았습니다. 잠긴 위젯을 포함한 배치를 확인해 주세요.");
+          return;
+        }
+        applyLayoutDrafts(repaired);
+        currentLayouts = repaired;
+      }
       const changed = state.widgets.filter(hasWidgetLayoutChanges);
       if (!changed.length) {
         setEditMode(false);
@@ -3939,7 +4104,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
         $("controlsBtn").setAttribute("aria-expanded", "false");
       }
       document.body.classList.toggle("edit-mode", on);
-      setWidgetDrawerOpen(on);
+      setWidgetDrawerOpen(false);
       $("drawerBtn").style.display = (boardView || fixedPageView || on) ? "inline-flex" : "none";
       $("addWidgetBtn").disabled = on && !widgetWorkspaceRequested;
       $("metricsBtn").disabled = on && !widgetWorkspaceRequested;
