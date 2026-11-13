@@ -9442,7 +9442,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }).catch((error) => toast("측정항목을 불러오지 못했습니다: " + error.message, true));
       loadDeviceGroups().then(() => fillPowerExistingGroups()).catch((error) => toast(`장비 그룹을 불러오지 못했습니다: ${error.message}`, true));
       $("wKind").focus();
-    }    function openWidgetEditorForPage(pageCode) {
+    }
+
+    function openWidgetEditorForPage(pageCode) {
       if (state.role !== "ADMIN") return toast("위젯 등록은 관리자만 할 수 있습니다.", true);
       const page = (state.codes.DEVICE_PAGE || []).find((item) =>
         String(item.code).toLowerCase() === String(pageCode || "").toLowerCase());
@@ -9452,7 +9454,6 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       openWidgetEditor();
     }
 
-    let metricReturnToWidgetEditor = false;
     let metricReturnToWidgetEditor = false;
     function openCalculatedMetrics(fromWidgetEditor = false) {
       mountWidgetDialogs();
@@ -9481,7 +9482,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       } else {
         setSidebarEditing(false, "calculated-metrics");
       }
-    }    function refreshWidgetPages(pageCode) {
+    }
+
+    function refreshWidgetPages(pageCode) {
       const code = String(pageCode || "").toLowerCase();
       document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
         if (frame.dataset.loaded && frame.dataset.pageKey.toLowerCase() === code) {
