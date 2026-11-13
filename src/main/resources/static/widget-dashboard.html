@@ -88,9 +88,7 @@
     .power-group-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
     .power-group-bar { height: 5px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 4px; }
     .power-group-bar i { display: block; height: 100%; border-radius: inherit; }
-    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }
-
-  </style>
+    @media (max-width: 540px) { .power-distribution { gap: 10px; } .power-donut { width: 104px; height: 104px; flex-basis: 104px; } .power-donut::after { inset: 23px; } }</style>
   <style>
 .widget-table-scroll { width:100%; height:100%; min-height:100px; overflow:auto; border-radius:8px; }
 .widget-data-table { width:100%; border-collapse:separate; border-spacing:0; color:var(--text); font-size:12px; text-align:left; font-variant-numeric:tabular-nums; }
@@ -103,9 +101,7 @@
 .widget-data-table td.widget-table-text { color:var(--text); }
 .widget-data-table td small { color:var(--muted); font-weight:400; }
 html[data-theme="light"] .widget-data-table thead th { background:#dcebf6; color:#20384e; }
-html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }
-
-  </style>
+html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e82; }</style>
   <script id="pageSceneModule" type="module" src="/page-scene-3d.js?v=20261113-t028"></script>
   <style>
     :root {
@@ -971,7 +967,8 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     @media (prefers-reduced-motion:reduce) {
       *, *::before, *::after { transition:none !important; scroll-behavior:auto !important; }
     }
-  </style>
+    /* T-030 shared card surface: quiet border and minimal shadow in both themes. */
+.card,.stat,.board>.card{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}html[data-theme="light"] .card,html[data-theme="light"] .stat,html[data-theme="light"] .board>.card{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}</style>
 </head>
 <body>
   <script>
@@ -1758,6 +1755,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           } else {
             state.pageVisualizationEditMode=true;
           }
+          window.parent.postMessage({ type:"dcim:dashboard:scene-editing", active:state.pageVisualizationEditMode }, location.origin);
           renderPageVisualization();
         };
         if (["PLAN_2D", "SCENE_3D"].includes(page.viewMode)) tools.append(edit);
@@ -1883,6 +1881,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
       try {
         await api(`/api/manager/device-pages/${encodeURIComponent(page.pageCode)}/display`, { method: "PUT", body: JSON.stringify(request) });
         state.pageVisualizationEditMode = false;
+        window.parent.postMessage({ type:"dcim:dashboard:scene-editing", active:false }, location.origin);
         clearSceneDraft();
         await refreshPageVisualization();
         log("랙 배치와 센서 장착 정보를 저장했습니다.");
@@ -2436,6 +2435,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
           if (state.pageSceneDirty && !confirm("저장하지 않은 도면 변경을 취소할까요?")) return;
           state.pageVisualizationEditMode = false;
           clearSceneDraft();
+          window.parent.postMessage({ type:"dcim:dashboard:scene-editing", active:state.pageVisualizationEditMode }, location.origin);
           renderPageVisualization();
         };
         stage.append(editor);
