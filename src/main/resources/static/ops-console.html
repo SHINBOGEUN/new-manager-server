@@ -1874,7 +1874,13 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-stage { height:100%; min-height:0; }
     #rackPreviewModal :is(.is-rack-widget-view,.is-rack-layout-edit) .rack-detail-layout--rack > div:last-child { height:100%; min-height:0; overflow:hidden; }
     #rackPreviewModal [data-rack-widget-layout], #rackPreviewModal .is-rack-widget-view [data-rack-widgets] { max-height:none; overflow:hidden; }
-    #rackPreviewModal .rack-scene-problem-panel { max-height:220px; min-height:0; overflow:auto; margin:0 0 8px; padding:10px; border:1px solid var(--line); border-radius:10px; }
+    #rackPreviewModal .rack-preview-head { position:relative; z-index:20; }
+    #rackPreviewModal .rack-preview-head-actions { position:relative; display:flex; align-items:center; gap:8px; margin-left:auto; flex:none; }
+    #rackPreviewModal .rack-preview-head-actions .rack-scene-problem-panel { position:absolute; top:calc(100% + 8px); right:0; width:min(380px,calc(100vw - 48px)); max-height:220px; min-height:0; overflow:auto; margin:0; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--text); box-shadow:0 12px 30px #0005; }
+    #rackPreviewModal .rack-preview-head-actions .rack-scene-problem-panel[hidden] { display:none; }
+    #rackPreviewModal .rack-preview-head-actions .scene-problem-toggle { width:36px; min-width:36px; height:36px; padding:0; border:1px solid #ef6574; border-radius:9px; background:#c92f42; color:#fff; font-size:20px; font-weight:800; }
+    #rackPreviewModal .rack-preview-head-actions .scene-problem-toggle:hover { background:#a92335; }
+    html[data-theme="light"] #rackPreviewModal .rack-preview-head-actions .scene-problem-toggle { background:#c92f42; border-color:#c92f42; color:#fff; }
     #rackPreviewModal .scene-problem-toggle { width:auto; min-width:92px; font-size:12px; font-weight:750; }
     #rackPreviewModal .scene-problem-toggle--critical { background:#9f2c37; border-color:#e34d5d; }
     #rackPreviewModal .scene-problem-toggle--warning { background:#a45a11; border-color:#d88832; }
@@ -3888,7 +3894,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     <div class="rack-preview" role="dialog" aria-modal="true" aria-labelledby="rackPreviewTitle">
       <div class="rack-preview-head">
         <div><h2 id="rackPreviewTitle">Rack 상세</h2><p id="rackPreviewMeta"></p></div>
-        <button type="button" id="rackPreviewClose" aria-label="닫기">×</button>
+        <div class="rack-preview-head-actions" data-scene-problem-actions><button type="button" id="rackPreviewClose" aria-label="닫기">×</button></div>
       </div>
       <div class="rack-preview-body" id="rackPreviewBody"></div>
     </div>
@@ -7556,7 +7562,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       problemPanel.classList.add('rack-scene-problem-panel');
       problemPanel.innerHTML = '<div data-scene-device-problems-content><p class="muted">문제 정보를 불러오는 중입니다.</p></div>';
       attachSceneProblemToggle(problemPanel);
-      renderSceneDeviceProblems([Number(device.deviceId)], body.querySelector('[data-scene-device-problems-content]'));
+      renderSceneDeviceProblems([Number(device.deviceId)], problemPanel.querySelector('[data-scene-device-problems-content]'));
       const connection = body.querySelector('[data-equipment-connection]');
       const text = document.createElement('p'); text.textContent = `연결된 장비 · ${device.deviceName || device.label || `장비 #${device.deviceId}`}`; connection.append(text);
       const change = document.createElement('button'); change.type = 'button'; change.textContent = '장비 연결 변경'; change.disabled = !!host.locked; change.onclick = () => { closeRackPreview(); openConnection(); }; connection.append(change);
@@ -7748,25 +7754,32 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     function setSceneProblemCount(container, count) {
       const panel = container.closest(".rack-scene-problem-panel");
       const button = $("rackPreviewModal").querySelector("[data-scene-problem-toggle]");
-      if (!panel || !button) return;
+      if (!panel || !panel.isConnected || !button || button.getAttribute("aria-controls") !== panel.id) return;
       button.hidden = count < 1;
       button.classList.remove("scene-problem-toggle--critical", "scene-problem-toggle--warning", "scene-problem-toggle--collection");
       if (container.querySelector(".problem-badge--alarm-critical")) button.classList.add("scene-problem-toggle--critical");
       else if (container.querySelector(".problem-badge--alarm-warning, .problem-badge--setup")) button.classList.add("scene-problem-toggle--warning");
       else if (container.querySelector(".problem-badge--collection")) button.classList.add("scene-problem-toggle--collection");
-      button.textContent = `! 문제 ${count}`;
-      button.setAttribute("aria-expanded", String(!panel.hidden));
+      button.textContent = "!";
+      button.setAttribute("aria-label", `문제 ${count}개 확인`);
+      button.title = `문제 ${count}개 확인`;
       if (!count) panel.hidden = true;
+      button.setAttribute("aria-expanded", String(!panel.hidden));
     }
 
     function attachSceneProblemToggle(panel) {
       const header = $("rackPreviewModal").querySelector(".rack-preview-head");
-      header.querySelector("[data-scene-problem-toggle]")?.remove();
+      const actions = header.querySelector("[data-scene-problem-actions]");
+      actions.querySelector("[data-scene-problem-toggle]")?.remove();
+      actions.querySelector(".rack-scene-problem-panel")?.remove();
       const button = document.createElement("button");
       button.type = "button"; button.dataset.sceneProblemToggle = "";
       button.className = "ghost scene-problem-toggle"; button.hidden = true;
+      button.textContent = "!"; button.setAttribute("aria-expanded", "false");
+      panel.id = "rackSceneProblemsPopup"; panel.setAttribute("role", "region"); panel.setAttribute("aria-label", "문제 목록");
+      button.setAttribute("aria-controls", panel.id);
       button.onclick = () => { panel.hidden = !panel.hidden; button.setAttribute("aria-expanded", String(!panel.hidden)); };
-      header.insertBefore(button, $("rackPreviewClose")); panel.hidden = true;
+      actions.insertBefore(button, $("rackPreviewClose")); actions.append(panel); panel.hidden = true;
       return button;
     }
 
@@ -7893,7 +7906,6 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       stage.append(capacityBadge);
       const rackInfo = $("rackPreviewBody").querySelector('[data-rack-measurements]').parentElement;
       const rackProblemPanel = document.createElement('section'); rackProblemPanel.className = 'rack-detail-info rack-scene-problem-panel'; rackProblemPanel.innerHTML = '<div data-scene-device-problems><p class="muted">문제 정보를 불러오는 중입니다.</p></div>'; attachSceneProblemToggle(rackProblemPanel);
-      rackInfo.insertBefore(rackProblemPanel, rackInfo.querySelector('[data-rack-measurements]'));
       const capacityInfo = rackInfo.firstElementChild;
       const capacityControls = capacityInfo.querySelector('[data-rack-capacity]')?.closest('.row');
       let selectedRackItem = null, selectedEditor = null, selectRackTab = null;
@@ -8124,6 +8136,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
 
     function closeRackPreview() {
       $("rackPreviewModal").querySelector("[data-scene-problem-toggle]")?.remove();
+      $("rackPreviewModal").querySelector(".rack-preview-head-actions .rack-scene-problem-panel")?.remove();
       window.RackWidgetChart?.dispose($("rackPreviewBody"));
       rackDetailViewer?.dispose(); rackDetailViewer = null;
       $("rackPreviewBody").classList.remove('is-rack-widget-view', 'is-rack-layout-edit');
@@ -12847,7 +12860,15 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("rackOverviewReload").onclick = () => loadRackOverview().catch((e) => toast(e.message, true));
     $("rackOverviewScope").addEventListener("change", renderRackOverview);
     $("rackPreviewClose").onclick = closeRackPreview;
-    $("rackPreviewModal").onclick = (event) => { if (event.target === $("rackPreviewModal")) closeRackPreview(); };
+    $("rackPreviewModal").onclick = (event) => {
+      if (event.target === $("rackPreviewModal")) { closeRackPreview(); return; }
+      if (!event.target.closest("[data-scene-problem-actions]")) {
+        const panel = $("rackPreviewModal").querySelector(".rack-preview-head-actions .rack-scene-problem-panel");
+        const button = $("rackPreviewModal").querySelector("[data-scene-problem-toggle]");
+        if (panel) panel.hidden = true;
+        button?.setAttribute("aria-expanded", "false");
+      }
+    };
     $("assetPreviewClose").onclick = closeAssetPreview;
     $("assetPreviewModal").onclick = (event) => { if (event.target === $("assetPreviewModal")) closeAssetPreview(); };
     $("collectionValuesClose").onclick = closeCollectionValues;
