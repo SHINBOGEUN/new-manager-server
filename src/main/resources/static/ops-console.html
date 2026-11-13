@@ -1040,7 +1040,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .device-detail-head .eyebrow { display:block; margin-bottom:5px; }
     .device-detail-head h2 { margin:0; color:#f1f8ff; font-size:21px; }
     .device-detail-head p { margin:5px 0 0; color:#abc0d5; font-size:12px; }
+    .device-detail-head-actions { display:flex; flex:none; align-items:center; gap:8px; }
     .device-detail-head button { flex:none; min-width:36px; min-height:36px; color:#e6f3ff; background:#223c55; }
+    .device-detail-head .device-problem-quick-button { min-width:0; padding:7px 12px; border:1px solid #f16a77; border-radius:999px; color:#fff; background:#c92f42; font-size:12px; font-weight:800; white-space:nowrap; }
+    .device-detail-head .device-problem-quick-button:hover { background:#a92335; }
+    .device-detail-head .device-problem-quick-button[hidden] { display:none; }
     .device-detail-tabs { display:flex; gap:6px; padding:12px 24px 0; border-bottom:1px solid #2b3d54; }
     .device-detail-tabs button { padding:10px 15px; border:0; border-radius:8px 8px 0 0; background:transparent; color:#93a9c2; font-weight:700; }
     .device-detail-tabs button.active { color:#75d5ff; background:#183a50; box-shadow:inset 0 -2px 0 #4ec5f3; }
@@ -1345,6 +1349,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     html[data-theme="light"] .device-detail-head h2 { color:#16334b; }
     html[data-theme="light"] .device-detail-head p { color:#5e7890; }
     html[data-theme="light"] .device-detail-head button { color:#264c67; border-color:#bed5e3; background:#fff; }
+    html[data-theme="light"] .device-detail-head .device-problem-quick-button { color:#fff; border-color:#c92f42; background:#c92f42; }
     html[data-theme="light"] .device-detail-tabs { border-color:#dce5ef; }
     html[data-theme="light"] .device-detail-tabs button { color:#61778b; }
     html[data-theme="light"] .device-detail-tabs button.active { color:#12618e; background:#e8f5fb; box-shadow:inset 0 -2px 0 #258dbd; }
@@ -1507,6 +1512,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #wEditorBackdrop.open { display:block; }
     #wEditorCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1320px,calc(100vw - 36px)); max-height:min(92vh,1000px); margin:0; padding:0 22px 18px; overflow-y:auto; overflow-x:hidden; box-shadow:0 32px 90px rgba(0,0,0,.55); scrollbar-gutter:stable; }
     #wEditorCard.open { display:block; }
+    #wEditorCard[aria-busy="true"] { position:fixed; }
+    #wEditorCard[aria-busy="true"]::after { content:"위젯 설정을 불러오는 중…"; position:absolute; inset:0; z-index:12; display:grid; place-items:center; padding:24px; color:var(--text); background:rgba(10,18,30,.76); font-size:15px; font-weight:700; }
+    .widget-editor-load-status { margin:6px 0 0; font-size:12px; }
+    .widget-editor-load-status[hidden] { display:none!important; }
     #metricBackdrop { display:none; position:fixed; inset:0; z-index:170; background:rgba(2,8,18,.76); }
     #metricBackdrop.open { display:block; }
     #calculatedMetricCard { display:none; position:fixed; z-index:171; top:50%; left:50%; transform:translate(-50%,-50%); width:min(1050px,calc(100vw - 36px)); max-height:min(92vh,900px); margin:0; padding:18px 22px; overflow:auto; box-shadow:0 32px 90px rgba(0,0,0,.55); }
@@ -1932,7 +1941,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 .top-account-menu{position:relative}.top-account-menu>summary{display:flex;align-items:center;gap:7px;min-height:36px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;list-style:none;white-space:nowrap}.top-account-menu>summary::-webkit-details-marker{display:none}
 .top-account-popover{position:absolute;top:calc(100% + 7px);right:0;z-index:70;display:grid;gap:5px;min-width:150px;padding:7px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 10px 26px rgba(0,0,0,.18)}.top-account-popover button{width:100%;text-align:left;white-space:nowrap}.top-refresh{width:36px;min-width:36px;height:36px;padding:0!important;font-size:20px!important;line-height:1}
 body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}.card::before{display:none}.card>h2{border-bottom-color:var(--line)}html[data-theme="light"] .card,html[data-theme="light"] .stat{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}
-@media(min-width:981px){body.sidebar-collapsed{--side:56px}body.sidebar-collapsed .side{padding-inline:7px;overflow:visible}body.sidebar-collapsed .side-brand{justify-content:center;padding:0}body.sidebar-collapsed .side-brand>div,body.sidebar-collapsed .side .group,body.sidebar-collapsed .side-search,body.sidebar-collapsed .side-footer>div{display:none}body.sidebar-collapsed .sidebar-search-button{display:grid}body.sidebar-collapsed .side button[data-tab]{position:relative;display:grid;place-items:center;width:40px;min-height:40px;margin:2px auto;padding:7px;overflow:visible;color:transparent;font-size:0;text-align:center}body.sidebar-collapsed .side button[data-tab] small{display:none}body.sidebar-collapsed .side button[data-tab]::before{content:attr(data-icon);display:block;color:#c8d4e4;font-size:19px;line-height:1}body.sidebar-collapsed .side button[data-tab]::after{content:attr(data-nav-label);position:absolute;left:calc(100% + 8px);top:50%;z-index:80;width:max-content;max-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);box-shadow:0 6px 18px rgba(0,0,0,.18);font-size:12px;line-height:1.3;white-space:normal;opacity:0;visibility:hidden;transform:translateY(-50%);pointer-events:none}body.sidebar-collapsed .side button[data-tab]:hover::after,body.sidebar-collapsed .side button[data-tab]:focus-visible::after{opacity:1;visibility:visible}body.sidebar-collapsed .side-footer{justify-content:center;padding:9px 0;border-color:transparent;background:transparent}body.sidebar-collapsed .sidebar-collapse-button{width:34px;flex-basis:34px}body.sidebar-collapsed .top-page-context{min-width:0}.top{align-items:center}}
+@media(min-width:981px){body.sidebar-collapsed{--side:56px}body.sidebar-collapsed .side{padding-inline:7px;overflow:visible}body.sidebar-collapsed .side-brand{justify-content:center;padding:0}body.sidebar-collapsed .side-brand>div,body.sidebar-collapsed .side .group,body.sidebar-collapsed .side-search,body.sidebar-collapsed .side-footer>div{display:none}body.sidebar-collapsed .sidebar-search-button{display:grid}body.sidebar-collapsed .side button[data-tab]{position:relative;display:grid;place-items:center;width:40px;min-height:40px;margin:2px auto;padding:7px;overflow:visible;color:transparent;font-size:0;text-align:center}body.sidebar-collapsed .side button[data-tab] small{display:none}body.sidebar-collapsed .side button[data-tab]::before{content:"";display:block;width:20px;height:20px;color:#c8d4e4;background-color:currentColor;-webkit-mask:var(--sidebar-icon) center/contain no-repeat;mask:var(--sidebar-icon) center/contain no-repeat}body.sidebar-collapsed .side button[data-tab]::after{content:attr(data-nav-label);position:absolute;left:calc(100% + 8px);top:50%;z-index:80;width:max-content;max-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text);box-shadow:0 6px 18px rgba(0,0,0,.18);font-size:12px;line-height:1.3;white-space:normal;opacity:0;visibility:hidden;transform:translateY(-50%);pointer-events:none}body.sidebar-collapsed .side button[data-tab]:hover::after,body.sidebar-collapsed .side button[data-tab]:focus-visible::after{opacity:1;visibility:visible}body.sidebar-collapsed .side-footer{justify-content:center;padding:9px 0;border-color:transparent;background:transparent}body.sidebar-collapsed .sidebar-collapse-button{width:34px;flex-basis:34px}body.sidebar-collapsed .top-page-context{min-width:0}.top{align-items:center}}
 @media(max-width:980px){.top-account-popover{position:fixed;top:60px;right:12px}}html[data-theme="light"] .top-account-menu>summary,html[data-theme="light"] .top-account-popover{background:#fff}</style>
 </head>
 <body>
@@ -2554,7 +2563,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         <div class="device-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="deviceDetailTitle">
           <div class="device-detail-head">
             <div><span class="eyebrow">DEVICE WORKSPACE</span><h2 id="deviceDetailTitle">장비 상세</h2><p id="deviceDetailMeta">장비의 연결과 수집 설정을 관리합니다.</p></div>
-            <button type="button" id="deviceDetailClose" aria-label="장비 상세 닫기">×</button>
+            <div class="device-detail-head-actions"><button type="button" id="deviceProblemQuickButton" class="device-problem-quick-button" aria-label="장비 문제 확인" hidden>! 문제</button><button type="button" id="deviceDetailClose" aria-label="장비 상세 닫기">×</button></div>
           </div>
           <div class="device-detail-tabs" role="tablist" aria-label="장비 관리 항목">
             <button type="button" data-device-detail-tab="problems" role="tab" aria-selected="false">문제 <span id="deviceProblemCount" class="chip" hidden></span></button>
@@ -2861,7 +2870,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         <div id="wEditorBackdrop" aria-hidden="true"></div>
         <div class="card widget-editor-card" id="wEditorCard" role="dialog" aria-modal="true" aria-labelledby="wFormTitle" aria-hidden="true" data-step="1">
           <div class="widget-editor-head">
-            <div><h2 id="wFormTitle">위젯 만들기</h2><p class="muted" style="margin:6px 0 0;font-size:12px">표시할 데이터와 디자인을 한곳에서 설정하세요.</p></div>
+            <div><h2 id="wFormTitle">위젯 만들기</h2><p class="muted" style="margin:6px 0 0;font-size:12px">표시할 데이터와 디자인을 한곳에서 설정하세요.</p><p id="wEditorLoadStatus" class="muted widget-editor-load-status" role="status" aria-live="polite" hidden></p></div>
             <button type="button" class="ghost" id="wCloseEditor" aria-label="위젯 편집 닫기">닫기 ×</button>
           </div>
           <div class="fields" data-widget-stage="1">
@@ -4043,7 +4052,22 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     let sidebarUserPreference = null;
     let sidebarEditingMode = false;
     let sidebarExpandedBeforeEditing = false;
-    const sidebarIcons = { home:"⌂", devices:"▣", assets:"▤", "collection-status":"⌁", alarms:"⚑", locations:"⚙", notes:"ⓘ" };
+    const sidebarIcons = {
+      home: '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"/>',
+      devices: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>',
+      assets: '<path d="m12 3 9 4.5v9L12 21l-9-4.5v-9Z"/><path d="m3.5 7.8 8.5 4.4 8.5-4.4M12 12.2V21"/>',
+      "collection-status": '<path d="M3 12h4l2.2-6 4.6 12 2.2-6H21"/>',
+      alarms: '<path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+      locations: '<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+      notes: '<path d="M6 3h9l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M8 12h8m-8 4h8"/>',
+      page: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>',
+      scene3d: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5m-18 5 9 5 9-5M12 8v5m0 4v5"/>'
+    };
+    function setSidebarIcon(button, iconName) {
+      const paths = sidebarIcons[iconName] || sidebarIcons.page;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+      button.style.setProperty("--sidebar-icon", `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+    }
     function setSidebarCollapsed(collapsed, persist = false) {
       document.body.classList.toggle("sidebar-collapsed", !!collapsed);
       const button = $("sidebarCollapseButton");
@@ -4080,7 +4104,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         const tab = button.dataset.tab;
         const label = button.firstChild?.textContent?.trim() || button.textContent.trim();
         button.dataset.navLabel = label;
-        button.dataset.icon = sidebarIcons[tab] || "▦";
+        button.dataset.icon = tab;
+        setSidebarIcon(button, tab);
         button.setAttribute("aria-label", label);
         button.title = label;
       });
@@ -4752,9 +4777,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         return;
       }
       if (event.data?.type === "dcim:dashboard:edit-widget") {
-        if (state.role === "ADMIN" && Number.isSafeInteger(Number(event.data.widgetId))) {
-          startEditWidget(Number(event.data.widgetId));
-        }
+        if (state.role !== "ADMIN") { toast("위젯 수정은 관리자만 할 수 있습니다.", true); return; }
+        const widgetId = Number(event.data.widgetId);
+        if (!Number.isSafeInteger(widgetId) || widgetId <= 0) { toast("수정할 위젯 정보가 올바르지 않습니다.", true); return; }
+        startEditWidget(widgetId);
         return;
       }
       if (event.data?.type === "dcim:dashboard:calculated-metrics") {
@@ -5079,7 +5105,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           .forEach(({ page }) => {
             const tab = pageTabForCode(page.code), button = document.createElement("button");
             button.type = "button"; button.dataset.tab = tab; button.dataset.dynamicPage = "true";
-            button.dataset.navLabel = page.name; button.dataset.icon = page.viewMode === "SCENE_3D" ? "◇" : page.viewMode === "PLAN_2D" ? "▧" : "▦"; button.title = page.name; button.setAttribute("aria-label", page.name);
+            button.dataset.navLabel = page.name; button.dataset.icon = page.viewMode === "SCENE_3D" ? "scene3d" : "page"; setSidebarIcon(button, button.dataset.icon); button.title = page.name; button.setAttribute("aria-label", page.name);
             button.append(document.createTextNode(page.name));
             const small = document.createElement("small"); small.textContent = "위젯 · 페이지 화면"; button.append(small);
             button.onclick = () => goTab(tab); slot.append(button);
@@ -7799,8 +7825,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       container.querySelectorAll("[data-scene-problem-device]").forEach(button => button.addEventListener("click", () => openDeviceDetailById(Number(button.dataset.sceneProblemDevice), {problemTab:true, closeScenePreview:true}).catch(error => toast(`장비 상세 조회 실패: ${error.message}`, true))));
       if (detailId) {
         const badge = $("deviceProblemCount"), hasStatusProblem = problemCollectionStatuses.has(statuses.get(detailId)?.status) || problemSetupStatuses.has(statuses.get(detailId)?.status);
-        badge.hidden = openDetailRows.length === 0 && !hasStatusProblem; badge.textContent = String(openDetailRows.length + (hasStatusProblem ? 1 : 0));
-        if (options.autoSelectTab && (openDetailRows.length || hasStatusProblem) && state.selectedDeviceId === detailId && $("deviceDetailModal").classList.contains("open")) showDeviceDetailTab("problems");
+        const detailProblemCount = openDetailRows.length + (hasStatusProblem ? 1 : 0);
+        badge.hidden = detailProblemCount === 0; badge.textContent = String(detailProblemCount);
+        const quickButton = $("deviceProblemQuickButton");
+        quickButton.hidden = detailProblemCount === 0;
+        quickButton.textContent = `! 문제 ${detailProblemCount}`;
+        quickButton.setAttribute("aria-label", `문제 ${detailProblemCount}개 확인`);
+        if (options.autoSelectTab && detailProblemCount > 0 && state.selectedDeviceId === detailId && $("deviceDetailModal").classList.contains("open")) showDeviceDetailTab("problems");
         container.querySelectorAll("[data-device-problem-action]").forEach(button => { button.onclick = () => {
           const action = button.dataset.deviceProblemAction;
           if (action === "alarms") { closeDeviceDetail(false); goTab("alarms"); setTimeout(() => { $("alarmFilterDevice").value = String(detailId); alarmUi.page = 1; loadAlarmEvents().catch(error => toast(error.message, true)); }, 0); }
@@ -9456,6 +9487,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     }
 
     function closeWidgetEditor() {
+      widgetEditorLoadSequence++;
+      $("wEditorCard").removeAttribute("aria-busy");
+      $("wCreate").disabled = false;
+      $("wEditorLoadStatus").hidden = true;
       $("wEditorBackdrop").classList.remove("open");
       $("wEditorCard").classList.remove("open");
       $("wEditorCard").setAttribute("aria-hidden", "true");
@@ -10311,6 +10346,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("deviceDetailMeta").textContent = `#${device.id} · ${device.modelName || "모델 미지정"} · ${device.locationNodeName || device.locationNodeCode || "위치 미지정"}`;
       const status = (state.collectionStatus?.devices || []).find((row) => Number(row.deviceId) === Number(device.id));
       const problemStatus = ["PARTIAL", "STALE", "MISSING", "NO_POINTS", "MODEL_MISMATCH", "UNREGISTERED", "STOPPED"].includes(status?.status);
+      $("deviceProblemQuickButton").hidden = true;
       showDeviceDetailTab(options.problemTab || problemStatus ? "problems" : "info");
       $("deviceDetailModal").classList.add("open");
       $("deviceDetailModal").setAttribute("aria-hidden", "false");
@@ -10351,6 +10387,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       closeModbusReadingModal();
       $("deviceDetailModal").classList.remove("open");
       $("deviceDetailModal").setAttribute("aria-hidden", "true");
+      $("deviceProblemQuickButton").hidden = true;
       if (wasOpen && restoreFocus && state.selectedDeviceId) {
         $("devBody").querySelector(`tr[data-id="${state.selectedDeviceId}"]`)?.focus();
       }
@@ -12729,6 +12766,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("modbusReadingClose").onclick = closeModbusReadingModal;
     $("modbusReadingModal").onclick = (event) => { if (event.target === $("modbusReadingModal")) closeModbusReadingModal(); };
     $("deviceDetailClose").onclick = closeDeviceDetail;
+    $("deviceProblemQuickButton").onclick = () => showDeviceDetailTab("problems");
     $("deviceDetailModal").onclick = (event) => { if (event.target === $("deviceDetailModal")) closeDeviceDetail(); };
     $("deviceDetailModal").querySelectorAll("[data-device-detail-tab]").forEach((button) => {
       button.onclick = () => showDeviceDetailTab(button.dataset.deviceDetailTab);
@@ -13555,10 +13593,27 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       closeWidgetEditor();
     }
 
+    let widgetEditorLoadSequence = 0;
     async function startEditWidget(id) {
+      const requestSequence = ++widgetEditorLoadSequence;
       mountWidgetDialogs();
+      const editor = $("wEditorCard");
+      const loadStatus = $("wEditorLoadStatus");
+      $("wFormTitle").textContent = `위젯 수정 #${id}`;
+      loadStatus.hidden = false;
+      loadStatus.className = "muted widget-editor-load-status";
+      loadStatus.textContent = "위젯 설정을 불러오는 중입니다…";
+      $("wCreate").disabled = true;
+      $("wSaveError").hidden = true;
+      editor.setAttribute("aria-busy", "true");
+      $("wEditorBackdrop").classList.add("open");
+      setSidebarEditing(true);
+      editor.classList.add("open");
+      editor.setAttribute("aria-hidden", "false");
+      showWidgetEditorStep(1);
       try {
         const w = await api(`/api/manager/widgets/${id}`);
+        if (requestSequence !== widgetEditorLoadSequence) return;
         state.editingWidgetId = w.id;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
@@ -13574,6 +13629,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         }
         $("wCreatePage").disabled = true;
         await loadWidgetSources();
+        if (requestSequence !== widgetEditorLoadSequence) return;
         $("wName").value = w.name || "";
         $("wTrendRange").value = w.trendRangePreset || "last_3d";
         $("wTrendWindow").value = w.trendWindow || "15m";
@@ -13598,7 +13654,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           updateWidgetDesignPreview();
         }).catch(() => {});
         state.cctvCameraIds = (w.cctvCameras || []).map((camera) => Number(camera.id)).filter(Number.isFinite);
-        if (w.queryKind === "cctv") await loadCctvCameras();
+        if (w.queryKind === "cctv") {
+          await loadCctvCameras();
+          if (requestSequence !== widgetEditorLoadSequence) return;
+        }
         if (w.countMode) $("wCountMode").value = w.countMode;
         if (w.chartScope) $("wChartScope").value = w.chartScope;
         if (w.chartSeriesMode) $("wChartSeriesMode").value = w.chartSeriesMode;
@@ -13648,6 +13707,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         fillPowerDistributionPicks();
         renderCctvCameraChoices();
         await refreshWidgetPoints();
+        if (requestSequence !== widgetEditorLoadSequence) return;
         if (w.countMode === "model" && w.countModelId != null) {
           refreshCountModelPick();
           $("wCountModel").value = String(w.countModelId);
@@ -13670,14 +13730,19 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           });
         }
         refreshChartSeriesOptions();
-        toast(`위젯 #${w.id} 수정 모드`);
-        $("wEditorBackdrop").classList.add("open");
-      setSidebarEditing(true);
-        $("wEditorCard").classList.add("open");
-        $("wEditorCard").setAttribute("aria-hidden", "false");
+        loadStatus.hidden = true;
+        editor.removeAttribute("aria-busy");
+        $("wCreate").disabled = false;
         showWidgetEditorStep(1);
+        $("wKind").focus();
+        toast(`위젯 #${w.id} 수정 모드`);
       } catch (e) {
-        toast(e.message, true);
+        if (requestSequence !== widgetEditorLoadSequence) return;
+        editor.removeAttribute("aria-busy");
+        loadStatus.className = "bad widget-editor-load-status";
+        loadStatus.textContent = `수정 창을 불러오지 못했습니다: ${e.message}`;
+        loadStatus.hidden = false;
+        toast(`위젯 수정 창을 열지 못했습니다: ${e.message}`, true);
       }
     }
 
