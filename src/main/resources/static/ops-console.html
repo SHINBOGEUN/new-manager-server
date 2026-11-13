@@ -9351,6 +9351,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 
     let metricReturnToWidgetEditor = false;
     function openCalculatedMetrics(fromWidgetEditor = false) {
+      mountWidgetDialogs();
       metricReturnToWidgetEditor = fromWidgetEditor === true;
       closeWidgetEditor();
       $("metricBackdrop").classList.add("open");
@@ -9360,6 +9361,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     function closeCalculatedMetrics() {
+      mountWidgetDialogs();
       $("metricBackdrop").classList.remove("open");
       $("calculatedMetricCard").classList.remove("open");
       $("calculatedMetricCard").setAttribute("aria-hidden", "true");
@@ -13476,6 +13478,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     }
 
     async function startEditWidget(id) {
+      mountWidgetDialogs();
       try {
         const w = await api(`/api/manager/widgets/${id}`);
         state.editingWidgetId = w.id;
