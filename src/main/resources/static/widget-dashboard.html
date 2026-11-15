@@ -993,6 +993,25 @@ body.drawer-open #widgetMain{grid-template-columns:minmax(0,1fr)}
 body.drawer-open #widgetMain>.board-wrap{grid-column:1}
 body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;width:var(--widget-drawer-width);height:auto;max-width:calc(100% - 12px);border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:0 12px 36px rgba(0,0,0,.38);overflow:auto}
 @media(max-width:760px){body.drawer-open #widgetDrawer{inset:0 0 auto;width:100%;max-width:none;max-height:42vh;border-radius:0 0 10px 10px}}
+
+/* T-030: compact, readable widget list. */
+body.edit-mode .size-match-tools{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;min-width:0}
+.size-match-caption{display:grid;gap:2px;min-width:0;white-space:normal;word-break:keep-all}
+.size-match-caption strong{font-size:12px;white-space:nowrap}
+.size-match-caption small{font-size:10px;color:var(--muted);word-break:keep-all}
+.size-match-buttons{display:flex;gap:4px;min-width:0}
+.size-match-buttons button{flex:1 1 0;min-width:0;height:32px;padding:0 4px;font-size:11px;white-space:nowrap}
+#widgetList .widget-item{position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:6px;min-width:0;min-height:48px;padding:4px 7px;margin-bottom:4px}
+#widgetList .widget-item-text{min-width:0;text-align:left}
+#widgetList .widget-item h3{display:block;margin:0;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#widgetList .widget-item .meta{margin:0;font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:keep-all}
+#widgetList .widget-actions{position:absolute;right:49px;top:50%;transform:translateY(-50%);display:flex;gap:3px;margin:0;padding:2px;background:var(--panel);opacity:0;pointer-events:none}
+#widgetList .widget-item:hover .widget-actions,#widgetList .widget-item:focus-within .widget-actions,#widgetList .widget-item.is-selected .widget-actions{opacity:1;pointer-events:auto}
+#widgetList .widget-actions button{flex:none;min-width:26px;width:26px;height:28px;padding:0;font-size:14px;line-height:1}
+#widgetList .widget-item > .widget-selection-check{flex:none}
+body.edit-mode .board>.card>.widget-selection-check{z-index:12;pointer-events:auto;touch-action:manipulation}
+body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
+
 /* T-030 step 3: compact scene header and unobstructed empty/selection states. */
 .page-visualization-head{display:flex;flex-flow:row nowrap;align-items:center;gap:8px;min-width:0;overflow:visible;padding:6px 10px}
 .scene-summary{position:relative;display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
@@ -1075,7 +1094,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
     <aside id="widgetDrawer" aria-label="위젯 목록">
       <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div><button type="button" id="closeWidgetDrawerBtn" class="ghost" aria-label="위젯 목록 접기" title="위젯 목록 접기">접기 ‹</button></div>
       <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>카드 상단이나 가장자리를 끌어 위치와 크기를 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 위치와 크기는 변경 저장을 눌러 반영합니다.</p></details>
-      <div id="sizeMatchTools" class="size-match-tools"><span id="sizeMatchHint">0개 선택 · 여러 개는 카드의 체크를 누르세요(Ctrl+클릭도 가능)</span><button id="selectAllWidgetsBtn" type="button">전체 선택</button><button id="applySizeMatchBtn" type="button" disabled>한 줄로 채우기</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button></div>
+      <div id="sizeMatchTools" class="size-match-tools"><div class="size-match-caption"><strong id="sizeMatchHint">0개 선택</strong><small>여러 개는 체크, Ctrl+클릭도 가능</small></div><div class="size-match-buttons"><button id="selectAllWidgetsBtn" type="button">전체 선택</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button><button id="applySizeMatchBtn" type="button" disabled>한 줄 채우기</button></div></div>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -2635,7 +2654,7 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       const hint = $("sizeMatchHint");
       const apply = $("applySizeMatchBtn");
       if (!hint || !apply) return;
-      hint.textContent = `${selected.length}개 선택 · 여러 개는 카드의 체크를 누르세요(Ctrl+클릭도 가능)`;
+      hint.textContent = `${selected.length}개 선택`;
       apply.disabled = selected.length < 2 || state.saving;
     }
 
@@ -2684,21 +2703,14 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
             : "";
         return `
         <article class="widget-item ${w.enabled ? "" : "disabled"} ${state.selectedWidgetIds.includes(Number(w.id)) ? "is-selected" : ""}" data-id="${w.id}" tabindex="0" ${state.selectedWidgetIds[state.selectedWidgetIds.length - 1] === Number(w.id) ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
-          <h3>
-            <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${w.enabled ? "" : "disabled"} />
-            <span>${escapeHtml(w.name)}</span>
-            <label class="switch" title="이 페이지에 위젯 표시">
-              <input type="checkbox" data-toggle="${w.id}" aria-label="${escapeHtml(w.name)} 페이지 표시" ${w.enabled ? "checked" : ""} ${!canManage || state.saving ? "disabled" : ""} />
-              <span class="slider"></span>
-            </label>
-          </h3>
-          <div class="meta">#${w.id} · ${escapeHtml(widgetKindLabel(w.queryKind))}${countMeta}${chartMeta} · ${pos}</div>
-          ${canManage ? `<label class="widget-style-choice">디자인 <select data-widget-style="${w.id}" ${state.saving ? "disabled" : ""} aria-label="${escapeHtml(w.name)} 디자인"><option value="classic" ${(w.visualStyle || 'classic') === 'classic' ? 'selected' : ''}>클래식</option><option value="minimal" ${w.visualStyle === 'minimal' ? 'selected' : ''}>미니멀</option><option value="vivid" ${w.visualStyle === 'vivid' ? 'selected' : ''}>비비드</option></select></label>` : ""}
+          <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${w.enabled ? "" : "disabled"} />
+          <div class="widget-item-text"><h3 title="${escapeHtml(w.name)}">${escapeHtml(w.name)}</h3><div class="meta">#${w.id} · ${escapeHtml(widgetKindLabel(w.queryKind))} · ${L ? `${L.w}×${L.h}` : "배치 없음"}</div></div>
           <div class="widget-actions">
-            <button type="button" class="ghost" data-edit-scroll="${w.id}" ${w.enabled ? "" : "disabled"} title="표시 중인 위젯으로 이동">위치 찾기</button>
-            ${boardView && canManage ? `<button type="button" class="ghost" data-edit-widget="${w.id}" ${state.saving ? "disabled" : ""}>수정</button>` : ""}
-            ${canManage ? `<button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}" ${state.saving ? "disabled" : ""}>삭제</button>` : ""}
+            <button type="button" class="ghost" data-edit-scroll="${w.id}" ${w.enabled ? "" : "disabled"} title="위치 찾기" aria-label="${escapeHtml(w.name)} 위치 찾기">⌖</button>
+            ${boardView && canManage ? `<button type="button" class="ghost" data-edit-widget="${w.id}" ${state.saving ? "disabled" : ""} title="수정" aria-label="${escapeHtml(w.name)} 수정">✎</button>` : ""}
+            ${canManage ? `<button type="button" class="danger" data-delete="${w.id}" data-name="${escapeHtml(w.name)}" ${state.saving ? "disabled" : ""} title="삭제" aria-label="${escapeHtml(w.name)} 삭제">×</button>` : ""}
           </div>
+          <label class="switch" title="이 페이지에 위젯 표시"><input type="checkbox" data-toggle="${w.id}" aria-label="${escapeHtml(w.name)} 페이지 표시" ${w.enabled ? "checked" : ""} ${!canManage || state.saving ? "disabled" : ""} /><span class="slider"></span></label>
         </article>`;
       }).join("");
 
@@ -2715,32 +2727,6 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       });
 
       updateSizeMatchTools();
-
-      $("widgetList").querySelectorAll("[data-widget-style]").forEach((select) => {
-        select.addEventListener("change", async () => {
-          if (state.saving) return;
-          const widget = state.widgets.find((item) => item.id === Number(select.dataset.widgetStyle));
-          if (!widget) return;
-          const previous = widget.visualStyle || "classic";
-          state.saving = true;
-          select.disabled = true;
-          try {
-            const updated = await api(`/api/manager/widgets/${widget.id}/visual-style`, {
-              method: "PATCH", body: JSON.stringify({ style: select.value }),
-            });
-            widget.visualStyle = updated.visualStyle;
-            await refreshBoard(false);
-            notifyWidgetChange();
-            log(`위젯 #${widget.id} 디자인 저장됨`);
-          } catch (err) {
-            select.value = previous;
-            alert("디자인을 저장하지 못했습니다. " + err.message);
-          } finally {
-            state.saving = false;
-            renderWidgetList();
-          }
-        });
-      });
 
       $("widgetList").querySelectorAll("input[data-toggle]").forEach((input) => {
         input.addEventListener("change", async (e) => {
@@ -3050,6 +3036,10 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
     function updateExistingCctvCard(current, fresh, widget) {
       current.className = fresh.className;
       current.setAttribute("style", fresh.getAttribute("style") || "");
+      const currentCheck = current.querySelector(":scope > [data-select-widget]");
+      const freshCheck = fresh.querySelector(":scope > [data-select-widget]");
+      if (currentCheck && freshCheck) currentCheck.checked = freshCheck.checked;
+      else if (freshCheck) current.prepend(freshCheck.cloneNode(true));
       current.querySelector(".card-head")?.replaceWith(fresh.querySelector(".card-head").cloneNode(true));
       const currentBody = current.querySelector(".card-body");
       const freshBody = fresh.querySelector(".card-body");
@@ -4330,10 +4320,10 @@ body.drawer-open #widgetDrawer{position:absolute;inset:0 auto 0 0;z-index:35;wid
       applyWidgetSizeMatch().catch((error) => log("위젯 크기 맞춤 실패: " + error.message));
     });
     document.addEventListener("change", (event) => {
-      const input = event.target.closest?.("[data-select-widget]");
-      if (!input || !state.editMode) return;
+      const input = event.target;
+      if (!state.editMode || !input.matches?.('input[data-select-widget]')) return;
       setWidgetSelection(input.dataset.selectWidget, {ctrlKey:true, scrollBoard:false});
-    });
+    }, true);
     $("selectAllWidgetsBtn").addEventListener("click", () => {
       state.selectedWidgetIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
       selectionAnchorWidgetId = state.selectedWidgetIds[0] ?? null;

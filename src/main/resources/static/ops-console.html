@@ -1600,6 +1600,26 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #wEditorCard.form-compact .widget-editor-footer .row { justify-content:flex-end; }
     @media (max-width:900px) { .widget-form-grid.form-compact { grid-template-columns:minmax(0,1fr); grid-template-areas:'basic' 'advanced' 'preview'; } }
     #wEditorCard #wDataFreshnessBlock { margin-top:18px !important; }
+
+/* T-030: category tabs keep preview and actions visible. */
+#wEditorCard.open{display:flex;flex-direction:column;height:min(90vh,900px);max-height:90vh;overflow:hidden}
+#wEditorCard .widget-editor-head,#wEditorCard .widget-editor-footer{flex:none}
+#wEditorCard .widget-form-grid.form-compact{flex:1 1 auto;min-height:0;grid-template-columns:minmax(350px,420px) minmax(0,1fr);grid-template-areas:'editor preview';align-items:stretch;overflow:hidden}
+#wEditorCard .widget-editor-tabs-layout{grid-area:editor;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+#wEditorCard .widget-editor-tabs{display:flex;gap:4px;flex:none;overflow-x:auto;padding:4px 0 8px}
+#wEditorCard .widget-editor-tabs button{position:relative;flex:none;min-height:32px;padding:5px 9px;white-space:nowrap}
+#wEditorCard .widget-editor-tabs button.active{border-color:var(--accent);color:var(--accent)}
+#wEditorCard .widget-editor-tabs button:is(.is-dirty,.has-required,.has-error)::after{content:'';display:inline-block;width:6px;height:6px;margin-left:5px;vertical-align:middle;border-radius:50%;background:var(--accent)}
+#wEditorCard .widget-editor-tabs button:is(.has-required,.has-error)::after{background:#f16a77}
+#wEditorCard .widget-editor-tab-panel{flex:1 1 auto;min-height:0;overflow:auto;padding:10px;grid-area:auto;background:transparent;border:0}
+#wEditorCard .widget-editor-tab-panel[hidden]{display:none!important}
+#wEditorCard .widget-editor-advanced{border:0;padding:10px}
+#wEditorCard .widget-editor-advanced-body{margin:0}
+#wEditorCard .widget-editor-preview{height:100%;min-height:0;overflow:auto}
+#wEditorCard [aria-invalid="true"]{outline:2px solid #e55b69;outline-offset:2px}
+#wEditorCard #wSaveError:not([hidden]){flex:none;max-height:55px;overflow:auto;margin:0;padding:6px}
+@media(max-width:900px){#wEditorCard .widget-form-grid.form-compact{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'editor preview'}}
+
     .widget-design-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:9px; }
     .widget-design-option { position:relative; cursor:pointer; min-width:0; }
     .widget-design-option > input { position:absolute; opacity:0; width:1px; height:1px; }
@@ -9193,6 +9213,81 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       return editor.querySelector("#wKind");
     }
+    function selectWidgetEditorTab(name) {
+      const editor = $("wEditorCard");
+      const button = editor?.querySelector(`[data-widget-tab="${name}"]`);
+      if (!button || button.hidden) return;
+      editor.querySelectorAll("[data-widget-tab]").forEach((item) => {
+        const selected = item === button; item.classList.toggle("active", selected);
+        item.setAttribute("aria-selected", String(selected)); item.tabIndex = selected ? 0 : -1;
+      });
+      editor.querySelectorAll("[data-widget-panel]").forEach((panel) => { panel.hidden = panel.dataset.widgetPanel !== name; });
+      editor.dataset.widgetTab = name;
+    }
+    function updateWidgetEditorTabs() {
+      const editor = $("wEditorCard"); if (!editor?.querySelector("[data-widget-tab]")) return;
+      const kind = $("wKind")?.value || "last";
+      const clickTab = editor.querySelector('[data-widget-tab="click"]');
+      const advancedTab = editor.querySelector('[data-widget-tab="advanced"]');
+      clickTab.hidden = ["count", "cctv"].includes(kind);
+      advancedTab.hidden = ["count", "cctv"].includes(kind);
+      const pueRange = $("wPueRangePreset")?.closest("label"); if (pueRange) pueRange.hidden = kind !== "calculated";
+      const pueFreshness = $("wPueFreshnessMinutes")?.closest("label"); if (pueFreshness) pueFreshness.hidden = kind !== "calculated";
+      for (const [name, step] of [["basic", 1], ["data", 2]]) {
+        const tab = editor.querySelector(`[data-widget-tab="${name}"]`);
+        let missing = false; try { validateWidgetEditorStep(step); } catch (_) { missing = true; }
+        tab.classList.toggle("has-required", missing);
+      }
+      if ((editor.dataset.widgetTab === "click" && clickTab.hidden) || (editor.dataset.widgetTab === "advanced" && advancedTab.hidden)) selectWidgetEditorTab("data");
+    }
+    function resetWidgetEditorTabs() {
+      const editor = $("wEditorCard");
+      editor?.querySelectorAll("[data-widget-tab]").forEach((tab) => tab.classList.remove("is-dirty", "has-error"));
+      editor?.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute("aria-invalid"));
+      selectWidgetEditorTab("basic"); updateWidgetEditorTabs();
+    }
+    function setupWidgetEditorTabs(editor) {
+      if (editor.querySelector("[data-widget-tab]")) return;
+      const grid = editor.querySelector(".widget-form-grid"), basic = editor.querySelector(".widget-editor-basic");
+      const advanced = editor.querySelector(".widget-editor-advanced"), advancedBody = editor.querySelector(".widget-editor-advanced-body");
+      if (!grid || !basic || !advanced || !advancedBody) return;
+      const host = document.createElement("div"); host.className = "widget-editor-tabs-layout";
+      const nav = document.createElement("div"); nav.className = "widget-editor-tabs"; nav.setAttribute("role", "tablist"); nav.setAttribute("aria-label", "위젯 설정 카테고리");
+      const panels = { basic, data:document.createElement("section"), display:document.createElement("section"), click:document.createElement("section"), advanced };
+      for (const [name, label] of [["basic","기본"],["data","데이터"],["display","표시"],["click","클릭·기간"],["advanced","고급 설정"]]) {
+        const button = document.createElement("button"); button.type = "button"; button.dataset.widgetTab = name; button.setAttribute("role", "tab");
+        button.id = `wTab-${name}`; button.setAttribute("aria-controls", `wPanel-${name}`); button.textContent = label;
+        button.onclick = () => selectWidgetEditorTab(name); nav.append(button);
+        const panel = panels[name]; panel.dataset.widgetPanel = name; panel.id = `wPanel-${name}`; panel.classList.add("widget-editor-tab-panel"); panel.setAttribute("role", "tabpanel"); panel.setAttribute("aria-labelledby", button.id);
+      }
+      grid.insertBefore(host, basic); host.append(nav, basic, panels.data, panels.display, panels.click, advanced);
+      advanced.open = true; advanced.querySelector(":scope > summary").hidden = true;
+      [...basic.querySelectorAll(':scope > [data-widget-stage="2"]')].forEach((element) => panels.data.append(element));
+      for (const id of ["wTableFormatChoice", "wTableOptions"]) { const element = $(id); if (element) panels.display.append(element); }
+      const design = editor.querySelector('[aria-labelledby="wDesignLabel"]'); if (design) panels.display.append(design);
+      for (const id of ["wChartOptionsBlock", "wTrendDefaults"]) { const element = $(id); if (element) panels.click.append(element); }
+      for (const id of ["wTrendRange", "wClickCompare"]) { const label = $(id)?.closest("label"); if (label) $("wTrendDefaults")?.append(label); }
+      for (const id of ["wChartRangePreset", "wChartCompareMode"]) { const label = $(id)?.closest("label"); if (label) $("wChartOptionsBlock")?.querySelector(".fields")?.append(label); }
+      for (const id of ["wAggRangePreset", "wPueRangePreset"]) { const label = $(id)?.closest("label"); if (label) panels.click.append(label); }
+      const mark = (event) => {
+        const panel = event.target.closest?.("[data-widget-panel]"); if (!panel) return;
+        const tab = editor.querySelector(`[data-widget-tab="${panel.dataset.widgetPanel}"]`); if (tab) tab.classList.add("is-dirty");
+        event.target.removeAttribute?.("aria-invalid"); updateWidgetEditorTabs();
+      };
+      editor.addEventListener("input", mark); editor.addEventListener("change", mark);
+      editor.addEventListener("click", (event) => { if (event.target.closest?.("[data-widget-panel] button")) mark(event); });
+      selectWidgetEditorTab("basic"); updateWidgetEditorTabs();
+    }
+    function showWidgetEditorValidationError(step, error) {
+      const kind = $("wKind").value;
+      const selectors = { last:"#wDeviceSearch", chart: /측정항목/.test(error.message) ? "#wCatalogSearch" : "#wChartScope", aggregate:/측정항목/.test(error.message) ? "#wCatalogSearch" : "#wDeviceSearch", calculated:"#wPueDefinition", psychrometric:"#wPsychrometricBlock", power_distribution:"#wPowerDistributionBlock", count:"#wCountModel", cctv:"#wCctvCameraChoices" };
+      const field = step === 1 ? (!$("wCreatePage").value ? $("wCreatePage") : $("wName")) : document.querySelector(selectors[kind] || "#wDeviceSearch");
+      const panel = field?.closest("[data-widget-panel]"); const name = panel?.dataset.widgetPanel || (step === 1 ? "basic" : "data");
+      selectWidgetEditorTab(name);
+      const tab = document.querySelector(`#wEditorCard [data-widget-tab="${name}"]`); tab?.classList.add("has-error");
+      if (field) { field.setAttribute("aria-invalid", "true"); if (field.tabIndex < 0) field.tabIndex = -1; field.focus(); }
+      updateWidgetEditorTabs();
+    }
     function showWidgetEditorStep() {
       const editor = $("wEditorCard");
       if (!editor) return;
@@ -9263,6 +9358,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if (chartOptions) advancedBody.append(chartOptions);
         if (trendDefaults) advancedBody.append(trendDefaults);
       }
+      setupWidgetEditorTabs(editor);
       const pagePreviewForOpen = editor.querySelector(".widget-page-preview");
       if (pagePreviewForOpen) {
         const previewFrame = $("wPagePreviewFrame"), pageLayoutButton = $("wEditPageLayout"), previewToggle = pagePreviewForOpen.querySelector("[data-widget-page-preview-toggle]");
@@ -9271,7 +9367,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       editor.dataset.step = "3";
       const advanced = editor.querySelector(".widget-editor-advanced");
-      if (advanced) advanced.open = false;
+      if (advanced) advanced.open = true;
+      updateWidgetEditorTabs();
       editor.querySelectorAll("[data-widget-stage]").forEach((element) => element.classList.remove("widget-step-hidden"));
       $("wCreate").style.display = "inline-flex";
       updateWidgetAdvancedSummary();
@@ -9597,6 +9694,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         activeWidgetEditorLoad = null;
       }
       clearWidgetEditorLoadingLocks();
+      resetWidgetEditorTabs();
       $("wEditorCard").removeAttribute("aria-busy");
       $("wCreate").disabled = false;
       $("wEditorLoadStatus").hidden = true;
@@ -13789,6 +13887,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         setSidebarEditing(true, "widget-editor");
         editor.classList.add("open"); editor.setAttribute("aria-hidden", "false");
         showWidgetEditorStep(1);
+        resetWidgetEditorTabs();
         const grid = editor.querySelector(".widget-form-grid");
         if (grid) { grid.setAttribute("inert", ""); grid.dataset.widgetLoadLocked = ""; }
         $("wName").value = "";
@@ -14680,6 +14779,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         .catch((e) => toast(e.message, true));
     });
     $("wKind").addEventListener("change", () => {
+      updateWidgetEditorTabs();
       configureWidgetClickKind($("wKind").value);
       $("wKindCards")?.querySelectorAll("[data-kind]").forEach((button) => button.classList.toggle("selected", button.dataset.kind === $("wKind").value));
       const kindInfo = state.widgetKindOptions?.find((item) => item.value === $("wKind").value);
@@ -14851,11 +14951,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     }
 
     $("wCreate").onclick = async () => {
+      let validationStep = 0;
       try {
         $("wSaveError").hidden = true;
         await loadSharedWidgetOptions();
-        validateWidgetEditorStep(1);
-        validateWidgetEditorStep(2);
+        validationStep = 1; validateWidgetEditorStep(1);
+        validationStep = 2; validateWidgetEditorStep(2);
+        validationStep = 0;
         const kind = $("wKind").value;
         const name = $("wName").value.trim();
         if (!name) throw new Error("표시 이름을 입력하세요");
@@ -15045,6 +15147,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         $("wCreatePage").value = body.pageCode;
         refreshWidgetPages(body.pageCode);
       } catch (e) {
+        if (validationStep) showWidgetEditorValidationError(validationStep, e);
         $("wOut").textContent = e.message;
         $("wSaveError").textContent = `저장 단계: ${e.message}`;
         $("wSaveError").hidden = false;
