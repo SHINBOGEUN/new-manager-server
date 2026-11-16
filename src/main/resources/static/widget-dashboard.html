@@ -968,7 +968,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
 .widget-selection-check{min-width:24px;width:24px;height:24px;margin:0;accent-color:var(--accent);cursor:pointer}
 body.edit-mode .widget-selection-hit{display:grid;place-items:center}
 body.edit-mode .board>.card>.widget-selection-hit{position:absolute;top:2px;left:2px;z-index:12;pointer-events:auto;touch-action:manipulation}
-body.edit-mode .board>.card .card-head{padding-left:38px}
+body.edit-mode .board>.card>.widget-selection-hit::before{content:"";position:absolute;inset:-2px -8px -8px -2px}
+body.edit-mode .board>.card>.widget-selection-hit input{position:relative;z-index:1}
+body.edit-mode .board>.card:not(.last-card):not(.cctv-card) .card-head{padding-left:44px}
 body.edit-mode .widget-item h3>.widget-selection-check{flex:none}
 /* T-030 step 2: quiet edit affordances and narrow content. */
 body.edit-mode .board>.card{border:1px dashed color-mix(in srgb,var(--line) 65%,#a9b9cc);box-shadow:none}
@@ -1013,7 +1015,7 @@ body:not(.edit-mode) #widgetList .widget-item{grid-template-columns:minmax(0,1fr
 #widgetList .widget-item > .widget-selection-hit{position:relative;flex:none;align-self:stretch;height:auto;min-height:32px;z-index:2}
 #widgetList .widget-item > .widget-selection-hit::before{content:"";position:absolute;inset:-4px -12px -4px -7px}
 #widgetList .widget-item > .widget-selection-hit input{position:relative;z-index:1}
-body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
+body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
 
 /* T-030 step 3: compact scene header and unobstructed empty/selection states. */
 .page-visualization-head{display:flex;flex-flow:row nowrap;align-items:center;gap:8px;min-width:0;overflow:visible;padding:6px 10px}
@@ -3922,6 +3924,20 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
         card.addEventListener("click", (event) => {
           if (!state.editMode) return;
           if (event.target.closest("button, select, input, label, a, [data-drag-handle], [data-resize], video, iframe")) return;
+          const hit = card.querySelector(':scope > .widget-selection-hit');
+          const cardRect = card.getBoundingClientRect();
+          const hitRect = hit?.getBoundingClientRect();
+          const inCheckGutter = event.detail > 0 && hitRect
+            && event.clientX >= cardRect.left && event.clientX <= hitRect.right + 8
+            && event.clientY >= cardRect.top && event.clientY <= hitRect.bottom + 8;
+          if (inCheckGutter) {
+            const widgetId = Number(card.dataset.widgetId);
+            const checked = !state.selectedWidgetIds.includes(widgetId);
+            const before = state.selectedWidgetIds.length;
+            setWidgetSelection(widgetId, {checked, scrollBoard:false, source:'board-gutter'});
+            console.info('[T-030] 체크 선택', {widgetId, source:'board-gutter', checked, before, after:state.selectedWidgetIds.length});
+            return;
+          }
           setWidgetSelection(card.dataset.widgetId, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, scrollBoard:false, scrollList:true, source:'board'});
         });
       });
