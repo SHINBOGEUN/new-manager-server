@@ -1099,7 +1099,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     <aside id="widgetDrawer" aria-label="위젯 목록">
       <div class="edit-drawer-head"><div><p class="panel-title">위젯 목록</p><p class="hint">표시·수정·삭제를 관리합니다.</p></div><button type="button" id="closeWidgetDrawerBtn" class="ghost" aria-label="위젯 목록 접기" title="위젯 목록 접기">접기 ‹</button></div>
       <details class="edit-help"><summary>위젯 편집 안내</summary><p><strong>위치·크기 변경</strong><br>카드 상단이나 가장자리를 끌어 위치와 크기를 조절하세요. 변경 저장을 눌러 반영합니다.</p><p><strong>표시·내용 관리</strong><br>표시 변경과 위젯 삭제는 즉시 반영됩니다. 위치와 크기는 변경 저장을 눌러 반영합니다.</p></details>
-      <div id="sizeMatchTools" class="size-match-tools"><div class="size-match-caption"><strong id="sizeMatchHint">0개 선택</strong><small>여러 개는 체크, Ctrl+클릭도 가능</small></div><div class="size-match-buttons"><button id="selectAllWidgetsBtn" type="button">전체 선택</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button><button id="applySizeMatchBtn" type="button" disabled>한 줄 채우기</button></div></div>
+      <div id="sizeMatchTools" class="size-match-tools"><div class="size-match-caption"><strong id="sizeMatchHint">0개 선택</strong><small>위젯이나 체크를 눌러 여러 개 선택</small></div><div class="size-match-buttons"><button id="selectAllWidgetsBtn" type="button">전체 선택</button><button id="clearSizeMatchBtn" class="ghost" type="button">선택 해제</button><button id="applySizeMatchBtn" type="button" disabled>한 줄 채우기</button></div></div>
       <div id="widgetList"><p class="empty">로그인 후 위젯 목록을 불러오세요.</p></div>
     </aside>
     <section class="board-wrap">
@@ -2604,7 +2604,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         if (checked) next.push(id);
         state.selectedWidgetIds = next;
         selectionAnchorWidgetId = id;
-      } else if (!multiSelect || (!ctrlKey && !shiftKey)) {
+      } else if (!multiSelect) {
         state.selectedWidgetIds = [id];
         selectionAnchorWidgetId = id;
       } else if (shiftKey) {
@@ -2624,7 +2624,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
           : [...state.selectedWidgetIds, id];
         selectionAnchorWidgetId = id;
       }
-      if (checked === null) console.info("[T-030] 선택 경로", {widgetId:id, source, mode:forceSingle ? "single-forced" : (ctrlKey || shiftKey) ? "multi" : "single", before:previousSelectionCount, after:state.selectedWidgetIds.length});
+      if (checked === null) console.info("[T-030] 선택 경로", {widgetId:id, source, mode:multiSelect ? "multi" : "single-forced", before:previousSelectionCount, after:state.selectedWidgetIds.length});
       const selectedIds = new Set(state.selectedWidgetIds);
       const currentId = state.selectedWidgetIds[state.selectedWidgetIds.length - 1] ?? null;
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
@@ -2748,7 +2748,8 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         item.addEventListener('keydown', (event) => {
           if (event.target !== item || !['Enter', ' '].includes(event.key)) return;
           event.preventDefault();
-          selectWidgetFromList(item.dataset.id);
+          if (state.editMode) setWidgetSelection(item.dataset.id, {source:'list-keyboard'});
+          else selectWidgetFromList(item.dataset.id);
         });
       });
 
