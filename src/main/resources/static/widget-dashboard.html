@@ -1010,7 +1010,9 @@ body:not(.edit-mode) #widgetList .widget-item{grid-template-columns:minmax(0,1fr
 #widgetList .widget-actions{position:absolute;right:49px;top:50%;transform:translateY(-50%);display:flex;gap:3px;margin:0;padding:2px;background:var(--panel);opacity:0;pointer-events:none}
 #widgetList .widget-item:hover .widget-actions,#widgetList .widget-item:focus-within .widget-actions,#widgetList .widget-item.is-selected .widget-actions{opacity:1;pointer-events:auto}
 #widgetList .widget-actions button{flex:none;min-width:26px;width:26px;height:28px;padding:0;font-size:14px;line-height:1}
-#widgetList .widget-item > .widget-selection-hit{flex:none}
+#widgetList .widget-item > .widget-selection-hit{position:relative;flex:none;align-self:stretch;height:auto;min-height:32px;z-index:2}
+#widgetList .widget-item > .widget-selection-hit::before{content:"";position:absolute;inset:-4px -12px -4px -7px}
+#widgetList .widget-item > .widget-selection-hit input{position:relative;z-index:1}
 body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
 
 /* T-030 step 3: compact scene header and unobstructed empty/selection states. */
@@ -2588,7 +2590,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
       setWidgetSelection(widgetId, {forceSingle:true, scrollBoard:false, scrollList:true});
       requestWidgetEditor(widgetId);
     });
-    function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false, checked = null} = {}) {
+    function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false, checked = null, source = "unknown"} = {}) {
       id = Number(id);
       if (!Number.isInteger(id) || !state.widgets.some((widget) => Number(widget.id) === id)) return;
       const multiSelect = state.editMode && !forceSingle;
@@ -2620,7 +2622,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
           : [...state.selectedWidgetIds, id];
         selectionAnchorWidgetId = id;
       }
-      if (checked === null) console.info("[T-030] 선택 경로", {widgetId:id, mode:forceSingle ? "single-forced" : (ctrlKey || shiftKey) ? "multi" : "single", before:previousSelectionCount, after:state.selectedWidgetIds.length});
+      if (checked === null) console.info("[T-030] 선택 경로", {widgetId:id, source, mode:forceSingle ? "single-forced" : (ctrlKey || shiftKey) ? "multi" : "single", before:previousSelectionCount, after:state.selectedWidgetIds.length});
       const selectedIds = new Set(state.selectedWidgetIds);
       const currentId = state.selectedWidgetIds[state.selectedWidgetIds.length - 1] ?? null;
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
@@ -2725,7 +2727,21 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
       $("widgetList").querySelectorAll('.widget-item').forEach((item) => {
         item.addEventListener('click', (event) => {
           if (event.target.closest('button, input, select, label, a')) return;
-          setWidgetSelection(item.dataset.id, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey});
+          const hit = item.querySelector('.widget-selection-hit');
+          const itemRect = item.getBoundingClientRect();
+          const hitRect = hit?.getBoundingClientRect();
+          const inCheckGutter = state.editMode && event.detail > 0 && hitRect
+            && event.clientX >= itemRect.left && event.clientX <= hitRect.right + 12
+            && event.clientY >= itemRect.top && event.clientY <= itemRect.bottom;
+          if (inCheckGutter && !item.classList.contains('disabled')) {
+            const widgetId = Number(item.dataset.id);
+            const checked = !state.selectedWidgetIds.includes(widgetId);
+            const before = state.selectedWidgetIds.length;
+            setWidgetSelection(widgetId, {checked, scrollBoard:false, source:'list-gutter'});
+            console.info('[T-030] 체크 선택', {widgetId, source:'list-gutter', checked, before, after:state.selectedWidgetIds.length});
+            return;
+          }
+          setWidgetSelection(item.dataset.id, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, source:'list'});
         });
         item.addEventListener('keydown', (event) => {
           if (event.target !== item || !['Enter', ' '].includes(event.key)) return;
@@ -3906,7 +3922,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
         card.addEventListener("click", (event) => {
           if (!state.editMode) return;
           if (event.target.closest("button, select, input, label, a, [data-drag-handle], [data-resize], video, iframe")) return;
-          setWidgetSelection(card.dataset.widgetId, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, scrollBoard:false, scrollList:true});
+          setWidgetSelection(card.dataset.widgetId, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, scrollBoard:false, scrollList:true, source:'board'});
         });
       });
       $("board").querySelectorAll("[data-drag-handle]").forEach((handle) => {
@@ -4333,8 +4349,9 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
       const input = event.target;
       if (!state.editMode || !input.matches?.('input[data-select-widget]')) return;
       const before = state.selectedWidgetIds.length;
-      setWidgetSelection(input.dataset.selectWidget, {checked:input.checked, scrollBoard:false});
-      console.info("[T-030] 체크 선택", {widgetId:Number(input.dataset.selectWidget), checked:input.checked, before, after:state.selectedWidgetIds.length});
+      const source = input.closest('#widgetList') ? 'list-checkbox' : 'board-checkbox';
+      setWidgetSelection(input.dataset.selectWidget, {checked:input.checked, scrollBoard:false, source});
+      console.info("[T-030] 체크 선택", {widgetId:Number(input.dataset.selectWidget), source, checked:input.checked, before, after:state.selectedWidgetIds.length});
     }, true);
     $("selectAllWidgetsBtn").addEventListener("click", () => {
       state.selectedWidgetIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
