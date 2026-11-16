@@ -1643,6 +1643,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .power-preview-widget .power-donut-center b { font-size:12px; }
     .power-preview-widget .power-group-head { font-size:11px; }
     .power-preview-widget .meta { color:var(--muted); font-size:10px; }
+    .psych-source-choices{max-height:150px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:6px 0;padding:4px}
+    .psych-source-choices label{display:flex;align-items:flex-start;gap:6px;padding:5px;word-break:keep-all;font-size:12px;cursor:pointer}
+    .psych-source-choices input{flex:none;margin-top:2px}
+    .widget-preview-card.has-graph{display:block;padding:14px;overflow:hidden}
+    .widget-preview-card.has-graph>.widget-preview-icon,.widget-preview-card.has-graph>.widget-preview-metric{display:none}
+    .widget-preview-graph{width:100%;min-width:0}.widget-preview-graph svg{display:block;width:100%;height:190px}.widget-preview-graph-title{font-size:13px;font-weight:700;margin-bottom:6px}
     .widget-preview-card { --preview-color:#54cbf3; display:flex; align-items:center; gap:14px; min-height:105px; margin-top:10px; padding:16px; border:1px solid color-mix(in srgb,var(--preview-color) 20%,#34445b); border-top:2px solid var(--preview-color); border-radius:10px; background:color-mix(in srgb,var(--preview-color) 6%,#121a29); color:#e7edf8; }
     .widget-preview-card[data-style=minimal] { border:0; border-left:2px solid var(--preview-color); border-radius:0; background:#121a29; }
     .widget-preview-card[data-style=vivid] { background:linear-gradient(135deg,color-mix(in srgb,var(--preview-color) 10%,#121a29),#121a29); }
@@ -2903,8 +2909,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             <label class="field">페이지
               <select id="wCreatePage"></select>
             </label>
-            <label class="field">표시 이름
-              <input id="wName" placeholder="PDU 전력" />
+            <label class="field">표시 이름 <span style="color:#ff8b94">(필수)</span>
+              <input id="wName" placeholder="PDU 전력" required aria-required="true" />
             </label>
             <label class="field full" style="display:none">조회 종류
               <select id="wKind">
@@ -3110,20 +3116,18 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             <div class="grid2">
               <div>
                 <h3 style="margin:0 0 8px;font-size:14px">온도 소스</h3>
-                <div class="row">
-                  <select id="wPsychTemperatureDevice" style="flex:1;min-width:140px"></select>
-                  <select id="wPsychTemperaturePoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
-                  <button type="button" class="primary" id="wPsychTemperatureAdd" disabled>추가</button>
-                </div>
+                <div hidden><select id="wPsychTemperatureDevice"></select><select id="wPsychTemperaturePoint"></select></div>
+                <input id="wPsychTemperatureSearch" type="search" placeholder="장비 또는 측정항목 검색" aria-label="온도 소스 검색" />
+                <div id="wPsychTemperatureChoices" class="psych-source-choices" aria-label="온도 소스 선택"></div>
+                <button type="button" class="primary" id="wPsychTemperatureAdd" disabled>선택 항목 추가</button>
                 <div id="wPsychTemperatureList" class="pick-list"></div>
               </div>
               <div>
                 <h3 style="margin:0 0 8px;font-size:14px">상대습도 소스</h3>
-                <div class="row">
-                  <select id="wPsychHumidityDevice" style="flex:1;min-width:140px"></select>
-                  <select id="wPsychHumidityPoint" style="flex:1;min-width:140px" disabled><option value="">장비 먼저 선택</option></select>
-                  <button type="button" class="primary" id="wPsychHumidityAdd" disabled>추가</button>
-                </div>
+                <div hidden><select id="wPsychHumidityDevice"></select><select id="wPsychHumidityPoint"></select></div>
+                <input id="wPsychHumiditySearch" type="search" placeholder="장비 또는 측정항목 검색" aria-label="상대습도 소스 검색" />
+                <div id="wPsychHumidityChoices" class="psych-source-choices" aria-label="상대습도 소스 선택"></div>
+                <button type="button" class="primary" id="wPsychHumidityAdd" disabled>선택 항목 추가</button>
                 <div id="wPsychHumidityList" class="pick-list"></div>
               </div>
             </div>
@@ -3161,7 +3165,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             </div>
             <div class="widget-color-control"><label><input id="wColorCustom" type="checkbox" /> 색상 직접 지정</label><input id="wVisualColor" type="color" value="#54cbf3" aria-label="위젯 강조 색상" disabled /></div>
             <div id="wVisualPreviewNote" class="muted" style="font-size:11px;margin-top:16px">위젯 미리보기 · 예시 데이터</div>
-            <div id="wVisualPreview" class="widget-preview-card" data-style="classic"><span class="widget-preview-icon" aria-hidden="true">◈</span><div><small id="wVisualPreviewTitle">내 위젯</small><strong id="wVisualPreviewValue">29.1</strong><em id="wVisualPreviewUnit">kWh</em></div></div>
+            <div id="wVisualPreview" class="widget-preview-card" data-style="classic"><span class="widget-preview-icon" aria-hidden="true">◈</span><div class="widget-preview-metric"><small id="wVisualPreviewTitle">내 위젯</small><strong id="wVisualPreviewValue">29.1</strong><em id="wVisualPreviewUnit">kWh</em></div><div id="wGraphPreview" class="widget-preview-graph" hidden></div></div>
             <div id="wPowerPreview" class="power-preview-widget" hidden><div class="power-preview-head" id="wPowerPreviewTitle"></div><div id="wPowerPreviewBody"></div></div>
             <div id="wTablePreview" hidden><strong id="wTablePreviewTitle"></strong><div id="wTablePreviewBody" style="max-height:260px;min-height:120px;overflow:auto;margin-top:8px"></div></div>
           </div>
@@ -9334,7 +9338,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           else if (stage <= 4) advancedBody.append(element);
           else preview.append(element);
         }
-        const nameLabel = $("wName")?.closest("label"); if (nameLabel) basicFields.append(nameLabel);
+        const nameLabel = $("wName")?.closest("label"); if (nameLabel) basic.prepend(nameLabel);
         periodLabels.forEach((label) => basicFields.append(label));
         basic.append(basicFields);
         ["wVisualPreviewNote", "wVisualPreview", "wPowerPreview", "wTablePreview"].forEach((id) => { const element = $(id); if (element) preview.append(element); });
@@ -9494,6 +9498,16 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         return;
       }
       const kind = $("wKind").value;
+      const graph = $("wGraphPreview");
+      const graphKind = kind === "chart" || kind === "psychrometric";
+      preview.classList.toggle("has-graph", graphKind);
+      graph.hidden = !graphKind;
+      if (graphKind) {
+        const title = esc($("wName").value.trim() || "내 위젯");
+        graph.innerHTML = kind === "chart"
+          ? `<div class="widget-preview-graph-title">${title} · 추이 차트</div><svg viewBox="0 0 400 190" role="img" aria-label="추이 차트 예시"><g stroke="#33455c" stroke-width="1"><path d="M36 20H390M36 60H390M36 100H390M36 140H390M36 20V155"/></g><path d="M36 130 L75 109 L110 118 L145 76 L180 88 L215 58 L250 73 L285 42 L320 61 L355 35 L390 48" fill="none" stroke="#40c7f2" stroke-width="3"/><g fill="#a4b4c7" font-size="11"><text x="36" y="177">이전</text><text x="355" y="177">현재</text></g></svg>`
+          : `<div class="widget-preview-graph-title">${title} · 공기선도</div><svg viewBox="0 0 400 190" role="img" aria-label="공기선도 예시"><g fill="none" stroke="#627b92" stroke-width="1"><path d="M35 155 Q80 30 300 20 L365 20 M35 155 Q100 65 365 45 M35 155 Q130 100 365 75 M35 155 Q160 130 365 105 M35 155 L365 155 M35 155 L365 20 M80 155 L365 42 M140 155 L365 70 M200 155 L365 98"/></g><circle cx="230" cy="94" r="6" fill="#f08092" stroke="#fff"/><g fill="#a4b4c7" font-size="11"><text x="32" y="176">건구 온도 °C</text><text x="300" y="16">상대습도 %</text></g></svg>`;
+      }
       $('wPowerPreview').hidden = kind !== 'power_distribution';
       preview.hidden = kind === 'power_distribution';
       if (kind === 'power_distribution') {
@@ -9514,7 +9528,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           value = number.toLocaleString('ko-KR', { maximumFractionDigits:2 }); actual = true;
         }
       }
-      $("wVisualPreviewNote").textContent = actual ? '위젯 미리보기 · 첫 번째 항목의 최근 측정값' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
+      $("wVisualPreviewNote").textContent = graphKind ? '위젯 모양 미리보기 · 예시 데이터' : actual ? '위젯 미리보기 · 첫 번째 항목의 최근 측정값' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
       $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
       $("wVisualPreviewValue").textContent = value;
       $("wVisualPreviewUnit").textContent = unit;
@@ -13756,6 +13770,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetModelIds = [];
       state.psychrometricTemperatureSources = [];
       state.psychrometricHumiditySources = [];
+      pendingPsychSources.temperature.clear(); pendingPsychSources.humidity.clear();
       state.powerDistributionGroups = [];
       state.cctvCameraIds = [];
       $("wFormTitle").textContent = "위젯 만들기";
@@ -14272,69 +14287,44 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       return role === "temperature" ? "wPsychTemperature" : "wPsychHumidity";
     }
 
+    const pendingPsychSources = {temperature: new Set(), humidity: new Set()};
     function fillPsychrometricDevicePicks() {
-      if (!$("wPsychTemperatureDevice")) return;
       for (const role of ["temperature", "humidity"]) {
-        const available = widgetDeviceOptions().filter((device) =>
-          widgetSourcesForDevice(device.id).some((source) => !source.ambiguous && (role === "temperature"
-            ? String(source.dataPointType).toUpperCase() === "TEMPERATURE"
-            : String(source.dataPointType).toUpperCase() === "HUMIDITY")));
         const prefix = psychrometricPrefix(role);
-        const select = $(prefix + "Device");
-        fillSelect(select, available, (d) =>
-          `<option value="${d.id}">${esc(d.name)} · ${esc(d.modelName || "")} (#${d.id})</option>`,
-          available.length ? "장비 선택" : "등록된 장비 없음");
-        select.value = "";
-        resetPsychrometricPointPick(role);
-      }
-    }
-
-    function resetPsychrometricPointPick(role) {
-      const prefix = psychrometricPrefix(role);
-      const point = $(prefix + "Point");
-      const add = $(prefix + "Add");
-      point.innerHTML = '<option value="">장비 먼저 선택</option>';
-      point.disabled = true;
-      add.disabled = true;
-    }
-
-    async function loadPsychrometricPointPick(role) {
-      const prefix = psychrometricPrefix(role);
-      const deviceId = Number($(prefix + "Device").value);
-      const point = $(prefix + "Point");
-      const add = $(prefix + "Add");
-      if (!deviceId) return resetPsychrometricPointPick(role);
-      try {
-        const points = widgetSourcesForDevice(deviceId).filter((source) => !source.ambiguous
-          && String(source.dataPointType).toUpperCase() === (role === "temperature" ? "TEMPERATURE" : "HUMIDITY"));
-        const label = role === "temperature" ? "온도 측정항목 선택" : "상대습도(%) 측정항목 선택";
-        fillSelect(point, points, (p) =>
-          `<option value="${esc(p.pointName)}" data-unit="${esc(p.unit || "")}">${esc(widgetPointLabel(p))}</option>`,
-          points.length ? label : `${role === "temperature" ? "온도" : "상대습도"} 측정항목 없음`);
-        point.value = "";
-        point.disabled = !points.length;
-        add.disabled = true;
-      } catch (e) {
-        resetPsychrometricPointPick(role);
-        toast("측정항목 조회 실패: " + e.message, true);
+        const box = $(prefix + "Choices"), search = $(prefix + "Search"), add = $(prefix + "Add");
+        if (!box) continue;
+        const query = search.value.trim().toLowerCase();
+        const existing = [...state.psychrometricTemperatureSources, ...state.psychrometricHumiditySources];
+        const choices = widgetDeviceOptions().flatMap((device) => widgetSourcesForDevice(device.id)
+          .filter((source) => !source.ambiguous && String(source.dataPointType).toUpperCase() === (role === "temperature" ? "TEMPERATURE" : "HUMIDITY"))
+          .map((source) => ({device, source, key:JSON.stringify([Number(device.id), source.pointName])})))
+          .filter(({device, source}) => !existing.some((item) => Number(item.deviceId) === Number(device.id) && item.pointName === source.pointName));
+        const validKeys = new Set(choices.map((item) => item.key));
+        for (const key of pendingPsychSources[role]) if (!validKeys.has(key)) pendingPsychSources[role].delete(key);
+        const visible = choices.filter(({device, source}) => `${device.name} ${device.modelName || ""} ${source.pointName}`.toLowerCase().includes(query));
+        box.innerHTML = visible.length ? visible.map(({device, source, key}) => `<label><input type="checkbox" data-psych-choice="${esc(key)}" ${pendingPsychSources[role].has(key) ? "checked" : ""}><span>${esc(device.name)} · ${esc(widgetPointLabel(source))}</span></label>`).join("") : '<span class="muted">선택할 수 있는 항목이 없습니다.</span>';
+        box.querySelectorAll("[data-psych-choice]").forEach((input) => input.addEventListener("change", () => {
+          if (input.checked) pendingPsychSources[role].add(input.dataset.psychChoice);
+          else pendingPsychSources[role].delete(input.dataset.psychChoice);
+          add.disabled = pendingPsychSources[role].size === 0;
+          add.textContent = pendingPsychSources[role].size ? `선택 항목 ${pendingPsychSources[role].size}개 추가` : "선택 항목 추가";
+        }));
+        add.disabled = pendingPsychSources[role].size === 0;
+        add.textContent = pendingPsychSources[role].size ? `선택 항목 ${pendingPsychSources[role].size}개 추가` : "선택 항목 추가";
       }
     }
 
     function addPsychrometricSource(role) {
-      const prefix = psychrometricPrefix(role);
-      const deviceId = Number($(prefix + "Device").value);
-      const point = $(prefix + "Point");
-      const pointName = point.value;
-      if (!deviceId || !pointName) return toast("장비와 측정항목을 선택하세요", true);
-      const all = [...state.psychrometricTemperatureSources, ...state.psychrometricHumiditySources];
-      if (all.some((source) => source.deviceId === deviceId && source.pointName === pointName)) {
-        return toast("같은 장비·측정항목은 온도 또는 습도 중 한 역할에만 추가할 수 있습니다", true);
+      const existing = [...state.psychrometricTemperatureSources, ...state.psychrometricHumiditySources];
+      for (const key of pendingPsychSources[role]) {
+        const [deviceId, pointName] = JSON.parse(key);
+        const source = widgetSourcesForDevice(deviceId).find((item) => item.pointName === pointName && !item.ambiguous && String(item.dataPointType).toUpperCase() === (role === "temperature" ? "TEMPERATURE" : "HUMIDITY"));
+        if (!source || existing.some((item) => Number(item.deviceId) === deviceId && item.pointName === pointName)) continue;
+        const entry = {deviceId, pointName, unit:source.unit || ""};
+        psychrometricSources(role).push(entry);
+        existing.push(entry);
       }
-      psychrometricSources(role).push({
-        deviceId,
-        pointName,
-        unit: point.selectedOptions[0]?.dataset.unit || "",
-      });
+      pendingPsychSources[role].clear();
       renderPsychrometricSources();
       fillPsychrometricDevicePicks();
     }
@@ -14557,10 +14547,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       fillPowerDistributionPicks();
     }
 
-    $("wPsychTemperatureDevice")?.addEventListener("change", () => loadPsychrometricPointPick("temperature"));
-    $("wPsychHumidityDevice")?.addEventListener("change", () => loadPsychrometricPointPick("humidity"));
-    $("wPsychTemperaturePoint")?.addEventListener("change", () => { $("wPsychTemperatureAdd").disabled = !$("wPsychTemperaturePoint").value; });
-    $("wPsychHumidityPoint")?.addEventListener("change", () => { $("wPsychHumidityAdd").disabled = !$("wPsychHumidityPoint").value; });
+    $("wPsychTemperatureSearch")?.addEventListener("input", fillPsychrometricDevicePicks);
+    $("wPsychHumiditySearch")?.addEventListener("input", fillPsychrometricDevicePicks);
     $("wPsychTemperatureAdd")?.addEventListener("click", () => addPsychrometricSource("temperature"));
     $("wPsychHumidityAdd")?.addEventListener("click", () => addPsychrometricSource("humidity"));
     $("wPowerGroupAdd")?.addEventListener("click", addPowerDistributionGroup);
@@ -14793,6 +14781,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetPointCatalog = [];
       state.psychrometricTemperatureSources = [];
       state.psychrometricHumiditySources = [];
+      pendingPsychSources.temperature.clear(); pendingPsychSources.humidity.clear();
       state.powerDistributionGroups = [];
       state.cctvCameraIds = [];
       renderWidgetDevices();
