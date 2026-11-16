@@ -3513,10 +3513,18 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         await refreshCountModelOverrideOptions();
       }
 
-      // 임시 레이아웃 재배치 (layout 없는 것만)
-      let autoIdx = 0;
+      // 배치가 없는 새 위젯은 저장된 배치나 기존 편집 위치와 겹치지 않게 둔다.
+      const occupied = enabled.filter((w) => w.layout || w._draftLayout)
+        .map((w) => widgetLayout(w)).filter(Boolean);
       for (const w of enabled) {
-        if (!w.layout) w._tempLayout = ensureLayout(w, autoIdx++);
+        if (w.layout || w._draftLayout) continue;
+        let layout = w._tempLayout;
+        if (!layout || occupied.some((other) => layoutOverlaps(layout, other))) {
+          layout = ensureLayout(w, 0);
+          while (occupied.some((other) => layoutOverlaps(layout, other))) layout.gridY++;
+          w._tempLayout = layout;
+        }
+        occupied.push(layout);
       }
 
       destroyChartInstances();
@@ -3721,9 +3729,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         snap.h = d.layout.h;
         const { stepX } = boardMetrics();
         const rawX = Math.max(0, Math.round(live.left / stepX));
-        if (rawX > COLS - snap.w) { snap.gridX = 0; snap.gridY += snap.h; }
-        else snap.gridX = rawX;
-        snap.gridX = Math.max(0, Math.min(COLS - snap.w, snap.gridX));
+        snap.gridX = Math.max(0, Math.min(COLS - snap.w, rawX));
         snap.gridY = Math.max(0, snap.gridY);
         const aligned = alignWidgetLayout(snap, d.id, d.baseLayouts);
         const resolved = resolvePushedLayouts(aligned, d.id, d.baseLayouts);
@@ -3776,8 +3782,8 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
           if (distance < bestY) { bestY = distance; result.gridY = y; result.alignY = true; }
         }
       }
-      if (bestX > 1) { result.gridX = layout.gridX; result.alignX = false; }
-      if (bestY > 1) { result.gridY = layout.gridY; result.alignY = false; }
+      if (bestX > 0) { result.gridX = layout.gridX; result.alignX = false; }
+      if (bestY > 0) { result.gridY = layout.gridY; result.alignY = false; }
       return result;
     }
     function resolvePushedLayouts(requested, movingId, baseLayouts) {
@@ -3825,7 +3831,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
           }
         }
       }
-      if (!stable) return null;
+      if (!stable || layoutMapHasOverlap(layouts)) return null;
       return layouts;
     }
     function compactLayoutMap(layouts, anchorId = null) {
@@ -3867,7 +3873,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       for (const widget of state.widgets) {
         const layout = layouts.get(Number(widget.id));
         if (!layout) continue;
-        const baseline = widgetLayout(widget);
+        const baseline = widget.layout ? toFineLayout(widget.layout) : widget._tempLayout;
         if (!baseline || ["gridX", "gridY", "w", "h"].some((key) => baseline[key] !== layout[key])) widget._draftLayout = { ...layout };
         else delete widget._draftLayout;
       }
@@ -3977,6 +3983,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         layout,
         baseLayouts: new Map(state.widgets.filter((widget) => widget.enabled && widgetLayout(widget)).map((widget) => [Number(widget.id), { ...widgetLayout(widget) }])),
         origin,
+        boardOrigin: { left: rect.left, top: rect.top },
         pointerId: e.pointerId,
         startX: e.clientX,
         startY: e.clientY,
@@ -4007,9 +4014,9 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     }
 
     function computeLiveBox(d, clientX, clientY) {
-      const dx = clientX - d.startX;
-      const dy = clientY - d.startY;
       const { rect, stepX } = boardMetrics();
+      const dx = clientX - d.startX + d.boardOrigin.left - rect.left;
+      const dy = clientY - d.startY + d.boardOrigin.top - rect.top;
       const boardW = rect.width;
       let left = d.origin.left;
       let top = d.origin.top;
@@ -4020,14 +4027,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         const rawLeft = d.origin.left + dx;
         top = Math.max(0, d.origin.top + dy);
         const maxLeft = Math.max(0, boardW - width);
-        if (rawLeft > maxLeft) {
-          const { stepY } = boardMetrics();
-          const wraps = Math.max(1, Math.ceil((rawLeft - maxLeft) / Math.max(1, boardW)));
-          left = Math.max(0, Math.min(maxLeft, rawLeft - wraps * boardW));
-          top += wraps * (d.layout.h * stepY);
-        } else {
-          left = Math.max(0, rawLeft);
-        }
+        left = Math.max(0, Math.min(maxLeft, rawLeft));
       } else {
         const mode = d.resizeMode;
         const right = d.origin.left + d.origin.width, bottom = d.origin.top + d.origin.height;
@@ -4086,7 +4086,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       }
 
       const compacted = compactLayoutMap(d.pendingLayouts, d.id);
-      if (!compacted) { await refreshBoard(false); alert("잠긴 위젯을 피할 공간이 없어 배치를 바꾸지 않았습니다."); return; }
+      if (!compacted || layoutMapHasOverlap(compacted)) { await refreshBoard(false); alert("위젯이 겹치지 않도록 배치를 바꾸지 않았습니다."); return; }
       applyLayoutDrafts(compacted);
       const verb = d.mode === "move" ? "이동" : "크기";
       log(`${verb} 미리보기 #${d.id} → (${next.gridX},${next.gridY}) ${next.w}×${next.h}`);
