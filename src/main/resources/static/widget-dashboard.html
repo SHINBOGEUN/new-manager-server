@@ -863,7 +863,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     body.fixed-page-view:is(.edit-mode,.widget-workspace) .workspace-guide { display:none; }
     /* Keep the widget toolbar in one stable row while the list opens or closes. */
     body.fixed-page-view.widget-workspace.drawer-open > .dashboard-header { max-width:none; }
-    body.widget-workspace .dashboard-actions > :not(#addWidgetBtn):not(#drawerBtn):not(#editBtn):not(#closeWidgetWorkspaceBtn):not(#layoutSaveStatus) { display:none !important; }
+    body.widget-workspace .dashboard-actions > :not(#addWidgetBtn):not(#drawerBtn):not(#editBtn):not(#closeWidgetWorkspaceBtn):not(#layoutSaveStatus):not(#deleteSelectedWidgetsBtn) { display:none !important; }
     body.widget-workspace .dashboard-actions { position:relative; flex-wrap:nowrap; justify-content:flex-end; gap:8px; }
     body.widget-workspace #addWidgetBtn { order:1; }
     body.widget-workspace #drawerBtn { order:2; }
@@ -1067,6 +1067,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         <button id="addWidgetBtn" type="button" style="display:none" disabled>＋ 위젯 추가</button>
         <button id="metricsBtn" class="ghost" type="button" style="display:none">계산 지표</button>
         <button id="reloadBtn" class="ghost" type="button">↻ 새로고침</button>
+        <button id="deleteSelectedWidgetsBtn" class="danger" type="button" style="display:none" disabled>선택 삭제</button>
         <button id="editBtn" type="button" aria-pressed="false" aria-describedby="workspaceGuide" title="카드 상단을 끌어 이동하고 가장자리로 크기를 조절합니다">배치 편집</button>
         <span id="layoutSaveStatus" class="layout-save-status" role="status" aria-live="polite" hidden></span>
         <button id="cancelEditBtn" class="ghost" type="button" style="display:none">편집 취소</button>
@@ -1610,6 +1611,58 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       return { gridX, gridY, w, h };
     }
 
+    function forgetDeletedWidget(id) {
+      const chart = state.chartInstances.get(id);
+      if (chart) {
+        chart.destroy();
+        state.chartInstances.delete(id);
+      }
+      state.widgets = state.widgets.filter((widget) => Number(widget.id) !== id);
+      state.selectedWidgetIds = state.selectedWidgetIds.filter((selectedId) => Number(selectedId) !== id);
+      if (state.drag?.id === id) { hideGhost(); state.drag = null; }
+      state.lastByWidget.delete(id);
+      state.countByWidget.delete(id);
+      state.chartByWidget.delete(id);
+      state.aggregateByWidget.delete(id);
+      state.pueByWidget.delete(id);
+      state.psychrometricByWidget.delete(id);
+      state.powerDistributionByWidget.delete(id);
+    }
+
+    async function deleteSelectedWidgets() {
+      if (!state.editMode || state.saving || consoleAuth()?.getRole?.() !== "ADMIN") return;
+      const selected = state.selectedWidgetIds.map((id) => state.widgets.find((widget) => Number(widget.id) === Number(id) && widget.enabled)).filter(Boolean);
+      if (!selected.length) return;
+      const names = selected.map((widget) => `• ${widget.name} (#${widget.id})`).join("\n");
+      if (!confirm(`선택한 위젯 ${selected.length}개를 삭제할까요?\n\n${names}\n\n삭제는 즉시 반영되며 되돌릴 수 없습니다.`)) return;
+      state.saving = true;
+      renderWidgetList();
+      const failed = [];
+      let deleted = 0;
+      try {
+        for (const widget of selected) {
+          const id = Number(widget.id);
+          try {
+            await api(`/api/manager/widgets/${id}`, { method: "DELETE" });
+            forgetDeletedWidget(id);
+            deleted++;
+          } catch (error) {
+            failed.push(`${widget.name} (#${id}): ${error.message || "삭제 실패"}`);
+          }
+        }
+        if (deleted) {
+          log(`선택한 위젯 ${deleted}개 삭제됨`);
+          notifyWidgetChange();
+        }
+        if (failed.length) alert(`${deleted}개 삭제 완료, ${failed.length}개 삭제 실패:\n${failed.join("\n")}`);
+        renderWidgetList();
+        await refreshBoard(false);
+      } finally {
+        state.saving = false;
+        renderWidgetList();
+      }
+    }
+
     async function deleteWidget(id, name) {
       if (state.saving) return;
       const label = name ? `"${name}" (#${id})` : `#${id}`;
@@ -1620,20 +1673,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       renderWidgetList();
       try {
         await api(`/api/manager/widgets/${id}`, { method: "DELETE" });
-        const chart = state.chartInstances.get(id);
-        if (chart) {
-          chart.destroy();
-          state.chartInstances.delete(id);
-        }
-        state.widgets = state.widgets.filter((widget) => widget.id !== id);
-        if (state.drag?.id === id) { hideGhost(); state.drag = null; }
-        state.lastByWidget.delete(id);
-        state.countByWidget.delete(id);
-        state.chartByWidget.delete(id);
-        state.aggregateByWidget.delete(id);
-        state.pueByWidget.delete(id);
-        state.psychrometricByWidget.delete(id);
-        state.powerDistributionByWidget.delete(id);
+        forgetDeletedWidget(id);
         log(`위젯 #${id} 삭제됨`);
         notifyWidgetChange();
         renderWidgetList();
@@ -2594,7 +2634,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     });
     function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false, checked = null, source = "unknown"} = {}) {
       id = Number(id);
-      if (!Number.isInteger(id) || !state.widgets.some((widget) => Number(widget.id) === id)) return;
+      if (state.saving || !Number.isInteger(id) || !state.widgets.some((widget) => Number(widget.id) === id)) return;
       const multiSelect = state.editMode && !forceSingle;
       const previousSelectionCount = state.selectedWidgetIds.length;
       const enabledIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
@@ -2668,6 +2708,10 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       if (!hint || !apply) return;
       hint.textContent = `${selected.length}개 선택`;
       apply.disabled = selected.length < 2 || state.saving;
+      const remove = $("deleteSelectedWidgetsBtn");
+      remove.style.display = state.editMode && consoleAuth()?.getRole?.() === "ADMIN" ? "" : "none";
+      remove.disabled = selected.length === 0 || state.saving;
+      remove.textContent = selected.length ? `선택 삭제 (${selected.length})` : "선택 삭제";
     }
 
     async function applyWidgetSizeMatch() {
@@ -2700,6 +2744,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       $("boardWidgetCount").textContent = `위젯 ${enabledCount}개`;
       if (!state.widgets.length) {
         $("widgetList").innerHTML = '<p class="empty">위젯이 없습니다.</p>';
+        updateSizeMatchTools();
         return;
       }
       $("widgetList").innerHTML = state.widgets.map((w) => {
@@ -4358,6 +4403,9 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     $("editBtn").addEventListener("click", () => {
       if (state.editMode) saveLayoutEdits().catch((error) => log("배치 저장 실패: " + error.message));
       else setEditMode(true);
+    });
+    $("deleteSelectedWidgetsBtn").addEventListener("click", () => {
+      deleteSelectedWidgets().catch((error) => { log("위젯 삭제 실패: " + error.message); alert("위젯 삭제 중 오류가 발생했습니다: " + error.message); });
     });
     $("applySizeMatchBtn").addEventListener("click", () => {
       applyWidgetSizeMatch().catch((error) => log("위젯 크기 맞춤 실패: " + error.message));
