@@ -964,9 +964,10 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     /* T-030 shared card surface: quiet border and minimal shadow in both themes. */
 .card,.stat,.board>.card{border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 2px rgb(0 0 0 / .22)}html[data-theme="light"] .card,html[data-theme="light"] .stat,html[data-theme="light"] .board>.card{border-color:var(--line);box-shadow:0 1px 2px rgb(15 23 42 / .12)}
 
-.widget-selection-check{display:none;min-width:24px;width:24px;height:24px;margin:0;accent-color:var(--accent);cursor:pointer}
-body.edit-mode .widget-selection-check{display:block}
-body.edit-mode .board>.card>.widget-selection-check{position:absolute;top:6px;left:6px;z-index:7}
+.widget-selection-hit{display:none;width:32px;height:32px;min-width:32px;cursor:pointer}
+.widget-selection-check{min-width:24px;width:24px;height:24px;margin:0;accent-color:var(--accent);cursor:pointer}
+body.edit-mode .widget-selection-hit{display:grid;place-items:center}
+body.edit-mode .board>.card>.widget-selection-hit{position:absolute;top:2px;left:2px;z-index:12;pointer-events:auto;touch-action:manipulation}
 body.edit-mode .board>.card .card-head{padding-left:38px}
 body.edit-mode .widget-item h3>.widget-selection-check{flex:none}
 /* T-030 step 2: quiet edit affordances and narrow content. */
@@ -1001,7 +1002,7 @@ body.edit-mode .size-match-tools{display:grid;grid-template-columns:minmax(0,1fr
 .size-match-caption small{font-size:10px;color:var(--muted);word-break:keep-all}
 .size-match-buttons{display:flex;gap:4px;min-width:0}
 .size-match-buttons button{flex:1 1 0;min-width:0;height:32px;padding:0 4px;font-size:11px;white-space:nowrap}
-#widgetList .widget-item{position:relative;display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:6px;min-width:0;min-height:48px;padding:4px 7px;margin-bottom:4px}
+#widgetList .widget-item{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:6px;min-width:0;min-height:48px;padding:4px 7px;margin-bottom:4px}
 body:not(.edit-mode) #widgetList .widget-item{grid-template-columns:minmax(0,1fr) auto}
 #widgetList .widget-item-text{min-width:0;text-align:left}
 #widgetList .widget-item h3{display:block;margin:0;font-size:12px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1009,8 +1010,7 @@ body:not(.edit-mode) #widgetList .widget-item{grid-template-columns:minmax(0,1fr
 #widgetList .widget-actions{position:absolute;right:49px;top:50%;transform:translateY(-50%);display:flex;gap:3px;margin:0;padding:2px;background:var(--panel);opacity:0;pointer-events:none}
 #widgetList .widget-item:hover .widget-actions,#widgetList .widget-item:focus-within .widget-actions,#widgetList .widget-item.is-selected .widget-actions{opacity:1;pointer-events:auto}
 #widgetList .widget-actions button{flex:none;min-width:26px;width:26px;height:28px;padding:0;font-size:14px;line-height:1}
-#widgetList .widget-item > .widget-selection-check{flex:none}
-body.edit-mode .board>.card>.widget-selection-check{z-index:12;pointer-events:auto;touch-action:manipulation}
+#widgetList .widget-item > .widget-selection-hit{flex:none}
 body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
 
 /* T-030 step 3: compact scene header and unobstructed empty/selection states. */
@@ -2579,7 +2579,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
       if (!state.editMode || consoleAuth()?.getRole?.() !== "ADMIN") return;
       const card = event.target.closest(".card[data-widget-id]");
       if (!card || card.classList.contains("disabled") || card.classList.contains("cctv-card")) return;
-      if (event.target.closest("button, select, input, textarea, a, .drag-handle, .resize-handle, .cctv-camera-tabs, .cctv-viewer, iframe, video, audio, [contenteditable='true']")) return;
+      if (event.target.closest("button, select, input, textarea, a, .widget-selection-hit, .drag-handle, .resize-handle, .cctv-camera-tabs, .cctv-viewer, iframe, video, audio, [contenteditable='true']")) return;
       if (state.drag || card.classList.contains("dragging") || Date.now() - lastWidgetCardDragAt < 600) return;
       const widgetId = Number(card.dataset.widgetId);
       if (!Number.isInteger(widgetId) || widgetId <= 0) return;
@@ -2588,13 +2588,19 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
       setWidgetSelection(widgetId, {forceSingle:true, scrollBoard:false, scrollList:true});
       requestWidgetEditor(widgetId);
     });
-    function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false} = {}) {
+    function setWidgetSelection(id, {ctrlKey = false, shiftKey = false, scrollBoard = true, scrollList = false, forceSingle = false, checked = null} = {}) {
       id = Number(id);
       if (!Number.isInteger(id) || !state.widgets.some((widget) => Number(widget.id) === id)) return;
       const multiSelect = state.editMode && !forceSingle;
+      const previousSelectionCount = state.selectedWidgetIds.length;
       const enabledIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
       if (multiSelect && !enabledIds.includes(id)) return;
-      if (!multiSelect || (!ctrlKey && !shiftKey)) {
+      if (multiSelect && typeof checked === "boolean") {
+        const next = state.selectedWidgetIds.filter((selectedId) => selectedId !== id);
+        if (checked) next.push(id);
+        state.selectedWidgetIds = next;
+        selectionAnchorWidgetId = id;
+      } else if (!multiSelect || (!ctrlKey && !shiftKey)) {
         state.selectedWidgetIds = [id];
         selectionAnchorWidgetId = id;
       } else if (shiftKey) {
@@ -2614,6 +2620,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
           : [...state.selectedWidgetIds, id];
         selectionAnchorWidgetId = id;
       }
+      if (checked === null) console.info("[T-030] 선택 경로", {widgetId:id, mode:forceSingle ? "single-forced" : (ctrlKey || shiftKey) ? "multi" : "single", before:previousSelectionCount, after:state.selectedWidgetIds.length});
       const selectedIds = new Set(state.selectedWidgetIds);
       const currentId = state.selectedWidgetIds[state.selectedWidgetIds.length - 1] ?? null;
       document.querySelectorAll('#widgetList .widget-item').forEach((item) => {
@@ -2704,7 +2711,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
             : "";
         return `
         <article class="widget-item ${w.enabled ? "" : "disabled"} ${state.selectedWidgetIds.includes(Number(w.id)) ? "is-selected" : ""}" data-id="${w.id}" tabindex="0" ${state.selectedWidgetIds[state.selectedWidgetIds.length - 1] === Number(w.id) ? 'aria-current="true"' : ''} aria-label="${escapeHtml(w.name)}${w.enabled ? '' : ' · 표시 꺼짐'}">
-          <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${w.enabled ? "" : "disabled"} />
+          <label class="widget-selection-hit"><input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} ${w.enabled ? "" : "disabled"} /></label>
           <div class="widget-item-text"><h3 title="${escapeHtml(w.name)}">${escapeHtml(w.name)}</h3><div class="meta">#${w.id} · ${escapeHtml(widgetKindLabel(w.queryKind))} · ${L ? `${L.w}×${L.h}` : "배치 없음"}</div></div>
           <div class="widget-actions">
             <button type="button" class="ghost" data-edit-scroll="${w.id}" ${w.enabled ? "" : "disabled"} title="위치 찾기" aria-label="${escapeHtml(w.name)} 위치 찾기">⌖</button>
@@ -3037,10 +3044,12 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
     function updateExistingCctvCard(current, fresh, widget) {
       current.className = fresh.className;
       current.setAttribute("style", fresh.getAttribute("style") || "");
-      const currentCheck = current.querySelector(":scope > [data-select-widget]");
-      const freshCheck = fresh.querySelector(":scope > [data-select-widget]");
+      const currentHit = current.querySelector(":scope > .widget-selection-hit");
+      const freshHit = fresh.querySelector(":scope > .widget-selection-hit");
+      const currentCheck = currentHit?.querySelector("[data-select-widget]");
+      const freshCheck = freshHit?.querySelector("[data-select-widget]");
       if (currentCheck && freshCheck) currentCheck.checked = freshCheck.checked;
-      else if (freshCheck) current.prepend(freshCheck.cloneNode(true));
+      else if (freshHit) current.prepend(freshHit.cloneNode(true));
       current.querySelector(".card-head")?.replaceWith(fresh.querySelector(".card-head").cloneNode(true));
       const currentBody = current.querySelector(".card-body");
       const freshBody = fresh.querySelector(".card-body");
@@ -3574,7 +3583,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
         const editorTargetClass = editorPreviewWidgetId && Number(w.id) === editorPreviewWidgetId ? "editor-preview-target" : "";
         return `
           <article class="${cardClass} ${editorTargetClass} ${state.selectedWidgetIds.includes(Number(w.id)) ? 'is-selected' : ''} style-${['classic','minimal','vivid'].includes(w.visualStyle) ? w.visualStyle : 'classic'}" data-widget-id="${w.id}" style="${style}">
-            <input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} />
+            <label class="widget-selection-hit"><input class="widget-selection-check" type="checkbox" data-select-widget="${w.id}" aria-label="${escapeHtml(w.name)} 선택" ${state.selectedWidgetIds.includes(Number(w.id)) ? "checked" : ""} /></label>
             <div class="card-head" data-drag-handle>
               <span class="drag-handle">⠿</span>
               <div>
@@ -3896,7 +3905,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
         card.dataset.editSelectionBound = "true";
         card.addEventListener("click", (event) => {
           if (!state.editMode) return;
-          if (event.target.closest("button, select, input, a, [data-drag-handle], [data-resize], video, iframe")) return;
+          if (event.target.closest("button, select, input, label, a, [data-drag-handle], [data-resize], video, iframe")) return;
           setWidgetSelection(card.dataset.widgetId, {ctrlKey:event.ctrlKey || event.metaKey, shiftKey:event.shiftKey, scrollBoard:false, scrollList:true});
         });
       });
@@ -4323,7 +4332,9 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:38px}
     document.addEventListener("change", (event) => {
       const input = event.target;
       if (!state.editMode || !input.matches?.('input[data-select-widget]')) return;
-      setWidgetSelection(input.dataset.selectWidget, {ctrlKey:true, scrollBoard:false});
+      const before = state.selectedWidgetIds.length;
+      setWidgetSelection(input.dataset.selectWidget, {checked:input.checked, scrollBoard:false});
+      console.info("[T-030] 체크 선택", {widgetId:Number(input.dataset.selectWidget), checked:input.checked, before, after:state.selectedWidgetIds.length});
     }, true);
     $("selectAllWidgetsBtn").addEventListener("click", () => {
       state.selectedWidgetIds = state.widgets.filter((widget) => widget.enabled).map((widget) => Number(widget.id));
