@@ -3923,7 +3923,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         if (card.dataset.editSelectionBound === "true") return;
         card.dataset.editSelectionBound = "true";
         card.addEventListener("click", (event) => {
-          if (!state.editMode) return;
+          if (!state.editMode || Date.now() - lastWidgetCardDragAt < 600) return;
           if (event.target.closest("button, select, input, label, a, [data-drag-handle], [data-resize], video, iframe")) return;
           const hit = card.querySelector(':scope > .widget-selection-hit');
           const cardRect = card.getBoundingClientRect();
