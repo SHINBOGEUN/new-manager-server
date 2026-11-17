@@ -72,7 +72,7 @@ public class CalculatedMetricQueryService {
         List<CalculatedMetricTrendPointResponse> trend = List.of();
         if ((rangePresetOverride != null && !rangePresetOverride.isBlank())
                 || (windowOverride != null && !windowOverride.isBlank())) {
-            String window = ChartComparisonSupport.windowForComparison(resolvedComparison, preset);
+            String window = ChartComparisonSupport.requestedWindow(windowOverride, resolvedComparison, preset);
             trend = pointQuery.findCalculatedSeries(definition.getId(), range.start(), range.end(), window)
                     .stream().map(item -> new CalculatedMetricTrendPointResponse(item.time(), QueryValues.round4(item.value())))
                     .toList();

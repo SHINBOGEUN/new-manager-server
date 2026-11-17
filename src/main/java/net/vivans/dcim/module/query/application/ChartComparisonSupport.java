@@ -106,6 +106,15 @@ final class ChartComparisonSupport {
         };
     }
 
+    static String requestedWindow(String requested, Comparison comparison, PageWidgetChartRangePreset preset) {
+        if (requested == null || requested.isBlank()) return windowForComparison(comparison, preset);
+        String value = requested.trim();
+        if (!java.util.Set.of("1m", "5m", "15m", "1h", "1d").contains(value)) {
+            throw new IllegalArgumentException("window must be 1m, 5m, 15m, 1h, or 1d");
+        }
+        return value;
+    }
+
     static List<ChartSeriesResponse> sum(List<ChartSeriesResponse> sources, String unit, String label) {
         Map<Instant, Double> values = new LinkedHashMap<>();
         for (ChartSeriesResponse source : sources) {

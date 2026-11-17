@@ -4,6 +4,7 @@
   const CHART_PALETTE = ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
   const RANGE_OPTIONS = [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]];
   const SERIES_OPTIONS = [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]];
+  const WINDOW_OPTIONS = [["","간격 자동"],["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]];
   const STYLE_OPTIONS = [["line","선"],["bar","막대"]];
   const COMPARE_OPTIONS = [["none","비교 안 함"],["today_yesterday","오늘 / 어제"],["week_lastweek","이번 주 / 지난주"],["month_lastmonth","이번 달 / 지난달"]];
   let modal;
@@ -13,6 +14,7 @@
   let controls;
   let advancedControls;
   let rangeSelect;
+  let windowSelect;
   let seriesSelect;
   let styleSelect;
   let compareSelect;
@@ -95,10 +97,12 @@
     controls = modal.querySelector(".dcim-widget-detail-controls");
     advancedControls = modal.querySelector(".dcim-widget-detail-advanced .dcim-widget-detail-controls");
     rangeSelect = select("dcimDetailRange", RANGE_OPTIONS);
+    windowSelect = select("dcimDetailWindow", WINDOW_OPTIONS);
+    windowSelect.setAttribute("aria-label", "집계 간격");
     seriesSelect = select("dcimDetailSeries", SERIES_OPTIONS);
     styleSelect = select("dcimDetailStyle", STYLE_OPTIONS);
     compareSelect = select("dcimDetailCompare", COMPARE_OPTIONS);
-    controls.append(rangeSelect, compareSelect);
+    controls.append(rangeSelect, compareSelect, windowSelect);
     advancedControls.append(seriesSelect, styleSelect);
     modal.querySelector("button").addEventListener("click", close);
     modal.addEventListener("click", function (event) { if (event.target === modal) close(); });
@@ -171,7 +175,7 @@
       const byTime = new Map((item.times || []).map(function (time, i) { return [time, item.values[i]]; }));
       const baseKey = item.compare && item.key ? item.key.replace(/:compare$/, "") : null;
       const baseIndex = baseKey ? series.findIndex(function (candidate) { return candidate.key === baseKey; }) : -1;
-      const color = item.compare ? "#8A94A6" : CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
+      const color = item.compare ? "#FFC857" : CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
       const baseSeries = baseIndex >= 0 ? series[baseIndex] : null;
       const baseValues = baseSeries ? new Map((baseSeries.times || []).map(function (time, i) { return [formatTime(time), baseSeries.values[i]]; })) : new Map();
       const originalByTime = new Map((item.times || []).map(function (time, i) { return [time, (item.originalTimes || [])[i] || null]; }));
@@ -184,7 +188,7 @@
         fill: false,
         tension: 0,
         pointRadius: times.length > 80 ? 0 : 2,
-        borderWidth: item.compare ? 1.5 : 2,
+        borderWidth: item.compare ? 2.5 : 2,
         borderDash: item.compare ? [6, 4] : [],
         originalTimes: times.map(function (time) { return originalByTime.get(time) || null; }),
         baseValues: baseValues,
@@ -202,7 +206,7 @@
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: false },
+          legend: { display: series.some(function (item) { return item.compare; }), labels: { color: "#e7edf8", usePointStyle: true } },
           tooltip: { callbacks: { label: function (context) {
             const value = context.parsed.y;
             const unit = context.dataset.unit ? " " + context.dataset.unit : "";
@@ -247,7 +251,7 @@
     rangeSelect.hidden = compareSelect.value !== "none";
     const options = {
       rangePreset: rangeSelect.value,
-      window: "",
+      window: windowSelect.value,
       seriesMode: seriesSelect.value,
       compare: compareSelect.value,
     };
@@ -330,6 +334,7 @@
     seriesSelect.value = activeConfig.seriesMode || "sum";
     styleSelect.value = activeConfig.chartStyle === "area" ? "line" : activeConfig.chartStyle || "line";
     compareSelect.value = normalizeCompare(activeConfig.compare, rangeSelect.value);
+    windowSelect.value = "";
     modal.querySelector(".dcim-widget-detail-advanced").open = false;
     seriesSelect.hidden = !activeShowSeries;
     compareSelect.hidden = !activeShowCompare;

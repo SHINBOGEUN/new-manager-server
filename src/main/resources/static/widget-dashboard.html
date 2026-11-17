@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t024"></script>
+  <script src="/widget-detail-popup.js?v=20261117-t033"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3200,6 +3200,8 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         || $("chartSeriesOverride")?.value
         || widget.chartSeriesMode
         || "sum";
+      const chart = state.chartByWidget.get(widget.id);
+      if (!Array.isArray(chart?.availableSeriesModes)) return requested;
       const available = chartSeriesModesForWidget(widget).map(([mode]) => mode);
       return available.includes(requested) ? requested : available[0] || "per_device";
     }
@@ -3271,7 +3273,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         const baseKey = s.compare && s.key ? s.key.replace(/:compare$/, "") : null;
         const baseIndex = baseKey ? series.findIndex((item) => item.key === baseKey) : -1;
         const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : i) % CHART_PALETTE.length];
-        const line = s.compare ? "background:transparent;border-top:2px dashed #8A94A6" : `background:${color}`;
+        const line = s.compare ? "background:transparent;border-top:2px dashed #FFC857" : `background:${color}`;
         return `<span><i style="${line}"></i>${escapeHtml(s.label || s.key || "")}</span>`;
       }).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
       return `

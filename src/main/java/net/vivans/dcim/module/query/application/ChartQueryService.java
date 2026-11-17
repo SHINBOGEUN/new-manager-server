@@ -76,7 +76,7 @@ public class ChartQueryService {
         QueryRanges.Range range = QueryRanges.resolve(preset);
         ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(requestedCompare, preset, range);
         if (comparison != null) range = comparison.currentRange();
-        String window = ChartComparisonSupport.windowForComparison(comparison, preset);
+        String window = ChartComparisonSupport.requestedWindow(windowOverride, comparison, preset);
         PageWidgetChartSeriesMode mode = comparison != null ? PageWidgetChartSeriesMode.sum
                 : resolveSeriesMode(widget, seriesModeOverride, null);
 

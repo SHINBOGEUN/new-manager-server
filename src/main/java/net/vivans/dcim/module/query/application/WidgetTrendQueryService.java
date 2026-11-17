@@ -57,7 +57,7 @@ public class WidgetTrendQueryService {
         PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
         QueryRanges.Range range = QueryRanges.resolve(preset);
         ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
-        String resolvedWindow = ChartComparisonSupport.windowForComparison(comparison, preset);
+        String resolvedWindow = ChartComparisonSupport.requestedWindow(window, comparison, preset);
         if (comparison != null) range = comparison.currentRange();
         ChartWidgetResponse current = trendForRange(widget, preset, resolvedWindow, range);
         if (comparison == null) {
@@ -176,7 +176,7 @@ public class WidgetTrendQueryService {
         PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
         QueryRanges.Range range = QueryRanges.resolve(preset);
         ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
-        String resolvedWindow = ChartComparisonSupport.windowForComparison(comparison, preset);
+        String resolvedWindow = ChartComparisonSupport.requestedWindow(window, comparison, preset);
         if (comparison != null) range = comparison.currentRange();
         List<String> units = units(sources);
         String unit = units.size() == 1 ? units.get(0) : null;

@@ -164,7 +164,7 @@ public class QueryController {
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> previewWidgetTrend(
             @RequestParam(name = "source") java.util.List<String> sources,
             @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
-            @RequestParam(required = false, defaultValue = "15m") String window,
+            @RequestParam(required = false) String window,
             @RequestParam(required = false, defaultValue = "sum") String seriesMode,
             @RequestParam(required = false, defaultValue = "none") String compare
     ) {
@@ -175,7 +175,7 @@ public class QueryController {
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getWidgetTrend(
             @RequestParam Integer widgetId,
             @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
-            @RequestParam(required = false, defaultValue = "15m") String window,
+            @RequestParam(required = false) String window,
             @RequestParam(required = false, defaultValue = "sum") String seriesMode,
             @RequestParam(required = false) String compare
     ) {

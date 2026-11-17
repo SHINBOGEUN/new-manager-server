@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261112-t024"></script>
+  <script src="/widget-detail-popup.js?v=20261117-t033"></script>
   <script>
 (function (global) {
   'use strict';
@@ -4065,6 +4065,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       calculatedRatioBottom: [],
       editingPueDefinitionId: null,
       editingWidgetId: null,
+      editingWidgetOriginalKind: null,
       editingLayout: null,
       editingEnabled: true,
       editingEndpointId: null,
@@ -9536,7 +9537,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           value = number.toLocaleString('ko-KR', { maximumFractionDigits:2 }); actual = true;
         }
       }
-      $("wVisualPreviewNote").textContent = graphKind ? '실제 데이터 미리보기' : actual ? '위젯 미리보기 · 최근 수집값' : kind === 'calculated' ? '최근 수집값 없음' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
+      $("wVisualPreviewNote").textContent = graphKind ? (kind === "psychrometric" && (!state.editingWidgetId || state.editingWidgetOriginalKind !== "psychrometric") ? "저장 후 실제 공기선도 확인 가능" : "실제 데이터 미리보기") : actual ? '위젯 미리보기 · 최근 수집값' : kind === 'calculated' ? '최근 수집값 없음' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
       $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
       $("wVisualPreviewValue").textContent = value;
       $("wVisualPreviewUnit").textContent = unit;
@@ -9559,7 +9560,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const title = esc($("wName").value.trim() || "내 위젯");
       const id = Number(state.editingWidgetId) || 0;
       if (kind === "psychrometric") {
-        if (!id) { graph.innerHTML = '<div class="muted">공기선도는 저장 후 실제 측정값으로 미리 볼 수 있습니다.</div>'; return; }
+        if (!id || state.editingWidgetOriginalKind !== "psychrometric") { graph.innerHTML = '<div class="muted">공기선도는 저장 후 실제 측정값으로 미리 볼 수 있습니다.</div>'; return; }
         const params = new URLSearchParams({embedded:"1", fixedPage:"1", displayOnly:"1", boardView:"1", pageCode:$("wCreatePage").value, widgetId:String(id), singleWidgetPreview:"1"});
         graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 저장된 공기선도</div><div class="muted">대상 변경은 저장 후 반영됩니다.</div><iframe title="실제 공기선도 위젯" style="width:100%;height:260px;border:0" src="/widget-dashboard.html?${params}"></iframe>`;
         return;
@@ -13878,6 +13879,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       widgetVisualPreviewData = null;
       const page = keepPage ? $("wCreatePage").value : null;
       state.editingWidgetId = null;
+      state.editingWidgetOriginalKind = null;
       state.editingLayout = null;
       state.editingEnabled = true;
       state.widgetDeviceIds = [];
@@ -14038,6 +14040,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         });
         stage = "저장된 설정 표시";
         state.editingWidgetId = w.id;
+        state.editingWidgetOriginalKind = w.queryKind;
         state.editingLayout = w.layout || null;
         state.editingEnabled = w.enabled !== false;
         $("wFormTitle").textContent = `위젯 수정 #${w.id}`;
