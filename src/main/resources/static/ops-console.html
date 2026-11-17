@@ -2981,16 +2981,14 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               <div id="wDeviceGroupList" class="pick-list"></div>
             </div>
             <div id="wDeviceCandidateList" class="form-compact-checklist" aria-label="장비 후보 목록"></div>
-            <div class="row">
-              <select id="wPickDevice" style="display:none"></select>
-              <button type="button" class="primary" id="wAddDevice" disabled>선택 추가</button>
-            </div>
+            <select id="wPickDevice" style="display:none"></select>
             <div id="wDevicePointPick" style="margin-top:8px;display:none">
-              <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">이 장비의 측정항목 (하나 이상 선택)</div>
+              <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">이 장비의 측정항목</div>
               <input id="wPointSearch" type="search" placeholder="측정항목 이름·프로토콜 검색" aria-label="측정항목 검색" style="width:100%;margin-bottom:8px" />
               <div id="wPickDevicePoints" class="point-grid" style="display:grid"></div>
-              <div class="muted" style="font-size:12px;margin-top:5px">여러 항목을 선택해 추가하세요. 다른 장비도 이어서 추가할 수 있습니다.</div>
+              <div class="muted" style="font-size:12px;margin-top:5px">표시할 측정항목을 선택한 뒤 선택 적용을 누르세요.</div>
             </div>
+            <div class="row" style="margin-top:8px"><button type="button" class="primary" id="wAddDevice" disabled>선택 적용</button></div>
             <div id="wDeviceList" class="pick-list"></div>
             <div id="wTableOptions" style="margin-top:14px">
 
@@ -4345,6 +4343,50 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     function defaultWidgetLayout(kind, tableColumns) {
       const size = state.widgetKindOptions?.find((item) => item.value === kind)?.defaultSize || { w: 16, h: 8 };
       return { gridX: 0, gridY: 0, w: Number(size.w) || 16, h: Number(tableColumns ? size.tableH : size.h) || Number(size.h) || 8 };
+    }
+
+    async function findFreeWidgetLayout(kind, tableColumns) {
+      const size = defaultWidgetLayout(kind, tableColumns);
+      const pageCode = $("wCreatePage").value;
+      const widgets = await api(`/api/manager/widgets?pageCode=${encodeURIComponent(pageCode)}`, { cache: "no-store" });
+      const live = new Map();
+      document.querySelectorAll(".widget-display-page iframe[data-page-key]").forEach((frame) => {
+        try {
+          const snapshot = frame.contentWindow?.dcimWidgetLayoutSnapshot?.(pageCode);
+          if (snapshot) snapshot.forEach((item) => live.set(item.id, item.layout));
+        } catch (_) { /* Other frames cannot provide a same-origin layout snapshot. */ }
+      });
+      const occupied = [], unplaced = [];
+      for (const widget of widgets || []) {
+        if (Number(widget.id) === Number(state.editingWidgetId)) continue;
+        let layout = live.get(Number(widget.id));
+        if (!layout && widget.layout) {
+          const saved = widget.layout;
+          let factor = 1;
+          if (Number(saved.gridVersion || 0) !== 48) factor = saved.w <= 6 && saved.h <= 3 ? 4 : saved.w <= 12 && saved.h <= 6 ? 2 : 1;
+          layout = { gridX: saved.gridX * factor, gridY: saved.gridY * factor, w: saved.w * factor, h: saved.h * factor };
+        }
+        if (layout) occupied.push(layout);
+        else if (widget.enabled) unplaced.push(widget);
+      }
+      unplaced.forEach((widget, index) => {
+        const h = ["chart", "psychrometric"].includes(widget.queryKind) ? 16 : 8;
+        const layout = { gridX: (index % 3) * 16, gridY: Math.floor(index / 3) * h, w: 16, h };
+        while (occupied.some((other) => widgetLayoutsOverlap(layout, other))) layout.gridY++;
+        occupied.push(layout);
+      });
+      const rows = [...new Set([0, ...occupied.map((item) => item.gridY + item.h)])].sort((a, b) => a - b);
+      for (const gridY of rows) {
+        for (let gridX = 0; gridX <= 48 - size.w; gridX++) {
+          const candidate = { ...size, gridX, gridY };
+          if (!occupied.some((item) => widgetLayoutsOverlap(candidate, item))) return candidate;
+        }
+      }
+      throw new Error("빈 위젯 위치를 찾지 못했습니다. 페이지 배치를 확인하세요.");
+    }
+    function widgetLayoutsOverlap(a, b) {
+      return a.gridX < b.gridX + b.w && a.gridX + a.w > b.gridX
+        && a.gridY < b.gridY + b.h && a.gridY + a.h > b.gridY;
     }
 
     async function apiForm(path, formData) {
@@ -9271,8 +9313,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       grid.insertBefore(host, basic); host.append(nav, basic, panels.data, panels.display, panels.click, advanced);
       advanced.open = true; advanced.querySelector(":scope > summary").hidden = true;
+      const dataGuide = document.createElement("p"); dataGuide.id = "wDataFlowGuide"; dataGuide.className = "muted";
+      dataGuide.style.cssText = "font-size:12px;line-height:1.5;margin:0 0 12px";
+      panels.data.append(dataGuide);
       [...basic.querySelectorAll(':scope > [data-widget-stage="2"]')].forEach((element) => panels.data.append(element));
-      const aggregateSettings = $("wAggBlock"); if (aggregateSettings) panels.data.prepend(aggregateSettings);
+      const aggregateSettings = $("wAggBlock"); if (aggregateSettings) panels.data.insertBefore(aggregateSettings, dataGuide.nextSibling);
       for (const id of ["wTableFormatChoice", "wTableOptions"]) { const element = $(id); if (element) panels.display.append(element); }
       const design = editor.querySelector('[aria-labelledby="wDesignLabel"]'); if (design) panels.display.append(design);
       for (const id of ["wChartOptionsBlock", "wTrendDefaults"]) { const element = $(id); if (element) panels.click.append(element); }
@@ -9777,7 +9822,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if (!$("wName").value.trim()) throw new Error("위젯 이름을 입력하세요");
       }
       if (step !== 2) return;
-      if (kind === "last" && !state.lastWidgetSources.length) throw new Error("장비와 측정항목을 하나 이상 추가하세요");
+      if (kind === "last" && !state.lastWidgetSources.length) throw new Error("장비와 측정항목을 선택한 뒤 선택 적용을 누르세요");
+      if (kind === "last" && !$("wTableEnabled").checked && (state.lastWidgetSources.length !== 1 || state.lastWidgetSources[0].pointNames.length !== 1)) throw new Error("현재값은 장비 1대와 측정항목 1개를 선택하세요. 기존 다중 항목은 표 형식으로 유지할 수 있습니다.");
       if (kind === "chart") {
         const scope = $("wChartScope").value;
         if (scope === "models" ? !state.widgetModelIds.length
@@ -9856,7 +9902,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const unit = $("wSourceUnit")?.value || "";
       const search = ($("wDeviceSearch")?.value || "").trim().toLocaleLowerCase();
       const available = widgetDeviceOptions().filter((d) =>
-        !selected.has(d.id)
+        (!selected.has(d.id) || (kind === "last" && !$("wTableEnabled").checked))
         && (kind !== "aggregate" || compatibleDeviceIds.has(Number(d.id)))
         && (!unit || !["chart", "aggregate"].includes(kind) || widgetSourcesForDevice(d.id).some(source => !source.ambiguous && compatibleUnit(source.unit, unit)))
         && (!search || `${d.name} ${d.modelName || ""} ${d.id}`.toLocaleLowerCase().includes(search)));
@@ -9888,7 +9934,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       fillWidgetDeviceGroupPick();
       if ($("wAddDevice")) {
         const pointFirst = kind === "chart" || kind === "aggregate";
-        $("wAddDevice").textContent = pointFirst ? "장비 추가" : "선택 추가";
+        $("wAddDevice").textContent = pointFirst ? "장비 추가" : kind === "last" && !$("wTableEnabled").checked ? "선택 적용" : "선택 추가";
         $("wAddDevice").disabled = !selectedWidgetCandidateIds.size || (kind === "last" && !selectedLastDevicePoints().length);
       }
     }
@@ -9986,7 +10032,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if ($("wKind")?.value !== "last" || Number($("wPickDevice")?.value) !== deviceId) return;
         const points = widgetSourcesForDevice(deviceId);
         grid.innerHTML = points.length ? points.map((point) => `
-          <label title="${esc(widgetPointLabel(point))}"><input type="checkbox" data-last-point="${esc(point.pointName)}" ${point.ambiguous ? "disabled" : ""} />
+          <label title="${esc(widgetPointLabel(point))}"><input type="${$("wTableEnabled").checked ? "checkbox" : "radio"}" name="wLastPoint" data-last-point="${esc(point.pointName)}" ${point.ambiguous ? "disabled" : ""} />
             <span><b>${esc(point.pointName)}</b><small>${esc(point.unit || '단위 없음')} · ${esc(String(point.protocol || '').toUpperCase())}${point.ambiguous ? ' · 이름 중복 — 선택 불가' : ''}</small></span>
           </label>`).join("") : '<div class="empty" style="grid-column:1/-1;padding:12px">이 장비에 활성 측정항목이 없습니다. 수집 설정을 확인하세요.</div>';
         wrap.style.display = "block";
@@ -10210,7 +10256,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       const kind = $("wKind").value;
       const kindHints = {
-        last: "측정항목마다 아이콘과 큰 숫자의 지표 카드로 표시합니다. 여러 장비와 측정항목을 함께 선택할 수 있습니다.",
+        last: "장비 한 대의 측정항목 하나를 현재값으로 표시합니다. 여러 항목은 표 형식을 선택하세요.",
         count: "등록된 장비 수를 전체·모델별·특정 모델로 집계합니다.",
         chart: "시간에 따른 값 변화를 보여줍니다. 장비나 모델을 고른 뒤 측정항목을 선택하세요.",
         aggregate: "전력과 사용량의 합계·순위 또는 최대수요전력을 표시합니다.",
@@ -10220,6 +10266,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         cctv: "등록된 카메라를 한 대 이상 선택하세요. 여러 대를 선택하면 위젯에서 카메라를 전환해 볼 수 있습니다.",
       };
       $("wKindHint").textContent = kindHints[kind] || "";
+      const flows = { last:"장비 선택 → 측정항목 선택 → 선택 적용", chart:"단위 선택 → 대상 장비 또는 모델 추가 → 측정항목 선택", aggregate:"집계 방식 선택 → 단위 선택 → 장비별 측정항목 선택", count:"표시 방식 선택 → 필요하면 모델 선택", calculated:"계산 지표 선택", psychrometric:"온도와 습도 측정항목을 각각 선택해 추가", power_distribution:"전력 그룹을 두 개 이상 만들고 각 그룹의 측정항목 선택", cctv:"표시할 카메라 선택" };
+      if ($("wDataFlowGuide")) $("wDataFlowGuide").textContent = flows[kind] || "";
       const previousChartPoints = kind === "chart" ? new Set(selectedWidgetPoints()) : new Set();
       const previousAggregatePoint = kind === "aggregate" ? selectedAggregatePoint() : null;
       const chartScope = $("wChartScope")?.value || "devices";
@@ -10582,7 +10630,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     }
 
     async function addWidgetDevice(id) {
-      if (!id || state.widgetDeviceIds.includes(id) || state.widgetItDeviceIds.includes(id)) {
+      const singleLast = $("wKind")?.value === "last" && !$("wTableEnabled").checked;
+      if (!id || (!singleLast && (state.widgetDeviceIds.includes(id) || state.widgetItDeviceIds.includes(id)))) {
         toast(id ? "이미 추가된 장비입니다" : "장비를 선택하세요", true);
         return;
       }
@@ -10592,7 +10641,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           toast("이 장비의 측정항목을 하나 이상 선택하세요", true);
           return;
         }
-        state.lastWidgetSources.push({ deviceId: id, pointNames });
+        if (singleLast) state.lastWidgetSources = [{ deviceId: id, pointNames: [pointNames[0]] }];
+        else state.lastWidgetSources.push({ deviceId: id, pointNames });
         refreshSelectedLatestPreview();
         renderWidgetTableEditor();
         syncLastWidgetDeviceIds();
@@ -14859,7 +14909,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("wEditPageLayout").onclick = openPageLayoutEditor;
     $("wCreatePage").addEventListener("change", updateWidgetPagePreview);
     $("wName").addEventListener("input", updateWidgetDesignPreview);
-    $('wTableEnabled').addEventListener('change', renderWidgetTableEditor);
+    $('wTableEnabled').addEventListener('change', () => { renderWidgetTableEditor(); fillWidgetDevicePick(); loadDevicePointPicker(); });
     $("wEditorCard").addEventListener("click", (event) => {
       if (event.target.closest("button") && ["chart", "psychrometric"].includes($("wKind").value)) scheduleRealGraphPreview();
     });
@@ -15134,7 +15184,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             queryKind: "cctv",
             cctvCameraIds: [...state.cctvCameraIds],
             clickConfig: currentWidgetClickConfig(),
-            layout: state.editingLayout || defaultWidgetLayout(kind),
+            layout: state.editingLayout || await findFreeWidgetLayout(kind),
           };
           const saved = await api(
             state.editingWidgetId ? `/api/manager/widgets/${state.editingWidgetId}` : "/api/manager/widgets",
@@ -15168,7 +15218,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               sources: group.sources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             })),
             clickConfig: currentWidgetClickConfig(),
-            layout: state.editingLayout || defaultWidgetLayout(kind),
+            layout: state.editingLayout || await findFreeWidgetLayout(kind),
           };
           const saved = await api(
             state.editingWidgetId
@@ -15198,7 +15248,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             temperatureSources: state.psychrometricTemperatureSources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             humiditySources: state.psychrometricHumiditySources.map(({ deviceId, pointName }) => ({ deviceId, pointName })),
             clickConfig: currentWidgetClickConfig(),
-            layout: state.editingLayout || defaultWidgetLayout(kind),
+            layout: state.editingLayout || await findFreeWidgetLayout(kind),
           };
         const saved = await api(
           state.editingWidgetId
@@ -15301,7 +15351,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           clickConfig: currentWidgetClickConfig(),
           tableColumns: kind === "last" ? (tableColumns || (widgetTablePreviouslyEnabled ? [] : null))
             : (widgetTablePreviouslyEnabled ? [] : null),
-          layout: state.editingLayout || defaultWidgetLayout(kind, tableColumns),
+          layout: state.editingLayout || await findFreeWidgetLayout(kind, tableColumns),
         };
 
         const wasEditing = !!state.editingWidgetId;

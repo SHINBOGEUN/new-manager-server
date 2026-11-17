@@ -1585,6 +1585,12 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       return null;
     }
 
+    // Read-only snapshot for placing a new widget alongside unsaved board edits.
+    window.dcimWidgetLayoutSnapshot = function (pageCode) {
+      if (!state.dashboardReady || String($("pageCode")?.value || "").toLowerCase() !== String(pageCode || "").toLowerCase()) return null;
+      return state.widgets.map((widget) => ({ id: Number(widget.id), layout: widgetLayout(widget) }));
+    };
+
     async function login() {
       const username = $("username").value.trim();
       const password = $("password").value;
