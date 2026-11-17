@@ -91,6 +91,12 @@ public class CommonCodeQueryService {
     private void applyUnitConversion(CommonCode code, CommonCodeRequest request) {
         Integer id = request.baseUnitId();
         if (id == null && request.unitFactor() == null) return;
+        boolean hasDependents = commonCodeRepository.findByCodeGroupId(code.getCodeGroup().getId()).stream()
+                .anyMatch(other -> !other.getId().equals(code.getId()) && other.getBaseUnit() != null
+                        && other.getBaseUnit().getId().equals(code.getId()));
+        if (hasDependents && (!code.getId().equals(id) || request.unitFactor() == null
+                || request.unitFactor().compareTo(java.math.BigDecimal.ONE) != 0))
+            throw new IllegalArgumentException("다른 단위에서 사용하는 기준 단위는 변경할 수 없습니다");
         if (Integer.valueOf(0).equals(id) && request.unitFactor() == null) { code.setUnitConversion(null, null); return; }
         if (id == null || id <= 0 || request.unitFactor() == null) throw new IllegalArgumentException("기준 단위와 양수 배수를 함께 입력하세요");
         CommonCode base = id.equals(code.getId()) ? code : commonCodeRepository.findById(id)

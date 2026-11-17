@@ -22,14 +22,19 @@ public record AggregateWidgetResponse(
         WidgetDataStatusResponse dataStatus,
         Instant peakTime,
         String displayValue,
-        String displayUnit
+        String displayUnit,
+        boolean unitConverted
 ) {
     public AggregateWidgetResponse(Integer widgetId, String widgetName, String pageCode, String aggregatePreset,
             String rangePreset, Instant start, Instant end, BigDecimal value, String unit, Integer contributingDevices,
             List<AggregateDeviceValueResponse> devices, WidgetDataStatusResponse dataStatus, Instant peakTime) {
         this(widgetId, widgetName, pageCode, aggregatePreset, rangePreset, start, end, value, unit,
                 contributingDevices, devices, dataStatus, peakTime,
-                UnitDisplay.of(value, unit).displayValue(), UnitDisplay.of(value, unit).displayUnit());
+                UnitDisplay.of(value, unit).displayValue(), UnitDisplay.of(value, unit).displayUnit(), false);
+    }
+    public AggregateWidgetResponse withUnitConverted(boolean converted) {
+        return new AggregateWidgetResponse(widgetId, widgetName, pageCode, aggregatePreset, rangePreset, start, end,
+                value, unit, contributingDevices, devices, dataStatus, peakTime, displayValue, displayUnit, converted);
     }
     public AggregateWidgetResponse(Integer widgetId, String widgetName, String pageCode, String aggregatePreset,
             String rangePreset, Instant start, Instant end, BigDecimal value, String unit, Integer contributingDevices,

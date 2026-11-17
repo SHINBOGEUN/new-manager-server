@@ -18,7 +18,8 @@ public record ChartWidgetResponse(
         List<ChartSeriesResponse> series,
         WidgetDataStatusResponse dataStatus,
         List<String> availableSeriesModes,
-        List<UnitGroup> unitGroups
+        List<UnitGroup> unitGroups,
+        boolean unitConverted
 ) {
     public record UnitGroup(String unit, List<ChartSeriesResponse> series) {}
 
@@ -27,7 +28,7 @@ public record ChartWidgetResponse(
                                String unit, List<String> units, List<ChartSeriesResponse> series,
                                WidgetDataStatusResponse dataStatus, List<String> availableSeriesModes) {
         this(widgetId, widgetName, pageCode, chartScope, seriesMode, rangePreset, window, start, end,
-                unit, units, series, dataStatus, availableSeriesModes, groupByUnit(units, series));
+                unit, units, series, dataStatus, availableSeriesModes, groupByUnit(units, series), false);
     }
 
     public ChartWidgetResponse(Integer widgetId, String widgetName, String pageCode, String chartScope,
@@ -35,7 +36,12 @@ public record ChartWidgetResponse(
                                String unit, List<String> units, List<ChartSeriesResponse> series,
                                WidgetDataStatusResponse dataStatus) {
         this(widgetId, widgetName, pageCode, chartScope, seriesMode, rangePreset, window, start, end,
-                unit, units, series, dataStatus, List.of("sum", "per_device"), groupByUnit(units, series));
+                unit, units, series, dataStatus, List.of("sum", "per_device"), groupByUnit(units, series), false);
+    }
+
+    public ChartWidgetResponse withUnitConverted(boolean converted) {
+        return new ChartWidgetResponse(widgetId, widgetName, pageCode, chartScope, seriesMode, rangePreset, window,
+                start, end, unit, units, series, dataStatus, availableSeriesModes, unitGroups, converted);
     }
 
     private static List<UnitGroup> groupByUnit(List<String> units, List<ChartSeriesResponse> series) {

@@ -90,7 +90,7 @@ public class WidgetTrendQueryService {
         return new ChartWidgetResponse(current.widgetId(), current.widgetName(), current.pageCode(),
                 current.chartScope(), mode, current.rangePreset(), current.window(),
                 current.start(), current.end(), current.unit(), current.units(), series,
-                current.dataStatus(), availableModes);
+                current.dataStatus(), availableModes).withUnitConverted(current.unitConverted());
     }
 
     private List<ChartSeriesResponse> comparisonSeries(PageWidget widget, ChartWidgetResponse response,
@@ -184,13 +184,13 @@ public class WidgetTrendQueryService {
             List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
             return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
                     preset.name(), resolvedWindow, range.start(), range.end(), null, units, series, null,
-                    List.of("per_device"));
+                    List.of("per_device")).withUnitConverted(conversionPlan(sources).converted());
         }
         if ("per_device".equalsIgnoreCase(seriesMode) && comparison == null) {
             List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
             return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
                     preset.name(), resolvedWindow, range.start(), range.end(), unit, units, series, null,
-                    List.of("sum", "per_device"));
+                    List.of("sum", "per_device")).withUnitConverted(conversionPlan(sources).converted());
         }
         List<ChartSeriesResponse> currentValues = comparisonSeries(sources, unit, range, resolvedWindow);
         List<ChartSeriesResponse> summed = ChartComparisonSupport.sum(currentValues, unit,
@@ -203,7 +203,7 @@ public class WidgetTrendQueryService {
         }
         return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "sum",
                 preset.name(), resolvedWindow, range.start(), range.end(), unit, units, summed, null,
-                List.of("sum", "per_device"));
+                List.of("sum", "per_device")).withUnitConverted(conversionPlan(sources).converted());
     }
     private ChartWidgetResponse standardTrend(
             PageWidget widget, PageWidgetChartRangePreset preset, String window, QueryRanges.Range range
@@ -211,7 +211,8 @@ public class WidgetTrendQueryService {
         List<Source> sources = standardSources(widget);
         List<ChartSeriesResponse> series = toSourceSeries(sources, range, window);
         List<String> units = units(sources);
-        return response(widget, preset, window, range, "devices", "per_device", units, series);
+        return response(widget, preset, window, range, "devices", "per_device", units, series)
+                .withUnitConverted(conversionPlan(sources).converted());
     }
 
     private ChartWidgetResponse psychrometricTrend(

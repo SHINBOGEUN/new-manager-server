@@ -230,7 +230,7 @@ public class AggregateQueryService {
     private String resolveUnit(List<Device> devices, List<String> pointNames) {
         Set<Integer> ids = devices.stream().map(Device::getId).collect(Collectors.toSet());
         UnitNormalizer.Plan conversion = unitNormalizer.plan(ids, pointNames);
-        if (conversion.units().size() > 1 || (conversion.units().size() == 1 && conversion.conversions().values().stream().anyMatch(value -> value.unit() == null))) throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
+        if ((!ids.isEmpty() && conversion.conversions().size() < ids.size()) || conversion.units().size() > 1 || (conversion.units().size() == 1 && conversion.conversions().values().stream().anyMatch(value -> value.unit() == null))) throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
         return conversion.units().isEmpty() ? null : conversion.units().get(0);
     }
 
@@ -364,7 +364,8 @@ public class AggregateQueryService {
         return new AggregateWidgetResponse(
                 response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
                 response.rangePreset(), response.start(), response.end(), response.value(), response.unit(),
-                response.contributingDevices(), response.devices(), dataStatus, response.peakTime());
+                response.contributingDevices(), response.devices(), dataStatus, response.peakTime())
+                .withUnitConverted(pointName != null && unitNormalizer.plan(devices.stream().map(Device::getId).collect(Collectors.toSet()), List.of(pointName)).converted());
     }
 
     private static String blankToNull(String value) {

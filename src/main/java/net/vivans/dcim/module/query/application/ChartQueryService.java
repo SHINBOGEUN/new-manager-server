@@ -174,7 +174,7 @@ public class ChartQueryService {
                 series,
                 dataStatus,
                 comparison == null ? availableSeriesModes(devices, pointContext, unitContext) : List.of("sum")
-        );
+        ).withUnitConverted(conversion.converted());
     }
 
     private ChartPointContext buildPointContext(List<Device> devices, List<String> pointNames) {
