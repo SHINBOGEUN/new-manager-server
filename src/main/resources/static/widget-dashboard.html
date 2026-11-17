@@ -318,6 +318,14 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .board > .card.last-card .card-body { padding:0; }
     body.edit-mode .board > .card.last-card .card-head { position:absolute; top:5px; right:6px; z-index:2; min-height:0; padding:5px 8px; border:0; border-radius:6px; background:var(--panel-2); }
     body.edit-mode .board > .card.last-card .card-head > div { display:none; }
+    .last-device-summary { width:100%; height:100%; box-sizing:border-box; }
+    .last-device-summary .metric-content { display:flex; flex-direction:column; justify-content:center; }
+    .last-device-summary .metric-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .last-device-values { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; align-content:center; min-width:0; max-height:100%; overflow:auto; }
+    .last-device-value { display:grid; gap:3px; min-width:65px; max-width:140px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:color-mix(in srgb,var(--panel-2) 75%,transparent); }
+    .last-device-value small { font-size:10px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .last-device-value strong { font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    @container (max-width:350px) { .last-device-summary { flex-wrap:wrap; gap:6px; padding:8px; } .last-device-values { justify-content:flex-start; } .last-device-value { padding:4px; } }
     .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); grid-auto-rows:minmax(116px,1fr); gap:10px; width:100%; min-width:0; align-content:stretch; }
     .metric-tile { --metric-color:#54cbf3; position:relative; display:flex; gap:15px; align-items:center; min-width:0; padding:18px 16px; border:1px solid color-mix(in srgb,var(--metric-color) 18%,var(--line)); border-top:2px solid var(--metric-color); border-radius:10px; background:color-mix(in srgb,var(--metric-color) 4%,var(--panel)); overflow:hidden; }
     .metric-tile.energy { --metric-color:#b18bff; }
@@ -2955,9 +2963,23 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       return { number: number.toLocaleString('ko-KR', { maximumFractionDigits: 2 }), unit: displayUnit, missing: false };
     }
 
-    function renderLastBody(last, widgetName) {
+    function renderLastBody(last, widgetName, widget = null) {
       if (!last || last.error) return `<div class="empty" style="padding:12px">${escapeHtml(last?.error || '데이터 없음')}</div>`;
       const points = (last.devices || []).flatMap((device) => (device.points || []).map((point) => ({ ...point, deviceName: device.deviceName, location: device.locationNodeName || device.locationNodeCode })));
+      const configured = widget?.lastSources?.length === 1 ? widget.lastSources[0] : null;
+      if (configured && (configured.pointNames || []).length > 1) {
+        const device = (last.devices || []).find((item) => Number(item.deviceId) === Number(configured.deviceId));
+        const byName = new Map((device?.points || []).map((point) => [point.pointName, point]));
+        const items = configured.pointNames.map((name) => byName.get(name) || { pointName:name, value:null, unit:"" });
+        const first = items[0], presentation = latestMetricPresentation(first.pointName, first.unit);
+        const main = latestMetricValue(first.displayValue ?? first.value, first.displayUnit ?? first.unit, first.pointName);
+        const extras = items.slice(1).map((point) => {
+          const display = latestMetricValue(point.displayValue ?? point.value, point.displayUnit ?? point.unit, point.pointName);
+          const label = latestMetricPresentation(point.pointName, point.unit).label;
+          return `<div class="last-device-value" title="${escapeHtml(point.pointName)}"><small>${escapeHtml(label)}</small><strong>${escapeHtml(display.number)}${display.unit ? " " + escapeHtml(display.unit) : ""}</strong></div>`;
+        }).join("");
+        return `<div class="metric-tile last-device-summary ${presentation.kind}"><span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${presentation.icon}</svg></span><div class="metric-content"><div class="metric-label">${escapeHtml(widgetName || device?.deviceName || "현재값")}</div><div class="metric-number" title="${escapeHtml(presentation.label)}"><strong>${escapeHtml(main.number)}</strong><span>${escapeHtml(main.unit)}</span></div><div class="metric-label">${escapeHtml(presentation.label)}</div></div><div class="last-device-values">${extras}</div></div>`;
+      }
       if (!points.length) return '<div class="empty" style="padding:12px">표시할 측정값이 없습니다.</div>';
       const tiles = points.map((point) => {
         const presentation = latestMetricPresentation(point.pointName, point.unit);
@@ -3608,7 +3630,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
             body = last?.error ? `<div class="empty">${escapeHtml(last.error)}</div>` : window.WidgetTable.render(columns, w.lastSources || [], last);
             cardClass = "card table-card";
           } else {
-            body = renderLastBody(last, w.name);
+            body = renderLastBody(last, w.name, w);
             cardClass = "card last-card";
           }
         } else if (w.queryKind === "chart") {

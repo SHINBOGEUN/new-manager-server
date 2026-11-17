@@ -1573,6 +1573,9 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #wEditorCard #wAggregateSourceList, #wEditorCard #wCctvCameraChoices, #wEditorCard #wModelCandidates { max-height:220px; overflow:auto; }
     #wEditorCard .widget-data-section { margin:0 0 16px; padding:12px; border:1px solid var(--line); border-radius:8px; }
     #wEditorCard .widget-data-count { display:block; margin:6px 0; font-size:12px; color:var(--muted); }
+    #wEditorCard .widget-preview-extra { display:flex; flex-wrap:wrap; gap:6px; min-width:0; }
+    #wEditorCard .widget-preview-extra > div { display:grid; gap:3px; padding:7px; border:1px solid var(--line); border-radius:6px; min-width:70px; }
+    #wEditorCard .widget-preview-extra small { color:var(--muted); overflow-wrap:anywhere; }
     #wEditorCard #wDeviceList .empty { border:0; background:none; text-align:left; color:var(--muted); font-size:12px; }
     .form-compact :is(input:not([type=checkbox]):not([type=radio]), select, button) { min-height:32px; font-size:13px; }
     .form-compact .field { gap:4px; color:var(--muted); font-size:12px; }
@@ -2994,7 +2997,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">이 장비의 측정항목</div>
               <input id="wPointSearch" type="search" placeholder="측정항목 이름·프로토콜 검색" aria-label="측정항목 검색" style="width:100%;margin-bottom:8px" />
               <div id="wPickDevicePoints" class="point-grid" style="display:grid"></div>
-              <div class="muted" style="font-size:12px;margin-top:5px">표시할 측정항목을 선택한 뒤 선택 적용을 누르세요.</div>
+              <div class="muted" style="font-size:12px;margin-top:5px">측정항목을 여러 개 선택할 수 있습니다. 선택 적용을 누르면 한 위젯에 함께 표시됩니다.</div>
             </div>
             <div class="row" style="margin-top:8px"><button type="button" class="primary" id="wAddDevice" disabled>선택 적용</button></div>
             <div id="wDeviceList" class="pick-list"></div>
@@ -9599,6 +9602,15 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
       $("wVisualPreviewValue").textContent = value;
       $("wVisualPreviewUnit").textContent = unit;
+      const previousExtra = preview.querySelector(".widget-preview-extra");
+      if (previousExtra) previousExtra.remove();
+      const extraPoints = kind === "last" && live?.kind === "last" ? (live.data?.devices?.[0]?.points || []).slice(1) : [];
+      if (extraPoints.length) {
+        const extra = document.createElement("div"); extra.className = "widget-preview-extra";
+        extra.innerHTML = extraPoints.map((point) => `<div><small>${esc(point.pointName)}</small><b>${point.value == null ? "—" : esc(Number(point.value).toLocaleString("ko-KR", { maximumFractionDigits:2 }))} ${esc(point.unit || "")}</b></div>`).join("");
+        preview.appendChild(extra);
+      }
+
       preview.querySelector('.widget-preview-icon').textContent = icon;
       preview.dataset.style = selectedWidgetVisualStyle();
       preview.style.setProperty('--preview-color', $("wColorCustom").checked ? $("wVisualColor").value : defaultColor);
@@ -9649,18 +9661,20 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const sequence = ++widgetPreviewSequence;
       if ($("wKind").value !== "last") return;
       const selected = state.lastWidgetSources[0];
-      const pointName = selected?.pointNames?.[0];
-      const source = state.widgetSources.find((item) => Number(item.deviceId) === Number(selected?.deviceId) && item.pointName === pointName && !item.ambiguous);
+      const sources = (selected?.pointNames || []).map((pointName) => state.widgetSources.find((item) => Number(item.deviceId) === Number(selected.deviceId) && item.pointName === pointName && !item.ambiguous)).filter(Boolean);
       widgetVisualPreviewData = null;
       updateWidgetDesignPreview();
-      if (!source) return;
-      try {
-        const query = new URLSearchParams({ deviceId: String(source.deviceId), pointName, protocol: source.protocol });
-        const point = await api(`/api/manager/widgets/sources/preview?${query}`);
-        if (sequence !== widgetPreviewSequence || $("wKind").value !== "last") return;
-        widgetVisualPreviewData = { kind: "last", data: { devices: [{ points: [{ ...point, unit: source.unit || "" }] }] } };
-        updateWidgetDesignPreview();
-      } catch (_) { /* Keep the preview marked as an example when data is unavailable. */ }
+      if (!sources.length) return;
+      const points = await Promise.all(sources.map(async (source) => {
+        try {
+          const query = new URLSearchParams({ deviceId: String(source.deviceId), pointName: source.pointName, protocol: source.protocol });
+          const point = await api(`/api/manager/widgets/sources/preview?${query}`);
+          return { ...point, pointName: source.pointName, unit: source.unit || "" };
+        } catch (_) { return { pointName: source.pointName, value: null, unit: source.unit || "" }; }
+      }));
+      if (sequence !== widgetPreviewSequence || $("wKind").value !== "last") return;
+      widgetVisualPreviewData = { kind: "last", data: { devices: [{ points }] } };
+      updateWidgetDesignPreview();
     }
 
     function updateWidgetPagePreview() {
@@ -9836,7 +9850,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       if (step !== 2) return;
       if (kind === "last" && !state.lastWidgetSources.length) throw new Error("장비와 측정항목을 선택한 뒤 선택 적용을 누르세요");
-      if (kind === "last" && !$("wTableEnabled").checked && (state.lastWidgetSources.length !== 1 || state.lastWidgetSources[0].pointNames.length !== 1)) throw new Error("현재값은 장비 1대와 측정항목 1개를 선택하세요. 기존 다중 항목은 표 형식으로 유지할 수 있습니다.");
+      if (kind === "last" && !$("wTableEnabled").checked && state.lastWidgetSources.length !== 1) throw new Error("현재값은 장비 한 대를 선택하세요. 여러 장비는 표 형식으로 유지할 수 있습니다.");
       if (kind === "chart") {
         const scope = $("wChartScope").value;
         if (scope === "models" ? !state.widgetModelIds.length
@@ -10046,11 +10060,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if ($("wKind")?.value !== "last" || Number($("wPickDevice")?.value) !== deviceId) return;
         const points = widgetSourcesForDevice(deviceId);
         grid.innerHTML = points.length ? points.map((point) => `
-          <label title="${esc(widgetPointLabel(point))}"><input type="${$("wTableEnabled").checked ? "checkbox" : "radio"}" name="wLastPoint" data-last-point="${esc(point.pointName)}" ${point.ambiguous ? "disabled" : ""} />
+          <label title="${esc(widgetPointLabel(point))}"><input type="checkbox" data-last-point="${esc(point.pointName)}" ${(state.lastWidgetSources.find((item) => Number(item.deviceId) === deviceId)?.pointNames || []).includes(point.pointName) ? "checked" : ""} ${point.ambiguous ? "disabled" : ""} />
             <span><b>${esc(point.pointName)}</b><small>${esc(point.unit || '단위 없음')} · ${esc(String(point.protocol || '').toUpperCase())}${point.ambiguous ? ' · 이름 중복 — 선택 불가' : ''}</small></span>
           </label>`).join("") : '<div class="empty" style="grid-column:1/-1;padding:12px">이 장비에 활성 측정항목이 없습니다. 수집 설정을 확인하세요.</div>';
         wrap.style.display = "block";
-        $("wAddDevice").disabled = true;
+        $("wAddDevice").disabled = selectedLastDevicePoints().length === 0;
         grid.querySelectorAll("input[data-last-point]").forEach((input) => {
           input.addEventListener("change", () => {
             $("wAddDevice").disabled = selectedLastDevicePoints().length === 0;
@@ -10298,7 +10312,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       const kind = $("wKind").value;
       const kindHints = {
-        last: "장비 한 대의 측정항목 하나를 현재값으로 표시합니다. 여러 항목은 표 형식을 선택하세요.",
+        last: "장비 한 대의 측정항목을 여러 개 선택해 한 위젯에 표시합니다. 첫 항목은 크게 표시됩니다.",
         count: "등록된 장비 수를 전체·모델별·특정 모델로 집계합니다.",
         chart: "시간에 따른 값 변화를 보여줍니다. 장비나 모델을 고른 뒤 측정항목을 선택하세요.",
         aggregate: "전력과 사용량의 합계·순위 또는 최대수요전력을 표시합니다.",
@@ -10683,7 +10697,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           toast("이 장비의 측정항목을 하나 이상 선택하세요", true);
           return;
         }
-        if (singleLast) state.lastWidgetSources = [{ deviceId: id, pointNames: [pointNames[0]] }];
+        if (singleLast) state.lastWidgetSources = [{ deviceId: id, pointNames: [...pointNames] }];
         else state.lastWidgetSources.push({ deviceId: id, pointNames });
         refreshSelectedLatestPreview();
         renderWidgetTableEditor();
