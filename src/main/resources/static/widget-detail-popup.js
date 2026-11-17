@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const CHART_PALETTE = ["#4cc9f0", "#53d6a2", "#ffd166", "#ff8696", "#b59cff", "#80d8cf", "#ffae70", "#b9dd76"];
+  const CHART_PALETTE = ["#08B9ED", "#19DBD8", "#FFD23F", "#FF8696", "#B59CFF", "#80D8CF", "#FFAE70", "#B9DD76"];
   const RANGE_OPTIONS = [["last_1h","최근 1시간"],["last_6h","최근 6시간"],["last_24h","최근 24시간"],["today","오늘"],["yesterday","어제"],["last_3d","최근 3일"],["last_7d","최근 7일"],["this_month","이번 달"],["last_month","지난 달"]];
   const SERIES_OPTIONS = [["per_device","장비별"],["sum","합계"],["by_phase","상별"],["by_path","위치별"]];
   const WINDOW_OPTIONS = [["","간격 자동"],["1m","1분"],["5m","5분"],["15m","15분"],["1h","1시간"],["1d","1일"]];
@@ -204,12 +204,13 @@
       };
     });
     const hasComparison = series.some(function (item) { return item.compare; });
-    if (hasComparison && chartStyle !== "bar") {
+    if (chartStyle !== "bar") {
       const current = datasets.find(function (dataset) { return !dataset.isCompare; });
       if (current) datasets.push({
         type: "bar", label: current.label, data: current.data, yAxisID: current.yAxisID,
-        backgroundColor: "#16B8F04D", borderColor: "#16B8F080", borderWidth: 0,
-        barPercentage: 1, categoryPercentage: 1, order: 2, visualOnly: true,
+        backgroundColor: "#009FE0B8", borderColor: "#05B8EE", borderWidth: 0,
+        borderRadius: 3, borderSkipped: false, maxBarThickness: 8,
+        barPercentage: 0.9, categoryPercentage: 0.95, order: 2, visualOnly: true,
       });
     }
     const guide = {
@@ -249,8 +250,13 @@
           } } },
         },
         scales: {
-          x: { ticks: { color: "#8b98a8", maxTicksLimit: 6, maxRotation: 0 }, grid: { color: "#2a3544" } },
-          y: { position: "left", title: { display: Boolean(units[0]), text: units[0] || "", color: "#8b98a8" }, ticks: { color: "#8b98a8" }, grid: { color: "#2a3544" } },
+          x: { ticks: { color: "#8FAFC6", maxTicksLimit: 6, maxRotation: 0, font: { size: 10 }, callback: function (value) {
+            const date = new Date(times[value]);
+            if (Number.isNaN(date.getTime())) return labels[value] || "";
+            const pad = function (n) { return String(n).padStart(2, "0"); };
+            return date.getFullYear() + "-" + pad(date.getMonth()+1) + "-" + pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes());
+          } }, grid: { color: "#2A394C", drawTicks: false }, border: { dash: [3, 4] } },
+          y: { position: "left", title: { display: Boolean(units[0]), text: units[0] || "", color: "#8FAFC6" }, ticks: { color: "#8FAFC6", font: { size: 10 } }, grid: { color: "#2A394C", drawTicks: false }, border: { dash: [3, 4] } },
           y1: { display: hasRightAxis, position: "right", title: { display: hasRightAxis, text: units[1] || "", color: "#8b98a8" }, ticks: { color: "#8b98a8" }, grid: { drawOnChartArea: false } },
         },
       },
