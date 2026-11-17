@@ -594,6 +594,15 @@ public class PageWidget extends BaseEntity {
                 .toList();
     }
 
+    public boolean hasExplicitAggregateSources() { return queryKind == PageWidgetQueryKind.aggregate && !lastSources.isEmpty(); }
+
+    public List<LastSourceDefinition> aggregateSourceDefinitions() {
+        if (queryKind != PageWidgetQueryKind.aggregate) return List.of();
+        if (!lastSources.isEmpty()) return lastSourceDefinitions();
+        List<String> names = pointNames();
+        return resolvedDefaultDevices().stream().map(device -> new LastSourceDefinition(device, names)).toList();
+    }
+
     private void syncKindConfig(
             PageWidgetOp op,
             PageWidgetChartRangePreset aggregateRangePreset,
@@ -625,7 +634,7 @@ public class PageWidget extends BaseEntity {
         if (queryKind != PageWidgetQueryKind.cctv) {
             this.cctvCameras.clear();
         }
-        if (queryKind != PageWidgetQueryKind.last) {
+        if (queryKind != PageWidgetQueryKind.last && queryKind != PageWidgetQueryKind.aggregate) {
             this.lastSources.clear();
         }
 
@@ -755,6 +764,21 @@ public class PageWidget extends BaseEntity {
         }
     }
 
+    public void clearAggregateSources() { if (queryKind == PageWidgetQueryKind.aggregate) this.lastSources.clear(); }
+
+    public void replaceAggregateSources(List<LastSourceDefinition> sources) {
+        if (queryKind != PageWidgetQueryKind.aggregate) throw new IllegalStateException("aggregate widget required");
+        if (sources == null || sources.isEmpty()) throw new IllegalArgumentException("장비별 집계 항목을 선택하세요");
+        Set<Integer> ids = new LinkedHashSet<>();
+        for (LastSourceDefinition source : sources) {
+            if (source == null || source.device() == null || source.pointNames() == null || source.pointNames().size() != 1
+                    || !ids.add(source.device().getId())) throw new IllegalArgumentException("장비마다 측정항목 하나를 선택하세요");
+        }
+        replaceDeviceGroups(List.of());
+        replaceLastSources(sources);
+        validateBindings();
+    }
+
     private void replaceLastSources(List<LastSourceDefinition> sources) {
         if (sources == null || sources.isEmpty()) {
             throw new IllegalArgumentException("lastSources is required for last");
@@ -829,7 +853,8 @@ public class PageWidget extends BaseEntity {
     }
 
     private void validateBindings() {
-        PageWidgetPolicy.validateBindings(queryKind, resolvedChartScope(), points.size(), devices.size(),
+        int validatedPointCount = queryKind == PageWidgetQueryKind.aggregate && !lastSources.isEmpty() ? 1 : points.size();
+        PageWidgetPolicy.validateBindings(queryKind, resolvedChartScope(), validatedPointCount, devices.size(),
                 deviceGroups.size(), models.size());
     }
 

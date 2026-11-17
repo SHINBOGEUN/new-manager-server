@@ -75,7 +75,7 @@ public record PageWidgetCreateRequest(
         @Schema(description = "last/aggregate/chart: pointNames (aggregate는 1개). count는 []", example = "[\"TOTAL_WT\"]")
         List<String> pointNames,
 
-        @Schema(description = "last만: 장비별 측정항목 선택. 지정하면 deviceIds/pointNames 대신 사용")
+        @Schema(description = "last 또는 aggregate의 장비별 측정항목 선택. aggregate는 장비마다 한 항목")
         @Valid
         List<PageWidgetLastSourceRequest> lastSources,
 

@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-@Schema(description = "최신값 위젯의 장비별 측정항목 선택")
+@Schema(description = "최신값 또는 집계 위젯의 장비별 측정항목 선택")
 public record PageWidgetLastSourceRequest(
         @NotNull(message = "deviceId is required")
         Integer deviceId,

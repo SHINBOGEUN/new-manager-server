@@ -90,9 +90,7 @@ final class PageWidgetPolicy {
             if (pointCount == 0) {
                 throw new IllegalArgumentException("pointNames is required for aggregate");
             }
-            if (pointCount != 1) {
-                throw new IllegalArgumentException("aggregate supports exactly one pointName");
-            }
+            if (pointCount != 1) throw new IllegalArgumentException("aggregate supports exactly one pointName unless device sources are configured");
             return;
         }
         if (deviceCount == 0 && deviceGroupCount == 0) {

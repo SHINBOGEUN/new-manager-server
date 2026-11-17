@@ -113,8 +113,9 @@ public class WidgetTrendQueryService {
                 typeBySource.put(item.deviceId() + "\u0000" + item.pointName(), item.dataPointType());
             }
         }
+        Set<String> selected = sources.stream().map(source -> key(source.device().getId(), source.pointName())).collect(java.util.stream.Collectors.toSet());
         return List.of(ComparisonSeriesSupport.sum(pointQuery, deviceIds, pointNames, typeBySource,
-                unit, range, window, ignored -> true, conversionPlan(sources)));
+                unit, range, window, point -> selected.contains(key(point.deviceId(), point.pointName())), conversionPlan(sources)));
     }
 
     private ChartWidgetResponse trendForRange(PageWidget widget, PageWidgetChartRangePreset preset,
@@ -275,6 +276,9 @@ public class WidgetTrendQueryService {
                     .flatMap(source -> source.pointNames().stream().map(point -> new Source(source.device(), point)))
                     .toList();
         }
+        if (widget.getQueryKind() == PageWidgetQueryKind.aggregate) return widget.aggregateSourceDefinitions().stream()
+                .filter(source -> source.device().isEnabled())
+                .flatMap(source -> source.pointNames().stream().map(point -> new Source(source.device(), point))).toList();
         List<String> pointNames = widget.pointNames();
         return widget.resolvedDefaultDevices().stream()
                 .filter(Device::isEnabled)
@@ -311,7 +315,13 @@ public class WidgetTrendQueryService {
     private UnitNormalizer.Plan conversionPlan(List<Source> sources) {
         Set<Integer> ids = sources.stream().map(source -> source.device().getId()).collect(java.util.stream.Collectors.toSet());
         List<String> points = sources.stream().map(Source::pointName).distinct().toList();
-        return unitNormalizer.plan(ids, points);
+        UnitNormalizer.Plan all = unitNormalizer.plan(ids, points);
+        Map<String, UnitNormalizer.Conversion> selected = new LinkedHashMap<>();
+        for (Source source : sources) {
+            String key = UnitNormalizer.key(source.device().getId(), source.pointName());
+            if (all.conversions().containsKey(key)) selected.put(key, all.conversions().get(key));
+        }
+        return new UnitNormalizer.Plan(selected);
     }
 
     private Map<String, String> unitsBySource(List<Source> sources) {

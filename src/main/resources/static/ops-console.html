@@ -2956,6 +2956,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           </div>
 
           <div id="wUnitFilterBlock" data-widget-stage="2" style="display:none"><label class="field">단위 먼저 선택<select id="wSourceUnit"><option value="">모든 단위</option></select></label><small class="muted">선택한 단위를 가진 장비와 측정항목만 표시합니다.</small></div>
+          <div id="wAggregateSourceBlock" data-widget-stage="2" style="display:none"><label class="field">집계 대상 방식<select id="wAggregateSourceMode"><option value="device">장비별 측정항목 선택</option><option value="group">장비 그룹 · 공통 측정항목</option></select></label><div id="wAggregateIndividual"><input id="wAggregateSearch" type="search" placeholder="장비 이름·측정항목 검색" aria-label="집계 장비 검색"><div id="wAggregateSourceList" class="pick-list"></div><small class="muted">장비마다 집계할 측정항목을 하나씩 선택하세요.</small></div></div>
           <div id="wChartBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">
               차트 대상 방식
@@ -3060,7 +3061,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             <div class="fields">
               <label class="field" id="wOpWrap">집계 방식
                 <select id="wOp">
-                  <option value="">측정 항목을 선택하세요</option>
+                  <option value="">집계 방식을 선택하세요</option>
                   <option value="usage">사용량</option>
                   <option value="power">전력 합</option>
                   <option value="usage_rank">사용량 순위</option>
@@ -3080,7 +3081,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               </label>
             </div>
             <div class="muted" style="font-size:12px;margin-top:6px">
-              선택한 측정 항목에 맞는 집계 방식을 자동으로 적용합니다.
+              집계 방식을 먼저 고른 뒤 장비별 측정항목을 선택하세요.
             </div>
           </div>
 
@@ -4040,6 +4041,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       widgetDeviceIds: [],
       widgetDeviceGroupIds: [],
       lastWidgetSources: [],
+      aggregateWidgetSources: [],
       widgetPendingPointName: "",
       widgetItDeviceIds: [],
       widgetModelIds: [],
@@ -9269,6 +9271,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       grid.insertBefore(host, basic); host.append(nav, basic, panels.data, panels.display, panels.click, advanced);
       advanced.open = true; advanced.querySelector(":scope > summary").hidden = true;
       [...basic.querySelectorAll(':scope > [data-widget-stage="2"]')].forEach((element) => panels.data.append(element));
+      const aggregateSettings = $("wAggBlock"); if (aggregateSettings) panels.data.prepend(aggregateSettings);
       for (const id of ["wTableFormatChoice", "wTableOptions"]) { const element = $(id); if (element) panels.display.append(element); }
       const design = editor.querySelector('[aria-labelledby="wDesignLabel"]'); if (design) panels.display.append(design);
       for (const id of ["wChartOptionsBlock", "wTrendDefaults"]) { const element = $(id); if (element) panels.click.append(element); }
@@ -9781,8 +9784,12 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if (!selectedWidgetPoints().length) throw new Error("차트 측정항목을 하나 이상 선택하세요");
       }
       if (kind === "aggregate") {
-        if (!selectedAggregatePoint()) throw new Error("집계할 측정항목을 선택하세요");
-        if (!selectedWidgetTargetDeviceIds().length) throw new Error("집계 대상 장비를 추가하세요");
+        if (isIndividualAggregate()) {
+          if (!state.aggregateWidgetSources.length) throw new Error("장비별 집계 측정항목을 선택하세요");
+        } else {
+          if (!selectedAggregatePoint()) throw new Error("집계할 측정항목을 선택하세요");
+          if (!selectedWidgetTargetDeviceIds().length) throw new Error("집계 대상 장비를 추가하세요");
+        }
       }
       if (kind === "calculated" && !$("wPueDefinition").value) throw new Error("계산 지표를 선택하세요");
       if (kind === "psychrometric" && (!state.psychrometricTemperatureSources.length
@@ -10083,6 +10090,32 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       });
     }
 
+    function isIndividualAggregate() { return $("wAggregateSourceMode")?.value !== "group"; }
+    function renderAggregateSourceChoices() {
+      const box = $("wAggregateSourceList"); if (!box) return;
+      const op = $("wOp").value, type = ["usage", "usage_rank"].includes(op) ? "ENERGY" : op ? "POWER" : null;
+      if (!type) { box.innerHTML = '<div class="empty">먼저 집계 방식을 선택하세요.</div>'; return; }
+      const query = $("wAggregateSearch").value.trim().toLowerCase(), unit = $("wSourceUnit").value;
+      const sources = state.widgetSources.filter(source => !source.ambiguous && (!type || String(source.dataPointType || "").toUpperCase() === type)
+        && (!unit || compatibleUnit(source.unit, unit)) && `${source.deviceName} ${source.pointName}`.toLowerCase().includes(query));
+      const grouped = new Map();
+      for (const source of sources) {
+        const id = Number(source.deviceId); if (!grouped.has(id)) grouped.set(id, []); grouped.get(id).push(source);
+      }
+      const hiddenCount = state.aggregateWidgetSources.filter(item => !sources.some(source => Number(source.deviceId) === item.deviceId && source.pointName === item.pointName)).length;
+      box.innerHTML = (hiddenCount ? `<p class="muted">현재 필터에 숨겨진 선택 ${hiddenCount}개가 유지됩니다.</p>` : "") + (grouped.size ? [...grouped.entries()].map(([id, points]) => {
+        const selected = state.aggregateWidgetSources.find(item => item.deviceId === id)?.pointName || "";
+        return `<label class="field"><strong>${esc(points[0].deviceName || `장비 #${id}`)}</strong><select data-aggregate-device="${id}"><option value="">선택 안 함</option>${points.map(point => `<option value="${esc(point.pointName)}" ${selected === point.pointName ? "selected" : ""}>${esc(widgetPointLabel(point))}</option>`).join("")}</select></label>`;
+      }).join("") : '<div class="empty">조건에 맞는 장비와 측정항목이 없습니다.</div>');
+      box.querySelectorAll("[data-aggregate-device]").forEach(select => select.addEventListener("change", () => {
+        const id = Number(select.dataset.aggregateDevice);
+        state.aggregateWidgetSources = state.aggregateWidgetSources.filter(item => item.deviceId !== id);
+        if (select.value) state.aggregateWidgetSources.push({deviceId:id, pointName:select.value});
+      }));
+    }
+    $("wAggregateSearch").addEventListener("input", renderAggregateSourceChoices);
+    $("wAggregateSourceMode").addEventListener("change", () => refreshWidgetPoints());
+
     function selectedAggregatePoint() {
       if ($("wKind")?.value !== "aggregate") return null;
       const input = $("wPointGrid")?.querySelector('input[data-point-index]:checked');
@@ -10190,7 +10223,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const previousAggregatePoint = kind === "aggregate" ? selectedAggregatePoint() : null;
       const chartScope = $("wChartScope")?.value || "devices";
       const aggOp = $("wOp")?.value || "";
-      const showDevices = kind === "last" || kind === "aggregate" || (kind === "chart" && chartScope === "devices");
+      const showDevices = kind === "last" || (kind === "aggregate" && !isIndividualAggregate()) || (kind === "chart" && chartScope === "devices");
       const showModels = kind === "chart" && chartScope === "models";
       const showPoints = kind === "chart" || kind === "aggregate";
       const unitSelect = $("wSourceUnit");
@@ -10206,7 +10239,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         $("wPickDevicePoints").innerHTML = "";
       }
 
-      $("wPointsBlock").style.display = showPoints ? "block" : "none";
+      $("wPointsBlock").style.display = showPoints && !(kind === "aggregate" && isIndividualAggregate()) ? "block" : "none";
+      $("wAggregateSourceBlock").style.display = kind === "aggregate" ? "block" : "none";
+      $("wAggregateIndividual").hidden = !isIndividualAggregate();
       $("wCountBlock").style.display = kind === "count" ? "block" : "none";
       $("wChartBlock").style.display = kind === "chart" ? "block" : "none";
       $("wChartOptionsBlock").style.display = kind === "chart" ? "block" : "none";
@@ -10230,6 +10265,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         renderWidgetModels();
       }
 
+      if (kind === "aggregate" && isIndividualAggregate()) {
+        $("wOp").querySelectorAll("option").forEach(option => { option.hidden = false; });
+        renderAggregateSourceChoices();
+        return;
+      }
       if (kind === "psychrometric") {
         state.widgetPointCatalog = [];
         state.widgetPointNamesByModel = new Map();
@@ -13843,6 +13883,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
+      state.aggregateWidgetSources = [];
+      $("wAggregateSourceMode").value = "device";
+      $("wAggregateSearch").value = "";
       state.widgetPendingPointName = "";
       state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
@@ -14089,6 +14132,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           ? state.lastWidgetSources.map((source) => source.deviceId)
           : [...(w.deviceIds || [])];
         state.widgetDeviceGroupIds = [...(w.deviceGroupIds || [])];
+        state.aggregateWidgetSources = w.queryKind === "aggregate" ? ((w.lastSources || []).length
+          ? (w.lastSources || []).flatMap(source => (source.pointNames || []).map(pointName => ({deviceId:Number(source.deviceId), pointName})))
+          : (w.deviceIds || []).filter(() => (w.pointNames || []).length === 1).map(deviceId => ({deviceId:Number(deviceId), pointName:w.pointNames[0]}))) : [];
+        $("wAggregateSourceMode").value = w.queryKind === "aggregate" && state.widgetDeviceGroupIds.length ? "group" : "device";
         state.widgetItDeviceIds = [...(w.itDeviceIds || [])];
         state.widgetModelIds = [...(w.modelIds || [])];
         state.psychrometricTemperatureSources = (w.psychrometricSources || [])
@@ -14860,7 +14907,15 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("wChartSeriesMode")?.addEventListener("change", () => {
       $("wChartSeriesMode").dataset.userSelected = "true";
     });
-    $("wOp")?.addEventListener("change", () => refreshWidgetPoints());
+    $("wOp")?.addEventListener("change", () => {
+      if (isIndividualAggregate() && $("wKind").value === "aggregate") {
+        const type = ["usage", "usage_rank"].includes($("wOp").value) ? "ENERGY" : "POWER";
+        const previous = state.aggregateWidgetSources.length;
+        state.aggregateWidgetSources = state.aggregateWidgetSources.filter(item => widgetSourcesForDevice(item.deviceId).some(source => source.pointName === item.pointName && String(source.dataPointType || "").toUpperCase() === type));
+        if (previous !== state.aggregateWidgetSources.length) toast("집계 방식에 맞지 않는 측정항목 선택을 해제했습니다.");
+      }
+      refreshWidgetPoints();
+    });
     $("wSourceUnit")?.addEventListener("change", () => {
       const unit = $("wSourceUnit").value;
       if (unit) {
@@ -14887,6 +14942,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
+      state.aggregateWidgetSources = [];
       renderWidgetTableEditor();
       state.widgetItDeviceIds = [];
       state.widgetModelIds = [];
@@ -14937,6 +14993,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         return state.widgetSources.filter((source) => state.widgetModelIds.includes(Number(source.modelId))
           && pointNames.has(source.pointName) && !source.ambiguous);
       }
+      if (kind === "aggregate" && isIndividualAggregate()) return state.aggregateWidgetSources.map(item =>
+        state.widgetSources.find(source => Number(source.deviceId) === item.deviceId && source.pointName === item.pointName && !source.ambiguous) || item);
       if (kind === "chart" || kind === "aggregate") {
         return state.widgetSources.filter((source) => targetIds.has(Number(source.deviceId))
           && pointNames.has(source.pointName) && !source.ambiguous);
@@ -15169,7 +15227,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             pointNames: [...new Set(source.pointNames || [])],
           }))
           : [];
-        const pointNames = kind === "last"
+        const aggregateSources = kind === "aggregate" && isIndividualAggregate() ? state.aggregateWidgetSources.map(source => ({deviceId:source.deviceId, pointNames:[source.pointName]})) : null;
+        const pointNames = aggregateSources ? [...new Set(aggregateSources.flatMap(source => source.pointNames))] : kind === "last"
           ? [...new Set(lastSources.flatMap((source) => source.pointNames))]
           : (kind === "count" || kind === "calculated") ? [] : selectedWidgetPoints();
         const pueDefinitionId = kind === "calculated" ? Number($("wPueDefinition").value) || null : null;
@@ -15184,8 +15243,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         if ((kind === "last" || kind === "chart") && (!pointNames || !pointNames.length)) {
           throw new Error("측정 항목을 하나 이상 선택하세요");
         }
-        if (kind === "aggregate" && pointNames.length !== 1) {
-          throw new Error("집계할 측정 항목을 먼저 하나 선택하세요");
+        if (kind === "aggregate" && ((!aggregateSources && pointNames.length !== 1) || (aggregateSources && !aggregateSources.length))) {
+          throw new Error("장비별 집계 측정항목을 선택하세요");
         }
         let deviceIds = [];
         let modelIds = [];
@@ -15196,7 +15255,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           modelIds = [...state.widgetModelIds];
           if (!modelIds.length) throw new Error("모델을 하나 이상 추가하세요");
         } else if (kind !== "calculated") {
-          deviceIds = [...state.widgetDeviceIds];
+          deviceIds = aggregateSources ? aggregateSources.map(source => source.deviceId) : [...state.widgetDeviceIds];
           if (!deviceIds.length && !state.widgetDeviceGroupIds.length) throw new Error("장비 또는 장비 그룹을 하나 이상 추가하세요");
         }
         if (kind === "aggregate" && !op) throw new Error("집계 방식을 선택하세요");
@@ -15231,11 +15290,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           aggregateRangePreset: kind === "aggregate" ? ($("wAggRangePreset").value || null) : null,
           groupBy: null,
           deviceIds,
-          deviceGroupIds: kind === "aggregate" || (kind === "chart" && chartScope === "devices")
+          deviceGroupIds: (kind === "aggregate" && !aggregateSources) || (kind === "chart" && chartScope === "devices")
             ? [...state.widgetDeviceGroupIds] : [],
           modelIds: kind === "chart" && chartScope === "models" ? modelIds : [],
           pointNames,
-          lastSources: kind === "last" ? lastSources : null,
+          lastSources: kind === "last" ? lastSources : aggregateSources,
           clickConfig: currentWidgetClickConfig(),
           tableColumns: kind === "last" ? (tableColumns || (widgetTablePreviouslyEnabled ? [] : null))
             : (widgetTablePreviouslyEnabled ? [] : null),

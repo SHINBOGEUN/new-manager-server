@@ -57,6 +57,7 @@ public class PageWidgetQueryService {
     private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
+    private final net.vivans.dcim.module.query.application.UnitNormalizer unitNormalizer;
     private final PageWidgetSpecializedSupport widgetSupport;
     private final CalculatedMetricPageWidgetHandler calculatedMetricWidgetHandler;
     private final PsychrometricPageWidgetHandler psychrometricWidgetHandler;
@@ -130,8 +131,8 @@ public class PageWidgetQueryService {
         if (kind == PageWidgetQueryKind.power_distribution) {
             throw new IllegalArgumentException("power distribution widget must be created with /widgets/power-distribution");
         }
-        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
-            throw new IllegalArgumentException("lastSources is only allowed for last");
+        if (kind != PageWidgetQueryKind.last && kind != PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("장비별 측정항목은 현재값 또는 집계에서만 사용할 수 있습니다");
         }
         if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
             throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
@@ -150,7 +151,15 @@ public class PageWidgetQueryService {
         }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
-        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<PageWidget.LastSourceDefinition> aggregateSources = kind == PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()
+                ? resolveLastSources(request.lastSources()) : null;
+        if (aggregateSources != null) validateAggregateSources(aggregateSources, op);
+        if (aggregateSources != null && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty())
+            throw new IllegalArgumentException("장비별 측정항목과 장비 그룹은 함께 사용할 수 없습니다");
+        if (kind == PageWidgetQueryKind.aggregate && aggregateSources == null && (request.pointNames() == null || request.pointNames().size() != 1))
+            throw new IllegalArgumentException("기존 집계 방식에는 측정항목 하나가 필요합니다");
+        List<Device> devices = aggregateSources == null ? resolveDevices(request.deviceIds(), kind, request.chartScope(), op)
+                : aggregateSources.stream().map(PageWidget.LastSourceDefinition::device).toList();
         List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
         List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
@@ -170,12 +179,13 @@ public class PageWidgetQueryService {
                 chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
-                request.pointNames(),
+                aggregateSources == null ? request.pointNames() : List.of(aggregateSources.get(0).pointNames().get(0)),
                 devices,
                 deviceGroups,
                 List.of(),
                 modelIds
         );
+        if (aggregateSources != null) widget.replaceAggregateSources(aggregateSources);
         widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         widgetSupport.applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
@@ -321,8 +331,8 @@ public class PageWidgetQueryService {
         if (widget.getQueryKind() == PageWidgetQueryKind.power_distribution) {
             throw new IllegalArgumentException("power distribution widget must be updated with /widgets/{id}/power-distribution");
         }
-        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
-            throw new IllegalArgumentException("lastSources is only allowed for last");
+        if (kind != PageWidgetQueryKind.last && kind != PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("장비별 측정항목은 현재값 또는 집계에서만 사용할 수 있습니다");
         }
         if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
             throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
@@ -338,7 +348,15 @@ public class PageWidgetQueryService {
         }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
-        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<PageWidget.LastSourceDefinition> aggregateSources = kind == PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()
+                ? resolveLastSources(request.lastSources()) : null;
+        if (aggregateSources != null) validateAggregateSources(aggregateSources, op);
+        if (aggregateSources != null && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty())
+            throw new IllegalArgumentException("장비별 측정항목과 장비 그룹은 함께 사용할 수 없습니다");
+        if (kind == PageWidgetQueryKind.aggregate && aggregateSources == null && (request.pointNames() == null || request.pointNames().size() != 1))
+            throw new IllegalArgumentException("기존 집계 방식에는 측정항목 하나가 필요합니다");
+        List<Device> devices = aggregateSources == null ? resolveDevices(request.deviceIds(), kind, request.chartScope(), op)
+                : aggregateSources.stream().map(PageWidget.LastSourceDefinition::device).toList();
         List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
         List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
@@ -357,12 +375,16 @@ public class PageWidgetQueryService {
                 chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
-                request.pointNames(),
+                aggregateSources == null ? request.pointNames() : widget.hasExplicitAggregateSources()
+                        ? aggregateSources.stream().flatMap(source -> source.pointNames().stream()).distinct().toList()
+                        : List.of(aggregateSources.get(0).pointNames().get(0)),
                 devices,
                 deviceGroups,
                 List.of(),
                 modelIds
         );
+        if (aggregateSources != null) widget.replaceAggregateSources(aggregateSources);
+        else if (kind == PageWidgetQueryKind.aggregate) widget.clearAggregateSources();
         widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         if (request.layout() != null) {
             widgetSupport.applyLayout(widget, request.layout());
@@ -540,6 +562,30 @@ public class PageWidgetQueryService {
                     .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId)));
         }
         return devices;
+    }
+
+    private void validateAggregateSources(List<PageWidget.LastSourceDefinition> sources, PageWidgetOp op) {
+        if (op == null) throw new IllegalArgumentException("집계 방식을 선택하세요");
+        String type = op == PageWidgetOp.usage || op == PageWidgetOp.usage_rank ? "ENERGY" : "POWER";
+        Set<Integer> ids = new LinkedHashSet<>();
+        Map<Integer, String> chosen = new java.util.LinkedHashMap<>();
+        for (var source : sources) {
+            if (!source.device().isEnabled() || source.pointNames().size() != 1 || !ids.add(source.device().getId()))
+                throw new IllegalArgumentException("활성 장비마다 측정항목 하나를 선택하세요");
+            chosen.put(source.device().getId(), source.pointNames().get(0));
+        }
+        var matching = sourceCatalog.availableSources(ids).stream().filter(source -> !source.ambiguous()
+                && source.pointName().equals(chosen.get(source.deviceId())) && type.equalsIgnoreCase(source.dataPointType())
+                && source.unit() != null && !source.unit().isBlank()).toList();
+        if (matching.size() != ids.size()) throw new IllegalArgumentException("장비별 측정항목의 유형과 단위를 확인하세요");
+        var plan = unitNormalizer.plan(ids, chosen.values());
+        Set<String> units = new LinkedHashSet<>();
+        chosen.forEach((id, name) -> {
+            var conversion = plan.conversions().get(net.vivans.dcim.module.query.application.UnitNormalizer.key(id, name));
+            if (conversion == null || conversion.unit() == null) throw new IllegalArgumentException("측정항목 단위를 확인할 수 없습니다");
+            units.add(conversion.unit());
+        });
+        if (units.size() != 1) throw new IllegalArgumentException("서로 다른 기준 단위는 집계할 수 없습니다");
     }
 
     private List<PageWidget.LastSourceDefinition> resolveLastSources(

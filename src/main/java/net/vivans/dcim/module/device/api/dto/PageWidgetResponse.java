@@ -76,8 +76,8 @@ public record PageWidgetResponse(
                         ? List.of()
                         : widget.getCalculated().getCalculatedMetric().calculatedSources().stream()
                             .map(PageWidgetCalculatedSourceResponse::from).toList(),
-                widget.getQueryKind().name().equals("last")
-                        ? widget.lastSourceDefinitions().stream()
+                (widget.getQueryKind().name().equals("last") || widget.hasExplicitAggregateSources())
+                        ? (widget.getQueryKind().name().equals("aggregate") ? widget.aggregateSourceDefinitions() : widget.lastSourceDefinitions()).stream()
                         .map(PageWidgetLastSourceResponse::from)
                         .toList()
                         : List.of(),
