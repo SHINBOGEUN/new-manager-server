@@ -39,6 +39,7 @@ public class AggregateQueryService {
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final WidgetDataStatusResolver widgetDataStatusResolver;
+    private final UnitNormalizer unitNormalizer;
 
     public AggregateWidgetResponse getAggregate(Integer widgetId, String rangePresetOverride) {
         PageWidget widget = findAggregateWidget(widgetId);
@@ -67,11 +68,9 @@ public class AggregateQueryService {
         String unit = resolveUnit(devices, List.of(pointName));
         if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, unit);
         validateRankingSources(devices, pointName, "POWER");
-        if (!"W".equalsIgnoreCase(unit) && !"kW".equalsIgnoreCase(unit)) {
-            throw new IllegalArgumentException("최대수요전력은 동일한 W 또는 kW 단위의 전력 항목이 필요합니다");
-        }
         List<Integer> ids = devices.stream().map(Device::getId).toList();
-        var points = pointQuery.findSeries(ids, List.of(pointName), range.start(), range.end(), "15m");
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(new java.util.HashSet<>(ids), List.of(pointName));
+        var points = pointQuery.findSeries(ids, List.of(pointName), range.start(), range.end(), "15m").stream().map(conversion::point).toList();
         var peak = PowerDemandCalculator.peak(points, ids, range.start(), range.end());
         if (peak == null) return empty(widget, preset, rangePreset, range, unit);
         return new AggregateWidgetResponse(widget.getId(), widget.getName(), widget.getPageCode().getCode(),
@@ -101,6 +100,7 @@ public class AggregateQueryService {
         List<LastPoint> lasts = pointQuery.findLastInRange(
                 deviceIds, pointNames, range.start(), range.end());
 
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(new java.util.HashSet<>(deviceIds), pointNames);
         Map<String, Double> firstByKey = indexByDevicePoint(firsts);
         Map<String, Double> lastByKey = indexByDevicePoint(lasts);
 
@@ -113,7 +113,7 @@ public class AggregateQueryService {
             if (first == null || last == null) {
                 continue;
             }
-            double delta = last - first;
+            double delta = conversion.value(deviceId, pointName, last - first);
             if (delta < 0) {
                 continue;
             }
@@ -155,8 +155,9 @@ public class AggregateQueryService {
                 .filter(source -> ids.contains(source.deviceId()) && !source.ambiguous()
                         && pointName.equals(source.pointName()) && type.equalsIgnoreCase(source.dataPointType())
                         && source.unit() != null && !source.unit().isBlank()).toList();
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(ids, List.of(pointName));
         if (matches.stream().map(DeviceMeasurementSourceCatalog.Source::deviceId).distinct().count() != ids.size()
-                || matches.stream().map(source -> source.unit().trim().toLowerCase(java.util.Locale.ROOT)).distinct().count() != 1) {
+                || conversion.units().size() != 1) {
             throw new IllegalArgumentException("순위는 모든 장비의 동일한 유형과 단위의 측정항목이 필요합니다");
         }
     }
@@ -192,13 +193,15 @@ public class AggregateQueryService {
                 deviceIds, List.of(pointName), range.start(), range.end());
         double sum = 0;
         boolean hasValue = false;
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(new java.util.HashSet<>(deviceIds), List.of(pointName));
         for (LastPoint point : lasts) {
             if (!pointName.equals(point.pointName())) {
                 continue;
             }
             Device device = deviceById.get(point.deviceId());
-            var rounded = QueryValues.round2(point.value());
-            UnitDisplay.Result display = UnitDisplay.of(rounded, resolveUnit(List.of(device), List.of(pointName)));
+            double converted = conversion.value(point.deviceId(), pointName, point.value());
+            var rounded = QueryValues.round2(converted);
+            UnitDisplay.Result display = UnitDisplay.of(rounded, conversion.forSource(point.deviceId(), pointName).unit());
             out.add(new AggregateDeviceValueResponse(
                     point.deviceId(),
                     device == null ? null : device.getName(),
@@ -207,7 +210,7 @@ public class AggregateQueryService {
                     display.displayValue(),
                     display.displayUnit()
             ));
-            sum += point.value();
+            sum += converted;
             hasValue = true;
         }
         return new SumResult(sum, hasValue);
@@ -225,24 +228,10 @@ public class AggregateQueryService {
     }
 
     private String resolveUnit(List<Device> devices, List<String> pointNames) {
-        Set<Integer> deviceIds = devices.stream().map(Device::getId).collect(Collectors.toSet());
-        String unit = null;
-        for (DeviceMeasurementSourceCatalog.Source point : sourceCatalog.availableSources(deviceIds)) {
-            if (!deviceIds.contains(point.deviceId()) || point.ambiguous()
-                    || !pointNames.contains(point.pointName())) {
-                continue;
-            }
-            String candidate = blankToNull(point.unit());
-            if (candidate == null) {
-                continue;
-            }
-            if (unit == null) {
-                unit = candidate;
-            } else if (!unit.equalsIgnoreCase(candidate)) {
-                return null;
-            }
-        }
-        return unit;
+        Set<Integer> ids = devices.stream().map(Device::getId).collect(Collectors.toSet());
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(ids, pointNames);
+        if (conversion.units().size() > 1 || (conversion.units().size() == 1 && conversion.conversions().values().stream().anyMatch(value -> value.unit() == null))) throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
+        return conversion.units().isEmpty() ? null : conversion.units().get(0);
     }
 
     private List<Device> resolveEnabledDevices(PageWidget widget, PageWidgetDeviceRole... roles) {

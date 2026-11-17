@@ -8,7 +8,11 @@ public record CommonCodeResponse(
         String code,
         String name,
         Integer sortOrder,
-        boolean thresholdSupported
+        boolean thresholdSupported,
+        Integer baseUnitId,
+        String baseUnitCode,
+        String baseUnitName,
+        java.math.BigDecimal unitFactor
 ) {
 
     public static CommonCodeResponse from(CommonCode commonCode) {
@@ -18,6 +22,10 @@ public record CommonCodeResponse(
                 commonCode.getCode(),
                 commonCode.getName(),
                 commonCode.getSortOrder(),
-                commonCode.isThresholdSupported());
+                commonCode.isThresholdSupported(),
+                commonCode.getBaseUnit() == null ? null : commonCode.getBaseUnit().getId(),
+                commonCode.getBaseUnit() == null ? null : commonCode.getBaseUnit().getCode(),
+                commonCode.getBaseUnit() == null ? null : commonCode.getBaseUnit().getName(),
+                commonCode.getUnitFactor());
     }
 }

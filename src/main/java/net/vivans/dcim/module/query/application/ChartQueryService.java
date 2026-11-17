@@ -54,6 +54,7 @@ public class ChartQueryService {
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final WidgetDataStatusResolver widgetDataStatusResolver;
+    private final UnitNormalizer unitNormalizer;
 
     public ChartWidgetResponse getChart(Integer widgetId, String rangePresetOverride,
                                         String windowOverride, String seriesModeOverride) {
@@ -97,7 +98,8 @@ public class ChartQueryService {
                 .collect(Collectors.toMap(Device::getId, d -> d, (a, b) -> a, LinkedHashMap::new));
         List<String> queryPointNames = pointNames;
         ChartPointContext pointContext = buildPointContext(devices, pointNames);
-        ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames);
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(new LinkedHashSet<>(deviceIds), queryPointNames);
+        ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames, conversion);
         if (comparison == null && (seriesModeOverride == null || seriesModeOverride.isBlank())
                 && unitContext.units().size() > 1 && (widget.getChartSeriesMode() == null
                 || widget.getChartSeriesMode() == PageWidgetChartSeriesMode.sum)) {
@@ -115,7 +117,7 @@ public class ChartQueryService {
         }
 
         List<SeriesPoint> raw = pointQuery.findSeries(
-                deviceIds, queryPointNames, range.start(), range.end(), window);
+                deviceIds, queryPointNames, range.start(), range.end(), window).stream().map(conversion::point).toList();
         Map<String, LastPoint> latestBySource = new HashMap<>();
         for (LastPoint point : pointQuery.findLast(deviceIds, queryPointNames, Duration.ofHours(24))) {
             latestBySource.put(sourceKey(point.deviceId(), point.pointName()), point);
@@ -142,10 +144,10 @@ public class ChartQueryService {
                     source.deviceId() + "\u0000" + source.pointName(), source.dataPointType()));
             ChartSeriesResponse currentSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
                     typeBySource, unitContext.singleUnit(), range, window,
-                    point -> includeAggregatePoint(point, deviceById, pointContext));
+                    point -> includeAggregatePoint(point, deviceById, pointContext), conversion);
             ChartSeriesResponse previousSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
                     typeBySource, unitContext.singleUnit(), comparison.range(), window,
-                    point -> includeAggregatePoint(point, deviceById, pointContext));
+                    point -> includeAggregatePoint(point, deviceById, pointContext), conversion);
             List<ChartSeriesResponse> previous = ChartComparisonSupport.sum(List.of(previousSum),
                     unitContext.singleUnit(), "사용량 합계 (" + comparison.previousLabel() + ")");
             series = ChartComparisonSupport.sum(List.of(currentSum), unitContext.singleUnit(),
@@ -455,7 +457,7 @@ public class ChartQueryService {
         if (locatedDevices >= 2) modes.add("by_path");
         return List.copyOf(modes);
     }
-    private ChartUnitContext buildUnitContext(List<Device> devices, List<String> pointNames) {
+    private ChartUnitContext buildUnitContext(List<Device> devices, List<String> pointNames, UnitNormalizer.Plan conversion) {
         Set<Integer> deviceIds = devices.stream()
                 .map(Device::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -466,7 +468,7 @@ public class ChartQueryService {
                     || !pointNames.contains(point.pointName())) {
                 continue;
             }
-            String candidate = blankToNull(point.unit());
+            String candidate = blankToNull(conversion.forSource(point.deviceId(), point.pointName()).unit());
             if (candidate != null) {
                 unitsBySource.put(sourceKey(point.deviceId(), point.pointName()), candidate);
                 units.add(candidate);

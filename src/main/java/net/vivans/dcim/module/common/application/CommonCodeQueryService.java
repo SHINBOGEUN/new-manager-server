@@ -39,6 +39,7 @@ public class CommonCodeQueryService {
                 codeGroup, request.code(), request.name(), request.sortOrder(),
                 Boolean.TRUE.equals(request.thresholdSupported()));
         commonCodeRepository.save(code);
+        applyUnitConversion(code, request);
         return CommonCodeResponse.from(code);
     }
 
@@ -56,7 +57,10 @@ public class CommonCodeQueryService {
         boolean thresholdSupported = request.thresholdSupported() == null
                 ? "DATA_POINT_TYPE".equals(codeGroup.getGroupKey()) && code.isThresholdSupported()
                 : request.thresholdSupported();
+        if (!"UNIT".equals(codeGroup.getGroupKey()) && code.getBaseUnit() != null)
+            throw new IllegalArgumentException("환산 단위가 설정된 코드는 다른 그룹으로 이동할 수 없습니다");
         code.update(codeGroup, request.code(), request.name(), request.sortOrder(), thresholdSupported);
+        applyUnitConversion(code, request);
 
         return CommonCodeResponse.from(commonCodeRepository.save(code));
     }
@@ -82,6 +86,16 @@ public class CommonCodeQueryService {
         return commonCodeRepository.findByCodeGroupId(codeGroupId).stream()
                 .map(CommonCodeResponse::from)
                 .toList();
+    }
+
+    private void applyUnitConversion(CommonCode code, CommonCodeRequest request) {
+        Integer id = request.baseUnitId();
+        if (id == null && request.unitFactor() == null) return;
+        if (Integer.valueOf(0).equals(id) && request.unitFactor() == null) { code.setUnitConversion(null, null); return; }
+        if (id == null || id <= 0 || request.unitFactor() == null) throw new IllegalArgumentException("기준 단위와 양수 배수를 함께 입력하세요");
+        CommonCode base = id.equals(code.getId()) ? code : commonCodeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("기준 단위를 찾을 수 없습니다"));
+        code.setUnitConversion(base, request.unitFactor());
     }
 
     private static void validatePhaseNotationName(CodeGroup codeGroup, String name) {

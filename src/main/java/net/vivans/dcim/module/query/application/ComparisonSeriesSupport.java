@@ -25,7 +25,7 @@ final class ComparisonSeriesSupport {
     static ChartSeriesResponse sum(PointQuery pointQuery, List<Integer> deviceIds, List<String> pointNames,
                                    Map<String, String> typeBySource, String unit,
                                    QueryRanges.Range range, String window,
-                                   Predicate<SeriesPoint> include) {
+                                   Predicate<SeriesPoint> include, UnitNormalizer.Plan plan) {
         Map<Instant, Double> totals = new HashMap<>();
         Map<String, String> normalizedTypes = new HashMap<>();
         typeBySource.forEach((sourceKey, type) -> normalizedTypes.put(normalizeKey(sourceKey), type));
@@ -33,7 +33,7 @@ final class ComparisonSeriesSupport {
         for (SeriesPoint point : averaged) {
             if (!"ENERGY".equalsIgnoreCase(normalizedTypes.get(key(point.deviceId(), point.pointName())))
                     && include.test(point)) {
-                totals.merge(bucket(point.time(), window), point.value(), Double::sum);
+                totals.merge(bucket(point.time(), window), plan.value(point.deviceId(), point.pointName(), point.value()), Double::sum);
             }
         }
 
@@ -63,7 +63,7 @@ final class ComparisonSeriesSupport {
                         && !current.time().isAfter(range.end()) && include.test(current)) {
                     double increment = current.value() - previous.value();
                     if (increment >= 0) {
-                        totals.merge(bucket(current.time(), window), increment, Double::sum);
+                        totals.merge(bucket(current.time(), window), plan.value(current.deviceId(), current.pointName(), increment), Double::sum);
                     }
                 }
                 previous = current;

@@ -40,6 +40,7 @@ public class WidgetTrendQueryService {
     private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
+    private final UnitNormalizer unitNormalizer;
 
     public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window) {
         return getTrend(widgetId, rangePresetRaw, window, null);
@@ -113,7 +114,7 @@ public class WidgetTrendQueryService {
             }
         }
         return List.of(ComparisonSeriesSupport.sum(pointQuery, deviceIds, pointNames, typeBySource,
-                unit, range, window, ignored -> true));
+                unit, range, window, ignored -> true, conversionPlan(sources)));
     }
 
     private ChartWidgetResponse trendForRange(PageWidget widget, PageWidgetChartRangePreset preset,
@@ -284,8 +285,10 @@ public class WidgetTrendQueryService {
         if (sources.isEmpty()) return List.of();
         List<Integer> deviceIds = sources.stream().map(source -> source.device().getId()).distinct().toList();
         List<String> pointNames = sources.stream().map(Source::pointName).distinct().toList();
+        UnitNormalizer.Plan plan = conversionPlan(sources);
         Map<String, List<SeriesPoint>> valuesBySource = new LinkedHashMap<>();
-        for (SeriesPoint point : pointQuery.findSeries(deviceIds, pointNames, range.start(), range.end(), window)) {
+        for (SeriesPoint raw : pointQuery.findSeries(deviceIds, pointNames, range.start(), range.end(), window)) {
+            SeriesPoint point = plan.point(raw);
             valuesBySource.computeIfAbsent(key(point.deviceId(), point.pointName()), ignored -> new ArrayList<>()).add(point);
         }
         Map<String, String> unitBySource = unitsBySource(sources);
@@ -304,13 +307,20 @@ public class WidgetTrendQueryService {
                 .distinct().toList();
     }
 
+    private UnitNormalizer.Plan conversionPlan(List<Source> sources) {
+        Set<Integer> ids = sources.stream().map(source -> source.device().getId()).collect(java.util.stream.Collectors.toSet());
+        List<String> points = sources.stream().map(Source::pointName).distinct().toList();
+        return unitNormalizer.plan(ids, points);
+    }
+
     private Map<String, String> unitsBySource(List<Source> sources) {
         Set<Integer> deviceIds = sources.stream().map(source -> source.device().getId())
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        UnitNormalizer.Plan plan = conversionPlan(sources);
         Map<String, String> catalog = new HashMap<>();
         for (DeviceMeasurementSourceCatalog.Source point : sourceCatalog.availableSources(deviceIds)) {
             if (deviceIds.contains(point.deviceId()) && !point.ambiguous()) {
-                catalog.put(key(point.deviceId(), point.pointName()), point.unit());
+                catalog.put(key(point.deviceId(), point.pointName()), plan.forSource(point.deviceId(), point.pointName()).unit());
             }
         }
         Map<String, String> result = new LinkedHashMap<>();

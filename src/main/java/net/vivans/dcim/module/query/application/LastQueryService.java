@@ -44,6 +44,7 @@ public class LastQueryService {
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final DeviceModelSnmpPointRepository snmpPointRepository;
     private final WidgetDataStatusResolver widgetDataStatusResolver;
+    private final UnitNormalizer unitNormalizer;
 
     public LastWidgetResponse getLast(Integer widgetId, Integer lookbackHours) {
         PageWidget widget = findLastWidget(widgetId);
@@ -67,6 +68,7 @@ public class LastQueryService {
         Map<Integer, Device> deviceById = devices.stream()
                 .collect(Collectors.toMap(Device::getId, device -> device, (a, b) -> a, LinkedHashMap::new));
         Map<Integer, Map<String, String>> unitsByDeviceId = resolveUnitsByDeviceId(devices);
+        UnitNormalizer.Plan conversion = unitNormalizer.plan(new java.util.HashSet<>(deviceIds), pointNames);
 
         List<LastPoint> points = pointQuery.findLast(deviceIds, pointNames, lookback);
         Map<String, LastPoint> latestBySource = new HashMap<>();
@@ -100,8 +102,8 @@ public class LastQueryService {
                     .filter(point -> requestedPoints.contains(point.pointName()))
                     .sorted(Comparator.comparing(LastPoint::pointName))
                     .toList()) {
-                String unit = unitByPoint.get(point.pointName());
-                BigDecimal rounded = QueryValues.round2(point.value());
+                String unit = conversion.forSource(point.deviceId(), point.pointName()).unit();
+                BigDecimal rounded = QueryValues.round2(conversion.value(point.deviceId(), point.pointName(), point.value()));
                 UnitDisplay.Result display = UnitDisplay.of(rounded, unit);
                 pointResponses.add(new LastPointValueResponse(
                         point.pointName(),
@@ -115,12 +117,14 @@ public class LastQueryService {
                     continue;
                 }
                 if (totalCompatible) {
+                    String convertedUnit = conversion.forSource(point.deviceId(), point.pointName()).unit();
+                    BigDecimal converted = BigDecimal.valueOf(conversion.value(point.deviceId(), point.pointName(), point.value()));
                     if (totalCount == 0) {
-                        totalUnit = blankToNull(unit);
-                        total = rounded;
+                        totalUnit = blankToNull(convertedUnit);
+                        total = converted;
                         totalCount = 1;
-                    } else if (unitsEqual(totalUnit, unit)) {
-                        total = total.add(rounded);
+                    } else if (unitsEqual(totalUnit, convertedUnit)) {
+                        total = total.add(converted);
                         totalCount++;
                     } else {
                         totalCompatible = false;
