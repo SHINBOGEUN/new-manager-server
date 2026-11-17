@@ -64,7 +64,7 @@ public class PageWidget extends BaseEntity {
     private String visualColor;
 
     @Column(name = "trend_range_preset", nullable = false, length = 24)
-    private String trendRangePreset = "last_3d";
+    private String trendRangePreset = "last_24h";
 
     @Column(name = "trend_window", nullable = false, length = 8)
     private String trendWindow = "15m";

@@ -163,7 +163,7 @@ public class QueryController {
     @Operation(summary = "저장 전 위젯 트렌드 미리보기", description = "저장하지 않고 선택한 장비·측정 항목의 시계열을 조회합니다. source=deviceId:pointName 형식으로 최대 50개까지 반복 전달합니다.")
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> previewWidgetTrend(
             @RequestParam(name = "source") java.util.List<String> sources,
-            @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
+            @RequestParam(required = false, defaultValue = "last_24h") String rangePreset,
             @RequestParam(required = false) String window,
             @RequestParam(required = false, defaultValue = "sum") String seriesMode,
             @RequestParam(required = false, defaultValue = "none") String compare
@@ -174,7 +174,7 @@ public class QueryController {
     @Operation(summary = "공통 위젯 트렌드 조회", description = "last·aggregate·psychrometric·power_distribution 위젯의 최근 시계열을 최대 두 단위로 반환합니다.")
     public ResponseEntity<ApiResponse<ChartWidgetResponse>> getWidgetTrend(
             @RequestParam Integer widgetId,
-            @RequestParam(required = false, defaultValue = "last_3d") String rangePreset,
+            @RequestParam(required = false, defaultValue = "last_24h") String rangePreset,
             @RequestParam(required = false) String window,
             @RequestParam(required = false, defaultValue = "sum") String seriesMode,
             @RequestParam(required = false) String compare

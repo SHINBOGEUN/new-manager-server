@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261117-chart-style"></script>
+  <script src="/widget-detail-popup.js?v=20261117-unit-compare"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3197,7 +3197,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
               <select id="wTrendStyle"><option value="line">선</option><option value="bar">막대</option></select>
             </label>
             <label class="field">상세 차트 기본 기간
-              <select id="wTrendRange"><option value="last_3d">최근 3일</option><option value="last_24h">최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option><option value="last_month">지난 달</option></select>
+              <select id="wTrendRange"><option value="last_3d">최근 3일</option><option value="last_24h" selected>최근 24시간</option><option value="today">오늘</option><option value="yesterday">어제</option><option value="last_7d">최근 7일</option><option value="this_month">이번 달</option><option value="last_month">지난 달</option></select>
             </label>
             <label class="field" hidden>상세 차트 집계 간격
               <select id="wTrendWindow"><option value="1m">1분</option><option value="5m">5분</option><option value="15m" selected>15분</option><option value="1h">1시간</option><option value="1d">1일</option></select>
@@ -10681,13 +10681,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const supportsPath = locatedCount >= 2;
       if (phaseOption) { phaseOption.hidden = hasTwoUnits || !supportsPhase; phaseOption.disabled = hasTwoUnits || !supportsPhase; }
       if (pathOption) { pathOption.hidden = hasTwoUnits || !supportsPath; pathOption.disabled = hasTwoUnits || !supportsPath; }
-      if (sumOption) { sumOption.hidden = hasTwoUnits; sumOption.disabled = hasTwoUnits; }
-      if (hasTwoUnits && select.value !== "per_device") select.value = "per_device";
+      if (sumOption) { sumOption.hidden = false; sumOption.disabled = false; }
+      if (hasTwoUnits && !["sum", "per_device"].includes(select.value)) select.value = "sum";
       if (!supportsPhase && select.value === "by_phase") select.value = "per_device";
       if (!supportsPath && select.value === "by_path") select.value = "per_device";
-      if (!select.dataset.userSelected) select.value = hasTwoUnits ? "per_device" : "sum";
+      if (!select.dataset.userSelected) select.value = "sum";
       if (hint) hint.textContent = hasTwoUnits
-        ? `두 단위(${selectedUnits.join(" · ")}) 차트입니다. 합산할 수 없어 장비별 표시와 좌·우 축을 사용합니다.`
+        ? `단위별(${selectedUnits.join(" · ")})로 따로 합계를 표시합니다.`
         : supportsPhase
           ? "측정 유형과 상 정보로 상별 묶음을 사용할 수 있습니다."
           : supportsPath
@@ -14054,7 +14054,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wPueRangePreset").value = "last_24h";
       $("wPueFreshnessMinutes").value = "15";
       $("wDataFreshnessMinutes").value = "15";
-      $("wTrendRange").value = "last_3d";
+      $("wTrendRange").value = "last_24h";
       $("wTrendWindow").value = "15m";
       $("wTrendStyle").value = "line";
       $("wClickSeries").value = "sum";
@@ -14189,7 +14189,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         }
         $("wCreatePage").disabled = true;
         $("wName").value = w.name || "";
-        for (const [fieldId, value] of [["wTrendRange", w.trendRangePreset || "last_3d"], ["wTrendWindow", w.trendWindow || "15m"]]) {
+        for (const [fieldId, value] of [["wTrendRange", w.trendRangePreset || "last_24h"], ["wTrendWindow", w.trendWindow || "15m"]]) {
           const field = $(fieldId);
           if (field && ![...field.options].some((option) => option.value === value)) {
             const option = document.createElement("option"); option.value = value; option.textContent = value; field.append(option);

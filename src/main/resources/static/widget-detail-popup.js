@@ -315,12 +315,12 @@
     const comparedUsage = options.compare && options.compare !== "none" && (data.series || []).some(function (item) { return item.compare && String(item.label || "").includes("사용량 합계"); });
     const meta = [options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset), trendWindowLabel(data.window || options.window)].concat(units).filter(Boolean);
     if (comparedUsage && styleSelect.value !== "bar") meta.push("사용량 비교는 막대 권장");
-    if (units.length > 1) meta.push("단위가 달라 합계를 낼 수 없습니다");
+    if (units.length > 1) meta.push(options.seriesMode === "sum" || (options.compare && options.compare !== "none") ? "단위별 합계" : "단위별 차트");
     if (statusSummary(status, data.calculationStatus)) meta.push(statusSummary(status, data.calculationStatus));
     if (activeNote) meta.push(activeNote);
     metaNode.textContent = meta.join(" · ");
     const groups = data.unitGroups || [];
-    if (groups.length > 2) {
+    if (groups.length > 1 && (data.seriesMode === "sum" || groups.length > 2)) {
       groups.forEach(function (group, index) {
         const section = document.createElement("section");
         section.className = "dcim-widget-detail-unit-group";
@@ -353,7 +353,7 @@
     activeShowSeries = options.showSeries !== false;
     activeShowCompare = options.showCompare === true;
     titleNode.textContent = options.title || "트렌드";
-    rangeSelect.value = activeConfig.rangePreset || "last_3d";
+    rangeSelect.value = activeConfig.rangePreset || "last_24h";
     seriesSelect.value = activeConfig.seriesMode || "sum";
     styleSelect.value = activeConfig.chartStyle === "area" ? "line" : activeConfig.chartStyle || "line";
     compareSelect.value = normalizeCompare(activeConfig.compare, rangeSelect.value);

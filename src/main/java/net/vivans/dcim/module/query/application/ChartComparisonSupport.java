@@ -136,7 +136,7 @@ final class ChartComparisonSupport {
         for (ChartSeriesResponse series : previous) {
             List<Instant> original = series.times();
             List<Instant> shifted = original.stream().map(time -> time.plusSeconds(comparison.offsetSeconds())).toList();
-            result.add(new ChartSeriesResponse("sum:compare", "사용량 합계 (" + comparison.previousLabel() + ")",
+            result.add(new ChartSeriesResponse(series.key() + ":compare", series.label(),
                     null, null, null, series.unit(), "left", shifted, series.values(), true,
                     comparison.offsetSeconds(), original));
         }

@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261117-chart-style"></script>
+  <script src="/widget-detail-popup.js?v=20261117-unit-compare"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3307,6 +3307,11 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       if (!series.length) {
         return `<div class="count-label">${escapeHtml(meta)}</div><div class="empty" style="padding:12px">시리즈 없음</div>`;
       }
+      const groups = chart.unitGroups || [];
+      if (chart.seriesMode === "sum" && groups.length > 1) {
+        const sections = groups.map((group, index) => `<section style="min-height:180px;height:50%;padding:4px 0"><strong>${escapeHtml(group.unit)}</strong><div style="position:relative;height:calc(100% - 22px)"><canvas data-chart-id="${chart.widgetId}" data-unit-group="${index}"></canvas></div></section>`).join("");
+        return `<div class="count-label">${escapeHtml(meta)} · 단위별 합계</div><div style="flex:1;min-height:0;overflow:auto">${sections}</div>`;
+      }
       const legend = series.slice(0, 8).map((s, i) => {
         const baseKey = s.compare && s.key ? s.key.replace(/:compare$/, "") : null;
         const baseIndex = baseKey ? series.findIndex((item) => item.key === baseKey) : -1;
@@ -3331,11 +3336,14 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
 
     function mountChartInstance(widgetId, data) {
       if (!window.DcimWidgetDetail?.createChart) return;
-      const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
-      const hasUsageCompare = (data?.series || []).some((item) => item.compare && String(item.label || "").includes("사용량 합계"));
-      const chart = window.DcimWidgetDetail.createChart(canvas, data, hasUsageCompare ? "bar" : "line", { showLegend:false });
-      if (!chart) return;
-      state.chartInstances.set(widgetId, chart);
+      const canvases = [...document.querySelectorAll(`canvas[data-chart-id="${widgetId}"]`)];
+      const instances = canvases.map((canvas) => {
+        const group = canvas.dataset.unitGroup == null ? null : data.unitGroups?.[Number(canvas.dataset.unitGroup)];
+        const chartData = group ? { ...data, unit:group.unit, units:[group.unit], series:group.series } : data;
+        const hasUsageCompare = (chartData?.series || []).some((item) => item.compare && String(item.label || "").includes("사용량 합계"));
+        return window.DcimWidgetDetail.createChart(canvas, chartData, hasUsageCompare ? "bar" : "line", { showLegend:!!group });
+      }).filter(Boolean);
+      if (instances.length) state.chartInstances.set(widgetId, { destroy() { instances.forEach((chart) => chart.destroy()); } });
     }
 
     function mountChartInstances() {
@@ -3367,7 +3375,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         document.getElementById("widgetDetailNotice")?.removeAttribute("hidden");
         return;
       }
-      const rangePreset = config.rangePreset || widget.trendRangePreset || "last_3d";
+      const rangePreset = config.rangePreset || widget.trendRangePreset || "last_24h";
       const windowSize = config.window || widget.trendWindow || "15m";
       const seriesMode = config.seriesMode || widget.chartSeriesMode || "sum";
       await window.DcimWidgetDetail.open({

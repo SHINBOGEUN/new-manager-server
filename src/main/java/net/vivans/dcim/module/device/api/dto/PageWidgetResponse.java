@@ -122,7 +122,7 @@ public record PageWidgetResponse(
         String range = "aggregate".equals(kind) && widget.getAggregateRangePreset() != null
                 ? widget.getAggregateRangePreset().name()
                 : widget.getTrendRangePreset();
-        config.put("rangePreset", range == null ? "last_3d" : range);
+        config.put("rangePreset", range == null ? "last_24h" : range);
         config.put("window", widget.getTrendWindow() == null ? "15m" : widget.getTrendWindow());
         config.put("seriesMode", widget.getChartSeriesMode() == null ? "per_device" : widget.getChartSeriesMode().name());
         config.put("chartCompareMode", widget.getChartCompareMode());

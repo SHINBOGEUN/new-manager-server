@@ -100,20 +100,9 @@ public class ChartQueryService {
         ChartPointContext pointContext = buildPointContext(devices, pointNames);
         UnitNormalizer.Plan conversion = unitNormalizer.plan(new LinkedHashSet<>(deviceIds), queryPointNames);
         ChartUnitContext unitContext = buildUnitContext(devices, queryPointNames, conversion);
-        if (comparison == null && (seriesModeOverride == null || seriesModeOverride.isBlank())
-                && unitContext.units().size() > 1 && (widget.getChartSeriesMode() == null
-                || widget.getChartSeriesMode() == PageWidgetChartSeriesMode.sum)) {
-            mode = PageWidgetChartSeriesMode.per_device;
-        }
-        if (unitContext.units().size() > 1 && mode != PageWidgetChartSeriesMode.per_device) {
-            if (comparison != null) {
-                throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
-            } else if (seriesModeOverride == null || seriesModeOverride.isBlank()) {
-                mode = PageWidgetChartSeriesMode.per_device;
-            } else {
-            throw new IllegalArgumentException(
-                    "단위가 달라 합계를 낼 수 없습니다 · 장비별 보기를 선택하세요");
-            }
+        if (unitContext.units().size() > 1 && mode != PageWidgetChartSeriesMode.per_device
+                && mode != PageWidgetChartSeriesMode.sum) {
+            throw new IllegalArgumentException("여러 단위에서는 합계 또는 장비별 보기를 선택하세요");
         }
 
         List<SeriesPoint> raw = pointQuery.findSeries(
@@ -142,17 +131,26 @@ public class ChartQueryService {
             Map<String, String> typeBySource = new HashMap<>();
             pointContext.sourcesByKey().values().forEach(source -> typeBySource.put(
                     source.deviceId() + "\u0000" + source.pointName(), source.dataPointType()));
-            ChartSeriesResponse currentSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
-                    typeBySource, unitContext.singleUnit(), range, window,
-                    point -> includeAggregatePoint(point, deviceById, pointContext), conversion);
-            ChartSeriesResponse previousSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
-                    typeBySource, unitContext.singleUnit(), comparison.range(), window,
-                    point -> includeAggregatePoint(point, deviceById, pointContext), conversion);
-            List<ChartSeriesResponse> previous = ChartComparisonSupport.sum(List.of(previousSum),
-                    unitContext.singleUnit(), "사용량 합계 (" + comparison.previousLabel() + ")");
-            series = ChartComparisonSupport.sum(List.of(currentSum), unitContext.singleUnit(),
-                    "사용량 합계 (" + comparison.currentLabel() + ")");
-            series = ChartComparisonSupport.appendComparison(series, previous, comparison);
+            Map<String, Map<String, String>> groups = new LinkedHashMap<>();
+            for (Map.Entry<String, String> entry : typeBySource.entrySet()) {
+                String unit = unitContext.unitsBySource().get(entry.getKey());
+                String group = unit == null || unit.isBlank() ? "\u0000" + entry.getKey() : unit;
+                groups.computeIfAbsent(group, ignored -> new LinkedHashMap<>()).put(entry.getKey(), entry.getValue());
+            }
+            List<ChartSeriesResponse> currentSums = new ArrayList<>(), previousSums = new ArrayList<>();
+            for (Map.Entry<String, Map<String, String>> group : groups.entrySet()) {
+                String unit = group.getKey().startsWith("\u0000") ? null : group.getKey();
+                Set<String> selected = group.getValue().keySet();
+                java.util.function.Predicate<SeriesPoint> included = point -> selected.contains(sourceKey(point.deviceId(), point.pointName()))
+                        && includeAggregatePoint(point, deviceById, pointContext);
+                ChartSeriesResponse currentSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
+                        group.getValue(), unit, range, window, included, conversion);
+                ChartSeriesResponse previousSum = ComparisonSeriesSupport.sum(pointQuery, deviceIds, queryPointNames,
+                        group.getValue(), unit, comparison.range(), window, included, conversion);
+                currentSums.addAll(ChartComparisonSupport.sum(List.of(currentSum), unit, "합계 (" + comparison.currentLabel() + ")"));
+                previousSums.addAll(ChartComparisonSupport.sum(List.of(previousSum), unit, "합계 (" + comparison.previousLabel() + ")"));
+            }
+            series = ChartComparisonSupport.appendComparison(currentSums, previousSums, comparison);
         }
 
         PageWidgetChartScope scope = widget.getChartScope() == null
@@ -284,14 +282,19 @@ public class ChartQueryService {
             ChartPointContext context,
             ChartUnitContext unitContext
     ) {
-        Map<Instant, Double> sums = new HashMap<>();
+        Map<String, Map<Instant, Double>> groups = new LinkedHashMap<>();
+        Map<String, String> unitByGroup = new HashMap<>();
         for (SeriesPoint point : raw) {
-            if (!includeAggregatePoint(point, deviceById, context)) {
-                continue;
-            }
-            sums.merge(point.time(), point.value(), Double::sum);
+            if (!includeAggregatePoint(point, deviceById, context)) continue;
+            String unit = unitContext.unitFor(point.deviceId(), point.pointName());
+            String group = unit == null || unit.isBlank() ? "\u0000" + sourceKey(point.deviceId(), point.pointName()) : unit;
+            groups.computeIfAbsent(group, ignored -> new HashMap<>()).merge(point.time(), point.value(), Double::sum);
+            unitByGroup.put(group, unit);
         }
-        return List.of(toSeries("sum", "합계", null, null, null, unitContext.singleUnit(), "left", fromInstantMap(sums)));
+        List<ChartSeriesResponse> result = new ArrayList<>();
+        groups.forEach((group, values) -> result.add(toSeries("sum", "합계", null, null, null,
+                unitByGroup.get(group), "left", fromInstantMap(values))));
+        return result;
     }
 
     private List<ChartSeriesResponse> buildByPhase(
@@ -450,7 +453,7 @@ public class ChartQueryService {
     private static List<String> availableSeriesModes(
             List<Device> devices, ChartPointContext context, ChartUnitContext unitContext
     ) {
-        if (unitContext.units().size() > 1) return List.of("per_device");
+        if (unitContext.units().size() > 1) return List.of("sum", "per_device");
         List<String> modes = new ArrayList<>(List.of("sum", "per_device"));
         if (!context.phaseTypes().isEmpty()) modes.add("by_phase");
         long locatedDevices = devices.stream().filter(device -> device.getLocationNode() != null).count();

@@ -62,21 +62,52 @@ public class WidgetTrendQueryService {
         ChartWidgetResponse current = trendForRange(widget, preset, resolvedWindow, range);
         if (comparison == null) {
             if ("per_device".equalsIgnoreCase(seriesMode)) return current;
-            if (current.units().size() > 1) {
-                return current;
-            }
-            return withSeries(current, ChartComparisonSupport.sum(current.series(), current.unit(), "사용량 합계"), "sum");
+            return withSeries(current, sumSeriesByUnit(current.series(), "합계"), "sum");
         }
-        if (current.units().size() > 1) throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
         ChartWidgetResponse previous = trendForRange(widget, preset, resolvedWindow, comparison.range());
-        List<ChartSeriesResponse> currentValues = comparisonSeries(widget, current, range, resolvedWindow);
-        List<ChartSeriesResponse> previousValues = comparisonSeries(widget, previous, comparison.range(), resolvedWindow);
-        List<ChartSeriesResponse> currentSum = ChartComparisonSupport.sum(currentValues, current.unit(),
-                "사용량 합계 (" + comparison.currentLabel() + ")");
-        List<ChartSeriesResponse> previousSum = ChartComparisonSupport.sum(previousValues, previous.unit(),
-                "사용량 합계 (" + comparison.previousLabel() + ")");
-        List<ChartSeriesResponse> series = ChartComparisonSupport.appendComparison(currentSum, previousSum, comparison);
-        return withSeries(current, series, "sum", List.of("sum"));
+        List<ChartSeriesResponse> currentSum;
+        List<ChartSeriesResponse> previousSum;
+        if (widget.getQueryKind() == PageWidgetQueryKind.last || widget.getQueryKind() == PageWidgetQueryKind.aggregate) {
+            currentSum = comparisonByUnit(standardSources(widget), range, resolvedWindow, comparison.currentLabel());
+            previousSum = comparisonByUnit(standardSources(widget), comparison.range(), resolvedWindow, comparison.previousLabel());
+        } else {
+            currentSum = sumSeriesByUnit(current.series(), "합계 (" + comparison.currentLabel() + ")");
+            previousSum = sumSeriesByUnit(previous.series(), "합계 (" + comparison.previousLabel() + ")");
+        }
+        return withSeries(current, ChartComparisonSupport.appendComparison(currentSum, previousSum, comparison), "sum", List.of("sum"));
+    }
+
+    private static List<ChartSeriesResponse> sumSeriesByUnit(List<ChartSeriesResponse> sources, String label) {
+        Map<String, List<ChartSeriesResponse>> groups = new LinkedHashMap<>();
+        for (ChartSeriesResponse source : sources) {
+            String unit = source.unit();
+            String group = unit == null || unit.isBlank() ? "\u0000" + source.key() : unit;
+            groups.computeIfAbsent(group, ignored -> new ArrayList<>()).add(source);
+        }
+        List<ChartSeriesResponse> result = new ArrayList<>();
+        for (List<ChartSeriesResponse> group : groups.values()) {
+            result.addAll(ChartComparisonSupport.sum(group, group.get(0).unit(), label));
+        }
+        return result;
+    }
+
+    private List<ChartSeriesResponse> comparisonByUnit(List<Source> sources, QueryRanges.Range range,
+                                                        String window, String label) {
+        Map<String, String> unitBySource = unitsBySource(sources);
+        Map<String, List<Source>> groups = new LinkedHashMap<>();
+        for (Source source : sources) {
+            String sourceKey = key(source.device().getId(), source.pointName());
+            String unit = unitBySource.get(sourceKey);
+            String group = unit == null || unit.isBlank() ? "\u0000" + sourceKey : unit;
+            groups.computeIfAbsent(group, ignored -> new ArrayList<>()).add(source);
+        }
+        List<ChartSeriesResponse> result = new ArrayList<>();
+        for (List<Source> group : groups.values()) {
+            Source first = group.get(0);
+            String unit = unitBySource.get(key(first.device().getId(), first.pointName()));
+            result.addAll(ChartComparisonSupport.sum(comparisonSeries(group, unit, range, window), unit, "합계 (" + label + ")"));
+        }
+        return result;
     }
 
     private static ChartWidgetResponse withSeries(ChartWidgetResponse current,
@@ -91,14 +122,6 @@ public class WidgetTrendQueryService {
                 current.chartScope(), mode, current.rangePreset(), current.window(),
                 current.start(), current.end(), current.unit(), current.units(), series,
                 current.dataStatus(), availableModes).withUnitConverted(current.unitConverted());
-    }
-
-    private List<ChartSeriesResponse> comparisonSeries(PageWidget widget, ChartWidgetResponse response,
-                                                        QueryRanges.Range range, String window) {
-        if (widget.getQueryKind() != PageWidgetQueryKind.last && widget.getQueryKind() != PageWidgetQueryKind.aggregate) {
-            return response.series();
-        }
-        return comparisonSeries(standardSources(widget), response.unit(), range, window);
     }
 
     private List<ChartSeriesResponse> comparisonSeries(List<Source> sources, String unit,
@@ -180,26 +203,17 @@ public class WidgetTrendQueryService {
         if (comparison != null) range = comparison.currentRange();
         List<String> units = units(sources);
         String unit = units.size() == 1 ? units.get(0) : null;
-        if (comparison != null && units.size() > 1) throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
-        if (units.size() > 1 && comparison == null && !"per_device".equalsIgnoreCase(seriesMode)) {
-            List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
-            return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
-                    preset.name(), resolvedWindow, range.start(), range.end(), null, units, series, null,
-                    List.of("per_device")).withUnitConverted(conversionPlan(sources).converted());
-        }
         if ("per_device".equalsIgnoreCase(seriesMode) && comparison == null) {
             List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
             return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
                     preset.name(), resolvedWindow, range.start(), range.end(), unit, units, series, null,
                     List.of("sum", "per_device")).withUnitConverted(conversionPlan(sources).converted());
         }
-        List<ChartSeriesResponse> currentValues = comparisonSeries(sources, unit, range, resolvedWindow);
-        List<ChartSeriesResponse> summed = ChartComparisonSupport.sum(currentValues, unit,
-                comparison == null ? "사용량 합계" : "사용량 합계 (" + comparison.currentLabel() + ")");
+        List<ChartSeriesResponse> summed = comparison == null
+                ? sumSeriesByUnit(toSourceSeries(sources, range, resolvedWindow), "합계")
+                : comparisonByUnit(sources, range, resolvedWindow, comparison.currentLabel());
         if (comparison != null) {
-            List<ChartSeriesResponse> previous = ChartComparisonSupport.sum(
-                    comparisonSeries(sources, unit, comparison.range(), resolvedWindow), unit,
-                    "사용량 합계 (" + comparison.previousLabel() + ")");
+            List<ChartSeriesResponse> previous = comparisonByUnit(sources, comparison.range(), resolvedWindow, comparison.previousLabel());
             summed = ChartComparisonSupport.appendComparison(summed, previous, comparison);
         }
         return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "sum",
