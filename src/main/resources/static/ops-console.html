@@ -10196,9 +10196,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wUnitFilterBlock").style.display = showPoints ? "block" : "none";
       if (showPoints) {
         const previousUnit = unitSelect.value;
-        const units = [...new Set(state.widgetSources.filter(source => !source.ambiguous && (kind !== "aggregate" || ["POWER", "ENERGY"].includes(String(source.dataPointType || "").toUpperCase()))).map(source => String(source.unit || "").trim()).filter(Boolean))].sort();
-        unitSelect.innerHTML = '<option value="">모든 단위</option>' + units.map(unit => `<option value="${esc(unit)}">${esc(unit)}</option>`).join("");
-        if (units.includes(previousUnit)) unitSelect.value = previousUnit;
+        const units = (state.codes.UNIT || []).filter(code => code.code && code.enabled !== false);
+        unitSelect.innerHTML = '<option value="">모든 단위</option>' + units.map(unit => `<option value="${esc(unit.code)}">${esc(unit.name || unit.code)} (${esc(unit.code)})</option>`).join("");
+        if (units.some(unit => String(unit.code) === previousUnit)) unitSelect.value = previousUnit;
       }
       if (kind !== "last") {
         $("wDevicePointPick").style.display = "none";
