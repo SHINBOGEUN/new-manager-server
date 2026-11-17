@@ -1568,6 +1568,11 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     #wEditorCard .point-grid label > span { min-width:0; overflow-wrap:anywhere; }
     #wEditorCard .point-grid b { display:block; font-size:12px; font-weight:600; }
     #wEditorCard .point-grid small { display:block; margin-top:4px; color:var(--muted); font-size:10px; font-weight:400; }
+    #wEditorCard #wPsychrometricBlock .grid2 { grid-template-columns:minmax(0,1fr); gap:16px; }
+    #wEditorCard #wPowerDistributionBlock > .row { flex-wrap:wrap; }
+    #wEditorCard #wAggregateSourceList, #wEditorCard #wCctvCameraChoices, #wEditorCard #wModelCandidates { max-height:220px; overflow:auto; }
+    #wEditorCard .widget-data-section { margin:0 0 16px; padding:12px; border:1px solid var(--line); border-radius:8px; }
+    #wEditorCard .widget-data-count { display:block; margin:6px 0; font-size:12px; color:var(--muted); }
     #wEditorCard #wDeviceList .empty { border:0; background:none; text-align:left; color:var(--muted); font-size:12px; }
     .form-compact :is(input:not([type=checkbox]):not([type=radio]), select, button) { min-height:32px; font-size:13px; }
     .form-compact .field { gap:4px; color:var(--muted); font-size:12px; }
@@ -2933,6 +2938,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:8px">
               표시할 CCTV 선택 <span class="muted">(여러 대를 고르면 위젯에서 전환할 수 있습니다)</span>
             </div>
+            <input id="wCctvSearch" type="search" placeholder="카메라 이름 검색" aria-label="CCTV 검색" style="width:100%;margin-bottom:8px" />
+            <span id="wCctvSelectedCount" class="widget-data-count"></span>
             <div id="wCctvCameraChoices" class="pick-list"><div class="muted">CCTV 목록을 불러오는 중…</div></div>
           </div>
 
@@ -2956,7 +2963,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           </div>
 
           <div id="wUnitFilterBlock" data-widget-stage="2" style="display:none"><label class="field">단위 먼저 선택<select id="wSourceUnit"><option value="">모든 단위</option></select></label><small class="muted">선택한 단위를 가진 장비와 측정항목만 표시합니다.</small></div>
-          <div id="wAggregateSourceBlock" data-widget-stage="2" style="display:none"><label class="field">집계 대상 방식<select id="wAggregateSourceMode"><option value="device">장비별 측정항목 선택</option><option value="group">장비 그룹 · 공통 측정항목</option></select></label><div id="wAggregateIndividual"><input id="wAggregateSearch" type="search" placeholder="장비 이름·측정항목 검색" aria-label="집계 장비 검색"><div id="wAggregateSourceList" class="pick-list"></div><small class="muted">장비마다 집계할 측정항목을 하나씩 선택하세요.</small></div></div>
+          <div id="wAggregateSourceBlock" data-widget-stage="2" style="display:none"><label class="field">집계 대상 방식<select id="wAggregateSourceMode"><option value="device">장비별 측정항목 선택</option><option value="group">장비 그룹 · 공통 측정항목</option></select></label><div id="wAggregateIndividual"><input id="wAggregateSearch" type="search" placeholder="장비 이름·측정항목 검색" aria-label="집계 장비 검색"><span id="wAggregateSelectedCount" class="widget-data-count"></span><div id="wAggregateSourceList" class="pick-list"></div><small class="muted">장비마다 집계할 측정항목을 하나씩 선택하세요.</small></div></div>
           <div id="wChartBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">
               차트 대상 방식
@@ -2974,12 +2981,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           <div id="wDeviceBlock" data-widget-stage="2" style="margin-top:14px">
             <div id="wDeviceLabel" class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">장비 선택</div>
             <input id="wDeviceSearch" type="search" placeholder="장비 이름·모델 검색" aria-label="위젯 장비 검색" style="width:100%;margin-bottom:8px" />
-            <div id="wDeviceGroupPick" style="margin-bottom:8px;display:none">
-              <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">장비 그룹 추가 <span class="muted">(그룹 구성 변경이 위젯에 자동 반영됩니다)</span></div>
+            <details id="wDeviceGroupPick" style="margin-bottom:8px;display:none">
+              <summary id="wDeviceGroupSummary">장비 그룹으로 선택 (선택 사항)</summary>
+              <div class="muted" style="font-size:12px;margin:6px 0">그룹 구성 변경이 위젯에 자동 반영됩니다.</div>
               <div class="row"><select id="wPickDeviceGroup" style="flex:1;min-width:180px"></select><button type="button" class="ghost" id="wAddDeviceGroup">그룹 추가</button></div>
               <div id="wDeviceGroupHint" class="muted" style="font-size:12px;margin-top:6px"></div>
               <div id="wDeviceGroupList" class="pick-list"></div>
-            </div>
+            </details>
             <div id="wDeviceCandidateList" class="form-compact-checklist" aria-label="장비 후보 목록"></div>
             <select id="wPickDevice" style="display:none"></select>
             <div id="wDevicePointPick" style="margin-top:8px;display:none">
@@ -3002,10 +3010,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
 
           <div id="wModelBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">대상 모델 선택</div>
-            <div class="row">
-              <select id="wPickModel" style="flex:1;min-width:180px"></select>
-              <button type="button" class="primary" id="wAddModel">추가</button>
-            </div>
+            <input id="wModelSearch" type="search" placeholder="모델 이름 검색" aria-label="모델 검색" style="width:100%;margin-bottom:8px" />
+            <div id="wModelCandidates" class="form-compact-checklist" aria-label="모델 선택"></div>
+            <div class="row" hidden><select id="wPickModel"></select><button type="button" id="wAddModel">추가</button></div>
             <div id="wModelList" class="pick-list"></div>
           </div>
 
@@ -3105,13 +3112,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
                 </select>
               </label>
             </div>
-            <div class="muted" style="font-size:12px;margin-top:6px">위젯을 꺼도 계산 수집은 계속됩니다. 계산 정의에서 별도로 중지하세요.</div>
+            <div class="muted" style="font-size:12px;margin-top:6px">계산 지표를 고르면 수집 중인 결과가 표시됩니다. 계산 수집 중지는 계산 지표 관리에서 설정하세요.</div>
           </div>
 
           <div id="wPsychrometricBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">온도·습도 데이터 선택</div>
             <div class="muted" style="font-size:12px;margin-bottom:10px">
-              선택한 소스의 최근 5개 시간 평균과 최신 평균을 InfluxDB에서 조회합니다. 온도는 °C, 습도는 상대습도(%)를 선택하세요.
+              온도와 상대습도 항목을 각각 선택하세요. 선택한 값의 최근 추이와 최신 평균을 표시합니다.
             </div>
             <div class="grid2">
               <div>
@@ -3136,7 +3143,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           <div id="wPowerDistributionBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">전력 그룹 구성</div>
             <div class="muted" style="font-size:12px;margin-bottom:10px">
-              POWER 데이터 유형이며 InfluxDB에 W 단위로 저장되는 측정항목만 등록할 수 있습니다. 모든 그룹의 최신값 합으로 전체 전력과 비율을 계산합니다.
+              장비 그룹을 두 개 이상 추가하고, 장비별 전력 항목을 확인하세요. 그룹의 최신 전력 합계와 비율을 표시합니다.
             </div>
             <div class="row">
               <select id="wPowerExistingGroup" aria-label="기존 장비 그룹" style="flex:1;min-width:180px"><option value="">장비 그룹 선택</option></select>
@@ -9166,21 +9173,27 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         return;
       }
       const selected = new Set(state.cctvCameraIds.map(Number));
-      box.innerHTML = state.cctvCameras.map((camera) =>
+      const query = ($("wCctvSearch")?.value || "").trim().toLowerCase();
+      const cameras = state.cctvCameras.filter((camera) => `${camera.name || ""} ${camera.cameraKey || ""}`.toLowerCase().includes(query));
+      $("wCctvSelectedCount").textContent = `${selected.size}대 선택`;
+      box.innerHTML = cameras.map((camera) =>
         '<label class="pick-item" style="display:flex;align-items:center;gap:10px;cursor:pointer">'
         + '<input type="checkbox" data-cctv-camera="' + camera.id + '" '
         + (selected.has(Number(camera.id)) ? 'checked ' : '')
         + '/><span><b>' + esc(camera.name) + '</b><span class="muted" style="display:block">'
-        + esc(camera.cameraKey) + '</span></span></label>').join("");
+        + esc(camera.cameraKey) + '</span></span></label>').join("") || '<div class="empty">검색 결과가 없습니다.</div>';
       box.querySelectorAll("[data-cctv-camera]").forEach((input) => {
         input.addEventListener("change", () => {
           const id = Number(input.dataset.cctvCamera);
           const ids = new Set(state.cctvCameraIds.map(Number));
           if (input.checked) ids.add(id); else ids.delete(id);
           state.cctvCameraIds = [...ids];
+          $("wCctvSelectedCount").textContent = `${ids.size}대 선택`;
         });
       });
     }
+
+    $("wCctvSearch").addEventListener("input", renderCctvCameraChoices);
 
     function widgetDeviceOptions() {
       const devices = new Map();
@@ -9957,6 +9970,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       if (!visible) return;
       const point = kind === "aggregate" ? selectedAggregatePoint() : null;
       const selected = new Set(state.widgetDeviceGroupIds.map(Number));
+      $("wDeviceGroupSummary").textContent = selected.size ? `장비 그룹 ${selected.size}개 선택됨` : "장비 그룹으로 선택 (선택 사항)";
       const groups = state.deviceGroups.filter((group) => group.enabled
         && !selected.has(Number(group.id)) && (group.devices || []).length
         && (group.devices || []).every((device) => state.widgetPageDeviceIds?.has(Number(device.id))));
@@ -10140,6 +10154,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     function isIndividualAggregate() { return $("wAggregateSourceMode")?.value !== "group"; }
     function renderAggregateSourceChoices() {
       const box = $("wAggregateSourceList"); if (!box) return;
+      $("wAggregateSelectedCount").textContent = `${state.aggregateWidgetSources.length}대 선택`;
       const op = $("wOp").value, type = ["usage", "usage_rank"].includes(op) ? "ENERGY" : op ? "POWER" : null;
       if (!type) { box.innerHTML = '<div class="empty">먼저 집계 방식을 선택하세요.</div>'; return; }
       const query = $("wAggregateSearch").value.trim().toLowerCase(), unit = $("wSourceUnit").value;
@@ -10158,6 +10173,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         const id = Number(select.dataset.aggregateDevice);
         state.aggregateWidgetSources = state.aggregateWidgetSources.filter(item => item.deviceId !== id);
         if (select.value) state.aggregateWidgetSources.push({deviceId:id, pointName:select.value});
+        $("wAggregateSelectedCount").textContent = `${state.aggregateWidgetSources.length}대 선택`;
       }));
     }
     $("wAggregateSearch").addEventListener("input", renderAggregateSourceChoices);
@@ -10176,6 +10192,23 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const sourceModels = new Set(state.widgetSources.filter((source) => !source.ambiguous)
         .map((source) => Number(source.modelId)));
       const available = (state.models || []).filter((m) => !selected.has(m.id) && sourceModels.has(Number(m.id)));
+      const query = ($("wModelSearch")?.value || "").trim().toLowerCase();
+      const unit = $("wSourceUnit")?.value || "";
+      const candidates = (state.models || []).filter((model) => {
+        const hasSource = state.widgetSources.some((source) => Number(source.modelId) === Number(model.id) && !source.ambiguous && (!unit || compatibleUnit(source.unit, unit)));
+        return (hasSource || selected.has(Number(model.id))) && `${model.name || ""} ${model.manufacturer || ""}`.toLowerCase().includes(query);
+      });
+      const box = $("wModelCandidates");
+      if (box) {
+        box.innerHTML = candidates.map((model) => `<label><input type="checkbox" data-model-choice="${Number(model.id)}" ${selected.has(Number(model.id)) ? "checked" : ""}><span>${esc(model.name)}${model.manufacturer ? " · " + esc(model.manufacturer) : ""}</span></label>`).join("") || '<div class="empty">선택할 수 있는 모델이 없습니다.</div>';
+        box.querySelectorAll("[data-model-choice]").forEach((input) => input.addEventListener("change", () => {
+          const id = Number(input.dataset.modelChoice);
+          if (input.checked && !state.widgetModelIds.includes(id)) state.widgetModelIds.push(id);
+          else if (!input.checked) state.widgetModelIds = state.widgetModelIds.filter((item) => Number(item) !== id);
+          renderWidgetModels();
+          refreshWidgetPoints();
+        }));
+      }
       fillSelect(
         $("wPickModel"),
         available,
@@ -10184,11 +10217,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       );
     }
 
+    $("wModelSearch").addEventListener("input", fillWidgetModelPick);
+
     function renderWidgetModels() {
       const box = $("wModelList");
       if (!box) return;
       if (!state.widgetModelIds.length) {
-        box.innerHTML = '<div class="empty" style="padding:12px">아직 없음 — 위에서 모델을 고르고 「추가」</div>';
+        box.innerHTML = '<div class="empty" style="padding:12px">위 목록에서 모델을 선택하세요.</div>';
         return;
       }
       box.innerHTML = state.widgetModelIds.map((id) => {
@@ -10234,14 +10269,21 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     }
 
     function arrangeWidgetForm(kind) {
-      const points = $("wPointsBlock");
-      const devices = $("wDeviceBlock");
-      const models = $("wModelBlock");
-      if (!points || !devices || !models) return;
-      if (kind === "aggregate") {
-        devices.parentNode.insertBefore(points, devices);
-      } else {
-        models.parentNode.insertBefore(points, models.nextSibling);
+      const panel = document.querySelector('[data-widget-panel="data"]');
+      if (!panel) return;
+      const order = {
+        last:["wDeviceBlock"], chart:["wUnitFilterBlock", "wChartBlock", "wDeviceBlock", "wModelBlock", "wPointsBlock"],
+        aggregate:["wUnitFilterBlock", "wAggBlock", "wAggregateSourceBlock", "wPointsBlock", "wDeviceBlock"],
+        count:["wCountBlock"], calculated:["wPueBlock"], psychrometric:["wPsychrometricBlock"],
+        power_distribution:["wPowerDistributionBlock"], cctv:["wCctvBlock"]
+      };
+      let after = $("wDataFlowGuide");
+      for (const id of order[kind] || []) {
+        const element = $(id);
+        if (!element || element.parentNode !== panel) continue;
+        element.classList.add("widget-data-section");
+        panel.insertBefore(element, after ? after.nextSibling : panel.firstChild);
+        after = element;
       }
     }
 
@@ -10266,7 +10308,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         cctv: "등록된 카메라를 한 대 이상 선택하세요. 여러 대를 선택하면 위젯에서 카메라를 전환해 볼 수 있습니다.",
       };
       $("wKindHint").textContent = kindHints[kind] || "";
-      const flows = { last:"장비 선택 → 측정항목 선택 → 선택 적용", chart:"단위 선택 → 대상 장비 또는 모델 추가 → 측정항목 선택", aggregate:"집계 방식 선택 → 단위 선택 → 장비별 측정항목 선택", count:"표시 방식 선택 → 필요하면 모델 선택", calculated:"계산 지표 선택", psychrometric:"온도와 습도 측정항목을 각각 선택해 추가", power_distribution:"전력 그룹을 두 개 이상 만들고 각 그룹의 측정항목 선택", cctv:"표시할 카메라 선택" };
+      const flows = { last:"장비 선택 → 측정항목 선택 → 선택 적용", chart:"단위 선택 → 대상 장비 또는 모델 추가 → 측정항목 선택", aggregate:"단위 선택 → 집계 방식 선택 → 장비별 측정항목 선택", count:"표시 방식 선택 → 필요하면 모델 선택", calculated:"계산 지표 선택", psychrometric:"온도와 습도 측정항목을 각각 선택해 추가", power_distribution:"전력 그룹을 두 개 이상 만들고 각 그룹의 측정항목 선택", cctv:"표시할 카메라 선택" };
       if ($("wDataFlowGuide")) $("wDataFlowGuide").textContent = flows[kind] || "";
       const previousChartPoints = kind === "chart" ? new Set(selectedWidgetPoints()) : new Set();
       const previousAggregatePoint = kind === "aggregate" ? selectedAggregatePoint() : null;
@@ -13955,6 +13997,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wVisualColor").value = "#54cbf3";
       setWidgetVisualStyle("classic");
       $("wDeviceSearch").value = "";
+      $("wModelSearch").value = "";
+      $("wCctvSearch").value = "";
       $("wPointSearch").value = "";
       $("wCatalogSearch").value = "";
       $("wKind").value = "last";
