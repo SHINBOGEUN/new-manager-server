@@ -326,6 +326,12 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     .last-device-value small { font-size:10px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .last-device-value strong { font-size:13px; white-space:nowrap; font-variant-numeric:tabular-nums; }
     @container (max-width:350px) { .last-device-summary { flex-wrap:wrap; gap:6px; padding:8px; } .last-device-values { justify-content:flex-start; } .last-device-value { padding:4px; } }
+    .last-device-summary { flex-wrap:wrap; align-content:center; overflow:auto; }
+    .last-device-summary .metric-content { flex:1 0 125px; }
+    .last-device-summary .metric-number { flex-wrap:nowrap; }
+    .last-device-summary .metric-number strong { white-space:nowrap; overflow-wrap:normal; font-size:clamp(18px,6cqw,40px); }
+    .last-device-values { flex:1 1 180px; justify-content:flex-start; max-height:none; }
+    body.edit-mode .last-device-summary { padding-top:38px; }
     .metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); grid-auto-rows:minmax(116px,1fr); gap:10px; width:100%; min-width:0; align-content:stretch; }
     .metric-tile { --metric-color:#54cbf3; position:relative; display:flex; gap:15px; align-items:center; min-width:0; padding:18px 16px; border:1px solid color-mix(in srgb,var(--metric-color) 18%,var(--line)); border-top:2px solid var(--metric-color); border-radius:10px; background:color-mix(in srgb,var(--metric-color) 4%,var(--panel)); overflow:hidden; }
     .metric-tile.energy { --metric-color:#b18bff; }
@@ -641,6 +647,7 @@ html[data-theme="light"] .widget-data-table td.widget-table-number { color:#075e
     body.embedded-board .board-wrap { width:100%; height:100%; padding:0; overflow:auto; scrollbar-gutter:auto; }
     body.embedded-board .board { min-width:0; min-height:100%; padding:0; background:none; }
     body.embedded-board aside { display:none; }
+    body.widget-workspace.edit-mode .board { min-height:calc(100% + 240px); align-content:start; }
     body.embedded-board.edit-mode .board { background-image:linear-gradient(to right,rgba(42,53,68,.42) 1px,transparent 1px),linear-gradient(to bottom,rgba(42,53,68,.42) 1px,transparent 1px); }
     .page-visualization { position:relative; margin:0 0 14px; border:1px solid #263951; border-radius:12px; overflow:hidden; background:#101a29; }
     .page-visualization[hidden] { display:none !important; }
@@ -2970,7 +2977,10 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       if (configured && (configured.pointNames || []).length > 1) {
         const device = (last.devices || []).find((item) => Number(item.deviceId) === Number(configured.deviceId));
         const byName = new Map((device?.points || []).map((point) => [point.pointName, point]));
-        const items = configured.pointNames.map((name) => byName.get(name) || { pointName:name, value:null, unit:"" });
+        const names = [...configured.pointNames];
+        const primary = widget.clickConfig?.primaryPointName;
+        if (names.includes(primary)) names.unshift(...names.splice(names.indexOf(primary), 1));
+        const items = names.map((name) => byName.get(name) || { pointName:name, value:null, unit:"" });
         const first = items[0], presentation = latestMetricPresentation(first.pointName, first.unit);
         const main = latestMetricValue(first.displayValue ?? first.value, first.displayUnit ?? first.unit, first.pointName);
         const extras = items.slice(1).map((point) => {

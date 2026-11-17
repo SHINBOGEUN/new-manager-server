@@ -3001,6 +3001,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             </div>
             <div class="row" style="margin-top:8px"><button type="button" class="primary" id="wAddDevice" disabled>선택 적용</button></div>
             <div id="wDeviceList" class="pick-list"></div>
+            <label id="wPrimaryPointWrap" class="field" style="display:none;margin-top:10px">대표로 크게 표시할 측정항목
+              <select id="wPrimaryPoint" aria-label="대표 측정항목"></select>
+            </label>
             <div id="wTableOptions" style="margin-top:14px">
 
               <div id="wTableEditor" hidden>
@@ -4049,6 +4052,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       widgetDeviceIds: [],
       widgetDeviceGroupIds: [],
       lastWidgetSources: [],
+      lastPrimaryPoint: "",
       aggregateWidgetSources: [],
       widgetPendingPointName: "",
       widgetItDeviceIds: [],
@@ -9588,9 +9592,12 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         unit = state.pueDefinitions.find(item => Number(item.id) === Number($("wPueDefinition").value))?.resultUnit || "";
       }
       const live = widgetVisualPreviewData;
+      const livePoints = kind === "last" && live?.kind === "last" ? [...(live.data?.devices?.[0]?.points || [])] : [];
+      const mainIndex = livePoints.findIndex((point) => point.pointName === state.lastPrimaryPoint);
+      if (mainIndex > 0) livePoints.unshift(...livePoints.splice(mainIndex, 1));
       let actual = false;
       if (live && live.kind === kind) {
-        let metric = kind === 'last' ? live.data?.devices?.flatMap(device => device.points || [])[0] : live.data;
+        let metric = kind === 'last' ? livePoints[0] : live.data;
         let number = kind === 'count' ? metric?.count : metric?.value;
         if (number != null && Number.isFinite(Number(number))) {
           number = Number(number); unit = kind === 'count' ? '대' : (metric.unit || '');
@@ -9604,7 +9611,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wVisualPreviewUnit").textContent = unit;
       const previousExtra = preview.querySelector(".widget-preview-extra");
       if (previousExtra) previousExtra.remove();
-      const extraPoints = kind === "last" && live?.kind === "last" ? (live.data?.devices?.[0]?.points || []).slice(1) : [];
+      const extraPoints = livePoints.slice(1);
       if (extraPoints.length) {
         const extra = document.createElement("div"); extra.className = "widget-preview-extra";
         extra.innerHTML = extraPoints.map((point) => `<div><small>${esc(point.pointName)}</small><b>${point.value == null ? "—" : esc(Number(point.value).toLocaleString("ko-KR", { maximumFractionDigits:2 }))} ${esc(point.unit || "")}</b></div>`).join("");
@@ -9661,7 +9668,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const sequence = ++widgetPreviewSequence;
       if ($("wKind").value !== "last") return;
       const selected = state.lastWidgetSources[0];
-      const sources = (selected?.pointNames || []).map((pointName) => state.widgetSources.find((item) => Number(item.deviceId) === Number(selected.deviceId) && item.pointName === pointName && !item.ambiguous)).filter(Boolean);
+      const orderedNames = [...(selected?.pointNames || [])];
+      if (orderedNames.includes(state.lastPrimaryPoint)) orderedNames.unshift(...orderedNames.splice(orderedNames.indexOf(state.lastPrimaryPoint), 1));
+      const sources = orderedNames.map((pointName) => state.widgetSources.find((item) => Number(item.deviceId) === Number(selected.deviceId) && item.pointName === pointName && !item.ambiguous)).filter(Boolean);
       widgetVisualPreviewData = null;
       updateWidgetDesignPreview();
       if (!sources.length) return;
@@ -10091,6 +10100,21 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       );
     }
 
+    function refreshPrimaryPointPicker() {
+      const wrap = $("wPrimaryPointWrap"), select = $("wPrimaryPoint");
+      if (!wrap || !select) return;
+      const names = $("wKind")?.value === "last" && !$("wTableEnabled").checked && state.lastWidgetSources.length === 1
+        ? state.lastWidgetSources[0].pointNames || [] : [];
+      if (!names.includes(state.lastPrimaryPoint)) state.lastPrimaryPoint = names[0] || "";
+      select.innerHTML = names.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join("");
+      select.value = state.lastPrimaryPoint;
+      wrap.style.display = names.length > 1 ? "" : "none";
+    }
+    $("wPrimaryPoint").addEventListener("change", () => {
+      state.lastPrimaryPoint = $("wPrimaryPoint").value;
+      refreshSelectedLatestPreview();
+    });
+
     function renderWidgetDevices() {
       const box = $("wDeviceList");
       if (!box) return;
@@ -10103,6 +10127,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           : kind === "last" ? "장비와 측정항목" : "장비 선택";
       }
       const isLast = $("wKind")?.value === "last";
+      refreshPrimaryPointPicker();
       if (!state.widgetDeviceIds.length && !state.widgetDeviceGroupIds.length) {
         const aggregate = $("wKind")?.value === "aggregate";
         box.innerHTML = aggregate
@@ -10312,7 +10337,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       const kind = $("wKind").value;
       const kindHints = {
-        last: "장비 한 대의 측정항목을 여러 개 선택해 한 위젯에 표시합니다. 첫 항목은 크게 표시됩니다.",
+        last: "장비 한 대의 측정항목을 여러 개 선택하고 크게 표시할 대표 항목을 고릅니다.",
         count: "등록된 장비 수를 전체·모델별·특정 모델로 집계합니다.",
         chart: "시간에 따른 값 변화를 보여줍니다. 장비나 모델을 고른 뒤 측정항목을 선택하세요.",
         aggregate: "전력과 사용량의 합계·순위 또는 최대수요전력을 표시합니다.",
@@ -13991,6 +14016,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
+      state.lastPrimaryPoint = "";
       state.aggregateWidgetSources = [];
       $("wAggregateSourceMode").value = "device";
       $("wAggregateSearch").value = "";
@@ -14233,6 +14259,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           deviceId: Number(source.deviceId),
           pointNames: [...(source.pointNames || [])],
         }));
+        state.lastPrimaryPoint = typeof w.clickConfig?.primaryPointName === "string" ? w.clickConfig.primaryPointName : "";
         let storedColumns = null;
         try { storedColumns = w.tableColumnsJson ? JSON.parse(w.tableColumnsJson) : null; } catch (_) { storedColumns = null; }
         widgetTablePreviouslyEnabled = w.queryKind === "last" && Array.isArray(storedColumns) && storedColumns.length > 0;
@@ -14967,7 +14994,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("wEditPageLayout").onclick = openPageLayoutEditor;
     $("wCreatePage").addEventListener("change", updateWidgetPagePreview);
     $("wName").addEventListener("input", updateWidgetDesignPreview);
-    $('wTableEnabled').addEventListener('change', () => { renderWidgetTableEditor(); fillWidgetDevicePick(); loadDevicePointPicker(); });
+    $('wTableEnabled').addEventListener('change', () => { renderWidgetTableEditor(); refreshPrimaryPointPicker(); fillWidgetDevicePick(); loadDevicePointPicker(); });
     $("wEditorCard").addEventListener("click", (event) => {
       if (event.target.closest("button") && ["chart", "psychrometric"].includes($("wKind").value)) scheduleRealGraphPreview();
     });
@@ -15053,6 +15080,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       state.widgetDeviceIds = [];
       state.widgetDeviceGroupIds = [];
       state.lastWidgetSources = [];
+      state.lastPrimaryPoint = "";
       state.aggregateWidgetSources = [];
       renderWidgetTableEditor();
       state.widgetItDeviceIds = [];
@@ -15088,6 +15116,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         seriesMode: $("wClickSeries")?.value || "sum",
         compare: $("wClickCompare")?.value || "none",
         chartCompareMode: $("wChartCompareMode")?.value || "none" };
+      if ($("wKind").value === "last" && !$("wTableEnabled").checked && state.lastPrimaryPoint) config.primaryPointName = state.lastPrimaryPoint;
       if (action === "device") config.target = { deviceId: Number(rawTarget) };
       if (action === "rack") config.target = { rackLocationCode: rawTarget };
       if (action === "page") config.target = { pageCode: rawTarget };

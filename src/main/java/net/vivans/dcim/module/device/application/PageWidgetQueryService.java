@@ -282,6 +282,13 @@ public class PageWidgetQueryService {
             if ("rack".equals(action) && !(map.get("rackLocationCode") instanceof String code && !code.isBlank()))
                 throw new IllegalArgumentException("랙 상세 대상을 지정하세요");
         }
+        Object primaryPoint = config.get("primaryPointName");
+        if (primaryPoint != null && (!(primaryPoint instanceof String name) || name.isBlank()
+                || widget.getQueryKind() != PageWidgetQueryKind.last
+                || widget.lastSourceDefinitions().size() != 1
+                || !widget.lastSourceDefinitions().get(0).pointNames().contains(name))) {
+            throw new IllegalArgumentException("대표 측정항목은 선택한 장비의 측정항목이어야 합니다");
+        }
         Object pointNames = config.get("pointNames");
         if (pointNames != null && !(pointNames instanceof List<?>)) throw new IllegalArgumentException("pointNames 형식이 올바르지 않습니다");
         try {
