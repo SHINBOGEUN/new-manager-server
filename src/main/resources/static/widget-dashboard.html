@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261117-chart-design"></script>
+  <script src="/widget-detail-popup.js?v=20261117-chart-layers"></script>
   <script>
 (function (global) {
   'use strict';
@@ -2912,6 +2912,15 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
         if (seriesMode) params.set("seriesMode", seriesMode);
         const compare = overrides.compare || widget.clickConfig?.chartCompareMode;
         params.set("compare", compare || "none");
+        const layers = widget.clickConfig?.chartLayers;
+        if (Array.isArray(layers) && layers.length) {
+          if (!window.DcimWidgetDetail?.loadConfiguredLayers) throw new Error("기간별 차트 표시 기능을 불러오지 못했습니다.");
+          return await window.DcimWidgetDetail.loadConfiguredLayers(layers, ({rangePreset, window, compare}) => {
+            const query = new URLSearchParams(params); query.set("rangePreset", rangePreset); query.set("compare", compare); query.set("seriesMode", "sum");
+            if (window) query.set("window", window);
+            return api(`/api/manager/query/chart?${query}`);
+          }, windowOverride || widget.chartWindow || "");
+        }
         return await api(`/api/manager/query/chart?${params}`);
       } catch (err) {
         return { widgetId: widget.id, widgetName: widget.name, series: [], error: err.message };
@@ -3228,6 +3237,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     }
 
     function chartSeriesModesForWidget(widget) {
+      if (Array.isArray(widget.clickConfig?.chartLayers) && widget.clickConfig.chartLayers.length) return [["sum", "합계"]];
       const chart = state.chartByWidget.get(widget.id);
       const supported = Array.isArray(chart?.availableSeriesModes) ? chart.availableSeriesModes : ["per_device"];
       const labels = { sum: "합계", per_device: "장비별", by_phase: "상별", by_path: "위치별" };
@@ -3315,8 +3325,8 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       const legend = series.slice(0, 8).map((s, i) => {
         const baseKey = s.compare && s.key ? s.key.replace(/:compare$/, "") : null;
         const baseIndex = baseKey ? series.findIndex((item) => item.key === baseKey) : -1;
-        const color = CHART_PALETTE[(baseIndex >= 0 ? baseIndex : i) % CHART_PALETTE.length];
-        const line = s.compare ? "background:transparent;border-top:2px dashed #FFC857" : `background:${color};height:2px;width:16px;border-radius:0`;
+        const color = s.color || CHART_PALETTE[(baseIndex >= 0 ? baseIndex : i) % CHART_PALETTE.length];
+        const line = s.presentationStyle === "dashed" || (!s.presentationStyle && s.compare) ? `background:transparent;border-top:2px dashed ${s.color || "#FFC857"};width:16px;height:0` : `background:${color};height:${s.presentationStyle === "bar" ? 8 : 2}px;width:16px;border-radius:0`;
         return `<span><i style="${line}"></i>${escapeHtml(s.label || s.key || "")}</span>`;
       }).join("") + (series.length > 8 ? `<span>+${series.length - 8}</span>` : "");
       return `
@@ -3381,7 +3391,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       await window.DcimWidgetDetail.open({
         title: widget.name + " 상세",
         config: { rangePreset: rangePreset, window: windowSize, seriesMode: seriesMode,
-          chartStyle: config.chartStyle || "line", compare: config.compare || "none" },
+          chartStyle: config.chartStyle || "line", compare: config.compare || "none", chartLayers: config.chartLayers || [] },
         showSeries: true,
         showCompare: true,
         load: async function ({ rangePreset, window: windowSize, seriesMode, compare }) {

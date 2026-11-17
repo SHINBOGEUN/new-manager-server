@@ -282,6 +282,19 @@ public class PageWidgetQueryService {
             if ("rack".equals(action) && !(map.get("rackLocationCode") instanceof String code && !code.isBlank()))
                 throw new IllegalArgumentException("랙 상세 대상을 지정하세요");
         }
+        Object chartLayers = config.get("chartLayers");
+        if (chartLayers != null) {
+            if (widget.getQueryKind() != PageWidgetQueryKind.chart || !(chartLayers instanceof List<?> layers) || layers.size() > 3)
+                throw new IllegalArgumentException("차트 기간은 최대 3개까지 선택할 수 있습니다");
+            Set<String> periods = new java.util.HashSet<>();
+            for (Object item : layers) {
+                if (!(item instanceof Map<?, ?> layer) || !(layer.get("period") instanceof String period)
+                        || !Set.of("today", "yesterday", "previous_month_day").contains(period)
+                        || !periods.add(period) || !(layer.get("style") instanceof String style)
+                        || !Set.of("bar", "line", "dashed").contains(style))
+                    throw new IllegalArgumentException("차트 기간과 표시 방식을 확인하세요");
+            }
+        }
         Object primaryPoint = config.get("primaryPointName");
         if (primaryPoint != null && (!(primaryPoint instanceof String name) || name.isBlank()
                 || widget.getQueryKind() != PageWidgetQueryKind.last

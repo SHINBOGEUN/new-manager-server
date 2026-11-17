@@ -9,7 +9,7 @@
   <title>SPATIVIA · 운영 콘솔</title>
   <script src="/ops-navigation.js?v=20261109-device-tabs"></script>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261117-chart-design"></script>
+  <script src="/widget-detail-popup.js?v=20261117-chart-layers"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3065,6 +3065,13 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
                 </select>
               </label>
             </div>
+            <div id="wChartLayers" style="margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:8px">
+              <strong>차트에 표시할 기간</strong>
+              <p class="muted" style="font-size:12px;margin:6px 0">오늘을 기준으로 기간을 추가하고 각각 막대·실선·점선을 선택하세요.</p>
+              <div class="row" style="flex-wrap:wrap"><select id="wLayerPeriod" aria-label="추가할 기간"><option value="today">오늘</option><option value="yesterday">어제</option><option value="previous_month_day">전월 동일일</option></select><button id="wLayerAdd" type="button" class="primary">기간 추가</button></div>
+              <div id="wLayerList" class="pick-list"></div>
+              <small class="muted">기간을 추가하지 않으면 기존 차트 설정을 사용합니다. 전월에 같은 날짜가 없으면 전월 말일을 사용합니다.</small>
+            </div>
           </div>
 
           <div id="wAggBlock" data-widget-stage="3" style="margin-top:14px;display:none">
@@ -4053,6 +4060,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       widgetDeviceGroupIds: [],
       lastWidgetSources: [],
       lastPrimaryPoint: "",
+      chartLayers: [],
       aggregateWidgetSources: [],
       widgetPendingPointName: "",
       widgetItDeviceIds: [],
@@ -9464,8 +9472,9 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const aggregateRangeLabel = $("wAggRangePreset")?.closest("label");
       const chartCompareLabel = $("wChartCompareMode")?.closest("label");
       const clickCompareLabel = $("wClickCompare")?.closest("label");
-      if (chartRangeLabel) chartRangeLabel.hidden = !isChart || chartCompare !== "none";
-      if (chartCompareLabel) chartCompareLabel.hidden = !isChart;
+      if (isChart && state.chartLayers.length) $("wChartSeriesMode").value = "sum";
+      if (chartRangeLabel) chartRangeLabel.hidden = !isChart || chartCompare !== "none" || state.chartLayers.length > 0;
+      if (chartCompareLabel) chartCompareLabel.hidden = !isChart || state.chartLayers.length > 0 || chartCompare === "none";
       if (clickRangeLabel) clickRangeLabel.hidden = !supportsClickChart || isChart || isAggregate || clickCompare !== "none";
       if (clickCompareLabel) clickCompareLabel.hidden = !supportsClickChart || isChart;
       if (aggregateRangeLabel) aggregateRangeLabel.hidden = !isAggregate || clickCompare !== "none";
@@ -9652,12 +9661,26 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         refs.forEach(ref => params.append("source", ref));
         let endpoint = "/api/manager/query/widget-trend/preview?";
         if (!refs.length && id) { params.set("widgetId", String(id)); endpoint = "/api/manager/query/chart?"; }
-        const data = await api(endpoint + params);
+        const data = state.chartLayers.length
+          ? await window.DcimWidgetDetail.loadConfiguredLayers(state.chartLayers, ({rangePreset, window, compare}) => {
+              const query = new URLSearchParams(params); query.set("rangePreset", rangePreset); query.set("window", window || "15m"); query.set("seriesMode", "sum"); query.set("compare", compare);
+              return api(endpoint + query);
+            }, "15m")
+          : await api(endpoint + params);
         if (sequence !== realGraphPreviewSequence || $("wKind").value !== "chart") return;
-        graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 추이</div><div class="muted">${esc((data.units || (data.unit ? [data.unit] : [])).join(" · "))}</div><div style="height:190px"><canvas id="wLiveChartPreview"></canvas></div>`;
-        if (!data.series?.length) { graph.lastElementChild.textContent = "선택한 항목의 측정 이력이 없습니다."; return; }
-        realGraphChart = window.DcimWidgetDetail?.createChart($("wLiveChartPreview"), data, "line") || null;
-        if (!realGraphChart) graph.lastElementChild.textContent = "차트 미리보기를 표시할 수 없습니다.";
+        graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 추이</div><div class="muted">${esc((data.units || (data.unit ? [data.unit] : [])).join(" · "))}</div>`;
+        if (!data.series?.length) { graph.insertAdjacentHTML("beforeend", '<div class="muted">선택한 항목의 측정 이력이 없습니다.</div>'); return; }
+        const groups = data.unitGroups?.length > 1 ? data.unitGroups : [null];
+        const charts = [];
+        for (const group of groups) {
+          const container = document.createElement("div"); container.style.height = "190px";
+          const canvas = document.createElement("canvas"); container.append(canvas); graph.append(container);
+          const chartData = group ? {...data, unit:group.unit, units:[group.unit], series:group.series} : data;
+          const chart = window.DcimWidgetDetail?.createChart(canvas, chartData, "line");
+          if (chart) charts.push(chart);
+        }
+        realGraphChart = { destroy() { charts.forEach((chart) => chart.destroy()); } };
+        if (!charts.length) graph.insertAdjacentHTML("beforeend", '<div class="muted">차트 미리보기를 표시할 수 없습니다.</div>');
       } catch (error) {
         if (sequence === realGraphPreviewSequence) graph.innerHTML = `<div class="muted">실제 데이터 조회 실패: ${esc(error.message || "오류")}</div>`;
       }
@@ -14050,6 +14073,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wChartRangePreset").value = "last_24h";
       $("wChartWindow").value = "5m";
       $("wChartCompareMode").value = "none";
+      state.chartLayers = [];
+      renderChartLayers();
       $("wClickCompare").value = "none";
       $("wPueRangePreset").value = "last_24h";
       $("wPueFreshnessMinutes").value = "15";
@@ -14217,6 +14242,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         $("wClickSeries").value = w.clickConfig?.seriesMode || w.chartSeriesMode || "sum";
         $("wClickCompare").value = normalizeWidgetCompare(w.clickConfig?.compare, w.trendRangePreset);
         $("wChartCompareMode").value = normalizeWidgetCompare(w.clickConfig?.chartCompareMode || w.chartCompareMode, w.chartRangePreset);
+        state.chartLayers = Array.isArray(w.clickConfig?.chartLayers) ? w.clickConfig.chartLayers.map((layer) => ({period:layer.period, style:layer.style})) : [];
+        renderChartLayers();
         $("wClickTarget").value = w.clickConfig?.target?.deviceId || w.clickConfig?.target?.rackLocationCode || w.clickConfig?.target?.pageCode || "";
         $("wColorCustom").checked = !!w.visualColor;
         $("wVisualColor").value = w.visualColor || "#54cbf3";
@@ -15108,6 +15135,26 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     renderWidgetModels();
     renderPsychrometricSources();
 
+    function renderChartLayers() {
+      const list = $("wLayerList"), pick = $("wLayerPeriod"), add = $("wLayerAdd");
+      if (!list || !pick || !add) return;
+      const labels = {today:"오늘", yesterday:"어제", previous_month_day:"전월 동일일"};
+      list.innerHTML = state.chartLayers.map((layer, index) => `<div class="row" style="margin-top:8px;align-items:center"><strong style="min-width:90px">${esc(labels[layer.period] || layer.period)}</strong><select data-layer-style="${index}" aria-label="${esc(labels[layer.period] || layer.period)} 표시 방식"><option value="bar" ${layer.style === "bar" ? "selected" : ""}>막대</option><option value="line" ${layer.style === "line" ? "selected" : ""}>실선</option><option value="dashed" ${layer.style === "dashed" ? "selected" : ""}>점선</option></select><button type="button" class="ghost" data-layer-remove="${index}">삭제</button></div>`).join("");
+      list.querySelectorAll("[data-layer-style]").forEach((select) => select.addEventListener("change", () => { state.chartLayers[Number(select.dataset.layerStyle)].style = select.value; }));
+      list.querySelectorAll("[data-layer-remove]").forEach((button) => button.addEventListener("click", () => { state.chartLayers.splice(Number(button.dataset.layerRemove), 1); renderChartLayers(); updateWidgetPeriodCompareFields(); }));
+      const used = new Set(state.chartLayers.map((layer) => layer.period));
+      [...pick.options].forEach((option) => { option.disabled = used.has(option.value); });
+      if (pick.selectedOptions[0]?.disabled) pick.value = [...pick.options].find((option) => !option.disabled)?.value || "";
+      add.disabled = state.chartLayers.length >= 3;
+    }
+    $("wLayerAdd").addEventListener("click", () => {
+      const period = $("wLayerPeriod").value;
+      if (!period || state.chartLayers.some((item) => item.period === period)) return;
+      state.chartLayers.push({period, style:({today:"bar", yesterday:"line", previous_month_day:"dashed"})[period]});
+      $("wChartCompareMode").value = "none";
+      renderChartLayers(); updateWidgetPeriodCompareFields();
+    });
+
     function currentWidgetClickConfig() {
       const action = $("wClickAction")?.value || "chart";
       const rawTarget = $("wClickTarget")?.value.trim();
@@ -15117,6 +15164,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         compare: $("wClickCompare")?.value || "none",
         chartCompareMode: $("wChartCompareMode")?.value || "none" };
       if ($("wKind").value === "last" && !$("wTableEnabled").checked && state.lastPrimaryPoint) config.primaryPointName = state.lastPrimaryPoint;
+      if ($("wKind").value === "chart" && state.chartLayers.length) config.chartLayers = state.chartLayers.map((layer) => ({...layer}));
       if (action === "device") config.target = { deviceId: Number(rawTarget) };
       if (action === "rack") config.target = { rackLocationCode: rawTarget };
       if (action === "page") config.target = { pageCode: rawTarget };
@@ -15420,7 +15468,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           countMode: kind === "count" ? $("wCountMode").value : null,
           countModelId,
           chartScope: kind === "chart" ? chartScope : null,
-          chartSeriesMode: kind === "chart" ? $("wChartSeriesMode").value : null,
+          chartSeriesMode: kind === "chart" ? (state.chartLayers.length ? "sum" : $("wChartSeriesMode").value) : null,
           chartRangePreset: kind === "chart" ? $("wChartRangePreset").value : null,
           chartWindow: kind === "chart" ? $("wChartWindow").value : null,
           pueDefinitionId,

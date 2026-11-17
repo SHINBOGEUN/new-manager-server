@@ -35,6 +35,12 @@ final class ChartComparisonSupport {
                 currentLabel = "오늘";
                 previousLabel = "어제";
             }
+            case "today_previous_month" -> {
+                currentDate = today;
+                previousDate = today.minusMonths(1);
+                currentLabel = "오늘";
+                previousLabel = "전월 동일일";
+            }
             case "week_lastweek" -> {
                 currentDate = today.with(java.time.DayOfWeek.MONDAY);
                 previousDate = currentDate.minusWeeks(1);
@@ -76,6 +82,7 @@ final class ChartComparisonSupport {
             case "today_yesterday", "previous_day" -> "today_yesterday";
             case "week_lastweek", "previous_week" -> "week_lastweek";
             case "month_lastmonth" -> "month_lastmonth";
+            case "today_previous_month" -> "today_previous_month";
             case "previous_period" -> preset == PageWidgetChartRangePreset.this_month
                     || preset == PageWidgetChartRangePreset.last_month ? "month_lastmonth"
                     : preset == PageWidgetChartRangePreset.last_7d ? "week_lastweek" : "today_yesterday";

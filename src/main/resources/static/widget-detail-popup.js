@@ -160,6 +160,31 @@
     return value || "none";
   }
 
+  async function loadConfiguredLayers(layers, load, windowSize) {
+    const modes = [...new Set(layers.map(function (layer) { return layer.period === "previous_month_day" ? "today_previous_month" : "today_yesterday"; }))];
+    const results = await Promise.all(modes.map(function (mode) { return load({ rangePreset:"today", window:windowSize, seriesMode:"sum", compare:mode }); }));
+    const byMode = new Map(modes.map(function (mode, index) { return [mode, results[index]]; }));
+    const base = results[0];
+    const names = { today:"오늘", yesterday:"어제", previous_month_day:"전월 동일일" };
+    const colors = { today:"#08B9ED", yesterday:"#19DBD8", previous_month_day:"#FFD23F" };
+    const series = [];
+    layers.forEach(function (layer) {
+      const result = byMode.get(layer.period === "previous_month_day" ? "today_previous_month" : "today_yesterday");
+      if (!result || result.error) throw new Error(result?.error || "기간별 차트를 불러오지 못했습니다.");
+      (result.series || []).filter(function (item) { return layer.period === "today" ? !item.compare : item.compare; }).forEach(function (item) {
+        series.push(Object.assign({}, item, { key:(item.unit || "unitless") + ":" + layer.period,
+          label:names[layer.period], presentationStyle:layer.style, color:colors[layer.period], compare:layer.period !== "today" }));
+      });
+    });
+    const grouped = new Map();
+    series.forEach(function (item) {
+      const unit = item.unit || "(단위 없음)";
+      if (!grouped.has(unit)) grouped.set(unit, []);
+      grouped.get(unit).push(item);
+    });
+    return Object.assign({}, base, { series:series, unitGroups:Array.from(grouped, function (entry) { return {unit:entry[0],series:entry[1]}; }), seriesMode:"sum", availableSeriesModes:["sum"] });
+  }
+
   function createChart(canvas, data, chartStyle, options) {
     chartStyle = chartStyle || "line";
     if (typeof global.Chart === "undefined" || !data || data.error || !canvas) return null;
@@ -176,16 +201,19 @@
       const byTime = new Map((item.times || []).map(function (time, i) { return [time, item.values[i]]; }));
       const baseKey = item.compare && item.key ? item.key.replace(/:compare$/, "") : null;
       const baseIndex = baseKey ? series.findIndex(function (candidate) { return candidate.key === baseKey; }) : -1;
-      const color = item.compare ? "#FFC857" : CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length];
+      const color = item.color || (item.compare ? "#FFC857" : CHART_PALETTE[(baseIndex >= 0 ? baseIndex : index) % CHART_PALETTE.length]);
       const baseSeries = baseIndex >= 0 ? series[baseIndex] : null;
       const baseValues = baseSeries ? new Map((baseSeries.times || []).map(function (time, i) { return [formatTime(time), baseSeries.values[i]]; })) : new Map();
       const originalByTime = new Map((item.times || []).map(function (time, i) { return [time, (item.originalTimes || [])[i] || null]; }));
       return {
+        type: item.presentationStyle === "bar" ? "bar" : chartStyle === "bar" && !item.presentationStyle ? "bar" : "line",
         label: item.label || item.key || ("series-" + index),
         unit: item.unit || data.unit || "",
         data: times.map(function (time) { const value = byTime.get(time); return value == null ? null : Number(value); }),
         borderColor: color,
-        backgroundColor: color + "33",
+        backgroundColor: color + (item.presentationStyle === "bar" ? "B8" : "33"),
+        borderRadius: item.presentationStyle === "bar" ? 3 : 0,
+        maxBarThickness: item.presentationStyle === "bar" ? 8 : undefined,
         fill: false,
         tension: 0,
         pointRadius: times.length > 80 ? 0 : 2,
@@ -194,8 +222,8 @@
         pointHoverBorderWidth: 2,
         pointHoverBackgroundColor: color,
         pointHoverBorderColor: "#ffffff",
-        order: 1,
-        borderDash: item.compare ? [6, 4] : [],
+        order: item.presentationStyle === "bar" ? 2 : 1,
+        borderDash: item.presentationStyle === "dashed" || (!item.presentationStyle && item.compare) ? [6, 4] : [],
         originalTimes: times.map(function (time) { return originalByTime.get(time) || null; }),
         baseValues: baseValues,
         isCompare: item.compare === true,
@@ -204,7 +232,7 @@
       };
     });
     const hasComparison = series.some(function (item) { return item.compare; });
-    if (chartStyle !== "bar") {
+    if (chartStyle !== "bar" && !series.some(function (item) { return item.presentationStyle; })) {
       const current = datasets.find(function (dataset) { return !dataset.isCompare; });
       if (current) datasets.push({
         type: "bar", label: current.label, data: current.data, yAxisID: current.yAxisID,
@@ -233,7 +261,7 @@
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: showLegend && hasComparison, position: "bottom", labels: { color: "#e7edf8", usePointStyle: true, filter: function (item, chartData) { return !chartData.datasets[item.datasetIndex].visualOnly; } } },
+          legend: { display: showLegend && (hasComparison || series.some(function (item) { return item.presentationStyle; })), position: "bottom", labels: { color: "#e7edf8", usePointStyle: true, filter: function (item, chartData) { return !chartData.datasets[item.datasetIndex].visualOnly; } } },
           tooltip: { backgroundColor: "#111b2a", titleColor: "#a5bdd1", bodyColor: "#e7edf8", borderColor: "#34445b", borderWidth: 1, padding: 12,
             filter: function (item) { return !item.dataset.visualOnly; },
             callbacks: { title: function (items) {
@@ -277,14 +305,18 @@
     destroyCharts();
     chartsNode.replaceChildren();
     metaNode.textContent = "데이터를 불러오는 중…";
-    rangeSelect.hidden = compareSelect.value !== "none";
+    const layers = Array.isArray(activeConfig.chartLayers) ? activeConfig.chartLayers : [];
+    rangeSelect.hidden = layers.length > 0 || compareSelect.value !== "none";
+    compareSelect.hidden = layers.length > 0 || !activeShowCompare;
+    seriesSelect.hidden = layers.length > 0 || !activeShowSeries;
+    styleSelect.hidden = layers.length > 0;
     const options = {
       rangePreset: rangeSelect.value,
       window: windowSelect.value,
       seriesMode: seriesSelect.value,
       compare: compareSelect.value,
     };
-    const data = await activeLoad(options);
+    const data = layers.length ? await loadConfiguredLayers(layers, activeLoad, options.window) : await activeLoad(options);
     if (data && data.error) throw new Error(data.error);
     const supportedModes = Array.isArray(data.availableSeriesModes) ? data.availableSeriesModes : ["sum", "per_device"];
     const allowedModes = options.compare && options.compare !== "none" ? ["sum"] : supportedModes;
@@ -319,7 +351,7 @@
     const units = data.units || (data.unit ? [data.unit] : []);
     const compareLabels = { today_yesterday: "오늘 / 어제", week_lastweek: "이번 주 / 지난주", month_lastmonth: "이번 달 / 지난달" };
     const comparedUsage = options.compare && options.compare !== "none" && (data.series || []).some(function (item) { return item.compare && String(item.label || "").includes("사용량 합계"); });
-    const meta = [options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset), trendWindowLabel(data.window || options.window)].concat(units).filter(Boolean);
+    const meta = [layers.length ? "오늘 기준 · " + layers.map(function (layer) { return ({today:"오늘",yesterday:"어제",previous_month_day:"전월 동일일"})[layer.period]; }).join(" / ") : options.compare && options.compare !== "none" ? compareLabels[options.compare] : trendRangeLabel(options.rangePreset), trendWindowLabel(data.window || options.window)].concat(units).filter(Boolean);
     if (comparedUsage && styleSelect.value !== "bar") meta.push("사용량 비교는 막대 권장");
     if (units.length > 1) meta.push(options.seriesMode === "sum" || (options.compare && options.compare !== "none") ? "단위별 합계" : "단위별 차트");
     if (statusSummary(status, data.calculationStatus)) meta.push(statusSummary(status, data.calculationStatus));
@@ -375,6 +407,7 @@
     open: open,
     close: close,
     createChart: createChart,
+    loadConfiguredLayers: loadConfiguredLayers,
     fromCalculated: fromCalculated,
     formatTime: formatTime,
     formatValue: formatValue,
