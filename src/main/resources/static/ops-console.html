@@ -4943,7 +4943,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       button.onclick = () => goTab(button.dataset.quickTab);
     });
 
-    document.querySelectorAll("#tabs button").forEach((btn) => {
+    document.querySelectorAll("#tabs button[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => goTab(btn.dataset.tab));
     });
     function renderWorkspaceSearch() {
