@@ -284,7 +284,8 @@ public class PageWidgetQueryService {
         }
         Object chartLayers = config.get("chartLayers");
         if (chartLayers != null) {
-            if (widget.getQueryKind() != PageWidgetQueryKind.chart || !(chartLayers instanceof List<?> layers) || layers.size() > 3)
+            if (widget.getQueryKind() == PageWidgetQueryKind.count || widget.getQueryKind() == PageWidgetQueryKind.cctv
+                    || !(chartLayers instanceof List<?> layers) || layers.size() > 3)
                 throw new IllegalArgumentException("차트 기간은 최대 3개까지 선택할 수 있습니다");
             Set<String> periods = new java.util.HashSet<>();
             for (Object item : layers) {
