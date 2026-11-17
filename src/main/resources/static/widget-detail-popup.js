@@ -241,8 +241,49 @@
         barPercentage: 0.9, categoryPercentage: 0.95, order: 2, visualOnly: true,
       });
     }
+    let tooltipNode = null;
+    const tooltipHost = canvas.closest("dialog[open]") || document.body;
+    function hideExternalTooltip() { if (tooltipNode) tooltipNode.style.display = "none"; }
+    function showExternalTooltip(context) {
+      const tooltip = context.tooltip;
+      const items = (tooltip.dataPoints || []).filter(function (item) { return !item.dataset.visualOnly; });
+      if (!tooltip.opacity || !items.length) { hideExternalTooltip(); return; }
+      if (!tooltipNode) {
+        tooltipNode = document.createElement("div");
+        tooltipNode.className = "dcim-chart-tooltip";
+        Object.assign(tooltipNode.style, { position:tooltipHost === document.body ? "fixed" : "absolute", zIndex:"2147483647", pointerEvents:"none", background:"#111b2a", color:"#e7edf8", border:"1px solid #34445b", borderRadius:"8px", boxShadow:"0 8px 24px #0008", padding:"10px 12px", font:"12px/1.5 system-ui, sans-serif", boxSizing:"border-box", maxWidth:"min(360px, calc(100vw - 16px))", overflow:"hidden" });
+        tooltipHost.appendChild(tooltipNode);
+        document.addEventListener("scroll", hideExternalTooltip, true);
+      }
+      tooltipNode.replaceChildren();
+      const title = document.createElement("div");
+      title.textContent = (tooltip.title || [])[0] || "";
+      title.style.cssText = "color:#a5bdd1;font-weight:600;margin-bottom:5px";
+      tooltipNode.appendChild(title);
+      items.forEach(function (item) {
+        const row = document.createElement("div"); row.style.cssText = "display:flex;align-items:baseline;gap:7px;white-space:normal";
+        const swatch = document.createElement("span"); swatch.style.cssText = "flex:none;width:8px;height:8px;border-radius:2px;background:" + item.dataset.borderColor;
+        const text = document.createElement("span");
+        const value = item.parsed.y;
+        text.textContent = (item.dataset.label || "측정값") + ": " + (value == null ? "—" : formatValue(value)) + (item.dataset.unit ? " " + item.dataset.unit : "");
+        row.append(swatch, text); tooltipNode.appendChild(row);
+      });
+      tooltipNode.style.display = "block";
+      const canvasRect = canvas.getBoundingClientRect();
+      const hostRect = tooltipHost === document.body ? null : tooltipHost.getBoundingClientRect();
+      const minX = Math.max(8, hostRect ? hostRect.left + 8 : 8), maxX = Math.min(window.innerWidth - 8, hostRect ? hostRect.right - 8 : window.innerWidth - 8);
+      const minY = Math.max(8, hostRect ? hostRect.top + 8 : 8), maxY = Math.min(window.innerHeight - 8, hostRect ? hostRect.bottom - 8 : window.innerHeight - 8);
+      const width = tooltipNode.offsetWidth, height = tooltipNode.offsetHeight;
+      const anchorX = canvasRect.left + tooltip.caretX, anchorY = canvasRect.top + tooltip.caretY;
+      const x = Math.max(minX, Math.min(maxX - width, anchorX + 12));
+      const preferredY = anchorY - height - 12 >= minY ? anchorY - height - 12 : anchorY + 12;
+      const y = Math.max(minY, Math.min(maxY - height, preferredY));
+      tooltipNode.style.left = (hostRect ? x - hostRect.left - tooltipHost.clientLeft + tooltipHost.scrollLeft : x) + "px";
+      tooltipNode.style.top = (hostRect ? y - hostRect.top - tooltipHost.clientTop + tooltipHost.scrollTop : y) + "px";
+    }
     const guide = {
       id: "dcimComparisonGuide",
+      afterDestroy: function () { document.removeEventListener("scroll", hideExternalTooltip, true); if (tooltipNode) tooltipNode.remove(); tooltipNode = null; },
       afterDatasetsDraw: function (chart) {
         const active = chart.tooltip && chart.tooltip.getActiveElements();
         if (!active || !active.length) return;
@@ -262,7 +303,7 @@
         interaction: { mode: "index", intersect: false },
         plugins: {
           legend: { display: showLegend && (hasComparison || series.some(function (item) { return item.presentationStyle; })), position: "bottom", labels: { color: "#e7edf8", usePointStyle: true, filter: function (item, chartData) { return !chartData.datasets[item.datasetIndex].visualOnly; } } },
-          tooltip: { backgroundColor: "#111b2a", titleColor: "#a5bdd1", bodyColor: "#e7edf8", borderColor: "#34445b", borderWidth: 1, padding: 12,
+          tooltip: { enabled:false, external:showExternalTooltip, backgroundColor: "#111b2a", titleColor: "#a5bdd1", bodyColor: "#e7edf8", borderColor: "#34445b", borderWidth: 1, padding: 12,
             filter: function (item) { return !item.dataset.visualOnly; },
             callbacks: { title: function (items) {
               if (!items.length) return "";
