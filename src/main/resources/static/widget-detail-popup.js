@@ -26,7 +26,7 @@
   let activeShowCompare = false;
 
   function formatValue(value) {
-    return Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 2 });
+    return Number(value).toLocaleString("ko-KR", { maximumFractionDigits: 6 });
   }
 
   function formatTime(iso) {
@@ -160,10 +160,11 @@
     return value || "none";
   }
 
-  function createChart(canvas, data, chartStyle) {
+  function createChart(canvas, data, chartStyle, options) {
     chartStyle = chartStyle || "line";
     if (typeof global.Chart === "undefined" || !data || data.error || !canvas) return null;
     const series = data.series || [];
+    const showLegend = !options || options.showLegend !== false;
     if (!series.length) return null;
     const timeSet = new Set();
     series.forEach(function (item) { (item.times || []).forEach(function (time) { if (time) timeSet.add(time); }); });
@@ -189,6 +190,11 @@
         tension: 0,
         pointRadius: times.length > 80 ? 0 : 2,
         borderWidth: item.compare ? 2.5 : 2,
+        pointHoverRadius: 4,
+        pointHoverBorderWidth: 2,
+        pointHoverBackgroundColor: color,
+        pointHoverBorderColor: "#ffffff",
+        order: 1,
         borderDash: item.compare ? [6, 4] : [],
         originalTimes: times.map(function (time) { return originalByTime.get(time) || null; }),
         baseValues: baseValues,
@@ -197,8 +203,28 @@
         yAxisID: hasRightAxis && item.axis === "right" ? "y1" : "y",
       };
     });
+    const hasComparison = series.some(function (item) { return item.compare; });
+    if (hasComparison && chartStyle !== "bar") {
+      const current = datasets.find(function (dataset) { return !dataset.isCompare; });
+      if (current) datasets.push({
+        type: "bar", label: current.label, data: current.data, yAxisID: current.yAxisID,
+        backgroundColor: "#16B8F04D", borderColor: "#16B8F080", borderWidth: 0,
+        barPercentage: 1, categoryPercentage: 1, order: 2, visualOnly: true,
+      });
+    }
+    const guide = {
+      id: "dcimComparisonGuide",
+      afterDatasetsDraw: function (chart) {
+        const active = chart.tooltip && chart.tooltip.getActiveElements();
+        if (!active || !active.length) return;
+        const x = active[0].element.x, ctx = chart.ctx;
+        ctx.save(); ctx.strokeStyle = "rgba(198,218,235,.55)"; ctx.setLineDash([3, 4]);
+        ctx.beginPath(); ctx.moveTo(x, chart.chartArea.top); ctx.lineTo(x, chart.chartArea.bottom); ctx.stroke(); ctx.restore();
+      },
+    };
     return new global.Chart(canvas, {
       type: chartStyle === "bar" ? "bar" : "line",
+      plugins: [guide],
       data: { labels: labels, datasets: datasets },
       options: {
         animation: false,
@@ -206,22 +232,19 @@
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-          legend: { display: series.some(function (item) { return item.compare; }), labels: { color: "#e7edf8", usePointStyle: true } },
-          tooltip: { callbacks: { label: function (context) {
+          legend: { display: showLegend && hasComparison, position: "bottom", labels: { color: "#e7edf8", usePointStyle: true, filter: function (item, chartData) { return !chartData.datasets[item.datasetIndex].visualOnly; } } },
+          tooltip: { backgroundColor: "#111b2a", titleColor: "#a5bdd1", bodyColor: "#e7edf8", borderColor: "#34445b", borderWidth: 1, padding: 12,
+            filter: function (item) { return !item.dataset.visualOnly; },
+            callbacks: { title: function (items) {
+              if (!items.length) return "";
+              const date = new Date(times[items[0].dataIndex]);
+              if (Number.isNaN(date.getTime())) return labels[items[0].dataIndex] || "";
+              const pad = function (n) { return String(n).padStart(2, "0"); };
+              return date.getFullYear() + "-" + pad(date.getMonth()+1) + "-" + pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
+            }, label: function (context) {
             const value = context.parsed.y;
             const unit = context.dataset.unit ? " " + context.dataset.unit : "";
             let text = context.dataset.label + ": " + (value == null ? "-" : formatValue(value)) + unit;
-            const originalTime = context.dataset.originalTimes[context.dataIndex];
-            if (originalTime) text += " · 원래 시각 " + formatTime(originalTime);
-            if (context.dataset.isCompare && value != null) {
-              const base = context.dataset.baseValues.get(context.label);
-              if (base != null) {
-                const delta = Number(base) - Number(value);
-                const percent = Number(value) === 0 ? "—" : ((delta / Math.abs(Number(value))) * 100).toFixed(1) + "%";
-                text += " · 현재 " + formatValue(base) + unit + " · 비교 " + formatValue(value) + unit
-                  + " · 차이 " + formatValue(delta) + unit + " (" + percent + ")";
-              }
-            }
             return text;
           } } },
         },

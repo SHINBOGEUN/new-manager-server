@@ -8,7 +8,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <title>DCIM Widget Dashboard</title>
   <script src="/vendor/chartjs/chart.umd.min.js"></script>
-  <script src="/widget-detail-popup.js?v=20261117-t033"></script>
+  <script src="/widget-detail-popup.js?v=20261117-chart-style"></script>
   <script>
 (function (global) {
   'use strict';
@@ -3333,7 +3333,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       if (!window.DcimWidgetDetail?.createChart) return;
       const canvas = document.querySelector(`canvas[data-chart-id="${widgetId}"]`);
       const hasUsageCompare = (data?.series || []).some((item) => item.compare && String(item.label || "").includes("사용량 합계"));
-      const chart = window.DcimWidgetDetail.createChart(canvas, data, hasUsageCompare ? "bar" : "line");
+      const chart = window.DcimWidgetDetail.createChart(canvas, data, hasUsageCompare ? "bar" : "line", { showLegend:false });
       if (!chart) return;
       state.chartInstances.set(widgetId, chart);
     }
