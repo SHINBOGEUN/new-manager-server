@@ -3512,7 +3512,8 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
     async function refreshBoard(fetchData) {
       if (state.drag) return;
 
-      const enabled = state.widgets.filter((w) => w.enabled);
+      const singlePreview = dashboardParams.get("singleWidgetPreview") === "1" && editorPreviewWidgetId > 0;
+      const enabled = state.widgets.filter((w) => w.enabled && (!singlePreview || Number(w.id) === editorPreviewWidgetId));
       if (!enabled.length) {
         destroyChartInstances();
         const hint = state.widgets.length
@@ -3577,7 +3578,7 @@ body.edit-mode .board>.card:is(.last-card,.cctv-card) .card-head{left:44px}
       const cardsHtml = enabled.map((w) => {
         const layout = widgetLayout(w);
         const color = /^#[0-9a-fA-F]{6}$/.test(w.visualColor || '') ? w.visualColor : '';
-        const style = layoutStyle(layout) + (color ? `;--widget-color:${color}` : '');
+        const style = (singlePreview ? 'grid-column:1 / -1;grid-row:1 / span 8' : layoutStyle(layout)) + (color ? `;--widget-color:${color}` : '');
         let body;
         let subExtra = "";
         let cardClass = "card";

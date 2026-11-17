@@ -2955,6 +2955,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
             </div>
           </div>
 
+          <div id="wUnitFilterBlock" data-widget-stage="2" style="display:none"><label class="field">단위 먼저 선택<select id="wSourceUnit"><option value="">모든 단위</option></select></label><small class="muted">선택한 단위를 가진 장비와 측정항목만 표시합니다.</small></div>
           <div id="wChartBlock" data-widget-stage="2" style="margin-top:14px;display:none">
             <div class="muted" style="font-size:12px;font-weight:650;margin-bottom:6px">
               차트 대상 방식
@@ -9504,9 +9505,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       graph.hidden = !graphKind;
       if (graphKind) {
         const title = esc($("wName").value.trim() || "내 위젯");
-        graph.innerHTML = kind === "chart"
-          ? `<div class="widget-preview-graph-title">${title} · 추이 차트</div><svg viewBox="0 0 400 190" role="img" aria-label="추이 차트 예시"><g stroke="#33455c" stroke-width="1"><path d="M36 20H390M36 60H390M36 100H390M36 140H390M36 20V155"/></g><path d="M36 130 L75 109 L110 118 L145 76 L180 88 L215 58 L250 73 L285 42 L320 61 L355 35 L390 48" fill="none" stroke="#40c7f2" stroke-width="3"/><g fill="#a4b4c7" font-size="11"><text x="36" y="177">이전</text><text x="355" y="177">현재</text></g></svg>`
-          : `<div class="widget-preview-graph-title">${title} · 공기선도</div><svg viewBox="0 0 400 190" role="img" aria-label="공기선도 예시"><g fill="none" stroke="#627b92" stroke-width="1"><path d="M35 155 Q80 30 300 20 L365 20 M35 155 Q100 65 365 45 M35 155 Q130 100 365 75 M35 155 Q160 130 365 105 M35 155 L365 155 M35 155 L365 20 M80 155 L365 42 M140 155 L365 70 M200 155 L365 98"/></g><circle cx="230" cy="94" r="6" fill="#f08092" stroke="#fff"/><g fill="#a4b4c7" font-size="11"><text x="32" y="176">건구 온도 °C</text><text x="300" y="16">상대습도 %</text></g></svg>`;
+        graph.innerHTML = `<div class="widget-preview-graph-title">${title} · ${kind === "chart" ? "추이 차트" : "공기선도"}</div><div class="muted">실제 데이터 미리보기를 준비하는 중…</div>`;
+        scheduleRealGraphPreview();
       }
       $('wPowerPreview').hidden = kind !== 'power_distribution';
       preview.hidden = kind === 'power_distribution';
@@ -9517,6 +9517,10 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
       const examples = { last:['29.1','kWh','◈','#b18bff'], count:['23','대','▦','#54cbf3'], calculated:['1.51','','◉','#ec8bc5'], aggregate:['1.9','kW','ϟ','#54cbf3'], chart:['추이 차트','','⌁','#54cbf3'], psychrometric:['온도 · 습도','','◌','#2dd4d8'], power_distribution:['전력 분배','','◔','#54cbf3'], cctv:['카메라 화면','','▣','#54cbf3'] };
       let [value, unit, icon, defaultColor] = examples[kind] || examples.last;
+      if (kind === "calculated") {
+        value = "—";
+        unit = state.pueDefinitions.find(item => Number(item.id) === Number($("wPueDefinition").value))?.resultUnit || "";
+      }
       const live = widgetVisualPreviewData;
       let actual = false;
       if (live && live.kind === kind) {
@@ -9528,7 +9532,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           value = number.toLocaleString('ko-KR', { maximumFractionDigits:2 }); actual = true;
         }
       }
-      $("wVisualPreviewNote").textContent = graphKind ? '위젯 모양 미리보기 · 예시 데이터' : actual ? '위젯 미리보기 · 첫 번째 항목의 최근 측정값' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
+      $("wVisualPreviewNote").textContent = graphKind ? '실제 데이터 미리보기' : actual ? '위젯 미리보기 · 최근 수집값' : kind === 'calculated' ? '최근 수집값 없음' : '위젯 미리보기 · 예시이며 실제 화면과 다를 수 있습니다';
       $("wVisualPreviewTitle").textContent = $("wName").value.trim() || "내 위젯";
       $("wVisualPreviewValue").textContent = value;
       $("wVisualPreviewUnit").textContent = unit;
@@ -9536,6 +9540,45 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       preview.dataset.style = selectedWidgetVisualStyle();
       preview.style.setProperty('--preview-color', $("wColorCustom").checked ? $("wVisualColor").value : defaultColor);
       $("wVisualColor").disabled = !$("wColorCustom").checked;
+    }
+
+    let realGraphPreviewTimer, realGraphPreviewSequence = 0, realGraphChart = null;
+    function scheduleRealGraphPreview() {
+      clearTimeout(realGraphPreviewTimer);
+      const sequence = ++realGraphPreviewSequence;
+      realGraphPreviewTimer = setTimeout(() => refreshRealGraphPreview(sequence), 350);
+    }
+    async function refreshRealGraphPreview(sequence) {
+      const kind = $("wKind").value, graph = $("wGraphPreview");
+      if (!["chart", "psychrometric"].includes(kind) || !graph || graph.hidden) return;
+      if (realGraphChart) { realGraphChart.destroy(); realGraphChart = null; }
+      const title = esc($("wName").value.trim() || "내 위젯");
+      const id = Number(state.editingWidgetId) || 0;
+      if (kind === "psychrometric") {
+        if (!id) { graph.innerHTML = '<div class="muted">공기선도는 저장 후 실제 측정값으로 미리 볼 수 있습니다.</div>'; return; }
+        const params = new URLSearchParams({embedded:"1", fixedPage:"1", displayOnly:"1", boardView:"1", pageCode:$("wCreatePage").value, widgetId:String(id), singleWidgetPreview:"1"});
+        graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 저장된 공기선도</div><div class="muted">대상 변경은 저장 후 반영됩니다.</div><iframe title="실제 공기선도 위젯" style="width:100%;height:260px;border:0" src="/widget-dashboard.html?${params}"></iframe>`;
+        return;
+      }
+      const pairs = selectedWidgetPreviewSources();
+      const refs = [...new Set(pairs.filter(item => item?.deviceId && item?.pointName).map(item => `${Number(item.deviceId)}:${item.pointName}`))];
+      if (!refs.length && !id) { graph.innerHTML = '<div class="muted">장비와 측정항목을 선택하면 실제 추이를 표시합니다.</div>'; return; }
+      if (refs.length > 50) { graph.innerHTML = '<div class="muted">미리보기는 장비·항목 50개까지 표시합니다.</div>'; return; }
+      graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 추이</div><div class="muted">실제 측정값 조회 중…</div>`;
+      try {
+        const params = new URLSearchParams({rangePreset:$("wChartRangePreset").value || "last_24h", window:"15m"});
+        refs.forEach(ref => params.append("source", ref));
+        let endpoint = "/api/manager/query/widget-trend/preview?";
+        if (!refs.length && id) { params.set("widgetId", String(id)); endpoint = "/api/manager/query/chart?"; }
+        const data = await api(endpoint + params);
+        if (sequence !== realGraphPreviewSequence || $("wKind").value !== "chart") return;
+        graph.innerHTML = `<div class="widget-preview-graph-title">${title} · 추이</div><div class="muted">${esc((data.units || (data.unit ? [data.unit] : [])).join(" · "))}</div><div style="height:190px"><canvas id="wLiveChartPreview"></canvas></div>`;
+        if (!data.series?.length) { graph.lastElementChild.textContent = "선택한 항목의 측정 이력이 없습니다."; return; }
+        realGraphChart = window.DcimWidgetDetail?.createChart($("wLiveChartPreview"), data, "line") || null;
+        if (!realGraphChart) graph.lastElementChild.textContent = "차트 미리보기를 표시할 수 없습니다.";
+      } catch (error) {
+        if (sequence === realGraphPreviewSequence) graph.innerHTML = `<div class="muted">실제 데이터 조회 실패: ${esc(error.message || "오류")}</div>`;
+      }
     }
 
     let widgetPreviewSequence = 0;
@@ -9605,7 +9648,8 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         setWidgetOptionSelect(select, options.rangePresets, select?.value);
       });
       const trendWindow = field("wTrendWindow");
-      setWidgetOptionSelect(trendWindow, options.windows, trendWindow?.value);
+      if (Array.isArray(options.windows) && options.windows.length) setWidgetOptionSelect(trendWindow, options.windows, trendWindow?.value);
+      if (trendWindow && !trendWindow.value) trendWindow.value = "15m";
       const chartSeriesMode = field("wChartSeriesMode");
       setWidgetOptionSelect(chartSeriesMode, options.seriesModes.map((value) => ({value, label: ({per_device:"장비별", sum:"합계", by_phase:"상별", by_path:"위치별"})[value] || value})), chartSeriesMode?.value);
       if (Array.isArray(options.compareModes)) {
@@ -9800,10 +9844,12 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const kind = $("wKind")?.value;
       const aggregatePoint = kind === "aggregate" ? selectedAggregatePoint() : null;
       const compatibleDeviceIds = aggregatePoint?.deviceIds || new Set();
+      const unit = $("wSourceUnit")?.value || "";
       const search = ($("wDeviceSearch")?.value || "").trim().toLocaleLowerCase();
       const available = widgetDeviceOptions().filter((d) =>
         !selected.has(d.id)
         && (kind !== "aggregate" || compatibleDeviceIds.has(Number(d.id)))
+        && (!unit || !["chart", "aggregate"].includes(kind) || widgetSourcesForDevice(d.id).some(source => !source.ambiguous && String(source.unit || "").trim() === unit))
         && (!search || `${d.name} ${d.modelName || ""} ${d.id}`.toLocaleLowerCase().includes(search)));
       const emptyLabel = kind === "aggregate" && !aggregatePoint
         ? "측정항목을 먼저 선택하세요"
@@ -10146,6 +10192,14 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const showDevices = kind === "last" || kind === "aggregate" || (kind === "chart" && chartScope === "devices");
       const showModels = kind === "chart" && chartScope === "models";
       const showPoints = kind === "chart" || kind === "aggregate";
+      const unitSelect = $("wSourceUnit");
+      $("wUnitFilterBlock").style.display = showPoints ? "block" : "none";
+      if (showPoints) {
+        const previousUnit = unitSelect.value;
+        const units = [...new Set(state.widgetSources.filter(source => !source.ambiguous && (kind !== "aggregate" || ["POWER", "ENERGY"].includes(String(source.dataPointType || "").toUpperCase()))).map(source => String(source.unit || "").trim()).filter(Boolean))].sort();
+        unitSelect.innerHTML = '<option value="">모든 단위</option>' + units.map(unit => `<option value="${esc(unit)}">${esc(unit)}</option>`).join("");
+        if (units.includes(previousUnit)) unitSelect.value = previousUnit;
+      }
       if (kind !== "last") {
         $("wDevicePointPick").style.display = "none";
         $("wPickDevicePoints").innerHTML = "";
@@ -10265,6 +10319,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
           const modelPointNames = state.widgetPointNamesByModel.get(Number(modelId));
           for (const p of points) {
             if (p.ambiguous) continue;
+            if ($("wSourceUnit").value && String(p.unit || "").trim() !== $("wSourceUnit").value) continue;
             const dataPointType = String(p.dataPointType || "").toUpperCase();
             if (kind === "chart" && dataPointType === "ENERGY") {
               continue;
@@ -14549,7 +14604,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
 
     $("wPsychTemperatureSearch")?.addEventListener("input", fillPsychrometricDevicePicks);
     $("wPsychHumiditySearch")?.addEventListener("input", fillPsychrometricDevicePicks);
-    $("wPsychTemperatureAdd")?.addEventListener("click", () => addPsychrometricSource("temperature"));
+    $("wPsychTemperatureAdd")?.addEventListener("click", () => { addPsychrometricSource("temperature"); scheduleRealGraphPreview(); });
     $("wPsychHumidityAdd")?.addEventListener("click", () => addPsychrometricSource("humidity"));
     $("wPowerGroupAdd")?.addEventListener("click", addPowerDistributionGroup);
     $("wPowerNewDeviceGroup")?.addEventListener("click", async () => {
@@ -14700,10 +14755,29 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("wPointSearch").addEventListener("input", () => filterWidgetPointLabels("wPickDevicePoints", "wPointSearch"));
     $("wCatalogSearch").addEventListener("input", () => filterWidgetPointLabels("wPointGrid", "wCatalogSearch"));
     $("wAddCalculatedMetric").onclick = () => openCalculatedMetrics(true);
+    let calculatedPreviewSequence = 0;
+    async function refreshCalculatedVisualPreview() {
+      const sequence = ++calculatedPreviewSequence;
+      if ($("wKind").value !== "calculated") return;
+      const definition = state.pueDefinitions.find(item => Number(item.id) === Number($("wPueDefinition").value));
+      widgetVisualPreviewData = {kind:"calculated", data:{value:null, unit:definition?.resultUnit || ""}};
+      updateWidgetDesignPreview();
+      if (!definition) return;
+      $("wVisualPreviewNote").textContent = "계산 지표 최근 수집값 조회 중…";
+      try {
+        const status = await api(`/api/manager/calculated-metrics/${encodeURIComponent(definition.id)}/status`);
+        if (sequence !== calculatedPreviewSequence || $("wKind").value !== "calculated" || Number($("wPueDefinition").value) !== Number(definition.id)) return;
+        widgetVisualPreviewData = {kind:"calculated", data:{value:status.lastValue, unit:status.definition?.resultUnit || definition.resultUnit || ""}};
+        updateWidgetDesignPreview();
+      } catch (error) {
+        if (sequence === calculatedPreviewSequence) $("wVisualPreviewNote").textContent = `최근 수집값 조회 실패: ${error.message}`;
+      }
+    }
     function updateCalculatedUnitHint() {
       const definition = state.pueDefinitions.find(item => Number(item.id) === Number($("wPueDefinition").value));
       $("wPueUnitHint").textContent = !definition ? "계산 지표를 선택하세요." : definition.resultUnit ? `결과 단위: ${definition.resultUnit}` : "결과 단위가 설정되지 않았습니다. 비율은 단위 없이 표시할 수 있습니다.";
       $("wEditCalculatedMetric").disabled = !definition;
+      refreshCalculatedVisualPreview();
     }
     $("wPueDefinition").addEventListener("change", updateCalculatedUnitHint);
     $("wEditCalculatedMetric").onclick = () => { const id = Number($("wPueDefinition").value); if (!id) return; openCalculatedMetrics(true); editPueDefinition(id); };
@@ -14712,7 +14786,11 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
     $("wCreatePage").addEventListener("change", updateWidgetPagePreview);
     $("wName").addEventListener("input", updateWidgetDesignPreview);
     $('wTableEnabled').addEventListener('change', renderWidgetTableEditor);
+    $("wEditorCard").addEventListener("click", (event) => {
+      if (event.target.closest("button") && ["chart", "psychrometric"].includes($("wKind").value)) scheduleRealGraphPreview();
+    });
     $("wEditorCard").addEventListener("change", (event) => {
+      if (["chart", "psychrometric"].includes($("wKind").value)) scheduleRealGraphPreview();
       updateWidgetPeriodCompareFields();
       updateWidgetAdvancedSummary();
       if (event.target.matches('input[name="wVisualStyle"], #wColorCustom, #wVisualColor, #wKind')) updateWidgetDesignPreview();
@@ -14759,6 +14837,16 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       $("wChartSeriesMode").dataset.userSelected = "true";
     });
     $("wOp")?.addEventListener("change", () => refreshWidgetPoints());
+    $("wSourceUnit")?.addEventListener("change", () => {
+      const unit = $("wSourceUnit").value;
+      if (unit) {
+        const keep = id => widgetSourcesForDevice(id).some(source => !source.ambiguous && String(source.unit || "").trim() === unit);
+        const before = state.widgetDeviceIds.length;
+        state.widgetDeviceIds = state.widgetDeviceIds.filter(keep);
+        if (before !== state.widgetDeviceIds.length) toast("선택한 단위가 없는 장비를 선택에서 제외했습니다.");
+      }
+      renderWidgetDevices(); fillWidgetDevicePick(); refreshWidgetPoints();
+    });
     $("wCancelEdit")?.addEventListener("click", () => clearWidgetForm(true));
     $("wDeleteEdit")?.addEventListener("click", () => {
       const id = Number($("wDeleteEdit").dataset.id);
@@ -14805,7 +14893,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       const action = $("wClickAction")?.value || "chart";
       const rawTarget = $("wClickTarget")?.value.trim();
       const config = { action, chartStyle: $("wTrendStyle")?.value || "line",
-        rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value,
+        rangePreset: $("wTrendRange").value, window: $("wTrendWindow").value || "15m",
         seriesMode: $("wClickSeries")?.value || "sum",
         compare: $("wClickCompare")?.value || "none",
         chartCompareMode: $("wChartCompareMode")?.value || "none" };
