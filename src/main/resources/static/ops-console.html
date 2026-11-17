@@ -13806,7 +13806,12 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
       }
     };
 
+    function resetWidgetSourceFilters() {
+      for (const id of ["wSourceUnit", "wPsychTemperatureSearch", "wPsychHumiditySearch"]) if ($(id)) $(id).value = "";
+    }
+
     function clearWidgetForm(keepPage) {
+      resetWidgetSourceFilters();
       widgetPreviewSequence++;
       widgetTablePreviewSequence++;
       widgetTableColumns = [];
@@ -13949,6 +13954,7 @@ body.is-authed #authStatus{display:none}.card,.stat{border:1px solid var(--line)
         editor = $("wEditorCard"); loadStatus = $("wEditorLoadStatus");
         clearWidgetEditorLoadingLocks();
         editor.querySelectorAll("[data-widget-load-indicator]").forEach((element) => element.remove());
+        resetWidgetSourceFilters();
         $("wFormTitle").textContent = `위젯 수정 #${id}`;
         loadStatus.hidden = false; loadStatus.className = "muted widget-editor-load-status";
         $("wCreate").disabled = true; $("wSaveError").hidden = true;
