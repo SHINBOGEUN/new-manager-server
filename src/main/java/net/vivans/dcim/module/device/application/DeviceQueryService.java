@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceCreateRequest;
@@ -57,7 +57,7 @@ public class DeviceQueryService {
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceAssetService deviceAssetService;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
     private final DeviceMqttIdentityService mqttIdentityService;
 
     public PageResponse<DeviceResponse> getDevices(
@@ -191,7 +191,7 @@ public class DeviceQueryService {
         deviceAssetService.updateAsset(saved, request.assetCode(), request.serialNumber(), request.assetStatusId(), request.assetColor());
         mqttIdentityService.replace(saved, request.mqttIdentities());
         if (autoAssignCollection) {
-            collectionScriptSyncService.assignDeviceAndRegenerate(saved);
+            collectionReconciler.registerDevice(saved);
         }
         return response(saved);
     }
@@ -227,12 +227,12 @@ public class DeviceQueryService {
         deviceAssetService.recordAssetChange(device, previousAsset);
         deviceAssetService.removeRackPlacementIfLocationChanged(id, locationNode.getCode());
         if (modelChanged) {
-            collectionScriptSyncService.removeDeviceAndRegenerate(id, oldModelId);
-            collectionScriptSyncService.assignDeviceAndRegenerate(device);
+            collectionReconciler.removeDevice(id, oldModelId);
+            collectionReconciler.registerDevice(device);
         } else {
-            collectionScriptSyncService.regenerateByModelId(newModelId);
+            collectionReconciler.reconcileModel(newModelId);
         }
-        collectionScriptSyncService.regenerateForMappedTarget(id);
+        collectionReconciler.reconcileMappedTarget(id);
         return response;
     }
 
@@ -240,7 +240,7 @@ public class DeviceQueryService {
     public void deleteDevice(Integer id) {
         Device device = findDevice(id);
         Integer modelId = device.getDeviceModel().getId();
-        collectionScriptSyncService.removeDeviceAndRegenerate(id, modelId);
+        collectionReconciler.removeDevice(id, modelId);
         deleteEndpoints(id);
         mqttIdentityService.deleteByDeviceId(id);
         deviceAssetService.deleteAssetData(id);

@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.device.api.dto.DeviceSnmpInstanceCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceSnmpInstanceResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -34,7 +34,7 @@ public class DeviceSnmpInstanceQueryService {
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
 
     public DeviceSnmpInstanceResponse getSnmpInstance(Integer deviceId, Integer endpointId) {
         findDevice(deviceId);
@@ -67,7 +67,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceSnmpInstance snmpInstance = DeviceSnmpInstance.create(endpoint, request.instanceId());
         DeviceSnmpInstance saved = deviceSnmpInstanceRepository.save(snmpInstance);
         if (synchronize) {
-            collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+            collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
         }
         return DeviceSnmpInstanceResponse.from(saved);
     }
@@ -86,7 +86,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceSnmpInstance snmpInstance = findSnmpInstance(endpointId);
         snmpInstance.update(request.instanceId());
         DeviceSnmpInstance saved = deviceSnmpInstanceRepository.save(snmpInstance);
-        collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
         return DeviceSnmpInstanceResponse.from(saved);
     }
 
@@ -96,7 +96,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceProtocolEndpoint endpoint = findEndpoint(endpointId, deviceId);
         DeviceSnmpInstance snmpInstance = findSnmpInstance(endpointId);
         deviceSnmpInstanceRepository.delete(snmpInstance);
-        collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
         return endpointId;
     }
 

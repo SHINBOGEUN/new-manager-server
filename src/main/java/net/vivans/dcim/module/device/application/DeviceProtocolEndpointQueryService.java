@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceProtocolEndpointCreateRequest;
@@ -39,7 +39,7 @@ public class DeviceProtocolEndpointQueryService {
     private final DeviceModelProtocolResolver deviceModelProtocolResolver;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final CommonCodeRepository commonCodeRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
 
     public List<DeviceProtocolEndpointResponse> getEndpoints(Integer deviceId) {
         findDevice(deviceId);
@@ -119,7 +119,7 @@ public class DeviceProtocolEndpointQueryService {
         endpoint.update(protocolType, request.host(), request.port(), enabled);
         DeviceProtocolEndpoint saved = deviceProtocolEndpointRepository.save(endpoint);
         if (snmpAffected) {
-            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
         }
         return DeviceProtocolEndpointResponse.from(saved);
     }
@@ -131,7 +131,7 @@ public class DeviceProtocolEndpointQueryService {
         boolean snmpAffected = isSnmp(endpoint.getProtocolType());
         deviceProtocolEndpointRepository.delete(endpoint);
         if (snmpAffected) {
-            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
         }
         return endpointId;
     }
@@ -143,7 +143,7 @@ public class DeviceProtocolEndpointQueryService {
 
     private void regenerateIfSnmp(CommonCode protocolType, Device device) {
         if (isSnmp(protocolType)) {
-            collectionScriptSyncService.regenerateByModelId(device.getDeviceModel().getId());
+            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
         }
     }
 

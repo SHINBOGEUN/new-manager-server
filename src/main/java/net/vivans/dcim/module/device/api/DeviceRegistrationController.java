@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "device-registration", description = "장비 등록 마법사 API")
 public class DeviceRegistrationController {
     private final DeviceRegistrationService registrationService;
+    private final net.vivans.dcim.module.collectortask.application.DeviceCollectionSettingService collectionSettings;
 
     @GetMapping("/options")
     @Operation(summary = "모델별 등록 옵션 조회")
@@ -36,6 +37,7 @@ public class DeviceRegistrationController {
     @Operation(summary = "장비·통신 설정·수집 그룹 일괄 등록")
     public ResponseEntity<ApiResponse<DeviceRegistrationResponse>> register(
             @Valid @RequestBody DeviceRegistrationRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(registrationService.register(request)));
+        DeviceRegistrationResponse response=registrationService.register(request);
+        return ResponseEntity.ok(ApiResponse.ok(new DeviceRegistrationResponse(response.device(),response.endpointId(),response.taskId(),response.groupId(),collectionSettings.get(response.device().id()))));
     }
 }

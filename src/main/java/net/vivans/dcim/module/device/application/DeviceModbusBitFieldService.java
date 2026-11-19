@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusBitFieldRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusBitFieldResponse;
 import net.vivans.dcim.module.device.domain.model.DeviceModbusBitField;
@@ -26,7 +26,7 @@ import java.util.Set;
 public class DeviceModbusBitFieldService {
     private final DeviceModbusReadingRepository readingRepository;
     private final DeviceModbusBitFieldRepository fieldRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
 
     public List<DeviceModbusBitFieldResponse> get(Integer deviceId, Integer endpointId, Integer readingId) {
         findReading(deviceId, endpointId, readingId);
@@ -93,7 +93,7 @@ public class DeviceModbusBitFieldService {
                 reading, field.pointName(), field.bitOffset(), field.bitWidth(), field.valueMap(),
                 field.unmappedValue())).toList());
         fieldRepository.flush();
-        collectionScriptSyncService.regenerateByModelId(reading.getEndpointModbus().getEndpoint()
+        collectionReconciler.reconcileModel(reading.getEndpointModbus().getEndpoint()
                 .getDevice().getDeviceModel().getId());
         return fields(readingId);
     }

@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.collectortask.application.CollectionTaskService;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTask;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
@@ -45,7 +45,8 @@ public class DeviceRegistrationService {
     private final DeviceModbusReadingQueryService modbusReadingService;
     private final DeviceLoraEndpointService loraEndpointService;
     private final CollectionTaskService taskService;
-    private final CollectionScriptSyncService scriptSyncService;
+    private final CollectionReconciler collectionReconciler;
+    private final net.vivans.dcim.module.collectortask.application.CollectionIntervalResolver collectionIntervals;
 
     public DeviceRegistrationOptionsResponse getOptions(Integer modelId) {
         DeviceModel model = findModel(modelId);
@@ -88,6 +89,13 @@ public class DeviceRegistrationService {
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("protocol not supported by device model"));
         String code = protocol.getProtocolType().getCode().toLowerCase();
         boolean lora = "mqtt".equals(code) && "LORA_SENSOR".equals(model.getDeviceType().getCode());
+        if(request.collection()!=null && request.collectionGroup()!=null)throw new IllegalArgumentException("collection과 collectionGroup은 함께 지정할 수 없습니다.");
+        if(request.collection()!=null){
+            if("mqtt".equals(code) && request.collection().intervalCode()!=null)throw new IllegalArgumentException("MQTT에는 조회 주기가 없습니다.");
+            if(request.collection().intervalCode()!=null)collectionIntervals.code(request.collection().intervalCode());
+            Integer silence=request.collection().expectedSilenceSeconds();
+            if(silence!=null && (!"mqtt".equals(code) || silence<10 || silence>86400))throw new IllegalArgumentException("무수신 시간은 MQTT에서 10~86400초로 입력하세요.");
+        }
         validateSettings(request, code, lora);
         if ("snmp".equals(code)
                 && snmpPoints.existsByModelProtocolIdAndRequiresInstanceTrue(protocol.getId())
@@ -124,13 +132,17 @@ public class DeviceRegistrationService {
                     }
                 }
             }
-            if (request.collectionGroup() != null) {
+            if (request.collection()!=null) {
+                collectionReconciler.configureRegistration(deviceId,request.protocolTypeId(),new net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingRequest(!Boolean.FALSE.equals(request.collection().enabled()),request.collection().intervalCode(),request.collection().expectedSilenceSeconds()));
+            } else if (request.collectionGroup() != null) {
                 taskService.addGroupDevice(request.collectionGroup().taskId(), request.collectionGroup().groupId(), deviceId);
             } else if ("snmp".equals(code) || "modbus".equals(code)) {
                 Device device = deviceRepository.findById(deviceId).orElseThrow();
-                scriptSyncService.assignDeviceAndRegenerate(device, code);
+                collectionReconciler.registerDevice(device, code);
             }
         }
+        if("mqtt".equals(code) && request.collection()!=null)collectionReconciler.configureRegistration(deviceId,request.protocolTypeId(),new net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingRequest(!Boolean.FALSE.equals(request.collection().enabled()),request.collection().intervalCode(),request.collection().expectedSilenceSeconds()));
+        if("mqtt".equals(code) && request.collection()==null && request.collectionGroup()==null)collectionReconciler.registerDevice(deviceRepository.findById(deviceId).orElseThrow(),code);
         return new DeviceRegistrationResponse(deviceService.getDevice(deviceId), endpointId,
                 request.collectionGroup() == null ? null : request.collectionGroup().taskId(),
                 request.collectionGroup() == null ? null : request.collectionGroup().groupId());

@@ -31,6 +31,8 @@ public class CollectorSyncService {
     private final CollectionGroupSpecService collectionGroupSpecService;
     /** HTTP 재시도까지 실패한 그룹만 다음 reconciliation 주기에 최신 DB 상태로 재전송한다. */
     private final Set<Integer> pendingGroupIds = ConcurrentHashMap.newKeySet();
+    /** 장비 설정 반영 중 빈 그룹을 삭제하지 않는 재시도 경로 구분. */
+    private final Set<Integer> pendingManagedGroupIds = ConcurrentHashMap.newKeySet();
 
     @Transactional
     public void syncGroupSpec(CollectionTaskGroup group) {
@@ -251,10 +253,12 @@ public class CollectorSyncService {
                 }
                 log.info("[COLLECTOR_SYNC_RETRY] taskId={} groupId={}", task.getId(), group.getId());
                 try {
-                    syncGroupSpec(group, false);
-                    if (!pendingGroupIds.contains(group.getId()) && isCollectorEnabled(task, group)
-                            && group.getCollectorJobId() != null) {
-                        syncGroupToggle(group, false);
+                    if (pendingManagedGroupIds.contains(group.getId())) {
+                        syncManagedGroup(group, !collectionGroupSpecService.generate(group).pointsBySourceDeviceId().isEmpty());
+                    } else {
+                        syncGroupSpec(group, false);
+                        if (!pendingGroupIds.contains(group.getId()) && isCollectorEnabled(task, group)
+                                && group.getCollectorJobId() != null) syncGroupToggle(group, false);
                     }
                 } catch (Exception exception) {
                     pendingGroupIds.add(group.getId());
@@ -265,6 +269,7 @@ public class CollectorSyncService {
         }
         // 이미 삭제된 그룹은 더 이상 재시도할 설정이 없다.
         pendingGroupIds.removeAll(missingGroupIds);
+        pendingManagedGroupIds.removeAll(missingGroupIds);
     }
 
     @Transactional
@@ -292,6 +297,17 @@ public class CollectorSyncService {
         } catch (Exception exception) {
             handleFailure("repushGroup", task.getId(), group.getId(), false, exception);
         }
+    }
+
+    /** 새 장비 설정 경로는 빈 그룹의 작업을 지우지 않는다. 재시도에도 같은 규칙 적용. */
+    @Transactional public void syncManagedGroup(CollectionTaskGroup group, boolean hasTargets) {
+        pendingManagedGroupIds.add(group.getId());
+        if (!hasTargets) disableGroupJob(group, false);
+        else {
+            syncGroupSpec(group, false);
+            if (!pendingGroupIds.contains(group.getId())) syncGroupToggle(group, false);
+        }
+        if (!pendingGroupIds.contains(group.getId())) pendingManagedGroupIds.remove(group.getId());
     }
 
     private void disableGroupJob(CollectionTaskGroup group, boolean failFast) {

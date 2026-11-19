@@ -1,7 +1,7 @@
 package net.vivans.dcim.module.device.api;
 
 import net.vivans.dcim.module.common.domain.model.CommonCode;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.device.application.DeviceModbusReadingQueryService;
 import net.vivans.dcim.module.device.domain.model.*;
 import net.vivans.dcim.module.device.domain.repository.*;
@@ -50,7 +50,7 @@ class DeviceModbusReadingGetTest {
         ReflectionTestUtils.setField(config, "endpointId", 30);
         when(configs.findByEndpointId(30)).thenReturn(Optional.of(config));
         var service = new DeviceModbusReadingQueryService(devices, endpoints, configs,
-                mock(DeviceModelModbusPointRepository.class), readings, mock(CollectionScriptSyncService.class));
+                mock(DeviceModelModbusPointRepository.class), readings, mock(CollectionReconciler.class));
         mvc = MockMvcBuilders.standaloneSetup(new DeviceModbusReadingController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }

@@ -1,6 +1,6 @@
 package net.vivans.dcim.module.device.application;
 
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.device.api.dto.DeviceModbusBitFieldRequest;
 import net.vivans.dcim.module.device.domain.model.Device;
 import net.vivans.dcim.module.device.domain.model.DeviceEndpointModbus;
@@ -29,7 +29,7 @@ class DeviceModbusBitFieldServiceTest {
     void replacingBitFieldsRegeneratesSourceModelJobs() {
         DeviceModbusReadingRepository readings = mock(DeviceModbusReadingRepository.class);
         DeviceModbusBitFieldRepository fields = mock(DeviceModbusBitFieldRepository.class);
-        CollectionScriptSyncService sync = mock(CollectionScriptSyncService.class);
+        CollectionReconciler sync = mock(CollectionReconciler.class);
         DeviceModbusReading reading = mock(DeviceModbusReading.class);
         DeviceModelModbusPoint point = mock(DeviceModelModbusPoint.class);
         DeviceEndpointModbus modbusEndpoint = mock(DeviceEndpointModbus.class);
@@ -60,6 +60,6 @@ class DeviceModbusBitFieldServiceTest {
                 "VALVE", 0, 2, Map.of("2", 1L), null)));
 
         verify(fields).saveAll(anyList());
-        verify(sync).regenerateByModelId(5);
+        verify(sync).reconcileModel(5);
     }
 }

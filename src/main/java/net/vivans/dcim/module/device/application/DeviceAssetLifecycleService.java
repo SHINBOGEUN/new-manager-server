@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.device.api.dto.DeviceAssetHistoryResponse;
@@ -48,7 +48,7 @@ public class DeviceAssetLifecycleService {
     private final DeviceAssetSpringDataRepository deviceAssetRepository;
     private final DeviceAssetHistoryRepository assetHistoryRepository;
     private final CommonCodeRepository commonCodeRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
     private final CalculatedMetricCollectorSyncService calculatedMetricCollectorSyncService;
 
     public List<DeviceAssetHistoryResponse> getAssetHistory(Integer deviceId) {
@@ -103,7 +103,7 @@ public class DeviceAssetLifecycleService {
         deviceAssetRepository.save(asset);
         DeviceResponse response = DeviceResponse.from(deviceRepository.save(device));
         recordAssetChange(device, previous, DeviceAssetHistoryAction.STATUS_CHANGED, request.reason());
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         calculatedMetricCollectorSyncService.repushActiveDefinitions();
         return response;
     }
