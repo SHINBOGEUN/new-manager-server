@@ -2,6 +2,7 @@ package net.vivans.dcim.module.query.api.dto;
 
 import java.time.Instant;
 import java.util.List;
+import net.vivans.dcim.module.collectortask.application.CollectionReadiness;
 
 public record CollectionDeviceStatusResponse(
         Integer deviceId, String deviceName, Integer modelId, String modelName, String manufacturer,
@@ -13,7 +14,8 @@ public record CollectionDeviceStatusResponse(
         String cronExpression, String collectorJobId, Long expectedIntervalSeconds,
         Instant latestCollectedAt, Long ageSeconds,
         int expectedPointCount, int availablePointCount,
-        List<LatestValue> latestValues
+        List<LatestValue> latestValues,
+        List<CollectionReadiness> readiness
 ) {
     public record LatestValue(Integer targetDeviceId, String targetDeviceName,
                               String pointName, Double value, String unit, Instant collectedAt) {}

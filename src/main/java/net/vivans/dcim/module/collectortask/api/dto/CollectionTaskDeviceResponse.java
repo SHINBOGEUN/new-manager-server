@@ -1,6 +1,8 @@
 package net.vivans.dcim.module.collectortask.api.dto;
 
 import net.vivans.dcim.module.collectortask.application.CollectionGroupPlan;
+import net.vivans.dcim.module.collectortask.application.CollectionReadiness;
+import java.util.List;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskDevice;
 
 /**
@@ -14,7 +16,8 @@ public record CollectionTaskDeviceResponse(
         Integer modelId,
         String modelName,
         boolean excluded,
-        String exclusionReason
+        String exclusionReason,
+        List<CollectionReadiness> readiness
 ) {
 
     public static CollectionTaskDeviceResponse from(CollectionTaskDevice mapping, CollectionGroupPlan spec) {
@@ -23,8 +26,8 @@ public record CollectionTaskDeviceResponse(
         String reason = null;
         if (!inTargets) {
             reason = spec == null ? null
-                    : spec.skipped().stream()
-                        .filter(r -> r.startsWith("device:" + deviceId + " "))
+                    : spec.reasonsForDevice(deviceId).stream()
+                        .map(CollectionGroupPlan.SkippedReason::message)
                         .findFirst()
                         .orElseGet(() -> spec.pointsForSource(deviceId).isEmpty()
                                 ? "이 수집 작업에 유효한 측정 항목이 없습니다."
@@ -36,7 +39,8 @@ public record CollectionTaskDeviceResponse(
                 mapping.getDevice().getDeviceModel().getId(),
                 mapping.getDevice().getDeviceModel().getName(),
                 !inTargets,
-                reason
+                reason,
+                spec == null ? List.of() : spec.readinessForDevice(deviceId)
         );
     }
 }

@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.collectortask.application.CollectionGroupPlan;
+import net.vivans.dcim.module.collectortask.application.CollectionReadiness;
+import net.vivans.dcim.module.collectortask.application.CollectionGroupPlan.SkippedReason;
 import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecService;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTask;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskDevice;
@@ -53,7 +55,6 @@ public class CollectionStatusQueryService {
     private static final int DEVICE_PAGE_SIZE = 200;
     private static final int DEFAULT_LOOKBACK_HOURS = 168;
     private static final int MAX_LOOKBACK_HOURS = 168;
-    private static final String UNSUPPORTED_MARKER = "not supported yet";
 
     private final DeviceRepository deviceRepository;
     private final DeviceMonitoringPolicyRepository monitoringPolicyRepository;
@@ -81,15 +82,18 @@ public class CollectionStatusQueryService {
 
         List<CollectionDeviceStatusResponse> rows = new ArrayList<>();
         for (Device device : devices) {
-            Registration registration = registrationByDeviceId.get(device.getId());
-            CollectionGroupPlan spec = registration == null ? null : specByGroupId.get(registration.group().getId());
-            List<LastPoint> latestPoints = lastPointsByDeviceId.getOrDefault(device.getId(), List.of());
-            Map<String, String> units = new HashMap<>(unitsByModelId.getOrDefault(device.getDeviceModel().getId(), Map.of()));
-            if (spec != null) {
-                units.putAll(spec.unitsForSource(device.getId()));
+            try {
+                Registration registration = registrationByDeviceId.get(device.getId());
+                CollectionGroupPlan spec = registration == null ? null : specByGroupId.get(registration.group().getId());
+                List<LastPoint> latestPoints = lastPointsByDeviceId.getOrDefault(device.getId(), List.of());
+                Map<String, String> units = new HashMap<>(unitsByModelId.getOrDefault(device.getDeviceModel().getId(), Map.of()));
+                if (spec != null) units.putAll(spec.unitsForSource(device.getId()));
+                rows.add(toResponse(device, registration, spec, latestPoints, units,
+                        deviceNamesById, now, resolvedLookbackHours, policiesByDevice.get(device.getId())));
+            } catch (RuntimeException exception) {
+                // 장비 하나의 설정 오류로 다른 장비의 상태 조회를 중단하지 않는다.
+                rows.add(evaluationFailure(device));
             }
-            rows.add(toResponse(device, registration, spec, latestPoints, units,
-                    deviceNamesById, now, resolvedLookbackHours, policiesByDevice.get(device.getId())));
         }
         rows.sort(Comparator.comparing(CollectionDeviceStatusResponse::status)
                 .thenComparing(CollectionDeviceStatusResponse::deviceName));
@@ -261,11 +265,10 @@ public class CollectionStatusQueryService {
             }
         }
 
-        // 그룹 spec의 skipped 사유 중 '이 장비' 항목만 골라낸다. 그룹 내 다른 장비의 사유가
-        // 이 장비 상태에 잘못 섞여 들어가지 않게 하기 위함이다.
-        Optional<String> deviceSkipReason = spec == null ? Optional.empty()
-                : spec.skipped().stream().filter(reason -> reason.startsWith("device:" + device.getId() + " ")).findFirst();
-        boolean modelMismatch = deviceSkipReason.filter(reason -> reason.contains(CollectionGroupSpecService.MODEL_MISMATCH_MARKER)).isPresent();
+        // 장비 범위와 판정 종류를 사용한다. skipped 자유 문구는 화면 표시용으로만 유지한다.
+        Optional<SkippedReason> deviceSkipReason = spec == null ? Optional.empty()
+                : spec.reasonsForDevice(device.getId()).stream().findFirst();
+        boolean modelMismatch = deviceSkipReason.filter(reason -> reason.kind() == SkippedReason.Kind.MODEL_MISMATCH).isPresent();
         Integer expectedModelId = registration == null ? null : registration.task().getDeviceModel().getId();
         String expectedModelName = registration == null ? null : registration.task().getDeviceModel().getName();
 
@@ -292,7 +295,7 @@ public class CollectionStatusQueryService {
         } else if (spec == null || spec.pointsForSource(device.getId()).isEmpty() && !modelMismatch) {
             // 그룹에 수집 대상 포인트 자체가 없는 경우에만 설정 누락으로 즉시 판정한다.
             status = "NO_POINTS";
-            boolean unsupported = spec != null && spec.skipped().stream().anyMatch(reason -> reason.contains(UNSUPPORTED_MARKER));
+            boolean unsupported = spec != null && spec.reasons().stream().anyMatch(reason -> reason.kind() == SkippedReason.Kind.UNSUPPORTED);
             message = unsupported ? "미지원 프로토콜" : "필수 설정 누락";
             technicalDetail = spec == null
                     ? "수집 spec을 생성하지 못했습니다."
@@ -303,7 +306,7 @@ public class CollectionStatusQueryService {
             // 지금은 이 그룹 기준으로 유효한 데이터가 아니므로 신선도 판정보다 우선한다.
             status = "MODEL_MISMATCH";
             message = "모델 불일치";
-            technicalDetail = deviceSkipReason.orElse("장비 모델이 수집 작업 모델과 다릅니다.");
+            technicalDetail = deviceSkipReason.map(SkippedReason::message).orElse("장비 모델이 수집 작업 모델과 다릅니다.");
         } else if (latest != null) {
             // 실제 최근 수집값이 있으면, 그룹 내 다른 장비 때문에 생긴 설정 경고(skipped)보다
             // 이 장비의 실측 데이터 신선도를 우선한다.
@@ -333,7 +336,7 @@ public class CollectionStatusQueryService {
         } else if (!spec.skipped().isEmpty()) {
             // 데이터가 없고, 그룹 spec에 설정 경고가 남아있는 경우에만 설정 누락으로 안내한다.
             status = "NO_POINTS";
-            boolean unsupported = spec.skipped().stream().anyMatch(reason -> reason.contains(UNSUPPORTED_MARKER));
+            boolean unsupported = spec.reasons().stream().anyMatch(reason -> reason.kind() == SkippedReason.Kind.UNSUPPORTED);
             message = unsupported ? "미지원 프로토콜" : "필수 설정 누락";
             technicalDetail = String.join(" / ", spec.skipped());
         } else {
@@ -360,7 +363,27 @@ public class CollectionStatusQueryService {
                 registration == null ? null : registration.group().getId(), registration == null ? null : registration.group().getName(),
                 registration == null ? null : registration.group().getCronExpression(),
                 registration == null ? null : registration.group().getCollectorJobId(), intervalSeconds,
-                latest, ageSeconds, expectedSources.size(), freshPointCount, values);
+                latest, ageSeconds, expectedSources.size(), freshPointCount, values, readiness(device, spec));
+    }
+
+    private static List<CollectionReadiness> readiness(Device device, CollectionGroupPlan spec) {
+        List<CollectionReadiness> result = new ArrayList<>();
+        if (!device.isEnabled()) {
+            result.add(new CollectionReadiness(CollectionReadiness.Code.DEVICE_DISABLED, "장비 활성 상태",
+                    "/ops-console.html?page=devices&previewDeviceId=" + device.getId()));
+        }
+        if (spec != null) result.addAll(spec.readinessForDevice(device.getId()));
+        return result.stream().distinct().toList();
+    }
+
+    private static CollectionDeviceStatusResponse evaluationFailure(Device device) {
+        String detail = "장비 수집 설정을 판정하지 못했습니다. 연결과 측정 항목 설정을 확인하세요.";
+        return new CollectionDeviceStatusResponse(
+                device.getId(), device.getName(), null, null, null, null, null,
+                null, null, device.isEnabled(), null, "NO_POINTS", "필수 설정 누락", detail,
+                null, null, null, null, null, null, null, null, null, 0, 0, List.of(),
+                List.of(new CollectionReadiness(CollectionReadiness.Code.INVALID_POINT, "수집 설정 확인",
+                        "/ops-console.html?page=devices&previewDeviceId=" + device.getId())));
     }
 
     private long staleAfterSeconds(long intervalSeconds) {
