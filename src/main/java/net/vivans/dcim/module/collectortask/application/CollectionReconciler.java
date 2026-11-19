@@ -111,7 +111,14 @@ public class CollectionReconciler {
         Set<Integer> models=tx(()->{Set<Integer> ids=new LinkedHashSet<>();readings.findAllByTargetDeviceIdOrderByIdAsc(id).forEach(r->ids.add(r.getEndpointModbus().getEndpoint().getDevice().getDeviceModel().getId()));return ids;});
         models.forEach(this::reconcileModelNow);
     });}
-    public void removeDevice(Integer id,Integer modelId){if(id==null || modelId==null)return;afterCommit("remove:"+id+":"+modelId,()->{
+    public void removeDevice(Integer id,Integer modelId){if(id==null || modelId==null)return;
+        // Remove FK-owning memberships in the caller's transaction before deleting/changing the device.
+        // Collector synchronization still waits for a successful commit.
+        for(CollectionTask task:tasks.findAllByModelId(modelId)) {
+            task.getGroups().forEach(group->group.removeDevice(id));
+            tasks.saveAndFlush(task);
+        }
+        afterCommit("remove:"+id+":"+modelId,()->{
         List<Key> keys=modelKeys(modelId);
         if(!system.autoEnabled()) {
             locked(keys,()->{legacy.removeDeviceAndRegenerate(id,modelId);return null;});

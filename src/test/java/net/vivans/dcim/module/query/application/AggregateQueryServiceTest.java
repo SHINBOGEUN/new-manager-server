@@ -232,13 +232,15 @@ class AggregateQueryServiceTest {
         lenient().when(widget.getAggregateRangePreset()).thenReturn(rangePreset);
         when(widget.getDevices()).thenReturn(deviceSet);
         lenient().when(widget.pointNames()).thenReturn(List.of(pointName));
-        when(widget.aggregateSourceDefinitions()).thenReturn(mappings.stream()
-                .map(mapping -> new PageWidget.LastSourceDefinition(mapping.getDevice(), List.of(pointName))).toList());
-        lenient().when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(mappings.stream()
+        var definitions = mappings.stream()
+                .map(mapping -> new PageWidget.LastSourceDefinition(mapping.getDevice(), List.of(pointName))).toList();
+        var catalogSources = mappings.stream()
                 .map(mapping -> new DeviceMeasurementSourceCatalog.Source(mapping.getDevice().getId(),
                         mapping.getDevice().getName(), 1, "snmp", pointName,
                         op == PageWidgetOp.usage ? "kWh" : "W", null,
-                        mapping.getDevice().getId(), "MODEL_POINT", false)).toList());
+                        mapping.getDevice().getId(), "MODEL_POINT", false)).toList();
+        when(widget.aggregateSourceDefinitions()).thenReturn(definitions);
+        lenient().when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(catalogSources);
         return widget;
     }
 

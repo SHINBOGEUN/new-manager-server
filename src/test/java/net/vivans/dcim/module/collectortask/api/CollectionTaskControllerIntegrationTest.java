@@ -39,6 +39,9 @@ class CollectionTaskControllerIntegrationTest {
     private net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService scriptSyncService;
 
     @Autowired
+    private net.vivans.dcim.module.device.domain.repository.DeviceRepository deviceRepository;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
@@ -356,6 +359,7 @@ class CollectionTaskControllerIntegrationTest {
         int taskId = createTask(accessToken, "자동 편입 Task", modelId, snmpId);
         String locationCode = createRootLocation(accessToken, "V4-Auto-Loc");
         int deviceId = createDevice(accessToken, modelId, locationCode, "V4-AUTO-1");
+        scriptSyncService.assignDeviceAndRegenerate(deviceRepository.findById(deviceId).orElseThrow());
 
         mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
                         .header("Authorization", bearerToken(accessToken)))
@@ -366,6 +370,7 @@ class CollectionTaskControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.groups[0].generatedSpec").value(not(containsString("10.88.30.1"))));
 
         createEndpoint(accessToken, deviceId, snmpId, "10.88.30.1", 161);
+        scriptSyncService.regenerateByModelId(modelId);
 
         mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
                         .header("Authorization", bearerToken(accessToken)))
@@ -426,6 +431,7 @@ class CollectionTaskControllerIntegrationTest {
         mockMvc.perform(delete("/api/manager/devices/{deviceId}", deleteDeviceId)
                         .header("Authorization", bearerToken(accessToken)))
                 .andExpect(status().isOk());
+        scriptSyncService.regenerateByModelId(modelId);
 
         mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
                         .header("Authorization", bearerToken(accessToken)))
