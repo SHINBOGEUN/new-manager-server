@@ -57,6 +57,7 @@ public class PageWidgetQueryService {
     private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
+    private final net.vivans.dcim.module.query.application.UnitNormalizer unitNormalizer;
     private final PageWidgetSpecializedSupport widgetSupport;
     private final CalculatedMetricPageWidgetHandler calculatedMetricWidgetHandler;
     private final PsychrometricPageWidgetHandler psychrometricWidgetHandler;
@@ -130,8 +131,8 @@ public class PageWidgetQueryService {
         if (kind == PageWidgetQueryKind.power_distribution) {
             throw new IllegalArgumentException("power distribution widget must be created with /widgets/power-distribution");
         }
-        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
-            throw new IllegalArgumentException("lastSources is only allowed for last");
+        if (kind != PageWidgetQueryKind.last && kind != PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("장비별 측정항목은 현재값 또는 집계에서만 사용할 수 있습니다");
         }
         if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
             throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
@@ -150,7 +151,15 @@ public class PageWidgetQueryService {
         }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null || request.enabled();
-        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<PageWidget.LastSourceDefinition> aggregateSources = kind == PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()
+                ? resolveLastSources(request.lastSources()) : null;
+        if (aggregateSources != null) validateAggregateSources(aggregateSources, op);
+        if (aggregateSources != null && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty())
+            throw new IllegalArgumentException("장비별 측정항목과 장비 그룹은 함께 사용할 수 없습니다");
+        if (kind == PageWidgetQueryKind.aggregate && aggregateSources == null && (request.pointNames() == null || request.pointNames().size() != 1))
+            throw new IllegalArgumentException("기존 집계 방식에는 측정항목 하나가 필요합니다");
+        List<Device> devices = aggregateSources == null ? resolveDevices(request.deviceIds(), kind, request.chartScope(), op)
+                : aggregateSources.stream().map(PageWidget.LastSourceDefinition::device).toList();
         List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
         List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
@@ -170,12 +179,13 @@ public class PageWidgetQueryService {
                 chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
-                request.pointNames(),
+                aggregateSources == null ? request.pointNames() : List.of(aggregateSources.get(0).pointNames().get(0)),
                 devices,
                 deviceGroups,
                 List.of(),
                 modelIds
         );
+        if (aggregateSources != null) widget.replaceAggregateSources(aggregateSources);
         widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         widgetSupport.applyLayout(widget, request.layout());
         return PageWidgetResponse.from(pageWidgetRepository.save(widget));
@@ -248,10 +258,14 @@ public class PageWidgetQueryService {
                 && "chart".equals(action)) {
             throw new IllegalArgumentException("개수·CCTV 위젯에는 차트 클릭 동작을 설정할 수 없습니다");
         }
-        validateOption(config, "chartStyle", Set.of("line", "bar", "area"));
+        validateOption(config, "chartStyle", Set.of("line", "bar", "area")); // area remains accepted only for stored-client compatibility
         if (config.get("rangePreset") instanceof String rangePreset) PageWidgetChartRangePreset.from(rangePreset);
         validateOption(config, "window", Set.of("1m", "5m", "15m", "1h", "1d"));
         if (config.get("seriesMode") instanceof String seriesMode) PageWidgetChartSeriesMode.from(seriesMode);
+        Set<String> compareModes = Set.of("none", "today_yesterday", "week_lastweek", "month_lastmonth",
+                "previous_period", "previous_day", "previous_week");
+        validateOption(config, "compare", compareModes);
+        validateOption(config, "chartCompareMode", compareModes);
         if ("device".equals(action) || "rack".equals(action) || "page".equals(action)) {
             Object target = config.get("target");
             if (!(target instanceof Map<?, ?> map)) throw new IllegalArgumentException("클릭 이동 대상을 지정하세요");
@@ -267,6 +281,27 @@ public class PageWidgetQueryService {
             }
             if ("rack".equals(action) && !(map.get("rackLocationCode") instanceof String code && !code.isBlank()))
                 throw new IllegalArgumentException("랙 상세 대상을 지정하세요");
+        }
+        Object chartLayers = config.get("chartLayers");
+        if (chartLayers != null) {
+            if (widget.getQueryKind() == PageWidgetQueryKind.count || widget.getQueryKind() == PageWidgetQueryKind.cctv
+                    || !(chartLayers instanceof List<?> layers) || layers.size() > 3)
+                throw new IllegalArgumentException("차트 기간은 최대 3개까지 선택할 수 있습니다");
+            Set<String> periods = new java.util.HashSet<>();
+            for (Object item : layers) {
+                if (!(item instanceof Map<?, ?> layer) || !(layer.get("period") instanceof String period)
+                        || !Set.of("today", "yesterday", "previous_month_day").contains(period)
+                        || !periods.add(period) || !(layer.get("style") instanceof String style)
+                        || !Set.of("bar", "line", "dashed").contains(style))
+                    throw new IllegalArgumentException("차트 기간과 표시 방식을 확인하세요");
+            }
+        }
+        Object primaryPoint = config.get("primaryPointName");
+        if (primaryPoint != null && (!(primaryPoint instanceof String name) || name.isBlank()
+                || widget.getQueryKind() != PageWidgetQueryKind.last
+                || widget.lastSourceDefinitions().size() != 1
+                || !widget.lastSourceDefinitions().get(0).pointNames().contains(name))) {
+            throw new IllegalArgumentException("대표 측정항목은 선택한 장비의 측정항목이어야 합니다");
         }
         Object pointNames = config.get("pointNames");
         if (pointNames != null && !(pointNames instanceof List<?>)) throw new IllegalArgumentException("pointNames 형식이 올바르지 않습니다");
@@ -317,8 +352,8 @@ public class PageWidgetQueryService {
         if (widget.getQueryKind() == PageWidgetQueryKind.power_distribution) {
             throw new IllegalArgumentException("power distribution widget must be updated with /widgets/{id}/power-distribution");
         }
-        if (kind != PageWidgetQueryKind.last && request.lastSources() != null && !request.lastSources().isEmpty()) {
-            throw new IllegalArgumentException("lastSources is only allowed for last");
+        if (kind != PageWidgetQueryKind.last && kind != PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()) {
+            throw new IllegalArgumentException("장비별 측정항목은 현재값 또는 집계에서만 사용할 수 있습니다");
         }
         if (kind == PageWidgetQueryKind.last && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty()) {
             throw new IllegalArgumentException("deviceGroupIds supports aggregate and chart devices only");
@@ -334,7 +369,15 @@ public class PageWidgetQueryService {
         }
         PageWidgetOp op = PageWidgetOp.from(request.op());
         boolean enabled = request.enabled() == null ? widget.isEnabled() : request.enabled();
-        List<Device> devices = resolveDevices(request.deviceIds(), kind, request.chartScope(), op);
+        List<PageWidget.LastSourceDefinition> aggregateSources = kind == PageWidgetQueryKind.aggregate && request.lastSources() != null && !request.lastSources().isEmpty()
+                ? resolveLastSources(request.lastSources()) : null;
+        if (aggregateSources != null) validateAggregateSources(aggregateSources, op);
+        if (aggregateSources != null && request.deviceGroupIds() != null && !request.deviceGroupIds().isEmpty())
+            throw new IllegalArgumentException("장비별 측정항목과 장비 그룹은 함께 사용할 수 없습니다");
+        if (kind == PageWidgetQueryKind.aggregate && aggregateSources == null && (request.pointNames() == null || request.pointNames().size() != 1))
+            throw new IllegalArgumentException("기존 집계 방식에는 측정항목 하나가 필요합니다");
+        List<Device> devices = aggregateSources == null ? resolveDevices(request.deviceIds(), kind, request.chartScope(), op)
+                : aggregateSources.stream().map(PageWidget.LastSourceDefinition::device).toList();
         List<DeviceGroup> deviceGroups = resolveDeviceGroups(request.deviceGroupIds(), kind, request.chartScope());
         List<Device> targetDevices = mergeTargetDevices(devices, deviceGroups);
         List<Integer> modelIds = resolveModelIds(request.modelIds(), kind, request.chartScope());
@@ -353,12 +396,16 @@ public class PageWidgetQueryService {
                 chartSeriesMode,
                 PageWidgetChartRangePreset.from(request.chartRangePreset()),
                 request.chartWindow(),
-                request.pointNames(),
+                aggregateSources == null ? request.pointNames() : widget.hasExplicitAggregateSources()
+                        ? aggregateSources.stream().flatMap(source -> source.pointNames().stream()).distinct().toList()
+                        : List.of(aggregateSources.get(0).pointNames().get(0)),
                 devices,
                 deviceGroups,
                 List.of(),
                 modelIds
         );
+        if (aggregateSources != null) widget.replaceAggregateSources(aggregateSources);
+        else if (kind == PageWidgetQueryKind.aggregate) widget.clearAggregateSources();
         widget.updateDataFreshnessMinutes(request.dataFreshnessMinutes());
         if (request.layout() != null) {
             widgetSupport.applyLayout(widget, request.layout());
@@ -536,6 +583,30 @@ public class PageWidgetQueryService {
                     .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId)));
         }
         return devices;
+    }
+
+    private void validateAggregateSources(List<PageWidget.LastSourceDefinition> sources, PageWidgetOp op) {
+        if (op == null) throw new IllegalArgumentException("집계 방식을 선택하세요");
+        String type = op == PageWidgetOp.usage || op == PageWidgetOp.usage_rank ? "ENERGY" : "POWER";
+        Set<Integer> ids = new LinkedHashSet<>();
+        Map<Integer, String> chosen = new java.util.LinkedHashMap<>();
+        for (var source : sources) {
+            if (!source.device().isEnabled() || source.pointNames().size() != 1 || !ids.add(source.device().getId()))
+                throw new IllegalArgumentException("활성 장비마다 측정항목 하나를 선택하세요");
+            chosen.put(source.device().getId(), source.pointNames().get(0));
+        }
+        var matching = sourceCatalog.availableSources(ids).stream().filter(source -> !source.ambiguous()
+                && source.pointName().equals(chosen.get(source.deviceId())) && type.equalsIgnoreCase(source.dataPointType())
+                && source.unit() != null && !source.unit().isBlank()).toList();
+        if (matching.size() != ids.size()) throw new IllegalArgumentException("장비별 측정항목의 유형과 단위를 확인하세요");
+        var plan = unitNormalizer.plan(ids, chosen.values());
+        Set<String> units = new LinkedHashSet<>();
+        chosen.forEach((id, name) -> {
+            var conversion = plan.conversions().get(net.vivans.dcim.module.query.application.UnitNormalizer.key(id, name));
+            if (conversion == null || conversion.unit() == null) throw new IllegalArgumentException("측정항목 단위를 확인할 수 없습니다");
+            units.add(conversion.unit());
+        });
+        if (units.size() != 1) throw new IllegalArgumentException("서로 다른 기준 단위는 집계할 수 없습니다");
     }
 
     private List<PageWidget.LastSourceDefinition> resolveLastSources(

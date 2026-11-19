@@ -18,7 +18,8 @@ public record DeviceRegistrationRequest(
         @Valid List<ModbusReading> modbusReadings,
         // 기존 LoRa 클라이언트 호환용. 새 화면은 device.mqttIdentities를 사용한다.
         @Valid LoraIdentity loraIdentity,
-        @Valid CollectionGroup collectionGroup
+        @Valid CollectionGroup collectionGroup,
+        @Valid net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingRequest collection
 ) {
     public record LoraIdentity(@NotNull MqttIdentityType idType, @NotBlank String externalId, Boolean enabled) {
     }

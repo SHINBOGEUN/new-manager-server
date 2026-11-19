@@ -10,6 +10,7 @@ import net.vivans.dcim.module.device.domain.model.PageWidgetPowerDistributionSou
 import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSource;
 import net.vivans.dcim.module.device.domain.model.PageWidgetPsychrometricSourceRole;
 import net.vivans.dcim.module.device.domain.model.PageWidgetQueryKind;
+import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
 import net.vivans.dcim.module.device.domain.repository.PageWidgetRepository;
 import net.vivans.dcim.module.device.application.DeviceMeasurementSourceCatalog;
 import net.vivans.dcim.module.query.api.dto.ChartSeriesResponse;
@@ -36,20 +37,116 @@ import java.util.Set;
 public class WidgetTrendQueryService {
 
     private final PageWidgetRepository pageWidgetRepository;
+    private final DeviceRepository deviceRepository;
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
+    private final UnitNormalizer unitNormalizer;
 
     public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window) {
+        return getTrend(widgetId, rangePresetRaw, window, null);
+    }
+
+    public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window, String compareMode) {
+        return getTrend(widgetId, rangePresetRaw, window, "sum", compareMode);
+    }
+
+    public ChartWidgetResponse getTrend(Integer widgetId, String rangePresetRaw, String window,
+                                        String seriesMode, String compareMode) {
         PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (!widget.isEnabled()) throw new IllegalArgumentException("widget is disabled");
         PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
-        String resolvedWindow = resolveWindow(window);
         QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        String resolvedWindow = ChartComparisonSupport.requestedWindow(window, comparison, preset);
+        if (comparison != null) range = comparison.currentRange();
+        ChartWidgetResponse current = trendForRange(widget, preset, resolvedWindow, range);
+        if (comparison == null) {
+            if ("per_device".equalsIgnoreCase(seriesMode)) return current;
+            return withSeries(current, sumSeriesByUnit(current.series(), "합계"), "sum");
+        }
+        ChartWidgetResponse previous = trendForRange(widget, preset, resolvedWindow, comparison.range());
+        List<ChartSeriesResponse> currentSum;
+        List<ChartSeriesResponse> previousSum;
+        if (widget.getQueryKind() == PageWidgetQueryKind.last || widget.getQueryKind() == PageWidgetQueryKind.aggregate) {
+            currentSum = comparisonByUnit(standardSources(widget), range, resolvedWindow, comparison.currentLabel());
+            previousSum = comparisonByUnit(standardSources(widget), comparison.range(), resolvedWindow, comparison.previousLabel());
+        } else {
+            currentSum = sumSeriesByUnit(current.series(), "합계 (" + comparison.currentLabel() + ")");
+            previousSum = sumSeriesByUnit(previous.series(), "합계 (" + comparison.previousLabel() + ")");
+        }
+        return withSeries(current, ChartComparisonSupport.appendComparison(currentSum, previousSum, comparison), "sum", List.of("sum"));
+    }
 
+    private static List<ChartSeriesResponse> sumSeriesByUnit(List<ChartSeriesResponse> sources, String label) {
+        Map<String, List<ChartSeriesResponse>> groups = new LinkedHashMap<>();
+        for (ChartSeriesResponse source : sources) {
+            String unit = source.unit();
+            String group = unit == null || unit.isBlank() ? "\u0000" + source.key() : unit;
+            groups.computeIfAbsent(group, ignored -> new ArrayList<>()).add(source);
+        }
+        List<ChartSeriesResponse> result = new ArrayList<>();
+        for (List<ChartSeriesResponse> group : groups.values()) {
+            result.addAll(ChartComparisonSupport.sum(group, group.get(0).unit(), label));
+        }
+        return result;
+    }
+
+    private List<ChartSeriesResponse> comparisonByUnit(List<Source> sources, QueryRanges.Range range,
+                                                        String window, String label) {
+        Map<String, String> unitBySource = unitsBySource(sources);
+        Map<String, List<Source>> groups = new LinkedHashMap<>();
+        for (Source source : sources) {
+            String sourceKey = key(source.device().getId(), source.pointName());
+            String unit = unitBySource.get(sourceKey);
+            String group = unit == null || unit.isBlank() ? "\u0000" + sourceKey : unit;
+            groups.computeIfAbsent(group, ignored -> new ArrayList<>()).add(source);
+        }
+        List<ChartSeriesResponse> result = new ArrayList<>();
+        for (List<Source> group : groups.values()) {
+            Source first = group.get(0);
+            String unit = unitBySource.get(key(first.device().getId(), first.pointName()));
+            result.addAll(ChartComparisonSupport.sum(comparisonSeries(group, unit, range, window), unit, "합계 (" + label + ")"));
+        }
+        return result;
+    }
+
+    private static ChartWidgetResponse withSeries(ChartWidgetResponse current,
+                                                   List<ChartSeriesResponse> series, String mode) {
+        return withSeries(current, series, mode, current.availableSeriesModes());
+    }
+
+    private static ChartWidgetResponse withSeries(ChartWidgetResponse current,
+                                                   List<ChartSeriesResponse> series, String mode,
+                                                   List<String> availableModes) {
+        return new ChartWidgetResponse(current.widgetId(), current.widgetName(), current.pageCode(),
+                current.chartScope(), mode, current.rangePreset(), current.window(),
+                current.start(), current.end(), current.unit(), current.units(), series,
+                current.dataStatus(), availableModes).withUnitConverted(current.unitConverted());
+    }
+
+    private List<ChartSeriesResponse> comparisonSeries(List<Source> sources, String unit,
+                                                        QueryRanges.Range range, String window) {
+        List<Integer> deviceIds = sources.stream().map(source -> source.device().getId()).distinct().toList();
+        List<String> pointNames = sources.stream().map(Source::pointName).distinct().toList();
+        Map<String, String> typeBySource = new HashMap<>();
+        for (DeviceMeasurementSourceCatalog.Source item : sourceCatalog.availableSources(
+                sources.stream().map(source -> source.device().getId()).collect(java.util.stream.Collectors.toSet()))) {
+            if (!item.ambiguous() && sources.stream().anyMatch(source -> source.device().getId().equals(item.deviceId())
+                    && source.pointName().equalsIgnoreCase(item.pointName()))) {
+                typeBySource.put(item.deviceId() + "\u0000" + item.pointName(), item.dataPointType());
+            }
+        }
+        Set<String> selected = sources.stream().map(source -> key(source.device().getId(), source.pointName())).collect(java.util.stream.Collectors.toSet());
+        return List.of(ComparisonSeriesSupport.sum(pointQuery, deviceIds, pointNames, typeBySource,
+                unit, range, window, point -> selected.contains(key(point.deviceId(), point.pointName())), conversionPlan(sources)));
+    }
+
+    private ChartWidgetResponse trendForRange(PageWidget widget, PageWidgetChartRangePreset preset,
+                                               String window, QueryRanges.Range range) {
         return switch (widget.getQueryKind()) {
-            case last, aggregate -> standardTrend(widget, preset, resolvedWindow, range);
-            case psychrometric -> psychrometricTrend(widget, preset, resolvedWindow, range);
-            case power_distribution -> powerDistributionTrend(widget, preset, resolvedWindow, range);
+            case last, aggregate -> standardTrend(widget, preset, window, range);
+            case psychrometric -> psychrometricTrend(widget, preset, window, range);
+            case power_distribution -> powerDistributionTrend(widget, preset, window, range);
             case chart -> throw new IllegalArgumentException("chart widget must use /query/chart");
             case calculated -> throw new IllegalArgumentException("calculated widget must use /query/calculated");
             case count -> throw new IllegalArgumentException("count widget has no time-series data");
@@ -57,13 +154,80 @@ public class WidgetTrendQueryService {
         };
     }
 
+    public ChartWidgetResponse previewTrend(List<String> sourceRefs, String rangePresetRaw, String window) {
+        return previewTrend(sourceRefs, rangePresetRaw, window, "sum", "none");
+    }
+
+    public ChartWidgetResponse previewTrend(List<String> sourceRefs, String rangePresetRaw, String window,
+                                            String seriesMode, String compareMode) {
+        if (sourceRefs == null || sourceRefs.isEmpty()) {
+            throw new IllegalArgumentException("먼저 데이터 선택에서 장비와 측정 항목을 선택하세요");
+        }
+        if (sourceRefs.size() > 50) {
+            throw new IllegalArgumentException("미리보기는 최대 50개 장비·측정 항목까지 지원합니다");
+        }
+
+        List<Source> sources = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (String sourceRef : sourceRefs) {
+            if (sourceRef == null) throw new IllegalArgumentException("source 형식은 deviceId:pointName 이어야 합니다");
+            int separator = sourceRef.indexOf(':');
+            if (separator <= 0 || separator == sourceRef.length() - 1) {
+                throw new IllegalArgumentException("source 형식은 deviceId:pointName 이어야 합니다");
+            }
+            int deviceId;
+            try {
+                deviceId = Integer.parseInt(sourceRef.substring(0, separator).trim());
+            } catch (NumberFormatException error) {
+                throw new IllegalArgumentException("source의 deviceId가 올바르지 않습니다");
+            }
+            if (deviceId <= 0) throw new IllegalArgumentException("source의 deviceId가 올바르지 않습니다");
+            String pointName = sourceRef.substring(separator + 1).trim();
+            if (pointName.isBlank() || pointName.length() > 255) {
+                throw new IllegalArgumentException("source의 pointName이 비어 있거나 너무 깁니다");
+            }
+            String sourceKey = key(deviceId, pointName);
+            if (!seen.add(sourceKey)) continue;
+            Device device = deviceRepository.findById(deviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("선택한 장비를 찾을 수 없습니다: " + deviceId));
+            if (!device.isEnabled()) {
+                throw new IllegalArgumentException("비활성 장비는 미리 볼 수 없습니다: " + device.getName());
+            }
+            sources.add(new Source(device, pointName));
+        }
+
+        PageWidgetChartRangePreset preset = PageWidgetChartRangePreset.from(rangePresetRaw);
+        QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartComparisonSupport.Comparison comparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        String resolvedWindow = ChartComparisonSupport.requestedWindow(window, comparison, preset);
+        if (comparison != null) range = comparison.currentRange();
+        List<String> units = units(sources);
+        String unit = units.size() == 1 ? units.get(0) : null;
+        if ("per_device".equalsIgnoreCase(seriesMode) && comparison == null) {
+            List<ChartSeriesResponse> series = toSourceSeries(sources, range, resolvedWindow);
+            return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "per_device",
+                    preset.name(), resolvedWindow, range.start(), range.end(), unit, units, series, null,
+                    List.of("sum", "per_device")).withUnitConverted(conversionPlan(sources).converted());
+        }
+        List<ChartSeriesResponse> summed = comparison == null
+                ? sumSeriesByUnit(toSourceSeries(sources, range, resolvedWindow), "합계")
+                : comparisonByUnit(sources, range, resolvedWindow, comparison.currentLabel());
+        if (comparison != null) {
+            List<ChartSeriesResponse> previous = comparisonByUnit(sources, comparison.range(), resolvedWindow, comparison.previousLabel());
+            summed = ChartComparisonSupport.appendComparison(summed, previous, comparison);
+        }
+        return new ChartWidgetResponse(null, "위젯 미리보기", null, "devices", "sum",
+                preset.name(), resolvedWindow, range.start(), range.end(), unit, units, summed, null,
+                List.of("sum", "per_device")).withUnitConverted(conversionPlan(sources).converted());
+    }
     private ChartWidgetResponse standardTrend(
             PageWidget widget, PageWidgetChartRangePreset preset, String window, QueryRanges.Range range
     ) {
         List<Source> sources = standardSources(widget);
         List<ChartSeriesResponse> series = toSourceSeries(sources, range, window);
         List<String> units = units(sources);
-        return response(widget, preset, window, range, "devices", "per_device", units, series);
+        return response(widget, preset, window, range, "devices", "per_device", units, series)
+                .withUnitConverted(conversionPlan(sources).converted());
     }
 
     private ChartWidgetResponse psychrometricTrend(
@@ -126,6 +290,9 @@ public class WidgetTrendQueryService {
                     .flatMap(source -> source.pointNames().stream().map(point -> new Source(source.device(), point)))
                     .toList();
         }
+        if (widget.getQueryKind() == PageWidgetQueryKind.aggregate) return widget.aggregateSourceDefinitions().stream()
+                .filter(source -> source.device().isEnabled())
+                .flatMap(source -> source.pointNames().stream().map(point -> new Source(source.device(), point))).toList();
         List<String> pointNames = widget.pointNames();
         return widget.resolvedDefaultDevices().stream()
                 .filter(Device::isEnabled)
@@ -137,8 +304,10 @@ public class WidgetTrendQueryService {
         if (sources.isEmpty()) return List.of();
         List<Integer> deviceIds = sources.stream().map(source -> source.device().getId()).distinct().toList();
         List<String> pointNames = sources.stream().map(Source::pointName).distinct().toList();
+        UnitNormalizer.Plan plan = conversionPlan(sources);
         Map<String, List<SeriesPoint>> valuesBySource = new LinkedHashMap<>();
-        for (SeriesPoint point : pointQuery.findSeries(deviceIds, pointNames, range.start(), range.end(), window)) {
+        for (SeriesPoint raw : pointQuery.findSeries(deviceIds, pointNames, range.start(), range.end(), window)) {
+            SeriesPoint point = plan.point(raw);
             valuesBySource.computeIfAbsent(key(point.deviceId(), point.pointName()), ignored -> new ArrayList<>()).add(point);
         }
         Map<String, String> unitBySource = unitsBySource(sources);
@@ -157,13 +326,26 @@ public class WidgetTrendQueryService {
                 .distinct().toList();
     }
 
+    private UnitNormalizer.Plan conversionPlan(List<Source> sources) {
+        Set<Integer> ids = sources.stream().map(source -> source.device().getId()).collect(java.util.stream.Collectors.toSet());
+        List<String> points = sources.stream().map(Source::pointName).distinct().toList();
+        UnitNormalizer.Plan all = unitNormalizer.plan(ids, points);
+        Map<String, UnitNormalizer.Conversion> selected = new LinkedHashMap<>();
+        for (Source source : sources) {
+            String key = UnitNormalizer.key(source.device().getId(), source.pointName());
+            if (all.conversions().containsKey(key)) selected.put(key, all.conversions().get(key));
+        }
+        return new UnitNormalizer.Plan(selected);
+    }
+
     private Map<String, String> unitsBySource(List<Source> sources) {
         Set<Integer> deviceIds = sources.stream().map(source -> source.device().getId())
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        UnitNormalizer.Plan plan = conversionPlan(sources);
         Map<String, String> catalog = new HashMap<>();
         for (DeviceMeasurementSourceCatalog.Source point : sourceCatalog.availableSources(deviceIds)) {
             if (deviceIds.contains(point.deviceId()) && !point.ambiguous()) {
-                catalog.put(key(point.deviceId(), point.pointName()), point.unit());
+                catalog.put(key(point.deviceId(), point.pointName()), plan.forSource(point.deviceId(), point.pointName()).unit());
             }
         }
         Map<String, String> result = new LinkedHashMap<>();

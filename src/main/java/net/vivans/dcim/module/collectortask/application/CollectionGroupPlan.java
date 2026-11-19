@@ -10,13 +10,35 @@ import java.util.Set;
 public record CollectionGroupPlan(
         Object payload,
         List<String> skipped,
-        Map<Integer, List<PointSource>> pointsBySourceDeviceId
+        Map<Integer, List<PointSource>> pointsBySourceDeviceId,
+        List<SkippedReason> reasons
 ) {
     public CollectionGroupPlan {
         skipped = List.copyOf(skipped);
+        reasons = List.copyOf(reasons);
         Map<Integer, List<PointSource>> copied = new LinkedHashMap<>();
         pointsBySourceDeviceId.forEach((id, points) -> copied.put(id, List.copyOf(points)));
         pointsBySourceDeviceId = Map.copyOf(copied);
+    }
+
+    /** 기존 호출부 소스 호환. 자유 문자열에서 원인을 역으로 파싱하지 않는다. */
+    public CollectionGroupPlan(Object payload, List<String> skipped,
+                               Map<Integer, List<PointSource>> pointsBySourceDeviceId) {
+        this(payload, skipped, pointsBySourceDeviceId, List.of());
+    }
+
+    public List<SkippedReason> reasonsForDevice(Integer deviceId) {
+        return reasons.stream().filter(reason -> deviceId.equals(reason.deviceId())).toList();
+    }
+
+    public List<CollectionReadiness> readinessForDevice(Integer deviceId) {
+        return reasons.stream().filter(reason -> reason.deviceId() == null || deviceId.equals(reason.deviceId()))
+                .map(SkippedReason::readiness).distinct().toList();
+    }
+
+    /** 장비별/공통 범위를 별도로 보존하고 기존 skipped 문구는 표시용으로만 쓴다. */
+    public record SkippedReason(Integer deviceId, CollectionReadiness readiness, String message, Kind kind) {
+        public enum Kind { SETTING, MODEL_MISMATCH, UNSUPPORTED }
     }
 
     public List<PointSource> pointsForSource(Integer sourceDeviceId) {

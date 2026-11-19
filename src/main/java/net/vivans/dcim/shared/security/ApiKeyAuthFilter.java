@@ -41,6 +41,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
             ServiceRoute.of("GET", "/api/manager/devices/[0-9]+"),
             ServiceRoute.of("POST", "/api/manager/(mqtt|lora)/sources/[0-9]+/status"),
             ServiceRoute.of("POST", "/api/internal/alarms/measurements"),
+            ServiceRoute.of("POST", "/api/internal/collection/write-permission"),
             ServiceRoute.of("POST", "/api/internal/gpu-agents/discover")
     );
 
@@ -91,7 +92,7 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
     /** 사용자 JWT로는 호출할 수 없고 서비스 키가 반드시 필요한 내부 경로. */
     private static boolean isInternalServicePath(String path) {
-        return path.equals("/api/internal/alarms/measurements") || path.equals("/api/internal/gpu-agents/discover");
+        return path.equals("/api/internal/collection/write-permission") || path.equals("/api/internal/alarms/measurements") || path.equals("/api/internal/gpu-agents/discover");
     }
 
     static boolean isCollectorRoute(String method, String path) {

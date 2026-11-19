@@ -21,9 +21,14 @@ public record CommonCodeRequest(
         Integer sortOrder,
 
         @Schema(description = "임계값 포인트 허용 여부 (DATA_POINT_TYPE에서만 사용)", example = "true")
-        Boolean thresholdSupported
+        Boolean thresholdSupported,
+        Integer baseUnitId,
+        java.math.BigDecimal unitFactor
 ) {
+    public CommonCodeRequest(Integer groupId, String code, String name, Integer sortOrder, Boolean thresholdSupported) {
+        this(groupId, code, name, sortOrder, thresholdSupported, null, null);
+    }
     public CommonCodeRequest(Integer groupId, String code, String name, Integer sortOrder) {
-        this(groupId, code, name, sortOrder, null);
+        this(groupId, code, name, sortOrder, null, null, null);
     }
 }

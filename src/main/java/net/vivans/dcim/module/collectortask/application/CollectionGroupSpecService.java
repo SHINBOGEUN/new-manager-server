@@ -36,6 +36,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.vivans.dcim.module.collectortask.application.CollectionGroupPlan.SkippedReason;
+import net.vivans.dcim.module.collectortask.application.CollectionGroupPlan.SkippedReason.Kind;
+import static net.vivans.dcim.module.collectortask.application.CollectionReadiness.Code.*;
 
 @Service
 @RequiredArgsConstructor
@@ -66,6 +69,10 @@ public class CollectionGroupSpecService {
     private final DeviceModbusBitFieldRepository deviceModbusBitFieldRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final ObjectMapper objectMapper;
+    @org.springframework.beans.factory.annotation.Autowired private SystemSettingService systemSettings;
+    @org.springframework.beans.factory.annotation.Autowired private CollectionEligibilityService eligibility;
+    private int failureThreshold(){return systemSettings==null?3:systemSettings.failureThreshold();}
+    private int backoffMaxSeconds(){return systemSettings==null?600:systemSettings.backoffMaxSeconds();}
 
     public String generateJson(CollectionTaskGroup group) {
         try {
@@ -80,7 +87,8 @@ public class CollectionGroupSpecService {
         if (MODBUS_PROTOCOL_CODE.equalsIgnoreCase(protocol)) {
             return generateModbus(group);
         }
-        CollectionGroupSpec spec = generateSnmp(group);
+        List<SkippedReason> skipped = new ArrayList<>();
+        CollectionGroupSpec spec = generateSnmp(group, skipped);
         Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource = new LinkedHashMap<>();
         for (CollectionGroupTargetSpec target : spec.targets()) {
             List<CollectionGroupPlan.PointSource> sources = new ArrayList<>();
@@ -91,21 +99,21 @@ public class CollectionGroupSpecService {
                 pointsBySource.put(target.deviceId(), sources);
             }
         }
-        return new CollectionGroupPlan(spec, spec.skipped(), pointsBySource);
+        return new CollectionGroupPlan(spec, spec.skipped(), pointsBySource, skipped);
     }
 
-    private CollectionGroupSpec generateSnmp(CollectionTaskGroup group) {
+    private CollectionGroupSpec generateSnmp(CollectionTaskGroup group, List<SkippedReason> skipped) {
         CollectionTask task = group.getTask();
-        List<String> skipped = new ArrayList<>();
 
         if (!SNMP_PROTOCOL_CODE.equalsIgnoreCase(task.getScriptType().getCode())) {
-            skipped.add("scriptType '" + task.getScriptType().getCode() + "' is not supported yet");
+            skipped.add(new SkippedReason(null, new CollectionReadiness(NO_PROTOCOL, "지원 수집 프로토콜", modelHref()),
+                    "scriptType '" + task.getScriptType().getCode() + "' is not supported yet", Kind.UNSUPPORTED));
             return emptySpec(group, skipped);
         }
 
         DeviceModelProtocol snmpProtocol = findProtocol(task.getDeviceModel(), SNMP_PROTOCOL_CODE);
         if (snmpProtocol == null) {
-            skipped.add("model has no SNMP protocol");
+            skip(skipped, null, NO_PROTOCOL, "모델 SNMP 프로토콜", modelHref(), "model has no SNMP protocol");
             return emptySpec(group, skipped);
         }
 
@@ -114,7 +122,8 @@ public class CollectionGroupSpecService {
         for (DeviceModelSnmpPoint point : deviceModelSnmpPointRepository
                 .findAllByModelProtocolIdOrderByIdAsc(snmpProtocol.getId())) {
             if (!point.isEnabled()) {
-                skipped.add("point '" + point.getName() + "' skipped: disabled");
+                skip(skipped, null, INVALID_POINT, "비활성 측정 항목: " + point.getName(), modelHref(),
+                        "point '" + point.getName() + "' skipped: disabled");
                 continue;
             }
             oids.add(new CollectionGroupOidSpec(
@@ -128,7 +137,7 @@ public class CollectionGroupSpecService {
             }
         }
         if (oids.isEmpty()) {
-            skipped.add("no collectible SNMP points");
+            skip(skipped, null, NO_POINTS, "활성 SNMP 측정 항목", modelHref(), "no collectible SNMP points");
         }
 
         List<CollectionGroupTargetSpec> targets = new ArrayList<>();
@@ -136,20 +145,20 @@ public class CollectionGroupSpecService {
             DeviceModel taskModel = task.getDeviceModel();
             for (CollectionTaskDevice mapping : group.getDevices()) {
                 Device device = mapping.getDevice();
-                // 프로토콜(SNMP/Modbus 등)과 무관하게, 장비 모델이 이 수집 작업의 모델과 다르면
-                // endpoint 유무를 따지기 전에 먼저 걸러내고 원인을 명확히 남긴다.
-                if (!taskModel.getId().equals(device.getDeviceModel().getId())) {
-                    skipped.add(modelMismatchReason(device, taskModel));
-                    continue;
-                }
-                CollectionGroupTargetSpec target = toTarget(device, requiresAnyInstance, skipped);
-                if (target != null) {
-                    targets.add(target);
+                try {
+                    if (!taskModel.getId().equals(device.getDeviceModel().getId())) {
+                        skipModelMismatch(skipped, device, taskModel);
+                        continue;
+                    }
+                    CollectionGroupTargetSpec target = toTarget(device, requiresAnyInstance, skipped);
+                    if (target != null) targets.add(target);
+                } catch (RuntimeException exception) {
+                    skipEvaluationFailure(skipped, device);
                 }
             }
         }
         if (targets.isEmpty()) {
-            skipped.add("no collectible devices in group");
+            skip(skipped, null, NO_POINTS, "그룹 수집 대상", "/ops-console.html?page=tasks", "no collectible devices in group");
         }
 
         return new CollectionGroupSpec(
@@ -164,7 +173,7 @@ public class CollectionGroupSpecService {
                 maxConcurrency,
                 oids,
                 targets,
-                skipped
+                messages(skipped), failureThreshold(), backoffMaxSeconds()
         );
     }
 
@@ -175,21 +184,21 @@ public class CollectionGroupSpecService {
                 + ", actual modelId=" + actualModel.getId() + " '" + actualModel.getName() + "')";
     }
 
-    private CollectionGroupTargetSpec toTarget(Device device, boolean requiresAnyInstance, List<String> skipped) {
-        if (!device.isEnabled()) {
-            skipped.add("device:" + device.getId() + " " + device.getName() + " - disabled");
+    private CollectionGroupTargetSpec toTarget(Device device, boolean requiresAnyInstance, List<SkippedReason> skipped) {
+        if (!device.isEnabled() || eligibility!=null && !eligibility.collectionOn(device.getId(),"snmp")) {
+            skipDevice(skipped, device, DEVICE_DISABLED, "장비 활성 상태", "disabled");
             return null;
         }
         DeviceProtocolEndpoint endpoint = findEnabledEndpoint(device.getId(), SNMP_PROTOCOL_CODE);
         if (endpoint == null) {
-            skipped.add("device:" + device.getId() + " " + device.getName() + " - no enabled SNMP endpoint");
+            skipDevice(skipped, device, NO_ENDPOINT, "SNMP 연결", "no enabled SNMP endpoint");
             return null;
         }
         Integer instanceId = deviceSnmpInstanceRepository.findByEndpointId(endpoint.getId())
                 .map(DeviceSnmpInstance::getInstanceId)
                 .orElse(null);
         if (requiresAnyInstance && instanceId == null) {
-            skipped.add("device:" + device.getId() + " " + device.getName() + " - missing SNMP instance");
+            skipDevice(skipped, device, MISSING_SNMP_INSTANCE, "SNMP 인스턴스", "missing SNMP instance");
             return null;
         }
         return new CollectionGroupTargetSpec(device.getId(), endpoint.getHost(), endpoint.getPort(), instanceId);
@@ -213,7 +222,7 @@ public class CollectionGroupSpecService {
         return null;
     }
 
-    private CollectionGroupSpec emptySpec(CollectionTaskGroup group, List<String> skipped) {
+    private CollectionGroupSpec emptySpec(CollectionTaskGroup group, List<SkippedReason> skipped) {
         return new CollectionGroupSpec(
                 group.getTask().getId(),
                 group.getId(),
@@ -226,49 +235,62 @@ public class CollectionGroupSpecService {
                 maxConcurrency,
                 List.of(),
                 List.of(),
-                skipped
+                messages(skipped), failureThreshold(), backoffMaxSeconds()
         );
     }
 
     private CollectionGroupPlan generateModbus(CollectionTaskGroup group) {
         CollectionTask task = group.getTask();
-        List<String> skipped = new ArrayList<>();
+        List<SkippedReason> skipped = new ArrayList<>();
         Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource = new LinkedHashMap<>();
         Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget = new LinkedHashMap<>();
         Map<Integer, Set<String>> usedNamesByStorageDevice = new HashMap<>();
         DeviceModelProtocol protocol = findProtocol(task.getDeviceModel(), MODBUS_PROTOCOL_CODE);
 
         if (protocol == null) {
-            skipped.add("model has no Modbus protocol");
+            skip(skipped, null, NO_PROTOCOL, "모델 Modbus 프로토콜", modelHref(), "model has no Modbus protocol");
         } else {
             List<DeviceModelModbusPoint> modelPoints = deviceModelModbusPointRepository
                     .findAllByModelProtocolIdOrderByIdAsc(protocol.getId()).stream()
                     .filter(DeviceModelModbusPoint::isEnabled)
                     .toList();
             if (modelPoints.isEmpty()) {
-                skipped.add("no collectible Modbus points");
+                skip(skipped, null, NO_POINTS, "활성 Modbus 측정 항목", modelHref(), "no collectible Modbus points");
             }
 
             for (CollectionTaskDevice mapping : group.getDevices()) {
                 Device source = mapping.getDevice();
-                if (!task.getDeviceModel().getId().equals(source.getDeviceModel().getId())) {
-                    skipped.add(modelMismatchReason(source, task.getDeviceModel()));
-                    continue;
+                try {
+                    if (!task.getDeviceModel().getId().equals(source.getDeviceModel().getId())) {
+                        skipModelMismatch(skipped, source, task.getDeviceModel());
+                        continue;
+                    }
+                    // 실패한 장비의 부분 결과와 이름 예약이 다음 장비에 남지 않게 한다.
+                    Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> stagedTargets = new LinkedHashMap<>();
+                    Map<Integer, Set<String>> stagedNames = new HashMap<>();
+                    usedNamesByStorageDevice.forEach((id, names) -> stagedNames.put(id, new HashSet<>(names)));
+                    Map<Integer, List<CollectionGroupPlan.PointSource>> stagedSources = new LinkedHashMap<>();
+                    appendModbusSource(source, protocol, modelPoints, stagedTargets,
+                            stagedNames, stagedSources, skipped, true);
+                    stagedTargets.forEach((key, points) -> pointsByTarget.computeIfAbsent(key, ignored -> new ArrayList<>()).addAll(points));
+                    usedNamesByStorageDevice.clear();
+                    usedNamesByStorageDevice.putAll(stagedNames);
+                    pointsBySource.putAll(stagedSources);
+                } catch (RuntimeException exception) {
+                    skipEvaluationFailure(skipped, source);
                 }
-                appendModbusSource(source, protocol, modelPoints, pointsByTarget,
-                        usedNamesByStorageDevice, pointsBySource, skipped);
             }
         }
 
         List<CollectionGroupModbusSpec.ModbusTarget> targets = toModbusTargets(pointsByTarget);
         if (targets.isEmpty()) {
-            skipped.add("no collectible devices in group");
+            skip(skipped, null, NO_POINTS, "그룹 수집 대상", "/ops-console.html?page=tasks", "no collectible devices in group");
         }
         CollectionGroupModbusSpec spec = new CollectionGroupModbusSpec(
                 task.getId(), group.getId(), task.getDeviceModel().getId(), MODBUS_PROTOCOL_CODE,
                 group.getCronExpression(), timeoutMs, retries, maxConcurrency,
-                List.of(), targets, skipped);
-        return new CollectionGroupPlan(spec, skipped, pointsBySource);
+                List.of(), targets, messages(skipped), failureThreshold(), backoffMaxSeconds());
+        return new CollectionGroupPlan(spec, messages(skipped), pointsBySource, skipped);
     }
 
     /** 정기 수집과 동일한 규칙으로 한 원본 장비의 읽기 계획을 만든다. 등록/저장은 하지 않는다. */
@@ -283,20 +305,25 @@ public class CollectionGroupSpecService {
         Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget = new LinkedHashMap<>();
         Map<Integer, Set<String>> usedNamesByStorageDevice = new HashMap<>();
         Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource = new LinkedHashMap<>();
-        List<String> skipped = new ArrayList<>();
+        List<SkippedReason> skipped = new ArrayList<>();
         appendModbusSource(source, protocol, modelPoints, pointsByTarget,
-                usedNamesByStorageDevice, pointsBySource, skipped);
-        return new ModbusPreviewPlan(toModbusTargets(pointsByTarget), skipped);
+                usedNamesByStorageDevice, pointsBySource, skipped, false);
+        return new ModbusPreviewPlan(toModbusTargets(pointsByTarget), messages(skipped),
+                skipped.stream().map(SkippedReason::readiness).distinct().toList());
     }
 
-    public record ModbusPreviewPlan(List<CollectionGroupModbusSpec.ModbusTarget> targets, List<String> skipped) {
+    public record ModbusPreviewPlan(List<CollectionGroupModbusSpec.ModbusTarget> targets, List<String> skipped,
+                                    List<CollectionReadiness> readiness) {
+        public ModbusPreviewPlan(List<CollectionGroupModbusSpec.ModbusTarget> targets, List<String> skipped) {
+            this(targets, skipped, List.of());
+        }
     }
 
     private static List<CollectionGroupModbusSpec.ModbusTarget> toModbusTargets(
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget) {
         List<CollectionGroupModbusSpec.ModbusTarget> targets = new ArrayList<>();
         pointsByTarget.forEach((key, points) -> targets.add(new CollectionGroupModbusSpec.ModbusTarget(
-                key.storageDeviceId(), key.host(), key.port(), key.unitId(), List.copyOf(points))));
+                key.storageDeviceId(), key.host(), key.port(), key.unitId(), List.copyOf(points), key.sourceDeviceId())));
         return targets;
     }
 
@@ -304,20 +331,20 @@ public class CollectionGroupSpecService {
             Device source, DeviceModelProtocol protocol, List<DeviceModelModbusPoint> modelPoints,
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget,
             Map<Integer, Set<String>> usedNamesByStorageDevice,
-            Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource, List<String> skipped) {
-        if (!source.isEnabled()) {
-            skipped.add(deviceReason(source, "disabled"));
+            Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource, List<SkippedReason> skipped, boolean honorCollectionSetting) {
+        if (!source.isEnabled() || honorCollectionSetting && eligibility!=null && !eligibility.collectionOn(source.getId(),"modbus")) {
+            skipDevice(skipped, source, DEVICE_DISABLED, "장비 활성 상태", "disabled");
             return;
         }
         DeviceProtocolEndpoint endpoint = findEnabledEndpoint(source.getId(), MODBUS_PROTOCOL_CODE);
         if (endpoint == null) {
-            skipped.add(deviceReason(source, "no enabled Modbus endpoint"));
+            skipDevice(skipped, source, NO_ENDPOINT, "Modbus 연결", "no enabled Modbus endpoint");
             return;
         }
         DeviceEndpointModbus endpointModbus = deviceEndpointModbusRepository.findByEndpointId(endpoint.getId())
                 .orElse(null);
         if (endpointModbus == null) {
-            skipped.add(deviceReason(source, "missing Modbus endpoint settings"));
+            skipDevice(skipped, source, MISSING_MODBUS_SETTINGS, "Modbus 연결 설정", "missing Modbus endpoint settings");
             return;
         }
 
@@ -325,7 +352,7 @@ public class CollectionGroupSpecService {
         for (DeviceModelModbusPoint point : modelPoints) {
             if (point.isRequiresInstance()) continue;
             if (endpointModbus.getUnitId() == null) {
-                skipped.add(deviceReason(source, "missing Modbus unitId for fixed point '" + point.getName() + "'"));
+                skipDevice(skipped, source, MISSING_UNIT_ID, "Modbus Unit ID: " + point.getName(), "missing Modbus unitId for fixed point '" + point.getName() + "'");
                 continue;
             }
             addModbusPoint(source, source, endpoint, endpointModbus.getUnitId(), point.getName(),
@@ -336,12 +363,12 @@ public class CollectionGroupSpecService {
             DeviceModelModbusPoint point = reading.getPoint();
             if (!point.isEnabled() || !point.isRequiresInstance()
                     || !protocol.getId().equals(point.getModelProtocol().getId())) {
-                skipped.add(deviceReason(source, "invalid Modbus reading '" + reading.getPointName() + "'"));
+                skipDevice(skipped, source, INVALID_POINT, "Modbus 회선 매핑: " + reading.getPointName(), "invalid Modbus reading '" + reading.getPointName() + "'");
                 continue;
             }
             Device storageDevice = reading.getTargetDevice();
-            if (!storageDevice.isEnabled()) {
-                skipped.add(deviceReason(source, "target device " + storageDevice.getId() + " disabled"));
+            if (!storageDevice.isEnabled() || honorCollectionSetting && eligibility!=null && !eligibility.collectionOn(storageDevice.getId(),"modbus")) {
+                skipDevice(skipped, source, DEVICE_DISABLED, "결과 장비 활성 상태: #" + storageDevice.getId(), "target device " + storageDevice.getId() + " disabled");
                 continue;
             }
             addModbusPoint(source, storageDevice, endpoint, reading.getUnitId(), reading.getPointName(),
@@ -349,7 +376,11 @@ public class CollectionGroupSpecService {
                     deviceModbusBitFieldRepository.findAllByReading_IdOrderByIdAsc(reading.getId()),
                     pointsByTarget, usedNamesByStorageDevice, sourcePoints, skipped);
         }
-        if (sourcePoints.isEmpty()) skipped.add(deviceReason(source, "no collectible Modbus points"));
+        if (sourcePoints.isEmpty()) {
+            boolean mappingRequired = modelPoints.stream().anyMatch(DeviceModelModbusPoint::isRequiresInstance);
+            skipDevice(skipped, source, mappingRequired ? MAPPING_REQUIRED : NO_POINTS,
+                    mappingRequired ? "Modbus 회선 매핑" : "활성 Modbus 측정 항목", "no collectible Modbus points");
+        }
         else pointsBySource.put(source.getId(), sourcePoints);
     }
 
@@ -365,7 +396,7 @@ public class CollectionGroupSpecService {
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget,
             Map<Integer, Set<String>> usedNamesByStorageDevice,
             List<CollectionGroupPlan.PointSource> sourcePoints,
-            List<String> skipped
+            List<SkippedReason> skipped
     ) {
         boolean bitRead = point.getRegisterType() == ModbusRegisterType.COIL
                 || point.getRegisterType() == ModbusRegisterType.DISCRETE;
@@ -377,13 +408,15 @@ public class CollectionGroupSpecService {
                 || bitRead && point.getScale() != null && point.getScale() != 1.0
                 || !bitRead && point.getDataType().isMultiRegister() && point.getByteOrder() == null
                 || !bitRead && !point.getDataType().isMultiRegister() && point.getByteOrder() != null) {
-            skipped.add(deviceReason(source, "invalid Modbus point '" + name + "'"));
+            skip(skipped, source.getId(), INVALID_POINT, "Modbus 측정 항목: " + name,
+                    point.isRequiresInstance() ? deviceHref(source) : modelHref(),
+                    deviceReason(source, "invalid Modbus point '" + name + "'"));
             return;
         }
         Set<String> names = usedNamesByStorageDevice.computeIfAbsent(storageDevice.getId(), ignored -> new HashSet<>());
         if (!names.add(name)) {
-            skipped.add(deviceReason(source, "duplicate Modbus point '" + name
-                    + "' for target device " + storageDevice.getId()));
+            skipDevice(skipped, source, INVALID_POINT, "중복 Modbus 측정 항목: " + name, "duplicate Modbus point '" + name
+                    + "' for target device " + storageDevice.getId());
             return;
         }
         List<CollectionGroupModbusSpec.ModbusBitField> derived = new ArrayList<>();
@@ -393,12 +426,12 @@ public class CollectionGroupSpecService {
                     || point.getOffset() != null && point.getOffset() != 0.0
                     || field.getBitOffset() < 0 || field.getBitWidth() < 1 || field.getBitWidth() > 32
                     || (long) field.getBitOffset() + field.getBitWidth() > point.getDataType().getRegisterCount() * 16) {
-                skipped.add(deviceReason(source, "invalid Modbus bit field '" + field.getPointName() + "'"));
+                skipDevice(skipped, source, INVALID_POINT, "Modbus 비트 필드: " + field.getPointName(), "invalid Modbus bit field '" + field.getPointName() + "'");
                 continue;
             }
             if (!validPointName(field.getPointName()) || !names.add(field.getPointName())) {
-                skipped.add(deviceReason(source, "duplicate or invalid derived Modbus point '"
-                        + field.getPointName() + "' for target device " + storageDevice.getId()));
+                skipDevice(skipped, source, INVALID_POINT, "Modbus 파생 측정 항목: " + field.getPointName(), "duplicate or invalid derived Modbus point '"
+                        + field.getPointName() + "' for target device " + storageDevice.getId());
                 continue;
             }
             derived.add(new CollectionGroupModbusSpec.ModbusBitField(field.getPointName(),
@@ -410,7 +443,7 @@ public class CollectionGroupSpecService {
                 bitRead ? "UINT16" : point.getDataType().name(),
                 bitRead || point.getByteOrder() == null ? null : point.getByteOrder().name(),
                 bitRead ? null : point.getScale(), bitRead ? null : point.getOffset(), derived);
-        TargetKey key = new TargetKey(storageDevice.getId(), endpoint.getHost(), endpoint.getPort(), unitId);
+        TargetKey key = new TargetKey(storageDevice.getId(), endpoint.getHost(), endpoint.getPort(), unitId, source.getId());
         pointsByTarget.computeIfAbsent(key, ignored -> new ArrayList<>()).add(specPoint);
         sourcePoints.add(new CollectionGroupPlan.PointSource(storageDevice.getId(), name, point.getUnit()));
     }
@@ -428,10 +461,43 @@ public class CollectionGroupSpecService {
         return true;
     }
 
+    private static List<String> messages(List<SkippedReason> skipped) {
+        return skipped.stream().map(SkippedReason::message).toList();
+    }
+
+    private static String modelHref() {
+        return "/ops-console.html?page=models";
+    }
+
+    private static String deviceHref(Device device) {
+        return "/ops-console.html?page=devices&previewDeviceId=" + device.getId();
+    }
+
+    private static void skip(List<SkippedReason> skipped, Integer deviceId, CollectionReadiness.Code code,
+                             String item, String href, String message) {
+        skipped.add(new SkippedReason(deviceId, new CollectionReadiness(code, item, href), message, Kind.SETTING));
+    }
+
+    private static void skipDevice(List<SkippedReason> skipped, Device device, CollectionReadiness.Code code,
+                                   String item, String message) {
+        skip(skipped, device.getId(), code, item, deviceHref(device), deviceReason(device, message));
+    }
+
+    private static void skipModelMismatch(List<SkippedReason> skipped, Device device, DeviceModel expected) {
+        skipped.add(new SkippedReason(device.getId(),
+                new CollectionReadiness(INVALID_POINT, "작업 모델과 장비 모델의 일치 여부", deviceHref(device)),
+                modelMismatchReason(device, expected), Kind.MODEL_MISMATCH));
+    }
+
+    private static void skipEvaluationFailure(List<SkippedReason> skipped, Device device) {
+        // 예외 메시지는 연결/인증 정보를 포함할 수 있으므로 응답에 넣지 않는다.
+        skipDevice(skipped, device, INVALID_POINT, "수집 설정 확인", "collection settings could not be evaluated");
+    }
+
     private static String deviceReason(Device device, String reason) {
         return "device:" + device.getId() + " " + device.getName() + " - " + reason;
     }
 
-    private record TargetKey(Integer storageDeviceId, String host, int port, int unitId) {
+    private record TargetKey(Integer storageDeviceId, String host, int port, int unitId, Integer sourceDeviceId) {
     }
 }

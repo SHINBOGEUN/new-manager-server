@@ -49,6 +49,9 @@ public class PageWidgetChart extends BaseEntity {
     @Column(name = "chart_window", nullable = false, length = 8)
     private String chartWindow;
 
+    @Column(name = "compare_mode", nullable = false, length = 24)
+    private String compareMode = "none";
+
     private PageWidgetChart(
             PageWidget widget,
             PageWidgetChartScope chartScope,
@@ -61,9 +64,10 @@ public class PageWidgetChart extends BaseEntity {
         }
         this.widget = widget;
         this.chartScope = chartScope == null ? PageWidgetChartScope.devices : chartScope;
-        this.chartSeriesMode = chartSeriesMode == null ? PageWidgetChartSeriesMode.per_device : chartSeriesMode;
+        this.chartSeriesMode = chartSeriesMode == null ? PageWidgetChartSeriesMode.sum : chartSeriesMode;
         this.chartRangePreset = chartRangePreset == null ? PageWidgetChartRangePreset.last_24h : chartRangePreset;
         this.chartWindow = chartWindow == null || chartWindow.isBlank() ? "5m" : chartWindow.trim();
+        this.compareMode = "none";
         validate();
     }
 
@@ -88,6 +92,15 @@ public class PageWidgetChart extends BaseEntity {
         this.chartRangePreset = chartRangePreset == null ? PageWidgetChartRangePreset.last_24h : chartRangePreset;
         this.chartWindow = chartWindow == null || chartWindow.isBlank() ? "5m" : chartWindow.trim();
         validate();
+    }
+
+    public void updateCompareMode(String mode) {
+        String value = mode == null || mode.isBlank() ? "none" : mode.trim();
+        if (!Set.of("none", "today_yesterday", "week_lastweek", "month_lastmonth",
+                "previous_period", "previous_day", "previous_week").contains(value)) {
+            throw new IllegalArgumentException("compare must be none, today_yesterday, week_lastweek, or month_lastmonth");
+        }
+        this.compareMode = value;
     }
 
     private void validate() {

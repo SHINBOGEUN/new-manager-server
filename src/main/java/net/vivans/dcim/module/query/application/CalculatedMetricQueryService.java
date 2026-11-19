@@ -29,6 +29,10 @@ public class CalculatedMetricQueryService {
     private final WidgetDataStatusResolver widgetDataStatusResolver;
 
     public CalculatedMetricQueryResponse getCalculated(Integer widgetId, String rangePresetOverride, String windowOverride) {
+        return getCalculated(widgetId, rangePresetOverride, windowOverride, null);
+    }
+
+    public CalculatedMetricQueryResponse getCalculated(Integer widgetId, String rangePresetOverride, String windowOverride, String compareMode) {
         PageWidget widget = PageWidgetFinder.findRequired(pageWidgetRepository, widgetId);
         if (widget.getQueryKind() != PageWidgetQueryKind.calculated) {
             throw new IllegalArgumentException("queryKind must be calculated");
@@ -42,6 +46,8 @@ public class CalculatedMetricQueryService {
                 : PageWidgetChartRangePreset.from(rangePresetOverride);
         if (preset == null) preset = PageWidgetChartRangePreset.last_24h;
         QueryRanges.Range range = QueryRanges.resolve(preset);
+        ChartComparisonSupport.Comparison resolvedComparison = ChartComparisonSupport.resolve(compareMode, preset, range);
+        if (resolvedComparison != null) range = resolvedComparison.currentRange();
         Duration lookback = Duration.between(range.start(), range.end());
         CalculatedMetricLastPoint currentPoint = pointQuery.findLastCalculated(
                 definition.getId(), definition.getConfigVersion(), lookback).orElse(null);
@@ -66,13 +72,20 @@ public class CalculatedMetricQueryService {
         List<CalculatedMetricTrendPointResponse> trend = List.of();
         if ((rangePresetOverride != null && !rangePresetOverride.isBlank())
                 || (windowOverride != null && !windowOverride.isBlank())) {
-            String window = windowOverride == null || windowOverride.isBlank() ? "15m" : windowOverride.trim();
-            if (!java.util.Set.of("1m", "5m", "15m", "1h", "1d").contains(window)) {
-                throw new IllegalArgumentException("window must be 1m, 5m, 15m, 1h, or 1d");
-            }
+            String window = ChartComparisonSupport.requestedWindow(windowOverride, resolvedComparison, preset);
             trend = pointQuery.findCalculatedSeries(definition.getId(), range.start(), range.end(), window)
                     .stream().map(item -> new CalculatedMetricTrendPointResponse(item.time(), QueryValues.round4(item.value())))
                     .toList();
+            ChartComparisonSupport.Comparison comparison = resolvedComparison;
+            if (comparison != null) {
+                List<CalculatedMetricTrendPointResponse> previous = pointQuery.findCalculatedSeries(
+                                definition.getId(), comparison.range().start(), comparison.range().end(), window)
+                        .stream().map(item -> new CalculatedMetricTrendPointResponse(
+                                item.time().plusSeconds(comparison.offsetSeconds()), QueryValues.round4(item.value()),
+                                true, comparison.offsetSeconds(), item.time(), comparison.label()))
+                        .toList();
+                trend = java.util.stream.Stream.concat(trend.stream(), previous.stream()).toList();
+            }
         }
         return new CalculatedMetricQueryResponse(previousVersion ? QueryValues.round4(previousPoint.value())
                     : complete ? QueryValues.round4(currentPoint.value()) : null,

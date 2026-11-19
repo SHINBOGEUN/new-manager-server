@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.device.api.dto.DeviceEndpointModbusCreateRequest;
 import net.vivans.dcim.module.device.api.dto.DeviceEndpointModbusResponse;
 import net.vivans.dcim.module.device.domain.model.Device;
@@ -27,7 +27,7 @@ public class DeviceEndpointModbusQueryService {
     private final DeviceRepository deviceRepository;
     private final DeviceProtocolEndpointRepository deviceProtocolEndpointRepository;
     private final DeviceEndpointModbusRepository deviceEndpointModbusRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
 
     public DeviceEndpointModbusResponse getEndpointModbus(Integer deviceId, Integer endpointId) {
         findDevice(deviceId);
@@ -60,7 +60,7 @@ public class DeviceEndpointModbusQueryService {
         DeviceEndpointModbus saved = deviceEndpointModbusRepository.save(endpointModbus);
 
         if (synchronize) {
-            collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+            collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         }
 
         return DeviceEndpointModbusResponse.from(saved);
@@ -80,7 +80,7 @@ public class DeviceEndpointModbusQueryService {
         endpointModbus.update(request.unitId());
         DeviceEndpointModbus saved = deviceEndpointModbusRepository.save(endpointModbus);
 
-        collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return DeviceEndpointModbusResponse.from(saved);
     }
 
@@ -91,7 +91,7 @@ public class DeviceEndpointModbusQueryService {
         DeviceEndpointModbus endpointModbus = findEndpointModbus(endpointId);
         deviceEndpointModbusRepository.delete(endpointModbus);
 
-        collectionScriptSyncService.regenerateByModelId(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return endpointId;
     }
 

@@ -27,6 +27,8 @@ public class CollectionScriptSyncService {
     private final DeviceRepository deviceRepository;
     private final DeviceModbusReadingRepository deviceModbusReadingRepository;
     private final CollectorSyncService collectorSyncService;
+    @org.springframework.beans.factory.annotation.Autowired
+    private CollectionIntervalResolver intervalResolver;
 
     @Transactional
     public void regenerateByModelId(Integer modelId) {
@@ -99,7 +101,7 @@ public class CollectionScriptSyncService {
         if (task == null || task.getDeviceModel() == null) {
             return;
         }
-        task.ensureDefaultGroup();
+        ensureDefaultGroup(task);
         List<Device> devices = deviceRepository.findAllByDeviceModelId(task.getDeviceModel().getId());
         for (Device device : devices) {
             assignToDefaultGroup(task, device);
@@ -121,6 +123,13 @@ public class CollectionScriptSyncService {
         }
     }
 
+    private CollectionTaskGroup ensureDefaultGroup(CollectionTask task) {
+        CollectionTaskGroup existing=task.defaultGroup();
+        if(existing!=null)return existing;
+        var interval=intervalResolver.defaultInterval();
+        return task.ensureDefaultGroup(CollectionTask.DEFAULT_GROUP_NAME,interval.cron());
+    }
+
     private void assignToDefaultGroup(CollectionTask task, Device device) {
         if (device == null || device.getId() == null) {
             return;
@@ -128,6 +137,6 @@ public class CollectionScriptSyncService {
         if (task.containsDevice(device.getId(), null)) {
             return;
         }
-        task.ensureDefaultGroup().addDevice(device);
+        ensureDefaultGroup(task).addDevice(device);
     }
 }

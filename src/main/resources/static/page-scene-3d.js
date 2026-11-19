@@ -644,9 +644,6 @@ function mount(container, page, options = {}) {
     options.onChange?.(items); options.onHint?.(`${selectedItem.label} ${selectedItem.locked ? "잠금" : "잠금 해제"} · 저장하면 반영됩니다.`);
   });
   lockFocusedButton.style.fontSize = "12px";
-  const selectGroupButton = makeActionButton("묶음 전체 선택", "이 설비가 속한 묶음 전체 선택", "#8beaff", () => api.selectGroup());
-  Object.assign(selectGroupButton.style, { width: "100%", fontSize: "12px" });
-  sceneActionBar.append(selectGroupButton);
   const sizePanel = document.createElement("div");
   Object.assign(sizePanel.style, { display: "none", gap: "5px", flexDirection: "column", paddingTop: "6px", borderTop: "1px solid #36566a" });
   const sizeToggle = makeActionButton("크기 조절", "크기 조절 메뉴", "#8beaff", () => {
@@ -1105,7 +1102,6 @@ function mount(container, page, options = {}) {
     rackColorLabel.style.display = showRackColor ? "flex" : "none"; rackColorInput.disabled = Boolean(item.locked);
     rackColorInput.value = /^#[0-9a-f]{6}$/i.test(item.rackColor || "") ? item.rackColor : "#365562";
     rackColorReset.hidden = !showRackColor; rackColorReset.disabled = Boolean(item.locked);
-    selectGroupButton.hidden = !item.groupKey || Boolean(placement);
     sizeToggle.hidden = !canResize;
     if (!canResize) { sizePanel.style.display = "none"; sizeToggle.setAttribute("aria-expanded", "false"); }
     for (const { row, minus } of sizeRows) row.style.display = minus.hidden ? "none" : "flex";
@@ -1120,6 +1116,13 @@ function mount(container, page, options = {}) {
   };
   const onHover = (event) => {
     if (walking || dragState || placement) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (rect.width && rect.height && problemMarkers.size && problemLabelMode !== "off") {
+      pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(pointer, camera);
+      const markerHit = raycaster.intersectObjects([...problemMarkers.values()].map(marker => marker.sprite), false)[0];
+      renderer.domElement.title = markerHit?.object?.userData?.problemTooltip || "";
+    } else renderer.domElement.title = "";
     const hit = intersect(event, roots()).find((entry) => isEditableSceneRoot(nearestSceneItemRoot(entry.object)));
     hoveredItem = hit ? nearestSceneItemRoot(hit.object)?.userData?.sceneItem || null : null;
   };
@@ -2640,7 +2643,8 @@ function mount(container, page, options = {}) {
     rack.add(overlay);
   }
   const problemMarkers = new Map();
-  let problemDeviceIds = new Set(), lastProblemPositionUpdate = 0;
+  let problemDevicesById = new Map(), lastProblemPositionUpdate = 0;
+  let problemLabelMode = "on";
   const problemCanvas = document.createElement('canvas'); problemCanvas.width = problemCanvas.height = 64;
   const problemContext = problemCanvas.getContext('2d');
   const problemGradient = problemContext.createRadialGradient(32, 32, 3, 32, 32, 31);
@@ -2648,36 +2652,72 @@ function mount(container, page, options = {}) {
   problemContext.fillStyle = problemGradient; problemContext.fillRect(0, 0, 64, 64);
   const problemTexture = new THREE.CanvasTexture(problemCanvas);
   const problemMaterial = new THREE.SpriteMaterial({map:problemTexture, transparent:true, depthTest:false, depthWrite:false});
+  function problemColor(devices) {
+    const severities = devices.flatMap(problem => (problem.reasons || []).map(reason => reason.severity));
+    if (severities.some(value => value === "CRITICAL" || value === "DANGER")) return 0xff3344;
+    if (severities.some(value => value === "WARNING")) return 0xff9f1c;
+    return 0xffd43b;
+  }
+  function problemTooltip(devices) {
+    const count = devices.reduce((sum, problem) => sum + Math.max((problem.reasons || []).length, 1), 0);
+    return `문제 ${count}건 · 더블클릭해서 확인`;
+  }
   function syncProblemMarkers() {
-    const affected = new Set();
+    const affected = new Map();
+    const add = (group, problem) => {
+      if (!group || !problem) return;
+      if (!affected.has(group)) affected.set(group, new Map());
+      affected.get(group).set(Number(problem.deviceId), problem);
+    };
     for (const item of items) {
-      if (!item.deviceId || !problemDeviceIds.has(Number(item.deviceId))) continue;
+      const problem = problemDevicesById.get(Number(item.deviceId));
+      if (!problem || !item.deviceId) continue;
       const parentKey = item.parentId != null ? `db-${item.parentId}` : item.parentClientKey;
-      const group = itemGroups.get(parentKey || findItemKey(item)); if (group) affected.add(group);
+      add(itemGroups.get(parentKey || findItemKey(item)), problem);
     }
     for (const group of itemGroups.values()) {
-      if ((group.userData.rackLayout?.placements || []).some(entry => entry.deviceId && problemDeviceIds.has(Number(entry.deviceId)))) affected.add(group);
+      for (const placement of group.userData.rackLayout?.placements || []) {
+        const problem = problemDevicesById.get(Number(placement.deviceId));
+        if (problem) add(group, problem);
+      }
     }
-    for (const [group, sprite] of problemMarkers) if (!affected.has(group) || !group.parent) { scene.remove(sprite); problemMarkers.delete(group); }
-    for (const group of affected) if (!problemMarkers.has(group)) {
-      const sprite = new THREE.Sprite(problemMaterial); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
-      scene.add(sprite); problemMarkers.set(group, sprite);
+    for (const [group, marker] of problemMarkers) if (!affected.has(group) || !group.parent) {
+      scene.remove(marker.sprite); marker.sprite.material.dispose(); problemMarkers.delete(group);
+    }
+    for (const [group, problemMap] of affected) {
+      const devices = [...problemMap.values()];
+      let marker = problemMarkers.get(group);
+      if (!marker) {
+        const sprite = new THREE.Sprite(problemMaterial.clone()); sprite.scale.set(1.1, 1.1, 1); sprite.renderOrder = 1000;
+        scene.add(sprite);
+        marker = {sprite, devices}; problemMarkers.set(group, marker);
+      }
+      marker.devices = devices;
+      marker.sprite.material.color.setHex(problemColor(devices));
+      marker.sprite.userData.problemTooltip = problemTooltip(devices);
+      marker.sprite.visible = problemLabelMode !== "off";
     }
     lastProblemPositionUpdate = 0;
   }
-  const animate = (now = performance.now()) => {
+  function applyProblemLabelMode() {
+    for (const marker of problemMarkers.values()) marker.sprite.visible = problemLabelMode !== "off";
+    lastProblemPositionUpdate = 0;
+  }  const animate = (now = performance.now()) => {
     if (destroyed) return;
     const deltaSeconds = Math.min(.05, Math.max(0, (now - lastFrameTime) / 1000));
     lastFrameTime = now;
-    problemMaterial.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
     if (problemMarkers.size && now - lastProblemPositionUpdate > 350) {
-      for (const [group, sprite] of problemMarkers) {
+      const positioned = [...problemMarkers].sort((a, b) => b[0].position.y - a[0].position.y);
+      for (const [group, marker] of positioned) {
         const bounds = new THREE.Box3().setFromObject(group);
-        if (!bounds.isEmpty()) { bounds.getCenter(sprite.position); sprite.position.y = bounds.max.y + .35; }
+        if (bounds.isEmpty()) continue;
+        bounds.getCenter(marker.sprite.position); marker.sprite.position.y = bounds.max.y + .35;
+        marker.sprite.material.opacity = .35 + .65 * (0.5 + 0.5 * Math.sin(now * .006));
+        const projected = marker.sprite.position.clone().project(camera);
+        marker.sprite.visible = problemLabelMode !== "off" && projected.z >= -1 && projected.z <= 1 && Math.abs(projected.x) <= 1.2 && Math.abs(projected.y) <= 1.2;
       }
       lastProblemPositionUpdate = now;
-    }
-    updateWalking(deltaSeconds);
+    }    updateWalking(deltaSeconds);
     if (options.editing && now - lastOverlapUpdate > 350) { updateFloorOverlapIndicators(); lastOverlapUpdate = now; }
     for (const group of itemGroups.values()) {
       const pivots = group.userData.sensorDoorPivots, target = group.userData.sensorDoorTarget;
@@ -2692,7 +2732,44 @@ function mount(container, page, options = {}) {
     renderer.render(scene, camera); raf = requestAnimationFrame(animate);
   }; animate();
   const api = {
-    setProblemDevices(deviceIds) { problemDeviceIds = new Set((deviceIds || []).map(Number)); syncProblemMarkers(); },
+    getSelectionToolbar() {
+      Object.assign(sceneActionBar.style, {
+        position:"static", zIndex:"auto", flexDirection:"row", gap:"5px", padding:"0", right:"auto", bottom:"auto",
+        width:"auto", maxWidth:"min(480px, 45vw)", border:"0", borderRadius:"0", background:"transparent", boxShadow:"none",
+      });
+      mainActions.style.flexWrap = "nowrap";
+      selectedLabel.style.maxWidth = "150px";
+      return sceneActionBar;
+    },
+    focusProblemDevice(deviceId) {
+      const attachment = items.find((item) => ["DEVICE","SENSOR"].includes(item.itemType) && Number(item.deviceId) === Number(deviceId));
+      const parent = attachment && items.find((item) => attachment.parentId != null
+        ? item.id != null && Number(item.id) === Number(attachment.parentId)
+        : item.clientKey === attachment.parentClientKey);
+      const target = parent || attachment || items.find((item) => Number(item.deviceId) === Number(deviceId));
+      const group = target && itemGroups.get(findItemKey(target));
+      if (!target || !group) return false;
+      const bounds = new THREE.Box3().setFromObject(group);
+      const center = bounds.getCenter(new THREE.Vector3());
+      const offset = camera.position.clone().sub(controls.target);
+      if (offset.lengthSq() < .001) offset.set(1, 1, 1);
+      controls.target.copy(center);
+      camera.position.copy(center).add(offset);
+      controls.update();
+      selectItem(findItemKey(target));
+      options.onHostSelected?.(target);
+      return true;
+    },
+    setProblemDevices(problems) {
+      problemDevicesById = new Map((problems || []).map(problem => typeof problem === "object"
+        ? [Number(problem.deviceId), problem]
+        : [Number(problem), {deviceId:Number(problem), deviceName:`장비 #${problem}`, reasons:[]}]).filter(([id]) => Number.isFinite(id)));
+      syncProblemMarkers();
+    },
+    setProblemLabelMode(mode) {
+      problemLabelMode = mode === "off" ? "off" : "on";
+      applyProblemLabelMode();
+    },
     setRackLayout(locationCode, layout) {
       for (const item of items.filter((entry) => entry.locationNodeCode === locationCode)) {
         const key = findItemKey(item), group = itemGroups.get(key);
@@ -2732,7 +2809,7 @@ function mount(container, page, options = {}) {
       if (!item) return false;
       areaKeys.clear(); refreshAreaHelpers(); selectItem(key);
       options.onHostSelected?.(item);
-      options.onHint?.(`‘${item.label}’ 개별 선택됨 · 묶음 전체 선택으로 함께 옮길 수 있습니다.`);
+      options.onHint?.(`‘${item.label}’ 개별 선택됨 · 묶음 목록의 전체 선택으로 함께 옮길 수 있습니다.`);
       return true;
     },
     groupSelection(name) {
@@ -3063,7 +3140,7 @@ function mount(container, page, options = {}) {
     },
     setWalking,
     getItems() { return structuredClone(items); },
-    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
+    dispose() { destroyed = true; clearTimeout(viewSaveTimer); saveViewState(); cancelPlacement(); cancelAnimationFrame(raf); ro.disconnect(); controls.removeEventListener("change", queueViewStateSave); controls.removeEventListener("end", saveViewState); controls.dispose(); window.removeEventListener("keydown", onKeyDown); window.removeEventListener("keyup", onKeyUp); window.removeEventListener("blur", clearWalkKeys); renderer.domElement.removeEventListener("dblclick", onRackDoubleClick); renderer.domElement.removeEventListener("pointermove", onHover); renderer.domElement.removeEventListener("pointerdown", onDown); renderer.domElement.removeEventListener("pointerdown", onRightClickResetView, true); renderer.domElement.removeEventListener("pointermove", onMove); renderer.domElement.removeEventListener("pointerup", onUp); renderer.domElement.removeEventListener("pointercancel", onUp); renderer.domElement.removeEventListener("contextmenu", preventCanvasContextMenu); selectionBox?.geometry?.dispose(); selectionBox?.material?.dispose(); guideX.geometry.dispose(); guideZ.geometry.dispose(); guideMaterial.dispose(); overlapLines.geometry.dispose(); overlapLines.material.dispose(); problemMarkers.forEach(marker => marker.sprite.material.dispose()); problemTexture.dispose(); problemMaterial.dispose(); renderer.dispose(); container.replaceChildren(); },
   };
   views.set(container, api); return api;
 }
@@ -3135,7 +3212,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
       scene.add(label);
     }
   }
-  const selectablePlacements = [];
+  const selectablePlacements = [], rackPlacementEntries = [], rackProblemHighlights = new Map();
   const selectedBounds = new THREE.Box3Helper(new THREE.Box3(), 0x39e4ff);
   selectedBounds.visible = false; selectedBounds.material.depthTest = false; selectedBounds.renderOrder = 30; scene.add(selectedBounds);
   let selectedPlacement = null;
@@ -3158,6 +3235,7 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     if (movingHolder) { movingHolder.position.copy(holder.position); movingHolder.rotation.copy(holder.rotation); movingHolder.visible = isDoorAttachment(item); doorAttachments.add(movingHolder); }
     const placeholder = box(width, height, depth, 0, 0, 0, deviceMaterial, holder);
     const entry = { item, holder, movingHolder, sensorParts:null, isU, verticalPdu, sensor, splitDoorSensor, height, baseHeight:height };
+    rackPlacementEntries.push(entry);
     if (options.onSelectPlacement) selectablePlacements.push(entry);
     const model = models.find((entry) => entry.key === item.sceneModelKey);
     if (!model) continue;
@@ -3274,9 +3352,10 @@ function mountRackDetail(container, layout, models = [], onUnitSelected = () => 
     hinge.rotation.y = doorAngle; for (const door of actualDoorHinges) door.pivot.rotation.y = door.direction * doorAngle;
     updateDoorAttachmentTransform(doorAttachments, actualDoorHinge?.position || hinge.position, doorAngle);
     if (selectedPlacement) selectedBounds.box.setFromObject(selectedPlacement.holder);
+    for (const [entry, highlight] of rackProblemHighlights) if (entry.holder.parent) highlight.box.setFromObject(entry.holder);
     controls.update(); renderer.render(scene, camera); raf = requestAnimationFrame(tick);
   }; tick();
-  return { setDoorState(open) { if (typeof open === "boolean") doorOpen = open; }, toggleDoor() { doorOpen = !doorOpen; return doorOpen; }, applyPlacement(item) { applyPlacement(item); }, previewPlacement(item) { applyPlacement(item, false); }, selectPlacement(item) { const entry = selectablePlacements.find((candidate) => samePlacement(candidate.item, item)); if (!entry) return false; selectPlacement(entry); return true; }, clearSelection() { selectPlacement(null); },
+  return { setDoorState(open) { if (typeof open === "boolean") doorOpen = open; }, toggleDoor() { doorOpen = !doorOpen; return doorOpen; }, setProblemDevices(problems) { for (const highlight of rackProblemHighlights.values()) { scene.remove(highlight); highlight.geometry.dispose(); highlight.material.dispose(); } rackProblemHighlights.clear(); const byId = new Map((problems || []).map(problem => [Number(problem.deviceId), problem])); for (const entry of rackPlacementEntries) { const problem = byId.get(Number(entry.item.deviceId)); if (!entry.isU || !problem) continue; const severity = (problem.reasons || []).map(reason => reason.severity); const color = severity.some(value => value === "CRITICAL" || value === "DANGER") ? 0xff3344 : severity.includes("WARNING") ? 0xff9f1c : 0xffd43b; const highlight = new THREE.Box3Helper(new THREE.Box3().setFromObject(entry.holder), color); highlight.material.depthTest = false; highlight.renderOrder = 1001; scene.add(highlight); rackProblemHighlights.set(entry, highlight); } }, applyPlacement(item) { applyPlacement(item); }, previewPlacement(item) { applyPlacement(item, false); }, selectPlacement(item) { const entry = selectablePlacements.find((candidate) => samePlacement(candidate.item, item)); if (!entry) return false; selectPlacement(entry); return true; }, clearSelection() { selectPlacement(null); },
     dispose() { disposed = true; cancelAnimationFrame(raf); observer.disconnect(); controls.dispose(); renderer.domElement.removeEventListener("dblclick", click); renderer.domElement.removeEventListener("pointerdown", onPduDown, true); renderer.domElement.removeEventListener("pointermove", onPduMove, true); renderer.domElement.removeEventListener("pointerup", onPduUp, true); renderer.domElement.removeEventListener("pointercancel", onPduUp, true); scene.traverse((node) => { if (node.userData.rackSharedModel) return; node.geometry?.dispose(); if (node.material && node.material !== deviceMaterial) { node.material.map?.dispose(); node.material.dispose(); } }); deviceMaterial.dispose(); renderer.dispose(); container.replaceChildren(); } };
 }
 

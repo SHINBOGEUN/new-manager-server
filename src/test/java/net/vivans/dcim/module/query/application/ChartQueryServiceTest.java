@@ -56,6 +56,15 @@ class ChartQueryServiceTest {
     @org.mockito.Spy
     private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
 
+    @Mock
+    private net.vivans.dcim.module.common.domain.repository.CommonCodeRepository commonCodeRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureUnitConversion() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "unitNormalizer",
+                new UnitNormalizer(commonCodeRepository, sourceCatalog));
+    }
+
     @InjectMocks
     private ChartQueryService service;
 
@@ -71,7 +80,7 @@ class ChartQueryServiceTest {
                 List.of()
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(1, "D-1", 1, "snmp", "W", null, null, 1, "MODEL_POINT", false)));
         Instant t1 = Instant.parse("2026-08-27T01:00:00Z");
         Instant t2 = Instant.parse("2026-08-27T01:05:00Z");
         when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
@@ -101,7 +110,7 @@ class ChartQueryServiceTest {
                 List.of()
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(1, "D-1", 1, "snmp", "W", null, null, 1, "MODEL_POINT", false)));
         Instant t = Instant.parse("2026-08-27T01:00:00Z");
         when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
                 .thenReturn(List.of(new SeriesPoint(1, "W", 5.0, t)));
@@ -238,7 +247,7 @@ class ChartQueryServiceTest {
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
         when(deviceRepository.findAllEnabledByDeviceModelIds(List.of(10))).thenReturn(List.of(d1));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(1, "D-1", 1, "snmp", "W", null, null, 1, "MODEL_POINT", false)));
         Instant t = Instant.parse("2026-08-27T01:00:00Z");
         when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
                 .thenReturn(List.of(new SeriesPoint(1, "W", 5.0, t)));
@@ -303,7 +312,7 @@ class ChartQueryServiceTest {
                 List.of()
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(1, "D-1", 1, "snmp", "W", null, null, 1, "MODEL_POINT", false), new DeviceMeasurementSourceCatalog.Source(2, "D-2", 2, "snmp", "W", null, null, 2, "MODEL_POINT", false)));
         Instant t = Instant.parse("2026-08-27T01:00:00Z");
         when(pointQuery.findSeries(anyList(), anyList(), any(), any(), anyString()))
                 .thenReturn(List.of(

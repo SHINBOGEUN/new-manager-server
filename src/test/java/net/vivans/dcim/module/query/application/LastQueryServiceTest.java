@@ -61,6 +61,15 @@ class LastQueryServiceTest {
     @org.mockito.Spy
     private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
 
+    @Mock
+    private net.vivans.dcim.module.common.domain.repository.CommonCodeRepository commonCodeRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureUnitConversion() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "unitNormalizer",
+                new UnitNormalizer(commonCodeRepository, sourceCatalog));
+    }
+
     @InjectMocks
     private LastQueryService service;
 
@@ -70,7 +79,7 @@ class LastQueryServiceTest {
         Device second = device(101, "PDU-A", "RACK01", "랙1", "PDU");
         PageWidget widget = lastWidget(12, "dashboard", "칠러", List.of("temp", "V"), List.of(first, second));
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(101, "D-101", 101, "snmp", "temp", null, null, 101, "MODEL_POINT", false), new DeviceMeasurementSourceCatalog.Source(102, "D-102", 102, "snmp", "temp", null, null, 102, "MODEL_POINT", false), new DeviceMeasurementSourceCatalog.Source(101, "D-101", 101, "snmp", "V", null, null, 101, "MODEL_POINT", false), new DeviceMeasurementSourceCatalog.Source(102, "D-102", 102, "snmp", "V", null, null, 102, "MODEL_POINT", false)));
         when(pointQuery.findLast(eq(List.of(102, 101)), eq(List.of("temp", "V")), eq(Duration.ofHours(24))))
                 .thenReturn(List.of(
                         new LastPoint(102, "temp", 24.1, TIME),
@@ -125,7 +134,7 @@ class LastQueryServiceTest {
                 )
         );
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(101, "D-101", 101, "snmp", "temp", null, null, 101, "MODEL_POINT", false), new DeviceMeasurementSourceCatalog.Source(102, "D-102", 102, "snmp", "V", null, null, 102, "MODEL_POINT", false)));
         when(pointQuery.findLast(eq(List.of(101, 102)), eq(List.of("temp", "V")), eq(Duration.ofHours(24))))
                 .thenReturn(List.of(
                         new LastPoint(101, "temp", 24.1, TIME),
@@ -150,7 +159,7 @@ class LastQueryServiceTest {
         when(disabled.isEnabled()).thenReturn(false);
         PageWidget widget = lastWidget(12, "dashboard", "PDU", List.of("W"), List.of(enabled, disabled));
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
+        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of(new DeviceMeasurementSourceCatalog.Source(101, "D-101", 101, "snmp", "W", null, null, 101, "MODEL_POINT", false)));
         when(pointQuery.findLast(eq(List.of(101)), eq(List.of("W")), eq(Duration.ofHours(24))))
                 .thenReturn(List.of(new LastPoint(101, "W", 10.0, TIME)));
 

@@ -38,7 +38,6 @@ public class CollectionTask extends BaseEntity {
 
     public static final String SCRIPT_TYPE_GROUP_KEY = "PROTOCOL_TYPE";
     public static final String DEFAULT_GROUP_NAME = "기본 그룹";
-    public static final String DEFAULT_GROUP_CRON = "0 */1 * * * *";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -91,12 +90,12 @@ public class CollectionTask extends BaseEntity {
         groups.add(group);
     }
 
-    public CollectionTaskGroup ensureDefaultGroup() {
+    public CollectionTaskGroup ensureDefaultGroup(String groupName, String cronExpression) {
         CollectionTaskGroup existing = defaultGroup();
         if (existing != null) {
             return existing;
         }
-        return CollectionTaskGroup.create(this, DEFAULT_GROUP_NAME, DEFAULT_GROUP_CRON, true);
+        return CollectionTaskGroup.create(this, groupName, cronExpression, true);
     }
 
     public CollectionTaskGroup defaultGroup() {

@@ -3,6 +3,7 @@ package net.vivans.dcim.module.device.application;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.collectortask.application.CollectionGroupSpecService;
+import net.vivans.dcim.module.collectortask.application.CollectionReadiness;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorJobClient;
 import net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorModbusPreviewResponse;
 import net.vivans.dcim.module.device.domain.repository.DeviceRepository;
@@ -25,16 +26,17 @@ public class DeviceModbusPreviewService {
                 .orElseThrow(() -> new EntityNotFoundException("Device not found: " + deviceId));
         CollectionGroupSpecService.ModbusPreviewPlan plan = specService.previewModbus(device);
         if (plan.targets().isEmpty()) {
-            return new PreviewResult(List.of(), plan.skipped());
+            return new PreviewResult(List.of(), plan.skipped(), plan.readiness());
         }
         if (plan.targets().size() > 50) {
             throw new IllegalArgumentException("Modbus preview supports at most 50 targets");
         }
         CollectorModbusPreviewResponse response = collectorJobClient.previewModbus(Map.of(
                 "targets", plan.targets(), "timeoutMs", 2000, "retries", 1));
-        return new PreviewResult(response.targets(), plan.skipped());
+        return new PreviewResult(response.targets(), plan.skipped(), plan.readiness());
     }
 
-    public record PreviewResult(List<CollectorModbusPreviewResponse.TargetResult> targets, List<String> skipped) {
+    public record PreviewResult(List<CollectorModbusPreviewResponse.TargetResult> targets, List<String> skipped,
+                                List<CollectionReadiness> readiness) {
     }
 }

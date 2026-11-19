@@ -2,7 +2,7 @@ package net.vivans.dcim.module.devicemodel.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.collectortask.domain.repository.CollectionTaskRepository;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
@@ -46,7 +46,7 @@ public class DeviceModelQueryService {
     private final CommonCodeRepository commonCodeRepository;
     private final DeviceRepository deviceRepository;
     private final CollectionTaskRepository collectionTaskRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
     private final DeviceModelSnmpPointRepository snmpPointRepository;
     private final DeviceModelModbusPointRepository modbusPointRepository;
     private final DeviceModelMqttPointRepository mqttPointRepository;
@@ -125,7 +125,7 @@ public class DeviceModelQueryService {
         replaceProtocolsFromRequest(deviceModel, request.protocols());
 
         DeviceModelResponse response = DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
-        collectionScriptSyncService.regenerateByModelId(id);
+        collectionReconciler.reconcileModel(id);
         return response;
     }
 
@@ -137,7 +137,7 @@ public class DeviceModelQueryService {
                 request.description());
         if (request.phaseNotation() != null) deviceModel.setPhaseNotation(resolvePhaseNotation(request.phaseNotation()));
         DeviceModelResponse response = DeviceModelResponse.from(deviceModelRepository.save(deviceModel));
-        collectionScriptSyncService.regenerateByModelId(id);
+        collectionReconciler.reconcileModel(id);
         return response;
     }
 

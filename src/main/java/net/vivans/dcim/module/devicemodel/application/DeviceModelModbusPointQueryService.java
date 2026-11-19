@@ -4,7 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import net.vivans.dcim.module.common.application.UnitCodeResolver;
 import net.vivans.dcim.module.common.application.CategoryCodeResolver;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.common.domain.model.CommonCode;
 import net.vivans.dcim.module.common.domain.repository.CommonCodeRepository;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelModbusPointCreateRequest;
@@ -27,7 +27,7 @@ public class DeviceModelModbusPointQueryService {
 
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelModbusPointRepository deviceModelModbusPointRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
     private final UnitCodeResolver unitCodeResolver;
     private final CategoryCodeResolver categoryCodeResolver;
     private final CommonCodeRepository commonCodeRepository;
@@ -88,7 +88,7 @@ public class DeviceModelModbusPointQueryService {
         point.setPhase(resolvePhase(request.phase()));
 
         DeviceModelModbusPoint saved = deviceModelModbusPointRepository.save(point);
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return DeviceModelModbusPointResponse.from(saved);
     }
 
@@ -128,7 +128,7 @@ public class DeviceModelModbusPointQueryService {
         point.setPhase(resolvePhase(request.phase()));
 
         DeviceModelModbusPoint saved = deviceModelModbusPointRepository.save(point);
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return DeviceModelModbusPointResponse.from(saved);
     }
 
@@ -137,7 +137,7 @@ public class DeviceModelModbusPointQueryService {
         findModbusProtocol(modelId, protocolId);
         DeviceModelModbusPoint point = findModbusPoint(pointId, protocolId);
         deviceModelModbusPointRepository.delete(point);
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return pointId;
     }
 

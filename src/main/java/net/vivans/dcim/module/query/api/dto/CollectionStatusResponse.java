@@ -10,6 +10,10 @@ public record CollectionStatusResponse(
 ) {
     public record CollectionStatusSummary(
             int totalCount, int normalCount, int partialCount, int staleCount, int missingCount,
-            int stoppedCount, int unregisteredCount, int disabledCount, int onChangeCount
-    ) {}
+            int stoppedCount, int unregisteredCount, int disabledCount, int onChangeCount,
+        int commError
+) {
+    public CollectionStatusSummary(int totalCount, int normalCount, int partialCount, int staleCount, int missingCount,
+            int stoppedCount, int unregisteredCount, int disabledCount, int onChangeCount){this(totalCount,normalCount,partialCount,staleCount,missingCount,stoppedCount,unregisteredCount,disabledCount,onChangeCount,0);}
+}
 }

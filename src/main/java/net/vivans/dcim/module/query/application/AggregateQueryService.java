@@ -39,6 +39,7 @@ public class AggregateQueryService {
     private final PointQuery pointQuery;
     private final DeviceMeasurementSourceCatalog sourceCatalog;
     private final WidgetDataStatusResolver widgetDataStatusResolver;
+    private final UnitNormalizer unitNormalizer;
 
     public AggregateWidgetResponse getAggregate(Integer widgetId, String rangePresetOverride) {
         PageWidget widget = findAggregateWidget(widgetId);
@@ -60,189 +61,103 @@ public class AggregateQueryService {
         return withDataStatus(widget, response);
     }
 
+    private Map<Integer, String> selectedSources(PageWidget widget, List<Device> devices) {
+        Set<Integer> ids = devices.stream().map(Device::getId).collect(Collectors.toSet());
+        Map<Integer, String> selected = new java.util.LinkedHashMap<>();
+        for (var source : widget.aggregateSourceDefinitions()) {
+            if (!ids.contains(source.device().getId())) continue;
+            if (source.pointNames().size() != 1 || selected.putIfAbsent(source.device().getId(), source.pointNames().get(0)) != null)
+                throw new IllegalArgumentException("장비마다 집계할 측정항목 하나가 필요합니다");
+        }
+        if (selected.size() != ids.size()) throw new IllegalArgumentException("일부 장비의 집계 측정항목이 없습니다");
+        return selected;
+    }
+
+    private UnitNormalizer.Plan aggregatePlan(Map<Integer, String> selected) {
+        UnitNormalizer.Plan all = unitNormalizer.plan(selected.keySet(), selected.values());
+        Map<String, UnitNormalizer.Conversion> matching = new java.util.LinkedHashMap<>();
+        selected.forEach((id, name) -> {
+            String key = UnitNormalizer.key(id, name);
+            if (all.conversions().containsKey(key)) matching.put(key, all.conversions().get(key));
+        });
+        UnitNormalizer.Plan plan = new UnitNormalizer.Plan(matching);
+        if (matching.size() != selected.size() || plan.units().size() > 1
+                || (plan.units().size() == 1 && matching.values().stream().anyMatch(value -> value.unit() == null)))
+            throw new IllegalArgumentException("단위가 달라 합계를 낼 수 없습니다");
+        return plan;
+    }
+
+    private void validateRankingSources(Map<Integer, String> selected, String type) {
+        var matches = sourceCatalog.availableSources(selected.keySet()).stream()
+                .filter(source -> !source.ambiguous() && source.pointName().equals(selected.get(source.deviceId()))
+                        && type.equalsIgnoreCase(source.dataPointType()) && source.unit() != null && !source.unit().isBlank()).toList();
+        if (matches.stream().map(DeviceMeasurementSourceCatalog.Source::deviceId).distinct().count() != selected.size()
+                || aggregatePlan(selected).units().size() != 1)
+            throw new IllegalArgumentException("모든 장비의 측정항목 유형과 단위를 확인하세요");
+    }
+
     private AggregateWidgetResponse computeDemand(PageWidget widget, PageWidgetOp preset,
             PageWidgetChartRangePreset rangePreset, QueryRanges.Range range) {
         List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
-        String pointName = requireAggregatePoint(widget);
-        String unit = resolveUnit(devices, List.of(pointName));
-        if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, unit);
-        validateRankingSources(devices, pointName, "POWER");
-        if (!"W".equalsIgnoreCase(unit) && !"kW".equalsIgnoreCase(unit)) {
-            throw new IllegalArgumentException("최대수요전력은 동일한 W 또는 kW 단위의 전력 항목이 필요합니다");
-        }
+        if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, null);
+        Map<Integer, String> selected = selectedSources(widget, devices);
+        validateRankingSources(selected, "POWER");
+        UnitNormalizer.Plan plan = aggregatePlan(selected);
         List<Integer> ids = devices.stream().map(Device::getId).toList();
-        var points = pointQuery.findSeries(ids, List.of(pointName), range.start(), range.end(), "15m");
+        List<String> names = selected.values().stream().distinct().toList();
+        var points = pointQuery.findSeries(ids, names, range.start(), range.end(), "15m").stream()
+                .filter(point -> point.pointName().equals(selected.get(point.deviceId()))).map(plan::point).toList();
         var peak = PowerDemandCalculator.peak(points, ids, range.start(), range.end());
+        String unit = plan.units().isEmpty() ? null : plan.units().get(0);
         if (peak == null) return empty(widget, preset, rangePreset, range, unit);
         return new AggregateWidgetResponse(widget.getId(), widget.getName(), widget.getPageCode().getCode(),
-                preset.name(), rangePreset.name(), range.start(), range.end(), QueryValues.round2(peak.value()),
-                unit, ids.size(), List.of(), null, peak.time());
+                preset.name(), rangePreset.name(), range.start(), range.end(), QueryValues.round2(peak.value()), unit, ids.size(), List.of(), null, peak.time());
     }
 
-    private AggregateWidgetResponse computeUsage(
-            PageWidget widget,
-            PageWidgetOp preset,
-            PageWidgetChartRangePreset rangePreset,
-            QueryRanges.Range range
-    ) {
+    private AggregateWidgetResponse computeUsage(PageWidget widget, PageWidgetOp preset,
+            PageWidgetChartRangePreset rangePreset, QueryRanges.Range range) {
         List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
-        if (devices.isEmpty()) {
-            return empty(widget, preset, rangePreset, range, null);
-        }
-        List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
-        Map<Integer, Device> deviceById = indexDevices(devices);
-        String pointName = requireAggregatePoint(widget);
-        if (preset == PageWidgetOp.usage_rank) validateRankingSources(devices, pointName, "ENERGY");
-        List<String> pointNames = List.of(pointName);
-        String unit = resolveUnit(devices, pointNames);
-
-        List<LastPoint> firsts = pointQuery.findFirstInRange(
-                deviceIds, pointNames, range.start(), range.end());
-        List<LastPoint> lasts = pointQuery.findLastInRange(
-                deviceIds, pointNames, range.start(), range.end());
-
-        Map<String, Double> firstByKey = indexByDevicePoint(firsts);
-        Map<String, Double> lastByKey = indexByDevicePoint(lasts);
-
-        List<AggregateDeviceValueResponse> deviceRows = new ArrayList<>();
-        double sum = 0;
-        for (Integer deviceId : deviceIds) {
-            String key = key(deviceId, pointName);
-            Double first = firstByKey.get(key);
-            Double last = lastByKey.get(key);
-            if (first == null || last == null) {
-                continue;
-            }
-            double delta = last - first;
-            if (delta < 0) {
-                continue;
-            }
-            Device device = deviceById.get(deviceId);
-            var rounded = QueryValues.round2(delta);
+        if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, null);
+        Map<Integer, String> selected = selectedSources(widget, devices);
+        if (preset == PageWidgetOp.usage_rank) validateRankingSources(selected, "ENERGY");
+        UnitNormalizer.Plan plan = aggregatePlan(selected);
+        List<Integer> ids = devices.stream().map(Device::getId).toList();
+        List<String> names = selected.values().stream().distinct().toList();
+        Map<String, Double> first = indexByDevicePoint(pointQuery.findFirstInRange(ids, names, range.start(), range.end()));
+        Map<String, Double> last = indexByDevicePoint(pointQuery.findLastInRange(ids, names, range.start(), range.end()));
+        String unit = plan.units().isEmpty() ? null : plan.units().get(0);
+        List<AggregateDeviceValueResponse> rows = new ArrayList<>(); double sum = 0;
+        for (Device device : devices) {
+            String name = selected.get(device.getId()); Double f = first.get(key(device.getId(), name)), l = last.get(key(device.getId(), name));
+            if (f == null || l == null || l < f) continue;
+            double value = plan.value(device.getId(), name, l - f); var rounded = QueryValues.round2(value);
             UnitDisplay.Result display = UnitDisplay.of(rounded, unit);
-            deviceRows.add(new AggregateDeviceValueResponse(
-                    deviceId,
-                    device == null ? null : device.getName(),
-                    PageWidgetDeviceRole.DEFAULT.wireValue(),
-                    rounded,
-                    display.displayValue(),
-                    display.displayUnit()
-            ));
-            sum += delta;
+            rows.add(new AggregateDeviceValueResponse(device.getId(), device.getName(), PageWidgetDeviceRole.DEFAULT.wireValue(), rounded, display.displayValue(), display.displayUnit()));
+            sum += value;
         }
-
-        Double value = deviceRows.isEmpty() ? null : sum;
-        return response(widget, preset, rangePreset, range, value, unit, deviceRows);
+        return response(widget, preset, rangePreset, range, rows.isEmpty() ? null : sum, unit, rows);
     }
 
-    private AggregateWidgetResponse computePower(
-            PageWidget widget,
-            PageWidgetOp preset,
-            PageWidgetChartRangePreset rangePreset,
-            QueryRanges.Range range
-    ) {
+    private AggregateWidgetResponse computePower(PageWidget widget, PageWidgetOp preset,
+            PageWidgetChartRangePreset rangePreset, QueryRanges.Range range) {
         List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
-        if (devices.isEmpty()) {
-            return empty(widget, preset, rangePreset, range, null);
-        }
-        if (preset == PageWidgetOp.power_rank) validateRankingSources(devices, requireAggregatePoint(widget), "POWER");
-        return sumLastPower(widget, preset, rangePreset, range, devices, PageWidgetDeviceRole.DEFAULT);
-    }
-
-    private void validateRankingSources(List<Device> devices, String pointName, String type) {
-        Set<Integer> ids = devices.stream().map(Device::getId).collect(Collectors.toSet());
-        var matches = sourceCatalog.availableSources(ids).stream()
-                .filter(source -> ids.contains(source.deviceId()) && !source.ambiguous()
-                        && pointName.equals(source.pointName()) && type.equalsIgnoreCase(source.dataPointType())
-                        && source.unit() != null && !source.unit().isBlank()).toList();
-        if (matches.stream().map(DeviceMeasurementSourceCatalog.Source::deviceId).distinct().count() != ids.size()
-                || matches.stream().map(source -> source.unit().trim().toLowerCase(java.util.Locale.ROOT)).distinct().count() != 1) {
-            throw new IllegalArgumentException("순위는 모든 장비의 동일한 유형과 단위의 측정항목이 필요합니다");
-        }
-    }
-
-    private AggregateWidgetResponse sumLastPower(
-            PageWidget widget,
-            PageWidgetOp preset,
-            PageWidgetChartRangePreset rangePreset,
-            QueryRanges.Range range,
-            List<Device> devices,
-            PageWidgetDeviceRole role
-    ) {
-        String pointName = requireAggregatePoint(widget);
-        List<String> pointNames = List.of(pointName);
-        String unit = resolveUnit(devices, pointNames);
-        List<AggregateDeviceValueResponse> rows = new ArrayList<>();
-        SumResult result = sumLastInRange(devices, range, role, rows, widget);
-        Double value = result.hasValue ? result.sum : null;
-        return response(widget, preset, rangePreset, range, value, unit, rows);
-    }
-
-    private SumResult sumLastInRange(
-            List<Device> devices,
-            QueryRanges.Range range,
-            PageWidgetDeviceRole role,
-            List<AggregateDeviceValueResponse> out,
-            PageWidget widget
-    ) {
-        String pointName = requireAggregatePoint(widget);
-        List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
+        if (devices.isEmpty()) return empty(widget, preset, rangePreset, range, null);
+        Map<Integer, String> selected = selectedSources(widget, devices);
+        if (preset == PageWidgetOp.power_rank) validateRankingSources(selected, "POWER");
+        UnitNormalizer.Plan plan = aggregatePlan(selected);
+        List<Integer> ids = devices.stream().map(Device::getId).toList();
+        List<String> names = selected.values().stream().distinct().toList();
         Map<Integer, Device> deviceById = indexDevices(devices);
-        List<LastPoint> lasts = pointQuery.findLastInRange(
-                deviceIds, List.of(pointName), range.start(), range.end());
-        double sum = 0;
-        boolean hasValue = false;
-        for (LastPoint point : lasts) {
-            if (!pointName.equals(point.pointName())) {
-                continue;
-            }
-            Device device = deviceById.get(point.deviceId());
-            var rounded = QueryValues.round2(point.value());
-            UnitDisplay.Result display = UnitDisplay.of(rounded, resolveUnit(List.of(device), List.of(pointName)));
-            out.add(new AggregateDeviceValueResponse(
-                    point.deviceId(),
-                    device == null ? null : device.getName(),
-                    role.wireValue(),
-                    rounded,
-                    display.displayValue(),
-                    display.displayUnit()
-            ));
-            sum += point.value();
-            hasValue = true;
+        String unit = plan.units().isEmpty() ? null : plan.units().get(0);
+        List<AggregateDeviceValueResponse> rows = new ArrayList<>(); double sum = 0;
+        for (LastPoint point : pointQuery.findLastInRange(ids, names, range.start(), range.end())) {
+            if (!point.pointName().equals(selected.get(point.deviceId()))) continue;
+            double value = plan.value(point.deviceId(), point.pointName(), point.value()); var rounded = QueryValues.round2(value);
+            UnitDisplay.Result display = UnitDisplay.of(rounded, unit); Device device = deviceById.get(point.deviceId());
+            rows.add(new AggregateDeviceValueResponse(point.deviceId(), device == null ? null : device.getName(), PageWidgetDeviceRole.DEFAULT.wireValue(), rounded, display.displayValue(), display.displayUnit()));
+            sum += value;
         }
-        return new SumResult(sum, hasValue);
-    }
-
-    private static String requireAggregatePoint(PageWidget widget) {
-        List<String> pointNames = widget.pointNames();
-        if (pointNames.isEmpty()) {
-            throw new IllegalArgumentException("pointNames is required for aggregate");
-        }
-        if (pointNames.size() != 1) {
-            throw new IllegalArgumentException("aggregate supports exactly one pointName");
-        }
-        return pointNames.get(0);
-    }
-
-    private String resolveUnit(List<Device> devices, List<String> pointNames) {
-        Set<Integer> deviceIds = devices.stream().map(Device::getId).collect(Collectors.toSet());
-        String unit = null;
-        for (DeviceMeasurementSourceCatalog.Source point : sourceCatalog.availableSources(deviceIds)) {
-            if (!deviceIds.contains(point.deviceId()) || point.ambiguous()
-                    || !pointNames.contains(point.pointName())) {
-                continue;
-            }
-            String candidate = blankToNull(point.unit());
-            if (candidate == null) {
-                continue;
-            }
-            if (unit == null) {
-                unit = candidate;
-            } else if (!unit.equalsIgnoreCase(candidate)) {
-                return null;
-            }
-        }
-        return unit;
+        return response(widget, preset, rangePreset, range, rows.isEmpty() ? null : sum, unit, rows);
     }
 
     private List<Device> resolveEnabledDevices(PageWidget widget, PageWidgetDeviceRole... roles) {
@@ -357,25 +272,19 @@ public class AggregateQueryService {
     }
 
     private AggregateWidgetResponse withDataStatus(PageWidget widget, AggregateWidgetResponse response) {
-        String pointName = widget.pointNames().isEmpty() ? null : widget.pointNames().get(0);
         List<Device> devices = resolveEnabledDevices(widget, PageWidgetDeviceRole.DEFAULT, PageWidgetDeviceRole.TOTAL);
-        Map<String, LastPoint> latestBySource = new HashMap<>();
-        if (pointName != null && !devices.isEmpty()) {
-            List<Integer> deviceIds = devices.stream().map(Device::getId).toList();
-            for (LastPoint point : pointQuery.findLast(deviceIds, List.of(pointName), Duration.ofHours(24))) {
-                latestBySource.put(key(point.deviceId(), point.pointName()), point);
-            }
-        }
-        List<Instant> collectedTimes = devices.stream()
-                .map(device -> latestBySource.get(key(device.getId(), pointName)))
-                .map(point -> point == null ? null : point.time())
-                .toList();
-        WidgetDataStatusResponse dataStatus = widgetDataStatusResolver
-                .resolve(collectedTimes, widget.getDataFreshnessMinutes());
-        return new AggregateWidgetResponse(
-                response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
-                response.rangePreset(), response.start(), response.end(), response.value(), response.unit(),
-                response.contributingDevices(), response.devices(), dataStatus, response.peakTime());
+        Map<Integer, String> selected = selectedSources(widget, devices);
+        List<Integer> ids = devices.stream().map(Device::getId).toList();
+        List<String> names = selected.values().stream().distinct().toList();
+        Map<String, LastPoint> latest = new HashMap<>();
+        if (!ids.isEmpty() && !names.isEmpty()) for (LastPoint point : pointQuery.findLast(ids, names, Duration.ofHours(24)))
+            latest.put(key(point.deviceId(), point.pointName()), point);
+        List<Instant> times = devices.stream().map(device -> latest.get(key(device.getId(), selected.get(device.getId()))))
+                .map(point -> point == null ? null : point.time()).toList();
+        WidgetDataStatusResponse status = widgetDataStatusResolver.resolve(times, widget.getDataFreshnessMinutes());
+        return new AggregateWidgetResponse(response.widgetId(), response.widgetName(), response.pageCode(), response.aggregatePreset(),
+                response.rangePreset(), response.start(), response.end(), response.value(), response.unit(), response.contributingDevices(),
+                response.devices(), status, response.peakTime()).withUnitConverted(aggregatePlan(selected).converted());
     }
 
     private static String blankToNull(String value) {

@@ -2,7 +2,7 @@ package net.vivans.dcim.module.device.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.collectortask.application.CollectionTaskService;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTask;
 import net.vivans.dcim.module.collectortask.domain.model.CollectionTaskGroup;
@@ -45,7 +45,8 @@ public class DeviceRegistrationService {
     private final DeviceModbusReadingQueryService modbusReadingService;
     private final DeviceLoraEndpointService loraEndpointService;
     private final CollectionTaskService taskService;
-    private final CollectionScriptSyncService scriptSyncService;
+    private final CollectionReconciler collectionReconciler;
+    private final net.vivans.dcim.module.collectortask.application.CollectionIntervalResolver collectionIntervals;
 
     public DeviceRegistrationOptionsResponse getOptions(Integer modelId) {
         DeviceModel model = findModel(modelId);
@@ -88,10 +89,17 @@ public class DeviceRegistrationService {
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("protocol not supported by device model"));
         String code = protocol.getProtocolType().getCode().toLowerCase();
         boolean lora = "mqtt".equals(code) && "LORA_SENSOR".equals(model.getDeviceType().getCode());
+        if(request.collection()!=null && request.collectionGroup()!=null)throw new IllegalArgumentException("collection과 collectionGroup은 함께 지정할 수 없습니다.");
+        if(request.collection()!=null){
+            if("mqtt".equals(code) && request.collection().intervalCode()!=null)throw new IllegalArgumentException("MQTT에는 조회 주기가 없습니다.");
+            if(request.collection().intervalCode()!=null)collectionIntervals.code(request.collection().intervalCode());
+            Integer silence=request.collection().expectedSilenceSeconds();
+            if(silence!=null && (!"mqtt".equals(code) || silence<10 || silence>86400))throw new IllegalArgumentException("무수신 시간은 MQTT에서 10~86400초로 입력하세요.");
+        }
         validateSettings(request, code, lora);
         if ("snmp".equals(code)
                 && snmpPoints.existsByModelProtocolIdAndRequiresInstanceTrue(protocol.getId())
-                && request.snmpInstance() == null) {
+                && request.snmpInstance() == null && request.collection()==null) {
             throw new IllegalArgumentException("snmpInstance is required for this model");
         }
         validateGroup(request.collectionGroup(), model.getId(), request.protocolTypeId(), code);
@@ -105,11 +113,12 @@ public class DeviceRegistrationService {
                 endpointId = loraEndpointService.create(new DeviceLoraEndpointRequest(
                         deviceId, identity.idType(), identity.externalId(), identity.enabled())).id();
             } else {
-                endpointId = deviceService.getDevice(deviceId).mqttIdentities().get(0).id();
+                var identities=deviceService.getDevice(deviceId).mqttIdentities();
+                endpointId=identities.isEmpty()?null:identities.get(0).id();
             }
         } else {
-            DeviceProtocolEndpointResponse endpoint = endpointService.createEndpoint(deviceId, request.endpoint(), false);
-            endpointId = endpoint.id();
+            DeviceProtocolEndpointResponse endpoint = request.endpoint()==null?null:endpointService.createEndpoint(deviceId, request.endpoint(), false);
+            endpointId = endpoint==null?null:endpoint.id();
             if (request.snmpInstance() != null) {
                 snmpInstanceService.createSnmpInstance(deviceId, endpointId, request.snmpInstance(), false);
             }
@@ -124,13 +133,17 @@ public class DeviceRegistrationService {
                     }
                 }
             }
-            if (request.collectionGroup() != null) {
+            if (request.collection()!=null) {
+                collectionReconciler.configureRegistration(deviceId,request.protocolTypeId(),new net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingRequest(!Boolean.FALSE.equals(request.collection().enabled()),request.collection().intervalCode(),request.collection().expectedSilenceSeconds()));
+            } else if (request.collectionGroup() != null) {
                 taskService.addGroupDevice(request.collectionGroup().taskId(), request.collectionGroup().groupId(), deviceId);
             } else if ("snmp".equals(code) || "modbus".equals(code)) {
                 Device device = deviceRepository.findById(deviceId).orElseThrow();
-                scriptSyncService.assignDeviceAndRegenerate(device, code);
+                collectionReconciler.registerDevice(device, code);
             }
         }
+        if("mqtt".equals(code) && request.collection()!=null)collectionReconciler.configureRegistration(deviceId,request.protocolTypeId(),new net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingRequest(!Boolean.FALSE.equals(request.collection().enabled()),request.collection().intervalCode(),request.collection().expectedSilenceSeconds()));
+        if("mqtt".equals(code) && request.collection()==null && request.collectionGroup()==null)collectionReconciler.registerDevice(deviceRepository.findById(deviceId).orElseThrow(),code);
         return new DeviceRegistrationResponse(deviceService.getDevice(deviceId), endpointId,
                 request.collectionGroup() == null ? null : request.collectionGroup().taskId(),
                 request.collectionGroup() == null ? null : request.collectionGroup().groupId());
@@ -140,7 +153,7 @@ public class DeviceRegistrationService {
         if ("mqtt".equals(code)) {
             var identities = request.device().mqttIdentities();
             boolean legacyLora = lora && request.loraIdentity() != null && identities == null;
-            boolean mqttIdentities = request.loraIdentity() == null && identities != null && !identities.isEmpty();
+            boolean mqttIdentities = request.loraIdentity() == null && (request.collection()!=null || identities != null && !identities.isEmpty());
             if (!(legacyLora || mqttIdentities) || request.endpoint() != null || request.snmpInstance() != null
                     || request.modbus() != null || request.modbusReadings() != null
                     || request.collectionGroup() != null) {
@@ -148,18 +161,19 @@ public class DeviceRegistrationService {
             }
             return;
         }
-        if (request.endpoint() == null || !request.protocolTypeId().equals(request.endpoint().protocolTypeId())
+        if (request.endpoint() == null && request.collection()==null || request.endpoint()!=null && !request.protocolTypeId().equals(request.endpoint().protocolTypeId())
                 || request.loraIdentity() != null
                 || (request.device().mqttIdentities() != null && !request.device().mqttIdentities().isEmpty())) {
             throw new IllegalArgumentException("endpoint must match selected protocol");
         }
+        if(request.endpoint()==null && (request.snmpInstance()!=null || request.modbus()!=null || request.modbusReadings()!=null))throw new IllegalArgumentException("연결 없이 하위 통신 설정을 저장할 수 없습니다.");
         if (request.snmpInstance() != null && !"snmp".equals(code)) {
             throw new IllegalArgumentException("snmpInstance requires SNMP protocol");
         }
         if (request.modbus() != null && !"modbus".equals(code)) {
             throw new IllegalArgumentException("modbus settings require Modbus protocol");
         }
-        if ("modbus".equals(code) && request.modbus() == null) {
+        if ("modbus".equals(code) && request.modbus() == null && request.collection()==null) {
             throw new IllegalArgumentException("modbus settings are required");
         }
         if (!"modbus".equals(code) && request.modbusReadings() != null) {

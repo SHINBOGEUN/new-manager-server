@@ -2,7 +2,7 @@ package net.vivans.dcim.module.devicemodel.application;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService;
+import net.vivans.dcim.module.collectortask.application.CollectionReconciler;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointBulkCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointCreateRequest;
 import net.vivans.dcim.module.devicemodel.api.dto.DeviceModelSnmpPointResponse;
@@ -30,7 +30,7 @@ public class DeviceModelSnmpPointQueryService {
 
     private final DeviceModelRepository deviceModelRepository;
     private final DeviceModelSnmpPointRepository deviceModelSnmpPointRepository;
-    private final CollectionScriptSyncService collectionScriptSyncService;
+    private final CollectionReconciler collectionReconciler;
     private final CommonCodeRepository commonCodeRepository;
     private final UnitCodeResolver unitCodeResolver;
     private final CategoryCodeResolver categoryCodeResolver;
@@ -66,7 +66,7 @@ public class DeviceModelSnmpPointQueryService {
         DeviceModelProtocol protocol = findSnmpProtocol(modelId, protocolId);
         validateUniqueNameAndOid(protocolId, request.name(), request.oid());
         DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(createPoint(protocol, request));
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return DeviceModelSnmpPointResponse.from(saved);
     }
 
@@ -85,7 +85,7 @@ public class DeviceModelSnmpPointQueryService {
             DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(createPoint(protocol, pointRequest));
             responses.add(DeviceModelSnmpPointResponse.from(saved));
         }
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return responses;
     }
 
@@ -116,7 +116,7 @@ public class DeviceModelSnmpPointQueryService {
         point.setPhase(resolvePhase(request.phase()));
 
         DeviceModelSnmpPoint saved = deviceModelSnmpPointRepository.save(point);
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return DeviceModelSnmpPointResponse.from(saved);
     }
 
@@ -125,7 +125,7 @@ public class DeviceModelSnmpPointQueryService {
         findSnmpProtocol(modelId, protocolId);
         DeviceModelSnmpPoint point = findSnmpPoint(pointId, protocolId);
         deviceModelSnmpPointRepository.delete(point);
-        collectionScriptSyncService.regenerateByModelId(modelId);
+        collectionReconciler.reconcileModel(modelId);
         return pointId;
     }
 
