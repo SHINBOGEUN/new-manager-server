@@ -37,6 +37,7 @@ public class CollectionReconciler {
     private final CollectionGroupSpecService specs;
     private final CollectorSyncService collector;
     private final EntityManager entityManager;
+    private final CollectionEligibilityService eligibility;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final ConcurrentHashMap<Key,ReentrantLock> locks=new ConcurrentHashMap<>();
     private final ThreadLocal<TransactionStatus> currentTransaction=new ThreadLocal<>();
@@ -90,6 +91,7 @@ public class CollectionReconciler {
         Device d=device(id);Set<Key> keys=new TreeSet<>();
         d.getDeviceModel().getProtocols().forEach(p->keys.add(new Key(d.getDeviceModel().getId(),p.getProtocolType().getId())));
         settings.findAllByDeviceIdOrderByIdAsc(id).forEach(s->keys.add(new Key(d.getDeviceModel().getId(),s.getProtocolType().getId())));
+        readings.findAllByTargetDeviceIdOrderByIdAsc(id).forEach(r->{var e=r.getEndpointModbus().getEndpoint();keys.add(new Key(e.getDevice().getDeviceModel().getId(),e.getProtocolType().getId()));});
         return List.copyOf(keys);
     });}
     private List<Key> modelKeys(Integer modelId){return tx(()->tasks.findAllByModelId(modelId).stream().map(t->new Key(modelId,t.getScriptType().getId())).toList());}
@@ -146,13 +148,13 @@ public class CollectionReconciler {
         return locked(deviceKeys(id),()->{
             Device d=device(id);
             for(Integer protocol:protocols){
-                CommonCode p=d.getDeviceModel().getProtocols().stream().map(x->x.getProtocolType()).filter(x->x.getId().equals(protocol)).findFirst().orElseThrow(()->new IllegalArgumentException("장비 모델이 지원하지 않는 프로토콜입니다."));
+                CommonCode p=d.getDeviceModel().getProtocols().stream().map(x->x.getProtocolType()).filter(x->x.getId().equals(protocol)).findFirst().or(()->eligibility.derivedProtocol(id,protocol)).orElseThrow(()->new IllegalArgumentException("장비 모델이 지원하지 않는 프로토콜입니다."));
                 saveSetting(d,p,request);
             }return applyDevice(d);
         });
     }
     private void saveSetting(Device device,CommonCode protocol,DeviceCollectionSettingRequest request){
-        String code=protocol.getCode();if(!supported(code))throw new IllegalArgumentException("지원하지 않는 수집 프로토콜입니다.");
+        String code=protocol.getCode();if(eligibility.resultOnly(device.getId(),code) && request.intervalCode()!=null)throw new IllegalArgumentException("결과 장비 주기는 원본을 따릅니다.");if(!supported(code))throw new IllegalArgumentException("지원하지 않는 수집 프로토콜입니다.");
         DeviceCollectionSetting row=settings.findByDeviceIdAndProtocolTypeId(device.getId(),protocol.getId()).orElseGet(()->new DeviceCollectionSetting(device,protocol));
         boolean enabled=request.enabled()!=null?request.enabled():row.getId()!=null?row.isEnabled():
             tasks.findByModelIdAndScriptTypeId(device.getDeviceModel().getId(),protocol.getId())
@@ -165,6 +167,7 @@ public class CollectionReconciler {
             if(request.expectedSilenceSeconds()!=null)throw new IllegalArgumentException("무수신 시간은 MQTT에서만 설정합니다.");
             if(request.intervalCode()!=null)interval=intervals.code(request.intervalCode());else if(interval==null)interval=intervals.defaultCode();silence=null;
         }
+        if(eligibility.resultOnly(device.getId(),code))interval=null;
         row.update(enabled,interval,silence);settings.saveAndFlush(row);
     }
     private Set<Key> applyExisting(Integer id){return locked(deviceKeys(id),()->applyDevice(device(id)));}
@@ -172,6 +175,10 @@ public class CollectionReconciler {
         Set<Key> changed=new LinkedHashSet<>();
         for(DeviceCollectionSetting row:settings.findAllByDeviceIdOrderByIdAsc(d.getId())){
             CommonCode protocol=row.getProtocolType();String code=protocol.getCode();
+            if(eligibility.resultOnly(d.getId(),code)){
+                for(var task:tasks.findAllByModelId(d.getDeviceModel().getId()))if(task.getScriptType().getId().equals(protocol.getId())){task.getGroups().forEach(g->g.removeDevice(d.getId()));tasks.saveAndFlush(task);changed.add(new Key(d.getDeviceModel().getId(),protocol.getId()));}
+                continue;
+            }
             if(!CollectionGroupSpecService.isCollectorProtocol(code) || d.getDeviceModel().getProtocols().stream().noneMatch(p->p.getProtocolType().getId().equals(protocol.getId())))continue;
             CollectionTask task=tasks.findByModelIdAndScriptTypeId(d.getDeviceModel().getId(),protocol.getId()).orElseGet(()->tasks.saveAndFlush(CollectionTask.create(d.getDeviceModel().getName()+" "+code,d.getDeviceModel(),protocol,true)));
             CollectionTaskGroup target=null;
@@ -184,7 +191,9 @@ public class CollectionReconciler {
             for(CollectionTaskGroup group:task.getGroups())if(group!=target)group.removeDevice(d.getId());
             if(target!=null && !target.containsDevice(d.getId()))target.addDevice(d);
             tasks.saveAndFlush(task);changed.add(new Key(d.getDeviceModel().getId(),protocol.getId()));
-        }return changed;
+        }
+        for(var reading:readings.findAllByTargetDeviceIdOrderByIdAsc(d.getId())){var e=reading.getEndpointModbus().getEndpoint();changed.add(new Key(e.getDevice().getDeviceModel().getId(),e.getProtocolType().getId()));}
+        return changed;
     }
     public static boolean supported(String code){return CollectionGroupSpecService.isCollectorProtocol(code) || "mqtt".equalsIgnoreCase(code);}
     /** 키별 재생성. 이 호출자는 트랜잭션 밖이어야 한다. */

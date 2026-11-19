@@ -23,6 +23,7 @@ public class DeviceCollectionSettingService {
     private final CollectionReconciler reconciler;
     private final CollectionGroupSpecService specs;
     private final CollectionRuntimeStateService runtimeStates;
+    private final CollectionEligibilityService eligibility;
     public record Options(List<CollectionIntervalResolver.Interval> intervals,String defaultIntervalCode,boolean autoEnabled,
         Integer failureThreshold, Integer backoffMaxSeconds
 ) {
@@ -58,43 +59,49 @@ public class DeviceCollectionSettingService {
         Map<Integer,DeviceCollectionSetting> saved=new LinkedHashMap<>();rows.findAllByDeviceIdOrderByIdAsc(id).forEach(s->saved.put(s.getProtocolType().getId(),s));
         List<CommonCode> protocols=new ArrayList<>();d.getDeviceModel().getProtocols().forEach(p->{if(CollectionReconciler.supported(p.getProtocolType().getCode()))protocols.add(p.getProtocolType());});
         saved.values().forEach(s->{if(protocols.stream().noneMatch(p->p.getId().equals(s.getProtocolType().getId())))protocols.add(s.getProtocolType());});
+        eligibility.derivedProtocol(id,null).ifPresent(p->{if(protocols.stream().noneMatch(x->x.getId().equals(p.getId())))protocols.add(p);});
         List<DeviceCollectionSettingResponse> result=new ArrayList<>();for(CommonCode p:protocols)result.add(view(d,p,saved.get(p.getId())));
         if(includeRuntime && result.stream().anyMatch(s->"READY".equals(s.state()) && s.groupId()!=null)){
             var runtime=runtimeStates.load(List.of(id));
             result=result.stream().map(s->"READY".equals(s.state()) && s.groupId()!=null && taskJobId(s)!=null?s.withCollectionState(runtimeStates.state(runtime,taskJobId(s),id)):s).toList();
         }
+        if(includeRuntime)result=result.stream().map(setting->setting.withDetails(setting.gateway(),"mqtt".equals(setting.protocolCode()) && setting.ready() && setting.enabled() && d.isEnabled()?eligibility.mqttState(id,setting.expectedSilenceSeconds()):null)).toList();
         return result;
     }
     private String taskJobId(DeviceCollectionSettingResponse setting){
         return setting.taskId()==null?null:tasks.findById(setting.taskId()).stream().flatMap(t->t.getGroups().stream()).filter(g->g.getId().equals(setting.groupId())).map(CollectionTaskGroup::getCollectorJobId).filter(Objects::nonNull).findFirst().orElse(null);
     }
     private DeviceCollectionSettingResponse view(Device d,CommonCode p,DeviceCollectionSetting saved){
-        boolean supported=d.getDeviceModel().getProtocols().stream().anyMatch(x->x.getProtocolType().getId().equals(p.getId()));
+        boolean derived=eligibility.resultOnly(d.getId(),p.getCode());
+        boolean supported=derived || d.getDeviceModel().getProtocols().stream().anyMatch(x->x.getProtocolType().getId().equals(p.getId()));
         boolean mqtt="mqtt".equalsIgnoreCase(p.getCode());
         CollectionTask task=tasks.findByModelIdAndScriptTypeId(d.getDeviceModel().getId(),p.getId()).orElse(null);
         List<CollectionTaskGroup> memberships=task==null?List.of():task.getGroups().stream().filter(g->g.containsDevice(d.getId())).sorted(Comparator.comparing(CollectionTaskGroup::isActive).reversed().thenComparing(CollectionTaskGroup::getId)).toList();
         CollectionTaskGroup group=memberships.stream().findFirst().orElse(null);
-        boolean enabled=saved!=null?saved.isEnabled():group!=null && task.isActive() && group.isActive();
+        boolean enabled=saved!=null?saved.isEnabled():mqtt || derived || group!=null && task.isActive() && group.isActive();
         CollectionIntervalResolver.Interval interval=saved!=null && saved.getIntervalCode()!=null?intervals.resolve(saved.getIntervalCode()):null;
         if(interval==null && !mqtt && group!=null)interval=intervals.intervals().stream().filter(i->CollectionIntervalResolver.equivalent(i.cron(),group.getCronExpression())).findFirst().orElse(null);
+        if(derived)interval=null;
         CollectionGroupPlan plan=null;
-        if(supported && !mqtt){
+        if(supported && !mqtt && !derived){
             if(group!=null)plan=specs.generate(group);
             else {
                 CollectionTask probe=CollectionTask.create(d.getDeviceModel().getName()+" "+p.getCode(),d.getDeviceModel(),p,true);
                 CollectionTaskGroup check=CollectionTaskGroup.create(probe,"준비 확인",interval==null?intervals.defaultInterval().cron():interval.cron(),true);check.addDevice(d);plan=specs.generate(check);
             }
         }
-        boolean ready=plan!=null && plan.includesSource(d.getId());List<CollectionReadiness> readiness=new ArrayList<>();
+        var gateway=eligibility.gateway(d.getId());
+        boolean ready=mqtt?eligibility.mqttReadiness(d).isEmpty():derived?gateway.sources().stream().anyMatch(CollectionEligibilityService.Source::enabled):plan!=null && plan.includesSource(d.getId());List<CollectionReadiness> readiness=new ArrayList<>();
+        if(mqtt && supported)readiness.addAll(eligibility.mqttReadiness(d));
         if(!supported)readiness.add(new CollectionReadiness(CollectionReadiness.Code.NO_PROTOCOL,"장비 모델의 지원 프로토콜","/ops-console.html?page=models"));
         else if(plan!=null){
             plan.reasons().stream().filter(reason->d.getId().equals(reason.deviceId()) || !ready && reason.deviceId()==null).map(CollectionGroupPlan.SkippedReason::readiness).distinct().forEach(readiness::add);
         }
-        String state=mqtt?null:!d.isEnabled()?"DEVICE_DISABLED":saved!=null && !enabled?"OFF":group!=null && (!task.isActive() || !group.isActive())?"STOPPED":!ready?"WAITING_CONFIG":"READY";
-        boolean inSync=saved==null || mqtt || (!enabled?memberships.isEmpty():memberships.size()==1 && interval!=null && CollectionIntervalResolver.equivalent(group.getCronExpression(),interval.cron()));
+        String state=!d.isEnabled()?"DEVICE_DISABLED":!enabled?"OFF":derived && !ready?"SOURCE_STOPPED":group!=null && (!task.isActive() || !group.isActive())?"STOPPED":!ready?"WAITING_CONFIG":mqtt?"WAITING_RECEIVE":"READY";
+        boolean inSync=saved==null || mqtt || derived || (!enabled?memberships.isEmpty():memberships.size()==1 && interval!=null && CollectionIntervalResolver.equivalent(group.getCronExpression(),interval.cron()));
         return new DeviceCollectionSettingResponse(d.getId(),p.getId(),p.getCode().toLowerCase(Locale.ROOT),p.getName(),supported,saved!=null,enabled,
             interval==null?null:interval.code(),interval==null?null:interval.name(),interval==null?null:interval.seconds(),saved==null?null:saved.getExpectedSilenceSeconds(),state,ready,List.copyOf(readiness),
-            task==null?null:task.getId(),group==null?null:group.getId(),group==null?null:group.getName(),group==null?null:group.getCronExpression(),inSync,saved==null?null:saved.getUpdatedDt());
+            task==null?null:task.getId(),group==null?null:group.getId(),group==null?null:group.getName(),group==null?null:group.getCronExpression(),inSync,saved==null?null:saved.getUpdatedDt()).withDetails(gateway,null);
     }
     public DeviceCollectionSettingResponse save(Integer id,Integer protocol,DeviceCollectionSettingRequest request){
         checkPermission(request.intervalCode(),request.expectedSilenceSeconds());
@@ -109,7 +116,7 @@ public class DeviceCollectionSettingService {
         List<BulkResult> results=new ArrayList<>();Set<CollectionReconciler.Key> changed=new LinkedHashSet<>();
         for(Integer id:new LinkedHashSet<>(request.deviceIds())){
             List<Integer> protocols;
-            try{protocols=request.protocolTypeId()==null?reconciler.read(()->getWithoutRuntime(id).stream().filter(s->s.supported() && CollectionGroupSpecService.isCollectorProtocol(s.protocolCode())).map(DeviceCollectionSettingResponse::protocolTypeId).toList()):List.of(request.protocolTypeId());}
+            try{protocols=request.protocolTypeId()==null?reconciler.read(()->getWithoutRuntime(id).stream().filter(s->s.supported() && (request.intervalCode()==null || CollectionGroupSpecService.isCollectorProtocol(s.protocolCode()) && (s.gateway()==null || !s.gateway().resultDevice()))).map(DeviceCollectionSettingResponse::protocolTypeId).toList()):List.of(request.protocolTypeId());}
             catch(RuntimeException e){results.add(new BulkResult(id,request.protocolTypeId(),false,"장비 수집 설정을 확인할 수 없습니다."));continue;}
             if(protocols.isEmpty()){results.add(new BulkResult(id,null,false,"지원하는 조회 프로토콜이 없습니다."));continue;}
             try{changed.addAll(reconciler.saveManyAndApply(id,protocols,new DeviceCollectionSettingRequest(request.enabled(),request.intervalCode(),null)));for(Integer protocol:protocols)results.add(new BulkResult(id,protocol,true,"저장됨"));}

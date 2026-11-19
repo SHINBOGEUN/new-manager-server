@@ -70,6 +70,7 @@ public class CollectionGroupSpecService {
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final ObjectMapper objectMapper;
     @org.springframework.beans.factory.annotation.Autowired private SystemSettingService systemSettings;
+    @org.springframework.beans.factory.annotation.Autowired private CollectionEligibilityService eligibility;
     private int failureThreshold(){return systemSettings==null?3:systemSettings.failureThreshold();}
     private int backoffMaxSeconds(){return systemSettings==null?600:systemSettings.backoffMaxSeconds();}
 
@@ -184,7 +185,7 @@ public class CollectionGroupSpecService {
     }
 
     private CollectionGroupTargetSpec toTarget(Device device, boolean requiresAnyInstance, List<SkippedReason> skipped) {
-        if (!device.isEnabled()) {
+        if (!device.isEnabled() || eligibility!=null && !eligibility.collectionOn(device.getId(),"snmp")) {
             skipDevice(skipped, device, DEVICE_DISABLED, "장비 활성 상태", "disabled");
             return null;
         }
@@ -331,7 +332,7 @@ public class CollectionGroupSpecService {
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget,
             Map<Integer, Set<String>> usedNamesByStorageDevice,
             Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource, List<SkippedReason> skipped) {
-        if (!source.isEnabled()) {
+        if (!source.isEnabled() || eligibility!=null && !eligibility.collectionOn(source.getId(),"modbus")) {
             skipDevice(skipped, source, DEVICE_DISABLED, "장비 활성 상태", "disabled");
             return;
         }
@@ -366,7 +367,7 @@ public class CollectionGroupSpecService {
                 continue;
             }
             Device storageDevice = reading.getTargetDevice();
-            if (!storageDevice.isEnabled()) {
+            if (!storageDevice.isEnabled() || eligibility!=null && !eligibility.collectionOn(storageDevice.getId(),"modbus")) {
                 skipDevice(skipped, source, DEVICE_DISABLED, "결과 장비 활성 상태: #" + storageDevice.getId(), "target device " + storageDevice.getId() + " disabled");
                 continue;
             }
