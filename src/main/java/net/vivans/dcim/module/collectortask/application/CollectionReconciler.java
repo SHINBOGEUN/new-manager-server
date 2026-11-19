@@ -74,9 +74,16 @@ public class CollectionReconciler {
                 ReentrantLock lock=locks.computeIfAbsent(key,ignored->new ReentrantLock());
                 if(!lock.tryLock(30,TimeUnit.SECONDS))throw new IllegalStateException("수집 설정 반영 대기 시간이 초과되었습니다.");held.add(lock);
             }
-            for(int attempt=0;;attempt++)try{return tx(body);}catch(DataIntegrityViolationException e){if(attempt>=1)throw e;}
+            for(int attempt=0;;attempt++)try{return tx(body);}catch(RuntimeException e){if(attempt>=1 || !integrityFailure(e))throw e;}
         }catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException("수집 설정 반영이 중단되었습니다.");}
         finally{Collections.reverse(held);held.forEach(ReentrantLock::unlock);}
+    }
+    private static boolean integrityFailure(Throwable failure) {
+        for(Throwable cause=failure;cause!=null;cause=cause.getCause()) {
+            if(cause instanceof DataIntegrityViolationException || cause instanceof org.hibernate.exception.ConstraintViolationException
+                    || cause instanceof jakarta.persistence.EntityExistsException) return true;
+        }
+        return false;
     }
     private Device device(Integer id){return devices.findById(id).orElseThrow(()->new EntityNotFoundException("장비를 찾을 수 없습니다: "+id));}
     private List<Key> deviceKeys(Integer id){return tx(()->{
@@ -105,7 +112,12 @@ public class CollectionReconciler {
         models.forEach(this::reconcileModelNow);
     });}
     public void removeDevice(Integer id,Integer modelId){if(id==null || modelId==null)return;afterCommit("remove:"+id+":"+modelId,()->{
-        List<Key> keys=modelKeys(modelId);Set<Key> changed=locked(keys,()->{Set<Key> result=new LinkedHashSet<>();for(CollectionTask task:tasks.findAllByModelId(modelId)){
+        List<Key> keys=modelKeys(modelId);
+        if(!system.autoEnabled()) {
+            locked(keys,()->{legacy.removeDeviceAndRegenerate(id,modelId);return null;});
+            return;
+        }
+        Set<Key> changed=locked(keys,()->{Set<Key> result=new LinkedHashSet<>();for(CollectionTask task:tasks.findAllByModelId(modelId)){
             for(CollectionTaskGroup group:task.getGroups())if(group.containsDevice(id)){group.removeDevice(id);result.add(new Key(modelId,task.getScriptType().getId()));}
             // 삭제된 장비는 FK cascade로 이미 빠졌을 수 있으므로 spec도 재생성한다.
             result.add(new Key(modelId,task.getScriptType().getId()));tasks.saveAndFlush(task);

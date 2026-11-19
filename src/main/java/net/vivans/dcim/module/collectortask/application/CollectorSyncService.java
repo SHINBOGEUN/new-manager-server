@@ -76,6 +76,10 @@ public class CollectorSyncService {
             } else {
                 CollectorJobResponse response = collectorJobClient.update(group.getCollectorJobId(), specJson);
                 group.updateCollectorJobId(response.collectorJobId());
+                // UPDATE는 Collector의 enabled를 보존한다. 빈 그룹에서 복귀한 활성 작업은 다시 켠다.
+                if (isCollectorEnabled(task, group) && !response.enabled()) {
+                    collectorJobClient.toggle(response.collectorJobId(), true);
+                }
                 log.info(
                         "[COLLECTOR_SYNC_END] type=REGULAR action=UPDATE taskId={} groupId={} collectorJobId={}",
                         task.getId(),
