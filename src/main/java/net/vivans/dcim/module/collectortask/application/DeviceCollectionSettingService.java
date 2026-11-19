@@ -22,22 +22,51 @@ public class DeviceCollectionSettingService {
     private final SystemSettingService system;
     private final CollectionReconciler reconciler;
     private final CollectionGroupSpecService specs;
-    public record Options(List<CollectionIntervalResolver.Interval> intervals,String defaultIntervalCode,boolean autoEnabled) {}
-    public record SystemRequest(String defaultIntervalCode,Boolean autoEnabled) {}
+    private final CollectionRuntimeStateService runtimeStates;
+    public record Options(List<CollectionIntervalResolver.Interval> intervals,String defaultIntervalCode,boolean autoEnabled,
+        Integer failureThreshold, Integer backoffMaxSeconds
+) {
+    public Options(List<CollectionIntervalResolver.Interval> intervals,String defaultIntervalCode,boolean autoEnabled){this(intervals,defaultIntervalCode,autoEnabled,null,null);}
+}
+    public record SystemRequest(String defaultIntervalCode,Boolean autoEnabled,
+        Integer failureThreshold, Integer backoffMaxSeconds
+) {
+    public SystemRequest(String defaultIntervalCode,Boolean autoEnabled){this(defaultIntervalCode,autoEnabled,null,null);}
+}
     public record BulkRequest(List<Integer> deviceIds,Integer protocolTypeId,Boolean enabled,String intervalCode) {}
     public record BulkResult(Integer deviceId,Integer protocolTypeId,boolean ok,String message) {}
     public record BulkResponse(List<BulkResult> results,long succeeded,long failed) {}
-    @Transactional(readOnly=true) public Options options(){return new Options(intervals.intervals(),intervals.defaultInterval().code(),system.autoEnabled());}
+    @Transactional(readOnly=true) public Options options(){return new Options(intervals.intervals(),intervals.defaultInterval().code(),system.autoEnabled(),system.failureThreshold(),system.backoffMaxSeconds());}
     @Transactional public Options updateSystem(SystemRequest request){
         if(request.defaultIntervalCode()!=null){intervals.code(request.defaultIntervalCode());system.put(SystemSettingService.DEFAULT_INTERVAL,request.defaultIntervalCode());}
-        if(request.autoEnabled()!=null)system.put(SystemSettingService.AUTO,request.autoEnabled().toString());return options();
+        if(request.autoEnabled()!=null)system.put(SystemSettingService.AUTO,request.autoEnabled().toString());
+        boolean changed=false;
+        if(request.failureThreshold()!=null){
+            if(request.failureThreshold()<1 || request.failureThreshold()>20)throw new IllegalArgumentException("연속 실패 기준은 1~20회입니다.");
+            changed|=request.failureThreshold()!=system.failureThreshold();system.put("collection.failure.threshold",request.failureThreshold().toString());
+        }
+        if(request.backoffMaxSeconds()!=null){
+            if(request.backoffMaxSeconds()<0 || request.backoffMaxSeconds()>86400)throw new IllegalArgumentException("백오프 상한은 0~86400초입니다.");
+            changed|=request.backoffMaxSeconds()!=system.backoffMaxSeconds();system.put("collection.backoff.max-seconds",request.backoffMaxSeconds().toString());
+        }
+        if(changed)reconciler.reconcileActiveGroupsAfterCommit();return options();
     }
-    @Transactional(readOnly=true) public List<DeviceCollectionSettingResponse> get(Integer id){
+    @Transactional(readOnly=true) public List<DeviceCollectionSettingResponse> get(Integer id){return getRows(id,true);}
+    @Transactional(readOnly=true) public List<DeviceCollectionSettingResponse> getWithoutRuntime(Integer id){return getRows(id,false);}
+    private List<DeviceCollectionSettingResponse> getRows(Integer id,boolean includeRuntime){
         Device d=devices.findById(id).orElseThrow(()->new EntityNotFoundException("장비를 찾을 수 없습니다: "+id));
         Map<Integer,DeviceCollectionSetting> saved=new LinkedHashMap<>();rows.findAllByDeviceIdOrderByIdAsc(id).forEach(s->saved.put(s.getProtocolType().getId(),s));
         List<CommonCode> protocols=new ArrayList<>();d.getDeviceModel().getProtocols().forEach(p->{if(CollectionReconciler.supported(p.getProtocolType().getCode()))protocols.add(p.getProtocolType());});
         saved.values().forEach(s->{if(protocols.stream().noneMatch(p->p.getId().equals(s.getProtocolType().getId())))protocols.add(s.getProtocolType());});
-        List<DeviceCollectionSettingResponse> result=new ArrayList<>();for(CommonCode p:protocols)result.add(view(d,p,saved.get(p.getId())));return result;
+        List<DeviceCollectionSettingResponse> result=new ArrayList<>();for(CommonCode p:protocols)result.add(view(d,p,saved.get(p.getId())));
+        if(includeRuntime && result.stream().anyMatch(s->"READY".equals(s.state()) && s.groupId()!=null)){
+            var runtime=runtimeStates.load(List.of(id));
+            result=result.stream().map(s->"READY".equals(s.state()) && s.groupId()!=null && taskJobId(s)!=null?s.withCollectionState(runtimeStates.state(runtime,taskJobId(s),id)):s).toList();
+        }
+        return result;
+    }
+    private String taskJobId(DeviceCollectionSettingResponse setting){
+        return setting.taskId()==null?null:tasks.findById(setting.taskId()).stream().flatMap(t->t.getGroups().stream()).filter(g->g.getId().equals(setting.groupId())).map(CollectionTaskGroup::getCollectorJobId).filter(Objects::nonNull).findFirst().orElse(null);
     }
     private DeviceCollectionSettingResponse view(Device d,CommonCode p,DeviceCollectionSetting saved){
         boolean supported=d.getDeviceModel().getProtocols().stream().anyMatch(x->x.getProtocolType().getId().equals(p.getId()));
@@ -71,7 +100,7 @@ public class DeviceCollectionSettingService {
         checkPermission(request.intervalCode(),request.expectedSilenceSeconds());
         if(request.enabled()==null && request.intervalCode()==null && request.expectedSilenceSeconds()==null)throw new IllegalArgumentException("변경할 수집 설정이 없습니다.");
         Set<CollectionReconciler.Key> keys=reconciler.saveAndApply(id,protocol,request);reconciler.refresh(keys);
-        return reconciler.read(()->get(id).stream().filter(s->s.protocolTypeId().equals(protocol)).findFirst().orElseThrow());
+        return reconciler.read(()->getWithoutRuntime(id).stream().filter(s->s.protocolTypeId().equals(protocol)).findFirst().orElseThrow());
     }
     public BulkResponse bulk(BulkRequest request){
         checkPermission(request.intervalCode(),null);
@@ -80,7 +109,7 @@ public class DeviceCollectionSettingService {
         List<BulkResult> results=new ArrayList<>();Set<CollectionReconciler.Key> changed=new LinkedHashSet<>();
         for(Integer id:new LinkedHashSet<>(request.deviceIds())){
             List<Integer> protocols;
-            try{protocols=request.protocolTypeId()==null?reconciler.read(()->get(id).stream().filter(s->s.supported() && CollectionGroupSpecService.isCollectorProtocol(s.protocolCode())).map(DeviceCollectionSettingResponse::protocolTypeId).toList()):List.of(request.protocolTypeId());}
+            try{protocols=request.protocolTypeId()==null?reconciler.read(()->getWithoutRuntime(id).stream().filter(s->s.supported() && CollectionGroupSpecService.isCollectorProtocol(s.protocolCode())).map(DeviceCollectionSettingResponse::protocolTypeId).toList()):List.of(request.protocolTypeId());}
             catch(RuntimeException e){results.add(new BulkResult(id,request.protocolTypeId(),false,"장비 수집 설정을 확인할 수 없습니다."));continue;}
             if(protocols.isEmpty()){results.add(new BulkResult(id,null,false,"지원하는 조회 프로토콜이 없습니다."));continue;}
             try{changed.addAll(reconciler.saveManyAndApply(id,protocols,new DeviceCollectionSettingRequest(request.enabled(),request.intervalCode(),null)));for(Integer protocol:protocols)results.add(new BulkResult(id,protocol,true,"저장됨"));}

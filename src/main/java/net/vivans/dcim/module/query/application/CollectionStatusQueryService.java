@@ -63,6 +63,8 @@ public class CollectionStatusQueryService {
     private final DeviceModelPointCatalog deviceModelPointCatalog;
     private final CollectionStatusProperties statusProperties;
     private final PointQuery pointQuery;
+    @org.springframework.beans.factory.annotation.Autowired
+    private net.vivans.dcim.module.collectortask.application.CollectionRuntimeStateService runtimeStates;
 
     public CollectionStatusResponse getStatus(Integer lookbackHours) {
         Instant now = Instant.now();
@@ -80,6 +82,9 @@ public class CollectionStatusQueryService {
         Map<Integer, String> deviceNamesById = new HashMap<>();
         for (Device device : devices) deviceNamesById.put(device.getId(), device.getName());
 
+        List<Integer> runtimeIds=devices.stream().filter(d->runtimeEligible(d,registrationByDeviceId.get(d.getId()),
+                registrationByDeviceId.get(d.getId())==null?null:specByGroupId.get(registrationByDeviceId.get(d.getId()).group().getId()),policiesByDevice.get(d.getId()))).map(Device::getId).toList();
+        var runtime=runtimeStates==null?java.util.Map.<net.vivans.dcim.module.collectortask.application.CollectionRuntimeStateService.Key,net.vivans.dcim.module.collectortask.infrastructure.collector.CollectorDeviceResultResponse>of():runtimeStates.load(runtimeIds);
         List<CollectionDeviceStatusResponse> rows = new ArrayList<>();
         for (Device device : devices) {
             try {
@@ -89,7 +94,8 @@ public class CollectionStatusQueryService {
                 Map<String, String> units = new HashMap<>(unitsByModelId.getOrDefault(device.getDeviceModel().getId(), Map.of()));
                 if (spec != null) units.putAll(spec.unitsForSource(device.getId()));
                 rows.add(toResponse(device, registration, spec, latestPoints, units,
-                        deviceNamesById, now, resolvedLookbackHours, policiesByDevice.get(device.getId())));
+                        deviceNamesById, now, resolvedLookbackHours, policiesByDevice.get(device.getId()),
+                        runtimeStates!=null && runtimeEligible(device,registration,spec,policiesByDevice.get(device.getId()))?runtimeStates.state(runtime,registration.group().getCollectorJobId(),device.getId()):null));
             } catch (RuntimeException exception) {
                 // 장비 하나의 설정 오류로 다른 장비의 상태 조회를 중단하지 않는다.
                 rows.add(evaluationFailure(device));
@@ -231,7 +237,8 @@ public class CollectionStatusQueryService {
             Map<Integer, String> deviceNamesById,
             Instant now,
             int lookbackHours,
-            DeviceMonitoringPolicy monitoringPolicy
+            DeviceMonitoringPolicy monitoringPolicy,
+            net.vivans.dcim.module.collectortask.application.CollectionRuntimeState collectionState
     ) {
         List<CollectionGroupPlan.PointSource> expectedSources = spec == null
                 ? List.of() : spec.pointsForSource(device.getId());
@@ -363,7 +370,12 @@ public class CollectionStatusQueryService {
                 registration == null ? null : registration.group().getId(), registration == null ? null : registration.group().getName(),
                 registration == null ? null : registration.group().getCronExpression(),
                 registration == null ? null : registration.group().getCollectorJobId(), intervalSeconds,
-                latest, ageSeconds, expectedSources.size(), freshPointCount, values, readiness(device, spec));
+                latest, ageSeconds, expectedSources.size(), freshPointCount, values, readiness(device, spec), collectionState);
+    }
+
+    private static boolean runtimeEligible(Device device,Registration registration,CollectionGroupPlan spec,DeviceMonitoringPolicy policy){
+        return device.isEnabled() && registration!=null && registration.active() && isCollectorProtocol(registration.task().getScriptType().getCode())
+                && spec!=null && spec.includesSource(device.getId()) && (policy==null || !"ON_CHANGE".equals(policy.getMonitoringMode().getCode()));
     }
 
     private static List<CollectionReadiness> readiness(Device device, CollectionGroupPlan spec) {
@@ -450,7 +462,8 @@ public class CollectionStatusQueryService {
                 default -> { }
             }
         }
-        return new CollectionStatusResponse.CollectionStatusSummary(rows.size(), normal, partial, stale, missing, stopped, unregistered, disabled, onChange);
+        return new CollectionStatusResponse.CollectionStatusSummary(rows.size(), normal, partial, stale, missing, stopped, unregistered, disabled, onChange,
+                (int)rows.stream().filter(row->row.collectionState()!=null && "COMM_ERROR".equals(row.collectionState().state())).count());
     }
 
     private record PointKey(Integer deviceId, String pointName) {

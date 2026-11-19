@@ -14,6 +14,12 @@ public class SystemSettingService {
     }
     public boolean getBoolean(String key) { return "true".equalsIgnoreCase(getString(key)); }
     public boolean autoEnabled() { return getBoolean(AUTO); }
+    public int failureThreshold(){return integer("collection.failure.threshold",3,1,20);}
+    public int backoffMaxSeconds(){return integer("collection.backoff.max-seconds",600,0,86400);}
+    private int integer(String key,int fallback,int min,int max){
+        try{int value=Integer.parseInt(getString(key));if(value>=min && value<=max)return value;}catch(RuntimeException ignored){}
+        log.warn("invalid collection system setting: {}",key);return fallback;
+    }
     @Transactional public void put(String key,String value) {
         SystemSetting row=repository.findById(key).orElseGet(()->new SystemSetting(key,value));row.setValue(value);repository.save(row);
     }

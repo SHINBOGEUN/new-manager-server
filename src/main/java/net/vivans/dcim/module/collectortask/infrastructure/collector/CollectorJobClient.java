@@ -151,6 +151,17 @@ public class CollectorJobClient {
         return response == null || response.data() == null ? List.of() : response.data();
     }
 
+    /** 상태 조회는 재시도하지 않는다. 구 Collector/연결 장애는 UNKNOWN으로 처리한다. */
+    public List<CollectorDeviceResultResponse> deviceResults(java.util.Collection<Integer> deviceIds) {
+        if(!properties.isEnabled() || deviceIds==null || deviceIds.isEmpty())return List.of();
+        try {
+            CollectorApiResponse<List<CollectorDeviceResultResponse>> response=restClient.get()
+                .uri(builder->builder.path("/api/jobs/device-results").queryParam("deviceIds",deviceIds.toArray()).build())
+                .retrieve().body(new ParameterizedTypeReference<CollectorApiResponse<List<CollectorDeviceResultResponse>>>(){});
+            return response==null || response.data()==null?List.of():response.data();
+        } catch(RuntimeException exception){log.debug("collector device results unavailable: {}",exception.getClass().getSimpleName());return List.of();}
+    }
+
     /** 일회성 물리 읽기. Collector에 job을 만들거나 MQTT로 발행하지 않는다. */
     public CollectorModbusPreviewResponse previewModbus(Map<String, Object> request) {
         if (!properties.isEnabled()) {

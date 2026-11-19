@@ -368,7 +368,7 @@ public class CollectorSyncService {
     }
 
     private String currentSpecJson(CollectionTaskGroup group) {
-        if (isModbusTask(group.getTask())) {
+        if (isSupportedTask(group.getTask())) {
             String generated = collectionGroupSpecService.generateJson(group);
             if (!Objects.equals(generated, group.getGeneratedSpec())) {
                 group.updateGeneratedSpec(generated);

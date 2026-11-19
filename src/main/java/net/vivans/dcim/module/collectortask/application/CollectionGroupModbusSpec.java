@@ -16,8 +16,21 @@ public record CollectionGroupModbusSpec(
         int maxConcurrency,
         List<ModbusPoint> points,
         List<ModbusTarget> targets,
-        List<String> skipped
+        List<String> skipped,
+        Integer failureThreshold, Integer backoffMaxSeconds
 ) {
+    public CollectionGroupModbusSpec(Integer taskId,
+        Integer groupId,
+        Integer modelId,
+        String protocol,
+        String cronExpression,
+        int timeoutMs,
+        int retries,
+        int maxConcurrency,
+        List<ModbusPoint> points,
+        List<ModbusTarget> targets,
+        List<String> skipped){this(taskId,groupId,modelId,protocol,cronExpression,timeoutMs,retries,maxConcurrency,points,targets,skipped,null,null);}
+
     public record ModbusPoint(
             String name,
             String registerType,
@@ -43,7 +56,9 @@ public record CollectionGroupModbusSpec(
             String host,
             int port,
             Integer unitId,
-            List<ModbusPoint> points
+            List<ModbusPoint> points,
+            Integer sourceDeviceId
     ) {
+        public ModbusTarget(Integer deviceId,String host,int port,Integer unitId,List<ModbusPoint> points){this(deviceId,host,port,unitId,points,null);}
     }
 }

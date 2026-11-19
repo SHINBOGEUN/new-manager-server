@@ -207,6 +207,7 @@ public class CollectionReconciler {
         for(Generated g:generated)collector.syncManagedGroup(g.group(),!g.plan().pointsBySourceDeviceId().isEmpty());
         return null;
     });}
+    public void reconcileActiveGroupsAfterCommit(){afterCommit("policy",()->tx(collector::reconcileActiveGroups));}
     public void reconcileAll(){if(!system.autoEnabled())return;
         List<Integer> ids=tx(settings::deviceIds);Set<Key> changed=new LinkedHashSet<>();int failed=0;
         for(Integer id:ids)try{changed.addAll(applyExisting(id));}catch(RuntimeException e){failed++;log.warn("[COLLECTION_RECONCILE_ERROR] deviceId={} cause={}",id,e.getClass().getSimpleName());}

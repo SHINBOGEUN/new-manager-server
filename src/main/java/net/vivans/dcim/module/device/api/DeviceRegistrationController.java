@@ -38,6 +38,6 @@ public class DeviceRegistrationController {
     public ResponseEntity<ApiResponse<DeviceRegistrationResponse>> register(
             @Valid @RequestBody DeviceRegistrationRequest request) {
         DeviceRegistrationResponse response=registrationService.register(request);
-        return ResponseEntity.ok(ApiResponse.ok(new DeviceRegistrationResponse(response.device(),response.endpointId(),response.taskId(),response.groupId(),collectionSettings.get(response.device().id()))));
+        return ResponseEntity.ok(ApiResponse.ok(new DeviceRegistrationResponse(response.device(),response.endpointId(),response.taskId(),response.groupId(),collectionSettings.getWithoutRuntime(response.device().id()))));
     }
 }

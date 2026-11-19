@@ -69,6 +69,9 @@ public class CollectionGroupSpecService {
     private final DeviceModbusBitFieldRepository deviceModbusBitFieldRepository;
     private final DeviceSnmpInstanceRepository deviceSnmpInstanceRepository;
     private final ObjectMapper objectMapper;
+    @org.springframework.beans.factory.annotation.Autowired private SystemSettingService systemSettings;
+    private int failureThreshold(){return systemSettings==null?3:systemSettings.failureThreshold();}
+    private int backoffMaxSeconds(){return systemSettings==null?600:systemSettings.backoffMaxSeconds();}
 
     public String generateJson(CollectionTaskGroup group) {
         try {
@@ -169,7 +172,7 @@ public class CollectionGroupSpecService {
                 maxConcurrency,
                 oids,
                 targets,
-                messages(skipped)
+                messages(skipped), failureThreshold(), backoffMaxSeconds()
         );
     }
 
@@ -231,7 +234,7 @@ public class CollectionGroupSpecService {
                 maxConcurrency,
                 List.of(),
                 List.of(),
-                messages(skipped)
+                messages(skipped), failureThreshold(), backoffMaxSeconds()
         );
     }
 
@@ -285,7 +288,7 @@ public class CollectionGroupSpecService {
         CollectionGroupModbusSpec spec = new CollectionGroupModbusSpec(
                 task.getId(), group.getId(), task.getDeviceModel().getId(), MODBUS_PROTOCOL_CODE,
                 group.getCronExpression(), timeoutMs, retries, maxConcurrency,
-                List.of(), targets, messages(skipped));
+                List.of(), targets, messages(skipped), failureThreshold(), backoffMaxSeconds());
         return new CollectionGroupPlan(spec, messages(skipped), pointsBySource, skipped);
     }
 
@@ -319,7 +322,7 @@ public class CollectionGroupSpecService {
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget) {
         List<CollectionGroupModbusSpec.ModbusTarget> targets = new ArrayList<>();
         pointsByTarget.forEach((key, points) -> targets.add(new CollectionGroupModbusSpec.ModbusTarget(
-                key.storageDeviceId(), key.host(), key.port(), key.unitId(), List.copyOf(points))));
+                key.storageDeviceId(), key.host(), key.port(), key.unitId(), List.copyOf(points), key.sourceDeviceId())));
         return targets;
     }
 
@@ -439,7 +442,7 @@ public class CollectionGroupSpecService {
                 bitRead ? "UINT16" : point.getDataType().name(),
                 bitRead || point.getByteOrder() == null ? null : point.getByteOrder().name(),
                 bitRead ? null : point.getScale(), bitRead ? null : point.getOffset(), derived);
-        TargetKey key = new TargetKey(storageDevice.getId(), endpoint.getHost(), endpoint.getPort(), unitId);
+        TargetKey key = new TargetKey(storageDevice.getId(), endpoint.getHost(), endpoint.getPort(), unitId, source.getId());
         pointsByTarget.computeIfAbsent(key, ignored -> new ArrayList<>()).add(specPoint);
         sourcePoints.add(new CollectionGroupPlan.PointSource(storageDevice.getId(), name, point.getUnit()));
     }
@@ -494,6 +497,6 @@ public class CollectionGroupSpecService {
         return "device:" + device.getId() + " " + device.getName() + " - " + reason;
     }
 
-    private record TargetKey(Integer storageDeviceId, String host, int port, int unitId) {
+    private record TargetKey(Integer storageDeviceId, String host, int port, int unitId, Integer sourceDeviceId) {
     }
 }
