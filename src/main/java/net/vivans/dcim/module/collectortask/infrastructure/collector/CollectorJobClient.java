@@ -156,7 +156,7 @@ public class CollectorJobClient {
         if(!properties.isEnabled() || deviceIds==null || deviceIds.isEmpty())return List.of();
         try {
             CollectorApiResponse<List<CollectorDeviceResultResponse>> response=restClient.get()
-                .uri(builder->builder.path("/api/jobs/device-results").queryParam("deviceIds",deviceIds.toArray()).build())
+                .uri(builder->builder.path("/api/jobs/device-results").queryParam("deviceIds",deviceIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))).build())
                 .retrieve().body(new ParameterizedTypeReference<CollectorApiResponse<List<CollectorDeviceResultResponse>>>(){});
             return response==null || response.data()==null?List.of():response.data();
         } catch(RuntimeException exception){log.debug("collector device results unavailable: {}",exception.getClass().getSimpleName());return List.of();}
