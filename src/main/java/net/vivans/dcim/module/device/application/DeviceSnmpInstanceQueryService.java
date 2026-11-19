@@ -67,7 +67,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceSnmpInstance snmpInstance = DeviceSnmpInstance.create(endpoint, request.instanceId());
         DeviceSnmpInstance saved = deviceSnmpInstanceRepository.save(snmpInstance);
         if (synchronize) {
-            collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+            collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         }
         return DeviceSnmpInstanceResponse.from(saved);
     }
@@ -86,7 +86,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceSnmpInstance snmpInstance = findSnmpInstance(endpointId);
         snmpInstance.update(request.instanceId());
         DeviceSnmpInstance saved = deviceSnmpInstanceRepository.save(snmpInstance);
-        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return DeviceSnmpInstanceResponse.from(saved);
     }
 
@@ -96,7 +96,7 @@ public class DeviceSnmpInstanceQueryService {
         DeviceProtocolEndpoint endpoint = findEndpoint(endpointId, deviceId);
         DeviceSnmpInstance snmpInstance = findSnmpInstance(endpointId);
         deviceSnmpInstanceRepository.delete(snmpInstance);
-        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return endpointId;
     }
 

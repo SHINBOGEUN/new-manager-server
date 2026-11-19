@@ -38,6 +38,12 @@ public class DeviceRegistrationController {
     public ResponseEntity<ApiResponse<DeviceRegistrationResponse>> register(
             @Valid @RequestBody DeviceRegistrationRequest request) {
         DeviceRegistrationResponse response=registrationService.register(request);
-        return ResponseEntity.ok(ApiResponse.ok(new DeviceRegistrationResponse(response.device(),response.endpointId(),response.taskId(),response.groupId(),collectionSettings.getWithoutRuntime(response.device().id()))));
+        java.util.List<net.vivans.dcim.module.collectortask.api.dto.DeviceCollectionSettingResponse> settings;
+        String warning=null;
+        try {
+            settings=collectionSettings.getWithoutRuntime(response.device().id());
+            if(request.collection()!=null && settings.stream().noneMatch(s->s.protocolTypeId().equals(request.protocolTypeId()) && s.persisted()))warning="장비는 등록됐지만 수집 설정 반영을 확인하지 못했습니다. 장비 상세에서 수집 설정을 다시 저장하세요.";
+        }catch(RuntimeException failure){settings=java.util.List.of();warning="장비는 등록됐지만 수집 상태를 조회하지 못했습니다. 다시 등록하지 말고 장비 상세에서 확인하세요.";}
+        return ResponseEntity.ok(ApiResponse.ok(new DeviceRegistrationResponse(response.device(),response.endpointId(),response.taskId(),response.groupId(),settings,warning)));
     }
 }

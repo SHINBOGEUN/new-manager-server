@@ -60,7 +60,7 @@ public class DeviceEndpointModbusQueryService {
         DeviceEndpointModbus saved = deviceEndpointModbusRepository.save(endpointModbus);
 
         if (synchronize) {
-            collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+            collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         }
 
         return DeviceEndpointModbusResponse.from(saved);
@@ -80,7 +80,7 @@ public class DeviceEndpointModbusQueryService {
         endpointModbus.update(request.unitId());
         DeviceEndpointModbus saved = deviceEndpointModbusRepository.save(endpointModbus);
 
-        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return DeviceEndpointModbusResponse.from(saved);
     }
 
@@ -91,7 +91,7 @@ public class DeviceEndpointModbusQueryService {
         DeviceEndpointModbus endpointModbus = findEndpointModbus(endpointId);
         deviceEndpointModbusRepository.delete(endpointModbus);
 
-        collectionReconciler.reconcileModel(endpoint.getDevice().getDeviceModel().getId());
+        collectionReconciler.reconcileDevice(endpoint.getDevice().getId());
         return endpointId;
     }
 

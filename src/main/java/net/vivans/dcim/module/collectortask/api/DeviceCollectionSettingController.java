@@ -9,6 +9,8 @@ import net.vivans.dcim.module.collectortask.api.dto.*;
 @RestController @RequiredArgsConstructor @RequestMapping("/api/manager")
 public class DeviceCollectionSettingController {
     private final DeviceCollectionSettingService service;
+    private final net.vivans.dcim.module.collectortask.application.DeviceCollectionOverviewService overview;
+    @GetMapping("/collection-settings/devices") public ApiResponse<net.vivans.dcim.module.collectortask.application.DeviceCollectionOverviewService.Snapshot> overview(){return ApiResponse.ok(overview.get());}
     @GetMapping("/collection-settings/options") public ApiResponse<DeviceCollectionSettingService.Options> options(){return ApiResponse.ok(service.options());}
     @PutMapping("/collection-settings/system") @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<DeviceCollectionSettingService.Options> system(@RequestBody DeviceCollectionSettingService.SystemRequest request){return ApiResponse.ok(service.updateSystem(request));}

@@ -271,7 +271,7 @@ public class CollectionGroupSpecService {
                     usedNamesByStorageDevice.forEach((id, names) -> stagedNames.put(id, new HashSet<>(names)));
                     Map<Integer, List<CollectionGroupPlan.PointSource>> stagedSources = new LinkedHashMap<>();
                     appendModbusSource(source, protocol, modelPoints, stagedTargets,
-                            stagedNames, stagedSources, skipped);
+                            stagedNames, stagedSources, skipped, true);
                     stagedTargets.forEach((key, points) -> pointsByTarget.computeIfAbsent(key, ignored -> new ArrayList<>()).addAll(points));
                     usedNamesByStorageDevice.clear();
                     usedNamesByStorageDevice.putAll(stagedNames);
@@ -307,7 +307,7 @@ public class CollectionGroupSpecService {
         Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource = new LinkedHashMap<>();
         List<SkippedReason> skipped = new ArrayList<>();
         appendModbusSource(source, protocol, modelPoints, pointsByTarget,
-                usedNamesByStorageDevice, pointsBySource, skipped);
+                usedNamesByStorageDevice, pointsBySource, skipped, false);
         return new ModbusPreviewPlan(toModbusTargets(pointsByTarget), messages(skipped),
                 skipped.stream().map(SkippedReason::readiness).distinct().toList());
     }
@@ -331,8 +331,8 @@ public class CollectionGroupSpecService {
             Device source, DeviceModelProtocol protocol, List<DeviceModelModbusPoint> modelPoints,
             Map<TargetKey, List<CollectionGroupModbusSpec.ModbusPoint>> pointsByTarget,
             Map<Integer, Set<String>> usedNamesByStorageDevice,
-            Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource, List<SkippedReason> skipped) {
-        if (!source.isEnabled() || eligibility!=null && !eligibility.collectionOn(source.getId(),"modbus")) {
+            Map<Integer, List<CollectionGroupPlan.PointSource>> pointsBySource, List<SkippedReason> skipped, boolean honorCollectionSetting) {
+        if (!source.isEnabled() || honorCollectionSetting && eligibility!=null && !eligibility.collectionOn(source.getId(),"modbus")) {
             skipDevice(skipped, source, DEVICE_DISABLED, "장비 활성 상태", "disabled");
             return;
         }
@@ -367,7 +367,7 @@ public class CollectionGroupSpecService {
                 continue;
             }
             Device storageDevice = reading.getTargetDevice();
-            if (!storageDevice.isEnabled() || eligibility!=null && !eligibility.collectionOn(storageDevice.getId(),"modbus")) {
+            if (!storageDevice.isEnabled() || honorCollectionSetting && eligibility!=null && !eligibility.collectionOn(storageDevice.getId(),"modbus")) {
                 skipDevice(skipped, source, DEVICE_DISABLED, "결과 장비 활성 상태: #" + storageDevice.getId(), "target device " + storageDevice.getId() + " disabled");
                 continue;
             }

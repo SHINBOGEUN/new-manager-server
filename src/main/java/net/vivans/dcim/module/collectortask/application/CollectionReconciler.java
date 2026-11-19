@@ -96,10 +96,8 @@ public class CollectionReconciler {
     });}
     private List<Key> modelKeys(Integer modelId){return tx(()->tasks.findAllByModelId(modelId).stream().map(t->new Key(modelId,t.getScriptType().getId())).toList());}
     public void reconcileDevice(Integer id){afterCommit("device:"+id,()->{
-        if(system.autoEnabled()){
-            boolean persisted=tx(()->!settings.findAllByDeviceIdOrderByIdAsc(id).isEmpty());
-            if(persisted){refresh(applyExisting(id));return;}
-        }
+        boolean persisted=tx(()->!settings.findAllByDeviceIdOrderByIdAsc(id).isEmpty());
+        if(persisted){refresh(applyExisting(id));return;}
         Integer modelId=tx(()->device(id).getDeviceModel().getId());reconcileModelNow(modelId);
     });}
     public void reconcileModel(Integer modelId){if(modelId!=null)afterCommit("model:"+modelId,()->reconcileModelNow(modelId));}

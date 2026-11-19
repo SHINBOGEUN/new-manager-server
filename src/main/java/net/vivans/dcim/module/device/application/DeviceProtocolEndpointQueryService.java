@@ -115,11 +115,11 @@ public class DeviceProtocolEndpointQueryService {
         validateUniqueHostPort(request.host(), request.port(), endpointId);
 
         boolean enabled = request.enabled() == null || request.enabled();
-        boolean snmpAffected = isSnmp(endpoint.getProtocolType()) || isSnmp(protocolType);
+        boolean snmpAffected = isSnmp(endpoint.getProtocolType()) || isSnmp(protocolType) || "modbus".equalsIgnoreCase(protocolType.getCode()) || "modbus".equalsIgnoreCase(endpoint.getProtocolType().getCode());
         endpoint.update(protocolType, request.host(), request.port(), enabled);
         DeviceProtocolEndpoint saved = deviceProtocolEndpointRepository.save(endpoint);
         if (snmpAffected) {
-            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
+            collectionReconciler.reconcileDevice(device.getId());
         }
         return DeviceProtocolEndpointResponse.from(saved);
     }
@@ -128,10 +128,10 @@ public class DeviceProtocolEndpointQueryService {
     public Integer deleteEndpoint(Integer deviceId, Integer endpointId) {
         Device device = findDevice(deviceId);
         DeviceProtocolEndpoint endpoint = findEndpoint(endpointId, deviceId);
-        boolean snmpAffected = isSnmp(endpoint.getProtocolType());
+        boolean snmpAffected = isSnmp(endpoint.getProtocolType()) || "modbus".equalsIgnoreCase(endpoint.getProtocolType().getCode());
         deviceProtocolEndpointRepository.delete(endpoint);
         if (snmpAffected) {
-            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
+            collectionReconciler.reconcileDevice(device.getId());
         }
         return endpointId;
     }
@@ -142,8 +142,8 @@ public class DeviceProtocolEndpointQueryService {
     }
 
     private void regenerateIfSnmp(CommonCode protocolType, Device device) {
-        if (isSnmp(protocolType)) {
-            collectionReconciler.reconcileModel(device.getDeviceModel().getId());
+        if (isSnmp(protocolType) || "modbus".equalsIgnoreCase(protocolType.getCode())) {
+            collectionReconciler.reconcileDevice(device.getId());
         }
     }
 

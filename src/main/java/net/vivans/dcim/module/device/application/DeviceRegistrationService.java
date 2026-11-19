@@ -99,7 +99,7 @@ public class DeviceRegistrationService {
         validateSettings(request, code, lora);
         if ("snmp".equals(code)
                 && snmpPoints.existsByModelProtocolIdAndRequiresInstanceTrue(protocol.getId())
-                && request.snmpInstance() == null) {
+                && request.snmpInstance() == null && request.collection()==null) {
             throw new IllegalArgumentException("snmpInstance is required for this model");
         }
         validateGroup(request.collectionGroup(), model.getId(), request.protocolTypeId(), code);
@@ -113,11 +113,12 @@ public class DeviceRegistrationService {
                 endpointId = loraEndpointService.create(new DeviceLoraEndpointRequest(
                         deviceId, identity.idType(), identity.externalId(), identity.enabled())).id();
             } else {
-                endpointId = deviceService.getDevice(deviceId).mqttIdentities().get(0).id();
+                var identities=deviceService.getDevice(deviceId).mqttIdentities();
+                endpointId=identities.isEmpty()?null:identities.get(0).id();
             }
         } else {
-            DeviceProtocolEndpointResponse endpoint = endpointService.createEndpoint(deviceId, request.endpoint(), false);
-            endpointId = endpoint.id();
+            DeviceProtocolEndpointResponse endpoint = request.endpoint()==null?null:endpointService.createEndpoint(deviceId, request.endpoint(), false);
+            endpointId = endpoint==null?null:endpoint.id();
             if (request.snmpInstance() != null) {
                 snmpInstanceService.createSnmpInstance(deviceId, endpointId, request.snmpInstance(), false);
             }
@@ -152,7 +153,7 @@ public class DeviceRegistrationService {
         if ("mqtt".equals(code)) {
             var identities = request.device().mqttIdentities();
             boolean legacyLora = lora && request.loraIdentity() != null && identities == null;
-            boolean mqttIdentities = request.loraIdentity() == null && identities != null && !identities.isEmpty();
+            boolean mqttIdentities = request.loraIdentity() == null && (request.collection()!=null || identities != null && !identities.isEmpty());
             if (!(legacyLora || mqttIdentities) || request.endpoint() != null || request.snmpInstance() != null
                     || request.modbus() != null || request.modbusReadings() != null
                     || request.collectionGroup() != null) {
@@ -160,18 +161,19 @@ public class DeviceRegistrationService {
             }
             return;
         }
-        if (request.endpoint() == null || !request.protocolTypeId().equals(request.endpoint().protocolTypeId())
+        if (request.endpoint() == null && request.collection()==null || request.endpoint()!=null && !request.protocolTypeId().equals(request.endpoint().protocolTypeId())
                 || request.loraIdentity() != null
                 || (request.device().mqttIdentities() != null && !request.device().mqttIdentities().isEmpty())) {
             throw new IllegalArgumentException("endpoint must match selected protocol");
         }
+        if(request.endpoint()==null && (request.snmpInstance()!=null || request.modbus()!=null || request.modbusReadings()!=null))throw new IllegalArgumentException("연결 없이 하위 통신 설정을 저장할 수 없습니다.");
         if (request.snmpInstance() != null && !"snmp".equals(code)) {
             throw new IllegalArgumentException("snmpInstance requires SNMP protocol");
         }
         if (request.modbus() != null && !"modbus".equals(code)) {
             throw new IllegalArgumentException("modbus settings require Modbus protocol");
         }
-        if ("modbus".equals(code) && request.modbus() == null) {
+        if ("modbus".equals(code) && request.modbus() == null && request.collection()==null) {
             throw new IllegalArgumentException("modbus settings are required");
         }
         if (!"modbus".equals(code) && request.modbusReadings() != null) {

@@ -63,12 +63,12 @@ public class DeviceCollectionSettingService {
         List<DeviceCollectionSettingResponse> result=new ArrayList<>();for(CommonCode p:protocols)result.add(view(d,p,saved.get(p.getId())));
         if(includeRuntime && result.stream().anyMatch(s->"READY".equals(s.state()) && s.groupId()!=null)){
             var runtime=runtimeStates.load(List.of(id));
-            result=result.stream().map(s->"READY".equals(s.state()) && s.groupId()!=null && taskJobId(s)!=null?s.withCollectionState(runtimeStates.state(runtime,taskJobId(s),id)):s).toList();
+            result=result.stream().map(s->"READY".equals(s.state()) && s.groupId()!=null && collectorJobId(s)!=null?s.withCollectionState(runtimeStates.state(runtime,collectorJobId(s),id)):s).toList();
         }
         if(includeRuntime)result=result.stream().map(setting->setting.withDetails(setting.gateway(),"mqtt".equals(setting.protocolCode()) && setting.ready() && setting.enabled() && d.isEnabled()?eligibility.mqttState(id,setting.expectedSilenceSeconds()):null)).toList();
         return result;
     }
-    private String taskJobId(DeviceCollectionSettingResponse setting){
+    public String collectorJobId(DeviceCollectionSettingResponse setting){
         return setting.taskId()==null?null:tasks.findById(setting.taskId()).stream().flatMap(t->t.getGroups().stream()).filter(g->g.getId().equals(setting.groupId())).map(CollectionTaskGroup::getCollectorJobId).filter(Objects::nonNull).findFirst().orElse(null);
     }
     private DeviceCollectionSettingResponse view(Device d,CommonCode p,DeviceCollectionSetting saved){
@@ -91,7 +91,7 @@ public class DeviceCollectionSettingService {
             }
         }
         var gateway=eligibility.gateway(d.getId());
-        boolean ready=mqtt?eligibility.mqttReadiness(d).isEmpty():derived?gateway.sources().stream().anyMatch(CollectionEligibilityService.Source::enabled):plan!=null && plan.includesSource(d.getId());List<CollectionReadiness> readiness=new ArrayList<>();
+        boolean ready=supported && (mqtt?eligibility.mqttReadiness(d).isEmpty():derived?gateway.sources().stream().anyMatch(CollectionEligibilityService.Source::enabled):plan!=null && plan.includesSource(d.getId()));List<CollectionReadiness> readiness=new ArrayList<>();
         if(mqtt && supported)readiness.addAll(eligibility.mqttReadiness(d));
         if(!supported)readiness.add(new CollectionReadiness(CollectionReadiness.Code.NO_PROTOCOL,"장비 모델의 지원 프로토콜","/ops-console.html?page=models"));
         else if(plan!=null){
