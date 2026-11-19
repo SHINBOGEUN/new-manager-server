@@ -261,6 +261,11 @@ class QueryLastControllerIntegrationTest {
                 .getContentAsString();
 
         int deviceId = objectMapper.readTree(deviceResponse).path("data").path("id").asInt();
+        mockMvc.perform(post("/api/manager/devices/{deviceId}/endpoints", deviceId)
+                        .header("Authorization", bearerToken(accessToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"protocolTypeId\":" + snmpId + ",\"host\":\"test-device\",\"port\":161,\"enabled\":true}"))
+                .andExpect(status().isOk());
         return new CreatedDevice(deviceId, modelId);
     }
 

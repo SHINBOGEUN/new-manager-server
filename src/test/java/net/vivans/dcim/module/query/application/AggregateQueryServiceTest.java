@@ -59,6 +59,15 @@ class AggregateQueryServiceTest {
     @org.mockito.Spy
     private WidgetDataStatusResolver widgetDataStatusResolver = new WidgetDataStatusResolver();
 
+    @Mock
+    private net.vivans.dcim.module.common.domain.repository.CommonCodeRepository commonCodeRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void configureUnitConversion() {
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "unitNormalizer",
+                new UnitNormalizer(commonCodeRepository, sourceCatalog));
+    }
+
     @InjectMocks
     private AggregateQueryService service;
 
@@ -91,7 +100,6 @@ class AggregateQueryServiceTest {
                 List.of(mapping(d1, PageWidgetDeviceRole.DEFAULT), mapping(d2, PageWidgetDeviceRole.DEFAULT)),
                 "TOTAL_KWH");
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
         when(pointQuery.findFirstInRange(eq(List.of(101, 102)), eq(List.of("TOTAL_KWH")), any(), any()))
                 .thenReturn(List.of(
                         new LastPoint(101, "TOTAL_KWH", 100.0, T0),
@@ -125,7 +133,6 @@ class AggregateQueryServiceTest {
                 List.of(mapping(d1, PageWidgetDeviceRole.DEFAULT)),
                 "TOTAL_KWH");
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
         when(pointQuery.findFirstInRange(anyList(), anyList(), any(), any()))
                 .thenReturn(List.of(new LastPoint(101, "TOTAL_KWH", 100.0, T0)));
         when(pointQuery.findLastInRange(anyList(), anyList(), any(), any()))
@@ -147,7 +154,6 @@ class AggregateQueryServiceTest {
                 List.of(mapping(d1, PageWidgetDeviceRole.DEFAULT), mapping(d2, PageWidgetDeviceRole.DEFAULT)),
                 "TOTAL_WT");
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
         when(pointQuery.findLastInRange(eq(List.of(101, 102)), eq(List.of("TOTAL_WT")), any(), any()))
                 .thenReturn(List.of(
                         new LastPoint(101, "TOTAL_WT", 200.0, T1),
@@ -174,7 +180,6 @@ class AggregateQueryServiceTest {
                 List.of(mapping(d1, PageWidgetDeviceRole.DEFAULT)),
                 "TOTAL_KWH");
         when(pageWidgetRepository.findById(12)).thenReturn(Optional.of(widget));
-        when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(List.of());
         when(pointQuery.findFirstInRange(anyList(), anyList(), any(), any())).thenReturn(List.of());
         when(pointQuery.findLastInRange(anyList(), anyList(), any(), any())).thenReturn(List.of());
 
@@ -208,7 +213,7 @@ class AggregateQueryServiceTest {
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
-    private static PageWidget aggregateWidget(
+    private PageWidget aggregateWidget(
             int id,
             String name,
             PageWidgetOp op,
@@ -226,7 +231,14 @@ class AggregateQueryServiceTest {
         when(widget.getOp()).thenReturn(op);
         lenient().when(widget.getAggregateRangePreset()).thenReturn(rangePreset);
         when(widget.getDevices()).thenReturn(deviceSet);
-        when(widget.pointNames()).thenReturn(List.of(pointName));
+        lenient().when(widget.pointNames()).thenReturn(List.of(pointName));
+        when(widget.aggregateSourceDefinitions()).thenReturn(mappings.stream()
+                .map(mapping -> new PageWidget.LastSourceDefinition(mapping.getDevice(), List.of(pointName))).toList());
+        lenient().when(sourceCatalog.availableSources(org.mockito.ArgumentMatchers.anySet())).thenReturn(mappings.stream()
+                .map(mapping -> new DeviceMeasurementSourceCatalog.Source(mapping.getDevice().getId(),
+                        mapping.getDevice().getName(), 1, "snmp", pointName,
+                        op == PageWidgetOp.usage ? "kWh" : "W", null,
+                        mapping.getDevice().getId(), "MODEL_POINT", false)).toList());
         return widget;
     }
 

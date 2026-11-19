@@ -36,6 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CollectionTaskControllerIntegrationTest {
 
     @Autowired
+    private net.vivans.dcim.module.collectortask.application.CollectionScriptSyncService scriptSyncService;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
@@ -49,6 +52,15 @@ class CollectionTaskControllerIntegrationTest {
 
     @Autowired
     private CommonCodeRepository commonCodeRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void seedCollectionInterval() {
+        var group = codeGroupRepository.findAll().stream().filter(item -> "COLLECTION_INTERVAL".equals(item.getGroupKey())).findFirst()
+                .orElseGet(() -> codeGroupRepository.save(net.vivans.dcim.module.common.domain.model.CodeGroup.createCodeGroup("COLLECTION_INTERVAL", "수집 주기")));
+        if (commonCodeRepository.findByCodeGroupGroupKeyAndCode("COLLECTION_INTERVAL", "PT1M").isEmpty()) {
+            commonCodeRepository.save(net.vivans.dcim.module.common.domain.model.CommonCode.createCommonCode(group, "PT1M", "1분", 1));
+        }
+    }
 
     @Test
     void registrationOptionsAndSingleDeviceAdd_keepExistingGroupDevices() throws Exception {
@@ -569,6 +581,9 @@ class CollectionTaskControllerIntegrationTest {
                                 }
                                 """.formatted(snmpId)))
                 .andExpect(status().isOk());
+
+        // The enclosing test rolls back; invoke the post-commit regeneration explicitly.
+        scriptSyncService.regenerateByModelId(modelId);
 
         mockMvc.perform(get("/api/manager/collector/tasks/{taskId}", taskId)
                         .header("Authorization", bearerToken(accessToken)))

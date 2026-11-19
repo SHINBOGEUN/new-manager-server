@@ -67,6 +67,15 @@ class CollectionOperationsControllerJobHealthTest {
     @MockitoBean
     private CollectorJobClient collectorJobClient;
 
+    @org.junit.jupiter.api.BeforeEach
+    void seedCollectionInterval() {
+        var group = codeGroupRepository.findAll().stream().filter(item -> "COLLECTION_INTERVAL".equals(item.getGroupKey())).findFirst()
+                .orElseGet(() -> codeGroupRepository.save(net.vivans.dcim.module.common.domain.model.CodeGroup.createCodeGroup("COLLECTION_INTERVAL", "수집 주기")));
+        if (commonCodeRepository.findByCodeGroupGroupKeyAndCode("COLLECTION_INTERVAL", "PT1M").isEmpty()) {
+            commonCodeRepository.save(net.vivans.dcim.module.common.domain.model.CommonCode.createCommonCode(group, "PT1M", "1분", 1));
+        }
+    }
+
     @Test
     void jobHealth_reflectsCurrentFailureWithoutTreatingHistoryAsFailure() throws Exception {
         // 픽스처를 만드는 동안은 실제 동기화가 일어나지 않도록 비활성 상태로 둔다.
